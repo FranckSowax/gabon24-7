@@ -303,7 +303,6 @@ const FilterManager: React.FC<FilterManagerProps> = ({ userId, isPremiumUser }) 
                     <Switch
                       checked={filter.is_active}
                       onCheckedChange={() => toggleFilterStatus(filter)}
-                      size="sm"
                     />
                     <Badge variant={filter.is_active ? "default" : "secondary"}>
                       {filter.is_active ? 'Actif' : 'Inactif'}
@@ -507,7 +506,7 @@ const FilterManager: React.FC<FilterManagerProps> = ({ userId, isPremiumUser }) 
             <div className="flex items-center space-x-2">
               <Switch
                 checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, is_active: checked }))}
               />
               <label className="text-sm font-medium">Activer ce filtre</label>
             </div>
