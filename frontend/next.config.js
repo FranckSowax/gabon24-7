@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configuration pour export statique (Netlify)
+  output: 'export',
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  
   images: {
+    unoptimized: true, // Requis pour export statique
     domains: [
       'localhost',
       'gabonnews.com',
