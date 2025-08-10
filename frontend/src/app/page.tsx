@@ -55,41 +55,63 @@ export default function Home() {
     searchKeyword: ''
   })
 
-  // Articles par défaut
-  const defaultArticles: Article[] = [
-    {
-      id: '1',
-      title: 'Nouvelle Découverte Pétrolière au Large de Port-Gentil',
-      summary: 'Une importante réserve de pétrole a été découverte au large des côtes gabonaises, promettant de renforcer l\'économie nationale et de créer de nouveaux emplois dans le secteur énergétique.',
-      source: 'Gabon Matin',
-      publishedAt: '2 heures',
-      category: 'Économie',
-      viewCount: '0 vue',
-      view_count: 0,
-      trending: true
-    },
-    {
-      id: '2',
-      title: 'Lancement du Programme de Reforestation Nationale',
-      summary: 'Le gouvernement gabonais annonce un ambitieux programme de reforestation visant à planter 10 millions d\'arbres d\'ici 2030 pour lutter contre le changement climatique.',
-      source: 'L\'Union',
-      publishedAt: '4 heures',
-      category: 'Environnement',
-      viewCount: '0 vue',
-      view_count: 0,
-      trending: true
-    },
-    {
-      id: '3',
-      title: 'Inauguration du Nouveau Terminal de l\'Aéroport de Libreville',
-      summary: 'Le président Ali Bongo Ondimba a inauguré le nouveau terminal international de l\'aéroport Léon Mba, modernisant l\'infrastructure aéroportuaire du pays.',
-      source: 'Gabon Review',
-      publishedAt: '6 heures',
-      category: 'Infrastructure',
-      viewCount: '0 vue',
-      view_count: 0
+  // Fonction pour récupérer les articles de la page d'accueil
+  const fetchHomepageArticles = async () => {
+    try {
+      console.log('🏠 Récupération des articles de la page d\'accueil...')
+      const response = await axios.get('/.netlify/functions/homepage-articles')
+      
+      if (response.data?.success && response.data?.articles) {
+        // Transformer les articles pour le frontend
+        const transformedArticles = response.data.articles.map((article: any) => ({
+          id: article.id,
+          title: article.title,
+          summary: ensureCompleteSummary(article.summary),
+          source: article.source,
+          publishedAt: formatTimeAgo(article.publishedAt),
+          published_at: article.publishedAt,
+          category: article.category,
+          viewCount: article.viewCount,
+          view_count: article.view_count,
+          url: article.url,
+          imageUrl: article.imageUrl,
+          author: article.author,
+          trending: article.view_count > 100 // Articles avec plus de 100 vues = trending
+        }))
+        
+        // Filtrer seulement les articles récents (pas archivés)
+        const recentArticles = transformedArticles.filter((article: Article) => 
+          !shouldArchiveArticle(article.published_at || '')
+        )
+        
+        console.log(`✅ ${recentArticles.length} articles récents récupérés`)
+        setArticles(recentArticles)
+        setFilteredArticles(recentArticles)
+        return recentArticles
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur récupération articles homepage:', error)
     }
-  ]
+    
+    // Articles de fallback en cas d'erreur
+    return [
+      {
+        id: 'fallback-1',
+        title: 'Service temporairement indisponible',
+        summary: 'Nous travaillons à rétablir le service. Veuillez réessayer dans quelques instants.',
+        source: 'GabonNews',
+        publishedAt: 'maintenant',
+        published_at: new Date().toISOString(),
+        category: 'système',
+        viewCount: '0 vue',
+        view_count: 0,
+        url: '#',
+        imageUrl: 'https://picsum.photos/800/400?random=1',
+        author: 'Équipe technique',
+        trending: false
+      }
+    ]
+  }
 
   const curated = [
     {
@@ -182,7 +204,7 @@ export default function Home() {
     setArchiveLoading(true)
     try {
       console.log('📚 Récupération des articles archivés...')
-      const response = await axios.get('http://localhost:3001/api/homepage/articles?limit=100') // Plus d'articles pour les archives
+      const response = await axios.get('/.netlify/functions/archived-articles') // Fonction serverless Netlify
       
       if (response.data?.success && response.data?.articles) {
         // Transformer et filtrer les articles archivés
@@ -232,7 +254,7 @@ export default function Home() {
       window.open(article.url, '_blank')
       
       // Incrémenter le compteur de vues
-      const response = await axios.post(`http://localhost:3001/api/articles/${article.id}/view`)
+      const response = await axios.post(`/.netlify/functions/article-view`, { articleId: article.id })
       
       if (response.data.success) {
         console.log(`👁️ Vue comptabilisée pour: ${article.title} (${response.data.view_count} vues)`)
@@ -251,76 +273,27 @@ export default function Home() {
               ? { ...a, view_count: response.data.view_count, viewCount: formatViewCount(response.data.view_count) }
               : a
           )
-        )
-      }
-    } catch (error: any) {
-      console.error('Erreur lors du chargement des articles:', error)
-      // Ouvrir l'article même en cas d'erreur de comptage
-      window.open(article.url, '_blank')
-    }
-  }
 
-  // Effects
-  useEffect(() => {
-    const fetchArticles = async () => {
-      setLoading(true)
-      try {
-        console.log('🏠 Récupération des articles pour la page d\'accueil...')
-        const response = await axios.get('http://localhost:3001/api/homepage/articles?limit=20')
-        
-        if (response.data?.success && response.data?.articles) {
-          // Transformer les articles pour correspondre à l'interface
-          const transformedArticles = response.data.articles.map((article: any) => ({
-            id: article.id,
-            title: article.title,
-            summary: ensureCompleteSummary(article.ai_summary || article.summary),
-            ai_summary: article.ai_summary,
-            source: getMediaDisplayName(article), // Nom du média enrichi
-            publishedAt: formatTimeAgo(article.published_at || article.created_at),
-            published_at: article.published_at,
-            category: article.category,
-            viewCount: formatViewCount(article.view_count || 0), // Nombre de vues
-            view_count: article.view_count || 0, // Valeur brute pour debug
-            author: article.author || 'Rédaction',
-            url: article.url,
-            image_url: article.image_urls?.[0] || null, // Image principale
-            image_urls: article.image_urls, // Array complet des images
-            sentiment: article.sentiment,
-            created_at: article.created_at,
-            trending: Math.random() > 0.7 // Marquer aléatoirement certains articles comme trending
-          }))
-          
-          // Filtrer pour ne garder que les articles récents (depuis 20h la veille)
-          const recentArticles = transformedArticles.filter((article: Article) => 
-            !shouldArchiveArticle(article.published_at || article.created_at || '')
-          )
-          
-          console.log(`✅ ${recentArticles.length} articles récents récupérés pour la page d'accueil (${transformedArticles.length - recentArticles.length} archivés)`)
-          setArticles(recentArticles)
-          setFilteredArticles(recentArticles)
-        } else {
-          console.log('⚠️ Aucun article récupéré, utilisation des articles par défaut')
-          setArticles(defaultArticles)
-          setFilteredArticles(defaultArticles)
-        }
-      } catch (error) {
-        console.log('❌ Erreur récupération articles, utilisation des articles par défaut:', error)
-        setArticles(defaultArticles)
-        setFilteredArticles(defaultArticles)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchArticles()
-    
-    // Actualiser les articles toutes les 5 minutes
-    const interval = setInterval(fetchArticles, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+const categories = ['Mode', 'Politique', 'Divertissement', 'Sports', 'Technologie', 'Finance', 'Santé & Bien-être', 'Science', 'Style de vie']
+const recommendedFollows = [
+{ name: 'Haylie Botosh', avatar: '👩' },
+{ name: 'Emerson Dias', avatar: '👨' }
+]
 
-  // Effect pour charger les articles archivés quand on change d'onglet
-  useEffect(() => {
+// Handlers
+const handleSearch = (query: string) => {
+setSearchQuery(query)
+if (query.trim()) {
+const filtered = articles.filter(article =>
+article.title.toLowerCase().includes(query.toLowerCase()) ||
+article.summary.toLowerCase().includes(query.toLowerCase()) ||
+article.source.toLowerCase().includes(query.toLowerCase())
+)
+setFilteredArticles(filtered)
+} else {
+setFilteredArticles(articles)
+}
+}
     if (activeTab === 'archives' && archivedArticles.length === 0) {
       fetchArchivedArticles()
     }

@@ -7,10 +7,17 @@
   
   # Dossier de sortie après build
   publish = "out"
+  
+  # Dossier des fonctions serverless
+  functions = "netlify/functions"
 
 [build.environment]
   # Version Node.js compatible avec Next.js 13
   NODE_VERSION = "18"
+  
+  # Variables d'environnement pour les fonctions
+  # SUPABASE_URL = "your-supabase-url"
+  # SUPABASE_SERVICE_ROLE_KEY = "your-service-role-key"
 
 # Redirections pour SPA Next.js
 [[redirects]]
