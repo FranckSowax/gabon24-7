@@ -217,8 +217,8 @@ export default function Home() {
         console.log('⚠️ Aucun article archivé récupéré')
         setArchivedArticles([])
       }
-    } catch (error) {
-      console.log('❌ Erreur récupération articles archivés:', error)
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des articles archivés:', error)
       setArchivedArticles([])
     } finally {
       setArchiveLoading(false)
@@ -253,8 +253,8 @@ export default function Home() {
           )
         )
       }
-    } catch (error) {
-      console.error('❌ Erreur lors de la comptabilisation de la vue:', error)
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des articles:', error)
       // Ouvrir l'article même en cas d'erreur de comptage
       window.open(article.url, '_blank')
     }

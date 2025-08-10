@@ -33,8 +33,8 @@ export default function AdminDashboard() {
       
       setStats(statsResponse.data || stats)
       setRecentArticles(articlesResponse.data.articles || [])
-    } catch (error) {
-      console.error('Erreur lors du chargement:', error)
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des statistiques:', error)
     } finally {
       setLoading(false)
     }

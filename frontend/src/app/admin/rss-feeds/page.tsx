@@ -41,8 +41,8 @@ export default function RSSFeedsPage() {
     try {
       const response = await axios.get('http://localhost:3001/api/admin/rss-feeds')
       setFeeds(response.data.feeds || [])
-    } catch (error) {
-      console.error('Erreur lors du chargement des flux:', error)
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des flux RSS:', error)
       setFeeds([])
     } finally {
       setLoading(false)
@@ -55,7 +55,7 @@ export default function RSSFeedsPage() {
       setNewFeed({ name: '', url: '', category: 'Actualités' })
       setShowAddModal(false)
       fetchFeeds()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de l\'ajout:', error)
     }
   }
@@ -64,8 +64,8 @@ export default function RSSFeedsPage() {
     try {
       await axios.post(`http://localhost:3001/api/admin/rss-feeds/${feedId}/test`)
       fetchFeeds()
-    } catch (error) {
-      console.error('Erreur lors du test:', error)
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour:', error)
     }
   }
 
@@ -84,7 +84,7 @@ export default function RSSFeedsPage() {
           console.error('Échec de la suppression:', response.data.message)
           alert('Erreur lors de la suppression: ' + response.data.message)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erreur lors de la suppression:', error)
         if (error.response) {
           console.error('Détails de l\'erreur:', error.response.data)

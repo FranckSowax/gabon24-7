@@ -49,7 +49,7 @@ export default function ArticlesPage() {
         setArticles(response.data.data.articles)
         setTotalPages(response.data.data.totalPages)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du chargement des articles:', error)
     } finally {
       setLoading(false)
