@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const Parser = require('rss-parser');
 const OpenAIEditorialService = require('./openai-editorial-service');
-const SupabaseService = require('./supabase-config');
 const RSSProcessor = require('./rss-processor');
 
 const app = express();
@@ -22,7 +21,7 @@ app.use(express.static('public'));
 // Services
 const parser = new Parser();
 const editorialService = new OpenAIEditorialService();
-const supabaseService = new SupabaseService();
+const supabaseService = require('./supabase-config'); // Utiliser l'instance exportée
 const rssProcessor = new RSSProcessor();
 
 console.log('✅ OpenAI API configurée - Génération d\'éditoriaux IA activée');

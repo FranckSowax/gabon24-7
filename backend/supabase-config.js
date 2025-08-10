@@ -582,4 +582,6 @@ class SupabaseService {
   }
 }
 
-module.exports = SupabaseService;
+// Créer et exporter une instance unique du service
+const supabaseService = new SupabaseService();
+module.exports = supabaseService;

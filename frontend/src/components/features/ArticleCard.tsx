@@ -11,6 +11,7 @@ interface Article {
   trending?: boolean
   imageUrl?: string
   image_url?: string
+  image_urls?: string[]  // Images extraites via web scraping
   author?: string
   url?: string
 }
@@ -57,9 +58,9 @@ export default function ArticleCard({
         )}
         
         <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500 relative">
-          {(article.imageUrl || article.image_url) ? (
+          {(article.imageUrl || article.image_url || (article.image_urls && article.image_urls.length > 0)) ? (
             <img 
-              src={article.image_url || article.imageUrl} 
+              src={article.image_url || article.imageUrl || (article.image_urls && article.image_urls[0])} 
               alt={article.title}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -132,9 +133,9 @@ export default function ArticleCard({
       <div className="flex items-start space-x-4">
         {/* Image principale de l'article */}
         <div className="flex-shrink-0">
-          {(article.image_url || article.imageUrl) ? (
+          {(article.image_url || article.imageUrl || (article.image_urls && article.image_urls.length > 0)) ? (
             <img 
-              src={article.image_url || article.imageUrl} 
+              src={article.image_url || article.imageUrl || (article.image_urls && article.image_urls[0])} 
               alt={article.title}
               className="w-16 h-16 rounded-lg object-cover"
               onError={(e) => {
@@ -144,7 +145,7 @@ export default function ArticleCard({
               }}
             />
           ) : null}
-          <div className={`w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center ${(article.image_url || article.imageUrl) ? 'hidden' : ''}`}>
+          <div className={`w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center ${(article.image_url || article.imageUrl || (article.image_urls && article.image_urls.length > 0)) ? 'hidden' : ''}`}>
             <span className="text-lg text-white">📰</span>
           </div>
         </div>

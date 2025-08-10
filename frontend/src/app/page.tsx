@@ -23,6 +23,7 @@ interface Article {
   author?: string
   url?: string
   image_url?: string
+  image_urls?: string[]  // Images extraites via web scraping
   sentiment?: string
   created_at?: string
 }

@@ -1,18 +1,20 @@
-const Parser = require('rss-parser');
-const OpenAIEditorialService = require('./openai-editorial-service');
-const SupabaseService = require('./supabase-config');
+const RSSParser = require('rss-parser');
 const crypto = require('crypto');
+const axios = require('axios');
+const cheerio = require('cheerio');
+const supabaseService = require('./supabase-config');
+const OpenAIService = require('./openai-service');
 
 class RSSProcessor {
   constructor() {
-    this.parser = new Parser({
+    this.parser = new RSSParser({
       timeout: 10000,
       headers: {
         'User-Agent': 'GabonNews RSS Processor/1.0'
       }
     });
-    this.openaiService = new OpenAIEditorialService();
-    this.supabaseService = new SupabaseService();
+    this.openaiService = new OpenAIService();
+    this.supabaseService = supabaseService; // Stocker le service Supabase
     
     // Configuration de fréquence
     this.FETCH_INTERVAL_MINUTES = 15; // Récupération toutes les 15 minutes
@@ -137,7 +139,7 @@ class RSSProcessor {
 
     console.log(`📝 Nouveau: "${item.title?.substring(0, 50)}..."`);
 
-    // 🖼️ EXTRACTION D'IMAGE
+    // 🖼️ EXTRACTION D'IMAGE (RSS + Web Scraping)
     const imageUrl = await this.extractImageFromArticle(item);
     
     // 📝 GÉNÉRATION DE RÉSUMÉ IA (1 phrase)
@@ -176,12 +178,76 @@ class RSSProcessor {
 
     // 💾 SAUVEGARDE EN BASE DE DONNÉES
     try {
-      await this.saveArticle(article);
+      const result = await this.saveArticle(article);
+      if (result.error) {
+        console.error(`❌ Erreur sauvegarde: ${result.error}`);
+        return false;
+      }
       console.log(`✅ Sauvegardé: "${article.title.substring(0, 30)}..."`);
       return true;
     } catch (error) {
       console.error(`❌ Erreur sauvegarde:`, error.message);
       return false;
+    }
+  }
+
+  /**
+   * 💾 SAUVEGARDE D'ARTICLE EN BASE DE DONNÉES
+   */
+  async saveArticle(article) {
+    try {
+      console.log('💾 Insertion article dans Supabase...');
+      
+      // Utiliser la fonction SQL créée pour insérer l'article
+      const { data, error } = await supabaseService.supabase
+        .rpc('insert_article_with_image', {
+          p_feed_id: article.feed_id,
+          p_external_id: article.external_id,
+          p_title: article.title,
+          p_summary: article.summary || '',
+          p_ai_summary: article.ai_summary || '',
+          p_url: article.url,
+          p_image_urls: article.image_urls || [],
+          p_author: article.author || 'Rédaction',
+          p_published_at: article.published_at,
+          p_category: article.category || 'Actualités',
+          p_sentiment: article.sentiment || 'neutre',
+          p_read_time_minutes: article.read_time_minutes || 3,
+          p_is_published: article.is_published !== false
+        });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data && data[0]) {
+        const result = data[0];
+        if (result.success) {
+          console.log(`✅ ${result.message}`);
+          if (article.image_urls && article.image_urls.length > 0) {
+            console.log('🖼️ Image sauvegardée:', article.image_urls[0]);
+          }
+          return { data: result, error: null };
+        } else {
+          console.log('⚠️ Article non sauvegardé:', result.message);
+          return { data: null, error: result.message };
+        }
+      }
+      
+      return { data, error: null };
+      
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde article:', error.message);
+      
+      // Log pour debug avec image info
+      console.log('📄 Article (échec sauvegarde):', {
+        title: article.title.substring(0, 50),
+        ai_summary: article.ai_summary?.substring(0, 50) + '...',
+        has_image: article.image_urls && article.image_urls.length > 0,
+        image_url: article.image_urls?.[0]?.substring(0, 50) + '...'
+      });
+      
+      return { data: null, error: error.message };
     }
   }
 
@@ -264,12 +330,119 @@ class RSSProcessor {
         return this.validateAndCleanImageUrl(imageUrl);
       }
 
+      // 7. FALLBACK : Scraper la page web de l'article pour trouver l'image principale
+      if (item.link) {
+        console.log('🔍 Tentative de scraping web pour:', item.title?.substring(0, 30));
+        imageUrl = await this.scrapeImageFromWebPage(item.link);
+        if (imageUrl) {
+          console.log('🖼️ Image trouvée via web scraping:', imageUrl);
+          return this.validateAndCleanImageUrl(imageUrl);
+        }
+      }
+
       console.log('⚠️ Aucune image trouvée pour:', item.title?.substring(0, 50));
       return null;
       
     } catch (error) {
       console.error('❌ Erreur extraction image:', error.message);
       return null;
+    }
+  }
+
+  /**
+   * 🌐 SCRAPING WEB POUR EXTRACTION D'IMAGE PRINCIPALE
+   * Fallback quand l'image n'est pas dans le flux RSS
+   */
+  async scrapeImageFromWebPage(articleUrl) {
+    try {
+      // Timeout court pour éviter de ralentir le processus
+      const response = await axios.get(articleUrl, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      const $ = cheerio.load(response.data);
+      let imageUrl = null;
+
+      // 1. Chercher les meta tags Open Graph (priorité haute)
+      imageUrl = $('meta[property="og:image"]').attr('content');
+      if (imageUrl && this.isQualityImage(imageUrl)) {
+        return this.makeAbsoluteUrl(imageUrl, articleUrl);
+      }
+
+      // 2. Chercher les meta tags Twitter Card
+      imageUrl = $('meta[name="twitter:image"]').attr('content');
+      if (imageUrl && this.isQualityImage(imageUrl)) {
+        return this.makeAbsoluteUrl(imageUrl, articleUrl);
+      }
+
+      // 3. Chercher la première image dans l'article avec des sélecteurs spécifiques
+      const selectors = [
+        'article img:first',
+        '.post-content img:first',
+        '.entry-content img:first',
+        '.article-content img:first',
+        '.content img:first',
+        'main img:first',
+        'img[class*="featured"]',
+        'img[class*="hero"]',
+        'img[class*="main"]'
+      ];
+
+      for (const selector of selectors) {
+        const imgSrc = $(selector).attr('src');
+        if (imgSrc && this.isQualityImage(imgSrc)) {
+          return this.makeAbsoluteUrl(imgSrc, articleUrl);
+        }
+      }
+
+      // 4. Fallback : première image de taille décente dans la page
+      const allImages = $('img');
+      for (let i = 0; i < allImages.length; i++) {
+        const imgSrc = $(allImages[i]).attr('src');
+        if (imgSrc && this.isQualityImage(imgSrc)) {
+          // Vérifier si l'image semble être de contenu (pas logo/avatar)
+          const imgAlt = $(allImages[i]).attr('alt') || '';
+          const imgClass = $(allImages[i]).attr('class') || '';
+          
+          // Éviter les logos, avatars, icônes
+          if (!imgClass.match(/logo|avatar|icon|social|nav|menu/i) && 
+              !imgAlt.match(/logo|avatar|icon/i)) {
+            return this.makeAbsoluteUrl(imgSrc, articleUrl);
+          }
+        }
+      }
+
+      return null;
+
+    } catch (error) {
+      console.error('❌ Erreur scraping web:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * 🔗 CONVERSION URL RELATIVE EN ABSOLUE
+   */
+  makeAbsoluteUrl(imageUrl, baseUrl) {
+    try {
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      
+      const base = new URL(baseUrl);
+      if (imageUrl.startsWith('//')) {
+        return base.protocol + imageUrl;
+      }
+      if (imageUrl.startsWith('/')) {
+        return base.origin + imageUrl;
+      }
+      
+      return new URL(imageUrl, baseUrl).href;
+    } catch (error) {
+      return imageUrl;
     }
   }
 
@@ -508,6 +681,60 @@ Résumé:`;
   }
 
   /**
+   * 📡 RÉCUPÉRATION DES FLUX RSS DEPUIS LA BASE
+   */
+  async getRSSFeeds() {
+    try {
+      const { data, error } = await supabaseService.supabase
+        .from('rss_feeds')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('❌ Erreur récupération flux RSS:', error.message);
+      
+      // Fallback avec les flux par défaut
+      return [
+        { id: 1, name: 'AGP', url: 'https://agpgabon.ga/feed/', category: 'actualites' },
+        { id: 2, name: 'Gabon Review', url: 'https://www.gabonreview.com/feed/', category: 'actualites' },
+        { id: 3, name: 'Gabon Eco', url: 'https://gaboneco.com/feed/', category: 'economie' },
+        { id: 4, name: 'Info241', url: 'https://info241.com/feed/', category: 'actualites' }
+      ];
+    }
+  }
+
+  /**
+   * 🔍 VÉRIFICATION EXISTENCE ARTICLE
+   */
+  async articleExists(hash) {
+    try {
+      const { data, error } = await supabaseService.supabase
+        .from('articles')
+        .select('id')
+        .eq('external_id', hash)
+        .limit(1);
+
+      if (error) throw error;
+      
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('❌ Erreur vérification article:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 🔑 GÉNÉRATION HASH UNIQUE ARTICLE
+   */
+  generateArticleHash(title, url) {
+    const content = `${title}-${url}`;
+    return crypto.createHash('md5').update(content).digest('hex');
+  }
+
+  /**
    * 🔍 UTILITAIRES
    */
   generateArticleHash(title, url) {
@@ -529,24 +756,128 @@ Résumé:`;
     }
   }
 
-  async saveArticle(article) {
+  /**
+   * 🌐 WEB SCRAPING POUR EXTRACTION D'IMAGES
+   * Scrape la page web de l'article pour trouver l'image principale
+   */
+  async scrapeImageFromWebPage(url) {
     try {
-      // Utiliser la nouvelle méthode insertArticle du service Supabase
-      const result = await this.supabaseService.insertArticle(article);
-      return result;
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde article:', error.message);
+      console.log('🔍 Scraping de:', url);
       
-      // Fallback: log en console si base non disponible
-      console.log('📄 Article (simulation):', {
-        title: article.title.substring(0, 50),
-        ai_summary: article.ai_summary?.substring(0, 50)
+      // Faire la requête HTTP avec timeout
+      const response = await axios.get(url, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
       });
       
-      // Re-throw l'erreur pour que le processeur puisse la gérer
-      throw error;
+      const $ = cheerio.load(response.data);
+      let imageUrl = null;
+      
+      // 1. Chercher Open Graph image (priorité haute)
+      const ogImage = $('meta[property="og:image"]').attr('content');
+      if (ogImage && this.isQualityImage(ogImage)) {
+        imageUrl = this.makeAbsoluteUrl(ogImage, url);
+        console.log('🖼️ Image OG trouvée:', imageUrl);
+        return imageUrl;
+      }
+      
+      // 2. Chercher Twitter Card image
+      const twitterImage = $('meta[name="twitter:image"]').attr('content');
+      if (twitterImage && this.isQualityImage(twitterImage)) {
+        imageUrl = this.makeAbsoluteUrl(twitterImage, url);
+        console.log('🖼️ Image Twitter trouvée:', imageUrl);
+        return imageUrl;
+      }
+      
+      // 3. Chercher dans l'article principal
+      const articleSelectors = [
+        'article img:first-of-type',
+        '.post-content img:first-of-type',
+        '.entry-content img:first-of-type',
+        '.content img:first-of-type',
+        '.article-content img:first-of-type',
+        'main img:first-of-type',
+        '.wp-post-image'
+      ];
+      
+      for (const selector of articleSelectors) {
+        const img = $(selector);
+        if (img.length > 0) {
+          const src = img.attr('src') || img.attr('data-src');
+          if (src && this.isQualityImage(src)) {
+            imageUrl = this.makeAbsoluteUrl(src, url);
+            console.log('🖼️ Image article trouvée:', imageUrl);
+            return imageUrl;
+          }
+        }
+      }
+      
+      // 4. Chercher toutes les images et prendre la plus grande
+      const allImages = $('img');
+      let bestImage = null;
+      let bestScore = 0;
+      
+      allImages.each((i, elem) => {
+        const src = $(elem).attr('src') || $(elem).attr('data-src');
+        if (src && this.isQualityImage(src)) {
+          const score = this.calculateImageScore(src, $(elem));
+          if (score > bestScore) {
+            bestScore = score;
+            bestImage = src;
+          }
+        }
+      });
+      
+      if (bestImage) {
+        imageUrl = this.makeAbsoluteUrl(bestImage, url);
+        console.log('🖼️ Meilleure image trouvée:', imageUrl);
+        return imageUrl;
+      }
+      
+      console.log('⚠️ Aucune image trouvée via scraping pour:', url);
+      return null;
+      
+    } catch (error) {
+      console.error('❌ Erreur scraping web:', error.message);
+      return null;
     }
   }
+  
+  /**
+   * 📊 CALCUL SCORE QUALITÉ IMAGE
+   * Évalue la qualité d'une image pour le scraping
+   */
+  calculateImageScore(src, imgElement) {
+    let score = 0;
+    
+    // Points pour la taille (si disponible)
+    const width = imgElement.attr('width');
+    const height = imgElement.attr('height');
+    if (width && height) {
+      const area = parseInt(width) * parseInt(height);
+      if (area > 50000) score += 50; // Grande image
+      else if (area > 10000) score += 30; // Image moyenne
+      else if (area > 1000) score += 10; // Petite image
+    }
+    
+    // Points pour l'URL (indicateurs de qualité)
+    if (src.includes('featured') || src.includes('hero')) score += 30;
+    if (src.includes('thumb') || src.includes('small')) score -= 20;
+    if (src.includes('logo') || src.includes('avatar')) score -= 50;
+    if (src.includes('icon') || src.includes('button')) score -= 40;
+    
+    // Points pour l'extension
+    if (src.includes('.jpg') || src.includes('.jpeg')) score += 10;
+    if (src.includes('.png')) score += 5;
+    if (src.includes('.webp')) score += 15;
+    
+    return Math.max(0, score);
+  }
+
+  // Cette méthode saveArticle a été supprimée car elle est déjà définie plus haut
+  // avec l'utilisation correcte de la fonction RPC Supabase insert_article_with_image
 
   async getRSSFeeds() {
     try {
