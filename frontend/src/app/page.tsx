@@ -319,6 +319,36 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
+  // Effect pour charger les articles archivés quand on change d'onglet
+  useEffect(() => {
+    if (activeTab === 'archives' && archivedArticles.length === 0) {
+      fetchArchivedArticles()
+    }
+  }, [activeTab])
+
+  // Fonctions de gestion des filtres d'archives
+  const handleArchiveFiltersChange = (newFilters: any) => {
+    setArchiveFilters(newFilters)
+  }
+
+  const applyArchiveFilters = () => {
+    // Les filtres sont appliqués automatiquement via filterArchivedArticles
+    console.log('🔍 Filtres d\'archives appliqués:', archiveFilters)
+  }
+
+  // Filtrer les articles selon la recherche
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredArticles(articles)
+    } else {
+      const filtered = articles.filter(article => 
+        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        article.summary.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setFilteredArticles(filtered)
+    }
+  }, [articles, searchQuery])
+
   // Fonctions utilitaires
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return 'Récent'
@@ -404,6 +434,17 @@ export default function Home() {
     const articleDate = new Date(publishedAt)
     const yesterday8PM = new Date(now)
     yesterday8PM.setDate(yesterday8PM.getDate() - 1)
+    yesterday8PM.setHours(20, 0, 0, 0) // 20h la veille
+    
+    return articleDate < yesterday8PM
+  }
+
+  // Fonction pour filtrer les articles selon les critères d'archive
+  const filterArchivedArticles = (articles: Article[]): Article[] => {
+    let filtered = articles.filter(article => {
+      // Filtrer par mot-clé si spécifié
+      if (archiveFilters.searchKeyword) {
+        const keyword = archiveFilters.searchKeyword.toLowerCase()
         const matchesKeyword = 
           article.title.toLowerCase().includes(keyword) ||
           article.summary.toLowerCase().includes(keyword) ||
@@ -459,13 +500,9 @@ export default function Home() {
     return `${readTime} min`
   }
 
-  useEffect(() => {
-    if (!searchQuery) {
-      setFilteredArticles(articles)
-    }
-  }, [articles, searchQuery])
-
+  // Variables pour l'affichage
   const displayArticles = searchQuery ? filteredArticles : articles
+  const filteredArchivedArticles = filterArchivedArticles(archivedArticles)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -519,28 +556,127 @@ export default function Home() {
             </div>
           </div>
 
-          {/* État de chargement */}
-          {loading ? (
-            <div className="space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                <ArticleCardSkeleton />
-                <ArticleCardSkeleton />
-              </div>
-              <div className="space-y-3 sm:space-y-4">
-                <ArticleCardSkeleton />
-                <ArticleCardSkeleton />
-                <ArticleCardSkeleton />
-              </div>
-            </div>
-          ) : (
+          {/* Affichage conditionnel selon l'onglet actif */}
+          {activeTab === 'archives' ? (
+            /* Onglet Archives */
             <>
-              {/* Articles en Vedette - Responsive grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                {displayArticles.slice(0, 2).map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    variant="featured"
+              {/* Filtres d'archives */}
+              <ArchiveFilters
+                filters={archiveFilters}
+                onFiltersChange={handleArchiveFiltersChange}
+                onApplyFilters={applyArchiveFilters}
+              />
+
+              {/* État de chargement des archives */}
+              {archiveLoading ? (
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                  </div>
+                  <div className="space-y-3 sm:space-y-4">
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                  </div>
+                </div>
+              ) : filteredArchivedArticles.length === 0 ? (
+                /* Message si aucun article archivé */
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">📚</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun article archivé</h3>
+                  <p className="text-gray-600 mb-4">
+                    {archiveFilters.searchKeyword || archiveFilters.dateFilter !== 'all' 
+                      ? 'Aucun article ne correspond à vos critères de recherche.'
+                      : 'Les articles de plus de 20h seront automatiquement archivés ici.'
+                    }
+                  </p>
+                  {(archiveFilters.searchKeyword || archiveFilters.dateFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setArchiveFilters({
+                          dateFilter: 'all',
+                          customStartDate: '',
+                          customEndDate: '',
+                          searchKeyword: ''
+                        })
+                      }}
+                      className="text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                      Effacer les filtres
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* Articles archivés */
+                <>
+                  {/* En-tête des archives */}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                      📚 Articles archivés ({filteredArchivedArticles.length})
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Articles publiés avant 20h la veille
+                    </p>
+                  </div>
+
+                  {/* Articles archivés en vedette */}
+                  {filteredArchivedArticles.length >= 2 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                      {filteredArchivedArticles.slice(0, 2).map((article) => (
+                        <ArticleCard
+                          key={article.id}
+                          article={article}
+                          variant="featured"
+                          onSave={handleSaveArticle}
+                          onShare={handleShare}
+                          onClick={handleArticleClick}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Liste des articles archivés */}
+                  <div className="space-y-3 sm:space-y-4">
+                    {filteredArchivedArticles.slice(filteredArchivedArticles.length >= 2 ? 2 : 0).map((article) => (
+                      <ArticleCard
+                        key={article.id}
+                        article={article}
+                        variant="list"
+                        onSave={handleSaveArticle}
+                        onShare={handleShare}
+                        onClick={handleArticleClick}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            /* Onglets normaux (Pour Vous, Tendances, Suivis) */
+            <>
+              {/* État de chargement */}
+              {loading ? (
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                  </div>
+                  <div className="space-y-3 sm:space-y-4">
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                    <ArticleCardSkeleton />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Articles en Vedette - Responsive grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    {displayArticles.slice(0, 2).map((article) => (
+                      <ArticleCard
+                        key={article.id}
+                        article={article}
+                        variant="featured"
                     onSave={handleSaveArticle}
                     onShare={handleShare}
                     onClick={handleArticleClick}
@@ -573,6 +709,8 @@ export default function Home() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun résultat trouvé</h3>
                   <p className="text-gray-500">Essayez avec d'autres mots-clés ou parcourez nos articles tendances.</p>
                 </div>
+              )}
+                </>
               )}
             </>
           )}
