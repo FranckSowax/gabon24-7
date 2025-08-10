@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GabonNews - Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2E8B57, #228B22);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: #2E8B57;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(46, 139, 87, 0.1);
+        }
+        
+        .feature-card h3 {
+            color: #2E8B57;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #2E8B57, #228B22);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 139, 87, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .test-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .test-section h2 {
+            color: #2E8B57;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group textarea,
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group textarea:focus,
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #2E8B57;
+        }
+        
+        .result-area {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #2E8B57;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2E8B57;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🇬🇦 GabonNews - Interface de Test</h1>
+            <p>Testez les nouvelles fonctionnalités éditoriales et premium</p>
+        </div>
+        
+        <div class="content">
+            <!-- API Status -->
+            <div class="status info" id="apiStatus">
+                <span class="loading"></span> Vérification de l'API...
+            </div>
+            
+            <!-- Feature Overview -->
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🖋️ Portail Journaliste</h3>
+                    <p>Génération d'éditoriaux assistée par IA : matinales, analyses thématiques, revues de presse et éditoriaux personnalisés.</p>
+                    <button class="btn" onclick="testEditorialGeneration()">Tester la Génération</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🔍 Filtres Premium</h3>
+                    <p>Système de filtrage avancé pour personnaliser les actualités selon les préférences des utilisateurs premium.</p>
+                    <button class="btn" onclick="testPremiumFilters()">Tester les Filtres</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>📱 Canaux WhatsApp</h3>
+                    <p>Gestion des canaux de diffusion WhatsApp avec programmation de messages et statistiques d'engagement.</p>
+                    <button class="btn" onclick="testWhatsAppChannels()">Tester les Canaux</button>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>📊 API Admin</h3>
+                    <p>Endpoints d'administration pour la gestion des flux RSS, articles et statistiques du système.</p>
+                    <button class="btn" onclick="testAdminAPI()">Tester l'Admin</button>
+                </div>
+            </div>
+            
+            <!-- Test Section -->
+            <div class="test-section">
+                <h2>🧪 Zone de Test Interactive</h2>
+                
+                <div class="form-group">
+                    <label for="testType">Type de Test :</label>
+                    <select id="testType" onchange="updateTestForm()">
+                        <option value="">Sélectionner un test...</option>
+                        <option value="matinale">Génération de Matinale</option>
+                        <option value="analyse">Analyse Thématique</option>
+                        <option value="revue">Revue de Presse</option>
+                        <option value="editorial">Éditorial Personnalisé</option>
+                        <option value="filter">Test de Filtre</option>
+                        <option value="broadcast">Diffusion WhatsApp</option>
+                    </select>
+                </div>
+                
+                <div id="dynamicForm"></div>
+                
+                <button class="btn" id="runTestBtn" onclick="runTest()" disabled>
+                    Exécuter le Test
+                </button>
+                
+                <div class="result-area" id="testResults" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        // Check API status on load
+        window.onload = function() {
+            checkAPIStatus();
+        };
+        
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                if (data.status === 'OK') {
+                    document.getElementById('apiStatus').innerHTML = 
+                        '<span style="color: #155724;">✅ API Opérationnelle</span> - ' + data.message;
+                    document.getElementById('apiStatus').className = 'status success';
+                } else {
+                    throw new Error('API non disponible');
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').innerHTML = 
+                    '<span style="color: #721c24;">❌ API Indisponible</span> - Vérifiez que le serveur backend est démarré';
+                document.getElementById('apiStatus').className = 'status error';
+            }
+        }
+        
+        function updateTestForm() {
+            const testType = document.getElementById('testType').value;
+            const formContainer = document.getElementById('dynamicForm');
+            const runBtn = document.getElementById('runTestBtn');
+            
+            if (!testType) {
+                formContainer.innerHTML = '';
+                runBtn.disabled = true;
+                return;
+            }
+            
+            runBtn.disabled = false;
+            
+            let formHTML = '';
+            
+            switch (testType) {
+                case 'matinale':
+                case 'revue':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Articles (JSON) :</label>
+                            <textarea id="articles" rows="4" placeholder='[{"title": "Titre de l\'article", "content": "Contenu..."}]'></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Instructions personnalisées :</label>
+                            <textarea id="instructions" rows="2" placeholder="Instructions spéciales pour la génération..."></textarea>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'analyse':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Articles (JSON) :</label>
+                            <textarea id="articles" rows="4" placeholder='[{"title": "Titre de l\'article", "content": "Contenu..."}]'></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Thème d'analyse :</label>
+                            <input type="text" id="theme" placeholder="Ex: Économie gabonaise, Politique, Environnement...">
+                        </div>
+                        <div class="form-group">
+                            <label>Instructions personnalisées :</label>
+                            <textarea id="instructions" rows="2" placeholder="Instructions spéciales pour l'analyse..."></textarea>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'editorial':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Articles (JSON) :</label>
+                            <textarea id="articles" rows="4" placeholder='[{"title": "Titre de l\'article", "content": "Contenu..."}]'></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Instructions :</label>
+                            <textarea id="instructions" rows="3" placeholder="Instructions pour l'éditorial personnalisé..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Ton :</label>
+                            <select id="tone">
+                                <option value="professionnel">Professionnel</option>
+                                <option value="analytique">Analytique</option>
+                                <option value="critique">Critique</option>
+                                <option value="informatif">Informatif</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'filter':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>Configuration du filtre (JSON) :</label>
+                            <textarea id="filterConfig" rows="6" placeholder='{"keywords": ["économie", "gabon"], "categories": ["Économie"], "sentiment": "positif"}'></textarea>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'broadcast':
+                    formHTML = `
+                        <div class="form-group">
+                            <label>ID du Canal :</label>
+                            <input type="text" id="channelId" placeholder="channel-1" value="channel-1">
+                        </div>
+                        <div class="form-group">
+                            <label>Contenu du message :</label>
+                            <textarea id="content" rows="4" placeholder="Votre message à diffuser..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Programmer pour (optionnel) :</label>
+                            <input type="datetime-local" id="scheduledAt">
+                        </div>
+                    `;
+                    break;
+            }
+            
+            formContainer.innerHTML = formHTML;
+        }
+        
+        async function runTest() {
+            const testType = document.getElementById('testType').value;
+            const resultsArea = document.getElementById('testResults');
+            const runBtn = document.getElementById('runTestBtn');
+            
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span class="loading"></span> Test en cours...';
+            resultsArea.style.display = 'block';
+            resultsArea.innerHTML = 'Exécution du test...';
+            
+            try {
+                let endpoint = '';
+                let payload = {};
+                
+                switch (testType) {
+                    case 'matinale':
+                        endpoint = '/api/v1/journalist/matinale';
+                        payload = {
+                            articles: JSON.parse(document.getElementById('articles').value || '[{"title": "Test Article", "content": "Contenu de test"}]'),
+                            customInstructions: document.getElementById('instructions').value
+                        };
+                        break;
+                        
+                    case 'analyse':
+                        endpoint = '/api/v1/journalist/analyse';
+                        payload = {
+                            articles: JSON.parse(document.getElementById('articles').value || '[{"title": "Test Article", "content": "Contenu de test"}]'),
+                            theme: document.getElementById('theme').value || 'Test',
+                            customInstructions: document.getElementById('instructions').value
+                        };
+                        break;
+                        
+                    case 'revue':
+                        endpoint = '/api/v1/journalist/revue-presse';
+                        payload = {
+                            articles: JSON.parse(document.getElementById('articles').value || '[{"title": "Test Article", "content": "Contenu de test"}]'),
+                            customInstructions: document.getElementById('instructions').value
+                        };
+                        break;
+                        
+                    case 'editorial':
+                        endpoint = '/api/v1/journalist/editorial';
+                        payload = {
+                            articles: JSON.parse(document.getElementById('articles').value || '[{"title": "Test Article", "content": "Contenu de test"}]'),
+                            instructions: document.getElementById('instructions').value || 'Éditorial de test',
+                            tone: document.getElementById('tone').value
+                        };
+                        break;
+                        
+                    case 'filter':
+                        endpoint = '/api/v1/filters/test';
+                        payload = {
+                            filter_config: JSON.parse(document.getElementById('filterConfig').value || '{"keywords": ["test"]}')
+                        };
+                        break;
+                        
+                    case 'broadcast':
+                        endpoint = '/api/v1/channels/broadcast';
+                        payload = {
+                            channel_id: document.getElementById('channelId').value,
+                            content: document.getElementById('content').value,
+                            scheduled_at: document.getElementById('scheduledAt').value
+                        };
+                        break;
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                resultsArea.innerHTML = `Statut: ${response.status}\n\nRéponse:\n${JSON.stringify(result, null, 2)}`;
+                
+            } catch (error) {
+                resultsArea.innerHTML = `Erreur: ${error.message}`;
+            } finally {
+                runBtn.disabled = false;
+                runBtn.innerHTML = 'Exécuter le Test';
+            }
+        }
+        
+        async function testEditorialGeneration() {
+            showQuickTest('Génération d\'éditoriaux', '/api/v1/journalist/matinale', {
+                articles: [
+                    {
+                        title: "Nouvelle politique économique au Gabon",
+                        content: "Le gouvernement gabonais annonce de nouvelles mesures pour stimuler l'économie locale..."
+                    }
+                ],
+                customInstructions: "Focalisez sur l'impact économique"
+            });
+        }
+        
+        async function testPremiumFilters() {
+            showQuickTest('Test de filtre premium', '/api/v1/filters/test', {
+                filter_config: {
+                    keywords: ["économie", "gabon"],
+                    categories: ["Économie"],
+                    sentiment: "positif"
+                }
+            });
+        }
+        
+        async function testWhatsAppChannels() {
+            showQuickTest('Statistiques des canaux', '/api/v1/channels/stats', {}, 'GET');
+        }
+        
+        async function testAdminAPI() {
+            showQuickTest('Statistiques admin', '/api/admin/stats', {}, 'GET');
+        }
+        
+        async function showQuickTest(title, endpoint, payload = {}, method = 'POST') {
+            const resultsArea = document.getElementById('testResults');
+            resultsArea.style.display = 'block';
+            resultsArea.innerHTML = `Test: ${title}\nEndpoint: ${endpoint}\n\nExécution...`;
+            
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (method === 'POST') {
+                    options.body = JSON.stringify(payload);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const result = await response.json();
+                
+                resultsArea.innerHTML = `Test: ${title}\nEndpoint: ${endpoint}\nStatut: ${response.status}\n\nRéponse:\n${JSON.stringify(result, null, 2)}`;
+            } catch (error) {
+                resultsArea.innerHTML = `Test: ${title}\nErreur: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
