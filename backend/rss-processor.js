@@ -163,7 +163,7 @@ class RSSProcessor {
       external_id: item.guid || item.id || articleHash,
       title: item.title || 'Titre non disponible',
       content: item.content || item['content:encoded'] || item.contentSnippet || '',
-      summary: item.contentSnippet || item.description || 'Résumé non disponible',
+      summary: this.cleanAndCompleteSummary(item.contentSnippet || item.description || 'Résumé non disponible'),
       ai_summary: aiSummary,
       url: item.link,
       image_urls: imageUrl ? [imageUrl] : [], // Array comme attendu par la DB
@@ -595,6 +595,53 @@ class RSSProcessor {
   }
 
   /**
+   * 🧹 NETTOYAGE ET COMPLÉTION DES RÉSUMÉS
+   * S'assure que les phrases sont complètes
+   */
+  cleanAndCompleteSummary(summary) {
+    if (!summary || summary.length < 10) return 'Résumé non disponible';
+    
+    // Nettoyer le HTML
+    let cleanSummary = summary
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Limiter à une longueur raisonnable mais garder les phrases complètes
+    const maxLength = 200;
+    if (cleanSummary.length <= maxLength) {
+      return cleanSummary;
+    }
+    
+    // Trouver la dernière phrase complète dans la limite
+    const sentences = cleanSummary.split(/[.!?]+/);
+    let result = '';
+    
+    for (const sentence of sentences) {
+      const trimmedSentence = sentence.trim();
+      if (trimmedSentence.length === 0) continue;
+      
+      const testResult = result + (result ? '. ' : '') + trimmedSentence;
+      if (testResult.length <= maxLength) {
+        result = testResult;
+      } else {
+        break;
+      }
+    }
+    
+    // Si aucune phrase complète ne rentre, prendre les premiers mots
+    if (!result) {
+      const words = cleanSummary.split(' ');
+      result = words.slice(0, 25).join(' ');
+      if (words.length > 25) result += '...';
+    } else if (!result.match(/[.!?]$/)) {
+      result += '.';
+    }
+    
+    return result;
+  }
+
+  /**
    * ⏱️ CALCUL DURÉE RÉELLE DE LECTURE
    * Basé sur le contenu complet de l'article
    */
@@ -608,15 +655,19 @@ class RSSProcessor {
         .replace(/\s+/g, ' ') // Normaliser les espaces
         .trim();
       
-      // Compter les mots
-      const wordCount = cleanText.split(' ').filter(word => word.length > 0).length;
+      // Compter les mots réels (longueur > 2 caractères)
+      const words = cleanText.split(' ').filter(word => word.length > 2);
+      const wordCount = words.length;
       
       // Vitesse de lecture moyenne : 200 mots/minute en français
       const wordsPerMinute = 200;
       const readTime = Math.ceil(wordCount / wordsPerMinute);
       
       // Minimum 1 minute, maximum 30 minutes pour les articles
-      return Math.max(1, Math.min(30, readTime));
+      const finalReadTime = Math.max(1, Math.min(30, readTime));
+      
+      console.log(`📖 Temps de lecture calculé: ${wordCount} mots → ${finalReadTime} min`);
+      return finalReadTime;
       
     } catch (error) {
       console.error('❌ Erreur calcul durée lecture:', error.message);

@@ -50,14 +50,14 @@ export default function ArticleCard({
     return (
       <div className="relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
         {article.trending && (
-          <div className="absolute top-4 left-4 z-10">
-            <span className="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
-              🔥 Tendance
+          <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-10">
+            <span className="bg-orange-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center">
+              🔥 <span className="hidden sm:inline ml-1">Tendance</span>
             </span>
           </div>
         )}
         
-        <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500 relative">
+        <div className="h-40 sm:h-48 bg-gradient-to-br from-green-400 to-blue-500 relative">
           {(article.imageUrl || article.image_url || (article.image_urls && article.image_urls.length > 0)) ? (
             <img 
               src={article.image_url || article.imageUrl || (article.image_urls && article.image_urls[0])} 
@@ -72,22 +72,22 @@ export default function ArticleCard({
             <div className="absolute inset-0 bg-black bg-opacity-30"></div>
           )}
           
-          <div className="absolute bottom-4 left-4 right-4 text-white">
+          <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 text-white">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                  <span className="text-sm">📰</span>
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <span className="text-xs sm:text-sm">📰</span>
                 </div>
-                <span className="text-sm opacity-90 font-medium">{article.source}</span>
+                <span className="text-xs sm:text-sm opacity-90 font-medium truncate">{article.source}</span>
               </div>
               {article.author && (
-                <span className="text-xs opacity-75 bg-black bg-opacity-30 px-2 py-1 rounded">
+                <span className="hidden sm:inline text-xs opacity-75 bg-black bg-opacity-30 px-2 py-1 rounded">
                   {article.author}
                 </span>
               )}
             </div>
             <h3 
-              className="text-xl font-bold mb-2 leading-tight line-clamp-2 hover:text-orange-300 cursor-pointer transition-colors"
+              className="text-base sm:text-xl font-bold mb-2 leading-tight line-clamp-2 hover:text-orange-300 cursor-pointer transition-colors"
               onClick={() => window.open(article.url, '_blank')}
             >
               {article.title}
@@ -95,29 +95,29 @@ export default function ArticleCard({
           </div>
         </div>
         
-        <div className="p-4">
-          <p className="text-gray-600 text-sm mb-3 line-clamp-3">{article.summary}</p>
+        <div className="p-3 sm:p-4">
+          <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3">{article.summary}</p>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <span>{article.publishedAt}</span>
-              <span>{article.readTime} de lecture</span>
+            <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+              <span className="truncate">{article.publishedAt}</span>
+              <span className="hidden sm:inline">{article.readTime}</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <button 
                 onClick={handleSave}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Sauvegarder"
               >
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
               </button>
-              <button
+              <button 
                 onClick={handleShare}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Partager"
               >
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                 </svg>
               </button>
@@ -129,15 +129,15 @@ export default function ArticleCard({
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
-      <div className="flex items-start space-x-4">
+    <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+      <div className="flex items-start space-x-3 sm:space-x-4">
         {/* Image principale de l'article */}
         <div className="flex-shrink-0">
           {(article.image_url || article.imageUrl || (article.image_urls && article.image_urls.length > 0)) ? (
             <img 
               src={article.image_url || article.imageUrl || (article.image_urls && article.image_urls[0])} 
               alt={article.title}
-              className="w-16 h-16 rounded-lg object-cover"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover"
               onError={(e) => {
                 // Fallback vers l'icône par défaut si l'image ne charge pas
                 e.currentTarget.style.display = 'none';
@@ -145,8 +145,8 @@ export default function ArticleCard({
               }}
             />
           ) : null}
-          <div className={`w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center ${(article.image_url || article.imageUrl || (article.image_urls && article.image_urls.length > 0)) ? 'hidden' : ''}`}>
-            <span className="text-lg text-white">📰</span>
+          <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center ${(article.image_url || article.imageUrl || (article.image_urls && article.image_urls.length > 0)) ? 'hidden' : ''}`}>
+            <span className="text-sm sm:text-lg text-white">📰</span>
           </div>
         </div>
         

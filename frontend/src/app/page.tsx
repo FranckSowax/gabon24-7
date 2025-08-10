@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
-import Header from '../components/layout/Header'
-import Sidebar from '../components/layout/Sidebar'
-import ArticleCard from '../components/features/ArticleCard'
+import Header from '@/components/layout/Header'
+import Sidebar from '@/components/layout/Sidebar'
+import ArticleCard from '@/components/features/ArticleCard'
 import SubscriptionModal from '../components/features/SubscriptionModal'
 import Loading, { ArticleCardSkeleton } from '../components/ui/Loading'
 import Notification from '../components/ui/Notification'
@@ -28,10 +28,11 @@ interface Article {
   created_at?: string
 }
 
-export default function HomePage() {
-  const [activeTab, setActiveTab] = useState('Pour Vous')
+export default function Home() {
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('pour-vous')
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([])
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
@@ -175,16 +176,18 @@ export default function HomePage() {
           const transformedArticles = response.data.articles.map((article: any) => ({
             id: article.id,
             title: article.title,
-            summary: article.ai_summary || article.summary,
+            summary: ensureCompleteSummary(article.ai_summary || article.summary),
             ai_summary: article.ai_summary,
             source: getMediaDisplayName(article), // Nom du média enrichi
             publishedAt: formatTimeAgo(article.published_at || article.created_at),
             published_at: article.published_at,
             category: article.category,
-            readTime: formatReadTime(article.read_time_minutes), // Durée réelle de lecture
+            readTime: formatReadTime(article.read_time_minutes), // Durée réelle de lecture calculée
+            read_time_minutes: article.read_time_minutes, // Valeur brute pour debug
             author: article.author || 'Rédaction',
             url: article.url,
             image_url: article.image_urls?.[0] || null, // Image principale
+            image_urls: article.image_urls, // Array complet des images
             sentiment: article.sentiment,
             created_at: article.created_at,
             trending: Math.random() > 0.7 // Marquer aléatoirement certains articles comme trending
@@ -263,10 +266,33 @@ export default function HomePage() {
     return article.source || 'GabonNews'
   }
 
+  // Fonction pour s'assurer que les résumés sont complets
+  const ensureCompleteSummary = (summary: string) => {
+    if (!summary || summary.length < 10) return 'Résumé non disponible';
+    
+    // Si le résumé se termine par des points de suspension, essayer de le compléter
+    if (summary.endsWith('...') || summary.endsWith('…')) {
+      // Retirer les points de suspension et ajouter un point si nécessaire
+      let cleanSummary = summary.replace(/\.{3,}|…$/, '').trim();
+      if (!cleanSummary.match(/[.!?]$/)) {
+        cleanSummary += '.';
+      }
+      return cleanSummary;
+    }
+    
+    // S'assurer que le résumé se termine par une ponctuation
+    if (!summary.match(/[.!?]$/)) {
+      return summary.trim() + '.';
+    }
+    
+    return summary;
+  }
+
   const formatReadTime = (minutes: number) => {
-    if (!minutes || minutes < 1) return '1 min'
-    if (minutes === 1) return '1 min'
-    return `${minutes} min`
+    // Utiliser la valeur calculée réelle du backend
+    if (!minutes || minutes < 1) return '1 min de lecture'
+    if (minutes === 1) return '1 min de lecture'
+    return `${minutes} min de lecture`
   }
 
   const estimateReadTime = (text: string) => {
@@ -287,59 +313,63 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header Component */}
-      <Header onSearch={handleSearch} onSubscribe={handleSubscribe} />
+      <Header onMobileMenuToggle={() => setIsMobileSidebarOpen(true)} />
 
       <div className="flex">
-        {/* Sidebar Component */}
-        <Sidebar user={{ name: 'Rae', email: 'rae.email@gmail.com' }} />
+        {/* Sidebar - Mobile drawer + Desktop sidebar */}
+        <Sidebar 
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={() => setIsMobileSidebarOpen(false)}
+        />
 
-        {/* Contenu Central */}
-        <main className="flex-1 max-w-4xl mx-auto p-6">
-          {/* Bannière d'abonnement */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-lg mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold mb-2">S'abonner à GabonNews+</h2>
-              <p className="text-orange-100">Débloquez un accès gratuit à la lecture et l'accès aux articles premium en vous abonnant à GabonNews+</p>
+        {/* Contenu Central -        {/* Main Content */}
+        <main className="flex-1 lg:max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:ml-0">
+          {/* Subscription Banner - Mobile optimized */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 sm:p-6 rounded-xl mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+              <div className="flex-1">
+                <h2 className="text-lg sm:text-xl font-bold mb-1 sm:mb-2">Restez informé avec GabonNews Premium</h2>
+                <p className="text-sm sm:text-base text-orange-100">Accédez aux dernières actualités du Gabon en temps réel</p>
+              </div>
+              <button className="bg-white text-orange-600 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors text-sm sm:text-base w-full sm:w-auto">
+                <span className="sm:hidden">S'abonner</span>
+                <span className="hidden sm:inline">S'abonner maintenant</span>
+              </button>
             </div>
-            <button 
-              onClick={handleSubscribe}
-              className="bg-white text-orange-500 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-            >
-              S'abonner Maintenant
-            </button>
           </div>
 
-          {/* Catégories */}
-          <div className="flex space-x-6 mb-6 border-b border-gray-200">
-            <button 
-              onClick={() => setActiveTab('Pour Vous')}
-              className={`pb-3 px-1 font-medium transition-colors ${activeTab === 'Pour Vous' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Pour Vous
-            </button>
-            <button 
-              onClick={() => setActiveTab('Tendances')}
-              className={`pb-3 px-1 font-medium transition-colors ${activeTab === 'Tendances' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Tendances
-            </button>
-            <button 
-              onClick={() => setActiveTab('Suivis')}
-              className={`pb-3 px-1 font-medium transition-colors ${activeTab === 'Suivis' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Suivis
-            </button>
+          {/* Navigation Tabs - Horizontally scrollable on mobile */}
+          <div className="mb-4 sm:mb-6">
+            <div className="flex space-x-1 sm:space-x-2 overflow-x-auto scrollbar-hide pb-2">
+              {[
+                { id: 'pour-vous', label: 'Pour Vous', icon: '👤' },
+                { id: 'tendances', label: 'Tendances', icon: '🔥' },
+                { id: 'suivis', label: 'Suivis', icon: '👥' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors whitespace-nowrap text-xs sm:text-sm lg:text-base ${
+                    activeTab === tab.id
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-sm sm:text-base">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* État de chargement */}
           {loading ? (
-            <div className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <ArticleCardSkeleton />
                 <ArticleCardSkeleton />
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <ArticleCardSkeleton />
                 <ArticleCardSkeleton />
                 <ArticleCardSkeleton />
@@ -347,8 +377,8 @@ export default function HomePage() {
             </div>
           ) : (
             <>
-              {/* Articles en Vedette */}
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {/* Articles en Vedette - Responsive grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 {displayArticles.slice(0, 2).map((article) => (
                   <ArticleCard
                     key={article.id}
@@ -360,8 +390,8 @@ export default function HomePage() {
                 ))}
               </div>
 
-              {/* Articles Récents */}
-              <div className="space-y-4">
+              {/* Articles Récents - Mobile optimized spacing */}
+              <div className="space-y-3 sm:space-y-4">
                 {displayArticles.slice(2).map((article) => (
                   <ArticleCard
                     key={article.id}
@@ -389,8 +419,8 @@ export default function HomePage() {
           )}
         </main>
 
-        {/* Sidebar Droite */}
-        <aside className="w-80 bg-white border-l border-gray-200 p-6 sticky top-16 h-screen overflow-y-auto">
+        {/* Sidebar Droite - Hidden on mobile and tablet */}
+        <aside className="hidden xl:block w-80 bg-white border-l border-gray-200 p-6 sticky top-16 h-screen overflow-y-auto">
           {/* Sélections Curées */}
           <div className="mb-8">
             <h3 className="font-bold text-lg mb-4">Sélections Curées</h3>

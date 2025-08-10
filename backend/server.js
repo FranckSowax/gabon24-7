@@ -3,6 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
 
+// Import du service Supabase
+const supabaseService = require('./supabase-config');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -127,6 +130,87 @@ app.get('/api/articles', (req, res) => {
       totalPages: 1
     }
   });
+});
+
+// Route pour récupérer les articles de la page d'accueil
+app.get('/api/homepage/articles', async (req, res) => {
+  try {
+    console.log('🏠 Récupération des articles pour la page d\'accueil...');
+    
+    // Récupérer les articles réels depuis Supabase
+    const { data: articles, error } = await supabaseService.supabase
+      .from('articles')
+      .select(`
+        id,
+        title,
+        summary,
+        ai_summary,
+        url,
+        image_urls,
+        author,
+        published_at,
+        created_at,
+        read_time_minutes,
+        is_published,
+        sentiment,
+        category,
+        rss_feeds (
+          name,
+          description
+        )
+      `)
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('❌ Erreur Supabase:', error);
+      throw error;
+    }
+
+    // Transformer les données pour le frontend
+    const transformedArticles = articles.map(article => ({
+      ...article,
+      source: article.rss_feeds?.name || 'Source inconnue'
+    }));
+
+    console.log(`✅ ${transformedArticles.length} articles réels récupérés depuis la base de données`);
+    res.json({
+      success: true,
+      articles: transformedArticles,
+      total: transformedArticles.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération articles page d\'accueil:', error);
+    
+    // Fallback vers articles simulés en cas d'erreur
+    console.log('🔄 Utilisation des articles simulés en fallback...');
+    const fallbackArticles = [
+      {
+        id: 1,
+        title: 'Nouvelle politique économique du gouvernement gabonais',
+        summary: 'Le gouvernement gabonais a annoncé une nouvelle politique économique visant à diversifier l\'économie nationale et réduire la dépendance au pétrole.',
+        ai_summary: 'Le gouvernement gabonais lance une stratégie de diversification économique ambitieuse pour réduire la dépendance pétrolière et stimuler la croissance dans de nouveaux secteurs.',
+        source: 'Gabon Review',
+        category: 'Économie',
+        author: 'Rédaction',
+        url: 'https://gabonreview.com/article-economie',
+        image_urls: ['https://picsum.photos/800/400?random=1'],
+        published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+        read_time_minutes: 3,
+        is_published: true,
+        sentiment: 'positif'
+      }
+    ];
+    
+    res.json({
+      success: true,
+      articles: fallbackArticles,
+      total: fallbackArticles.length
+    });
+  }
 });
 
 // Route pour les statistiques

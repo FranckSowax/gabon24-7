@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GabonNews - Ultra Responsive Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3">
+            <!-- Left: Menu + Logo -->
+            <div class="flex items-center space-x-3 sm:space-x-4">
+                <!-- Menu hamburger pour mobile -->
+                <button 
+                    onclick="toggleMobileSidebar()"
+                    class="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                
+                <!-- Logo -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-xs sm:text-sm">🇬🇦</span>
+                    </div>
+                    <span class="font-semibold text-base sm:text-lg">GabonNews</span>
+                </div>
+            </div>
+            
+            <!-- Center: Desktop Search -->
+            <div class="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
+                <div class="relative w-full">
+                    <input
+                        type="text"
+                        placeholder="Rechercher des actualités"
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                    />
+                    <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: Search + Subscribe -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Mobile Search Toggle -->
+                <button 
+                    onclick="toggleMobileSearch()"
+                    class="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+                
+                <!-- Subscribe Button -->
+                <button 
+                    class="bg-orange-500 hover:bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium"
+                >
+                    <span class="hidden sm:inline">S'abonner</span>
+                    <span class="sm:hidden">📱</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile Search Bar -->
+        <div id="mobileSearch" class="hidden md:hidden px-3 sm:px-4 pb-3">
+            <div class="relative">
+                <input
+                    type="text"
+                    placeholder="Rechercher des actualités"
+                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                />
+                <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex">
+        <!-- Mobile Overlay -->
+        <div 
+            id="mobileOverlay"
+            class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden"
+            onclick="toggleMobileSidebar()"
+        ></div>
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="
+            fixed lg:sticky top-0 lg:top-16 left-0 z-50 lg:z-auto
+            w-64 bg-white border-r border-gray-200 min-h-screen
+            transform transition-transform duration-300 ease-in-out
+            -translate-x-full lg:translate-x-0
+        ">
+            <div class="p-4 sm:p-6">
+                <!-- Mobile Close Button -->
+                <div class="lg:hidden flex justify-between items-center mb-4">
+                    <span class="font-semibold text-lg">Menu</span>
+                    <button 
+                        onclick="toggleMobileSidebar()"
+                        class="p-2 hover:bg-gray-100 rounded-lg"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Profil Utilisateur -->
+                <div class="flex items-center space-x-3 mb-6 sm:mb-8">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                        <span class="text-base sm:text-lg">👤</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="font-medium text-sm sm:text-base truncate">Utilisateur</div>
+                        <div class="text-xs sm:text-sm text-gray-500 truncate">user@gabonnews.com</div>
+                    </div>
+                </div>
+
+                <!-- Menu Navigation -->
+                <nav class="space-y-1 sm:space-y-2">
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm sm:text-base bg-orange-50 text-orange-600 border-l-4 border-orange-500">
+                        <span class="text-base sm:text-lg">🏠</span>
+                        <span>Accueil</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm sm:text-base text-gray-700 hover:bg-gray-100">
+                        <span class="text-base sm:text-lg">🎧</span>
+                        <span>Audio Books</span>
+                    </a>
+                    <a href="#" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm sm:text-base text-gray-700 hover:bg-gray-100">
+                        <span class="text-base sm:text-lg">📖</span>
+                        <span>Sauvegardé</span>
+                    </a>
+                </nav>
+
+                <hr class="my-4 sm:my-6" />
+
+                <!-- Nouvelles Tendances -->
+                <div class="mb-4 sm:mb-6">
+                    <h3 class="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Nouvelles Tendances</h3>
+                    <div class="space-y-1 sm:space-y-2">
+                        <a href="#" class="block text-xs sm:text-sm text-gray-600 hover:text-gray-900 py-1">
+                            Catégories
+                        </a>
+                        <a href="#" class="block text-xs sm:text-sm text-gray-600 hover:text-gray-900 py-1">
+                            Suivis
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 lg:max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:ml-0">
+            <!-- Subscription Banner -->
+            <div class="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 sm:p-6 rounded-xl mb-4 sm:mb-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                    <div class="flex-1">
+                        <h2 class="text-lg sm:text-xl font-bold mb-1 sm:mb-2">Restez informé avec GabonNews Premium</h2>
+                        <p class="text-sm sm:text-base text-orange-100">Accédez aux dernières actualités du Gabon en temps réel</p>
+                    </div>
+                    <button class="bg-white text-orange-600 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors text-sm sm:text-base w-full sm:w-auto">
+                        <span class="sm:hidden">S'abonner</span>
+                        <span class="hidden sm:inline">S'abonner maintenant</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="mb-4 sm:mb-6">
+                <div class="flex space-x-1 sm:space-x-2 overflow-x-auto scrollbar-hide pb-2">
+                    <button class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors whitespace-nowrap text-xs sm:text-sm lg:text-base bg-orange-500 text-white">
+                        <span class="text-sm sm:text-base">👤</span>
+                        <span>Pour Vous</span>
+                    </button>
+                    <button class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors whitespace-nowrap text-xs sm:text-sm lg:text-base bg-white text-gray-700 hover:bg-gray-100">
+                        <span class="text-sm sm:text-base">🔥</span>
+                        <span>Tendances</span>
+                    </button>
+                    <button class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-colors whitespace-nowrap text-xs sm:text-sm lg:text-base bg-white text-gray-700 hover:bg-gray-100">
+                        <span class="text-sm sm:text-base">👥</span>
+                        <span>Suivis</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Articles -->
+            <div class="space-y-3 sm:space-y-4 lg:space-y-6">
+                <!-- Featured Article -->
+                <div class="relative bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                    <div class="absolute top-2 sm:top-4 left-2 sm:left-4 z-10">
+                        <span class="bg-orange-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium flex items-center">
+                            🔥 <span class="hidden sm:inline ml-1">Tendance</span>
+                        </span>
+                    </div>
+                    
+                    <div class="h-40 sm:h-48 bg-gradient-to-br from-green-400 to-blue-500 relative">
+                        <img 
+                            src="https://via.placeholder.com/800x400/059669/ffffff?text=Article+Principal"
+                            alt="Article principal"
+                            class="w-full h-full object-cover"
+                        />
+                        
+                        <div class="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-1 sm:space-x-2">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                        <span class="text-xs sm:text-sm">📰</span>
+                                    </div>
+                                    <span class="text-xs sm:text-sm opacity-90 font-medium truncate">Gabon Review</span>
+                                </div>
+                            </div>
+                            <h3 class="text-base sm:text-xl font-bold mb-2 leading-tight line-clamp-2 hover:text-orange-300 cursor-pointer transition-colors">
+                                Nouvelle politique économique annoncée par le gouvernement gabonais
+                            </h3>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 sm:p-4">
+                        <p class="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2 sm:line-clamp-3">Le gouvernement gabonais a annoncé une série de mesures économiques visant à stimuler la croissance et à diversifier l'économie nationale...</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+                                <span class="truncate">Il y a 2h</span>
+                                <span class="hidden sm:inline">3 min de lecture</span>
+                            </div>
+                            <div class="flex items-center space-x-1 sm:space-x-2">
+                                <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                    </svg>
+                                </button>
+                                <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Articles -->
+                <div class="grid gap-3 sm:gap-4 lg:gap-6">
+                    <!-- Article 1 -->
+                    <div class="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                        <div class="flex items-start space-x-3 sm:space-x-4">
+                            <div class="flex-shrink-0">
+                                <img 
+                                    src="https://via.placeholder.com/64x64/059669/ffffff?text=IMG"
+                                    alt="Article"
+                                    class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover"
+                                />
+                            </div>
+                            
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                                    <span class="text-xs sm:text-sm font-medium text-gray-900 truncate">L'Union</span>
+                                    <span class="text-gray-400 hidden sm:inline">•</span>
+                                    <span class="text-xs sm:text-sm text-gray-500 hidden sm:inline truncate">Politique</span>
+                                </div>
+                                
+                                <h3 class="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2 hover:text-orange-600 cursor-pointer line-clamp-2 transition-colors leading-tight">
+                                    Réunion du conseil des ministres : nouvelles mesures adoptées
+                                </h3>
+                                
+                                <p class="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 sm:line-clamp-2">Le conseil des ministres s'est réuni hier pour examiner plusieurs dossiers importants...</p>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+                                        <span class="truncate">Il y a 4h</span>
+                                        <span class="hidden sm:inline">2 min de lecture</span>
+                                    </div>
+                                    <div class="flex items-center space-x-1 sm:space-x-2">
+                                        <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                            </svg>
+                                        </button>
+                                        <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Article 2 -->
+                    <div class="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                        <div class="flex items-start space-x-3 sm:space-x-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-sm sm:text-lg text-white">📰</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
+                                    <span class="text-xs sm:text-sm font-medium text-gray-900 truncate">Gabon Matin</span>
+                                    <span class="text-gray-400 hidden sm:inline">•</span>
+                                    <span class="text-xs sm:text-sm text-gray-500 hidden sm:inline truncate">Économie</span>
+                                    <span class="text-xs bg-orange-100 text-orange-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
+                                        🔥 <span class="hidden sm:inline">Tendance</span>
+                                    </span>
+                                </div>
+                                
+                                <h3 class="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2 hover:text-orange-600 cursor-pointer line-clamp-2 transition-colors leading-tight">
+                                    Secteur pétrolier : nouveaux investissements annoncés
+                                </h3>
+                                
+                                <p class="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 sm:line-clamp-2">Le secteur pétrolier gabonais attire de nouveaux investisseurs internationaux...</p>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+                                        <span class="truncate">Il y a 6h</span>
+                                        <span class="hidden sm:inline">4 min de lecture</span>
+                                    </div>
+                                    <div class="flex items-center space-x-1 sm:space-x-2">
+                                        <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                            </svg>
+                                        </button>
+                                        <button class="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebar.classList.remove('translate-x-0');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function toggleMobileSearch() {
+            const mobileSearch = document.getElementById('mobileSearch');
+            mobileSearch.classList.toggle('hidden');
+        }
+
+        // Close sidebar when clicking on overlay
+        document.getElementById('mobileOverlay').addEventListener('click', toggleMobileSidebar);
+
+        // Close sidebar when window is resized to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('mobileOverlay');
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
