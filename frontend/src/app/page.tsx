@@ -5,6 +5,7 @@ import axios from 'axios'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import ArticleCard from '@/components/features/ArticleCard'
+import ArchiveFilters from '@/components/features/ArchiveFilters'
 import SubscriptionModal from '../components/features/SubscriptionModal'
 import Loading, { ArticleCardSkeleton } from '../components/ui/Loading'
 import Notification from '../components/ui/Notification'
@@ -43,6 +44,16 @@ export default function Home() {
     message: string
   } | null>(null)
   const [savedArticles, setSavedArticles] = useState<string[]>([])
+  
+  // États pour les archives
+  const [archivedArticles, setArchivedArticles] = useState<Article[]>([])
+  const [archiveLoading, setArchiveLoading] = useState(false)
+  const [archiveFilters, setArchiveFilters] = useState({
+    dateFilter: 'all', // 'all', 'yesterday', 'week', 'month', 'custom'
+    customStartDate: '',
+    customEndDate: '',
+    searchKeyword: ''
+  })
 
   // Articles par défaut
   const defaultArticles: Article[] = [
@@ -166,6 +177,54 @@ export default function Home() {
     })
   }
 
+  // Fonction pour récupérer les articles archivés
+  const fetchArchivedArticles = async () => {
+    setArchiveLoading(true)
+    try {
+      console.log('📚 Récupération des articles archivés...')
+      const response = await axios.get('http://localhost:3001/api/homepage/articles?limit=100') // Plus d'articles pour les archives
+      
+      if (response.data?.success && response.data?.articles) {
+        // Transformer et filtrer les articles archivés
+        const transformedArticles = response.data.articles.map((article: any) => ({
+          id: article.id,
+          title: article.title,
+          summary: ensureCompleteSummary(article.ai_summary || article.summary),
+          ai_summary: article.ai_summary,
+          source: getMediaDisplayName(article),
+          publishedAt: formatTimeAgo(article.published_at || article.created_at),
+          published_at: article.published_at,
+          category: article.category,
+          viewCount: formatViewCount(article.view_count || 0),
+          view_count: article.view_count || 0,
+          author: article.author || 'Rédaction',
+          url: article.url,
+          image_url: article.image_urls?.[0] || null,
+          image_urls: article.image_urls,
+          sentiment: article.sentiment,
+          created_at: article.created_at,
+          trending: false // Pas de trending pour les archives
+        }))
+        
+        // Filtrer seulement les articles qui doivent être archivés
+        const archivedOnly = transformedArticles.filter((article: Article) => 
+          shouldArchiveArticle(article.published_at || article.created_at || '')
+        )
+        
+        console.log(`📚 ${archivedOnly.length} articles archivés récupérés`)
+        setArchivedArticles(archivedOnly)
+      } else {
+        console.log('⚠️ Aucun article archivé récupéré')
+        setArchivedArticles([])
+      }
+    } catch (error) {
+      console.log('❌ Erreur récupération articles archivés:', error)
+      setArchivedArticles([])
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
   // Fonction pour incrémenter les vues quand un utilisateur clique sur un article
   const handleArticleClick = async (article: any) => {
     try {
@@ -231,9 +290,14 @@ export default function Home() {
             trending: Math.random() > 0.7 // Marquer aléatoirement certains articles comme trending
           }))
           
-          console.log(`✅ ${transformedArticles.length} articles récupérés pour la page d'accueil`)
-          setArticles(transformedArticles)
-          setFilteredArticles(transformedArticles)
+          // Filtrer pour ne garder que les articles récents (depuis 20h la veille)
+          const recentArticles = transformedArticles.filter((article: Article) => 
+            !shouldArchiveArticle(article.published_at || article.created_at || '')
+          )
+          
+          console.log(`✅ ${recentArticles.length} articles récents récupérés pour la page d'accueil (${transformedArticles.length - recentArticles.length} archivés)`)
+          setArticles(recentArticles)
+          setFilteredArticles(recentArticles)
         } else {
           console.log('⚠️ Aucun article récupéré, utilisation des articles par défaut')
           setArticles(defaultArticles)
@@ -326,13 +390,65 @@ export default function Home() {
     return summary;
   }
 
-  const formatViewCount = (count: number) => {
-    // Formater le nombre de vues
-    if (!count || count < 1) return '0 vue'
+  const formatViewCount = (count: number): string => {
+    if (count === 0) return '0 vue'
     if (count === 1) return '1 vue'
     if (count < 1000) return `${count} vues`
     if (count < 1000000) return `${(count / 1000).toFixed(1)}k vues`
     return `${(count / 1000000).toFixed(1)}M vues`
+  }
+
+  // Fonction pour déterminer si un article doit être archivé
+  const shouldArchiveArticle = (publishedAt: string): boolean => {
+    const now = new Date()
+    const articleDate = new Date(publishedAt)
+    const yesterday8PM = new Date(now)
+    yesterday8PM.setDate(yesterday8PM.getDate() - 1)
+        const matchesKeyword = 
+          article.title.toLowerCase().includes(keyword) ||
+          article.summary.toLowerCase().includes(keyword) ||
+          article.source.toLowerCase().includes(keyword)
+        if (!matchesKeyword) return false
+      }
+
+      // Filtrer par date
+      const articleDate = new Date(article.published_at || article.publishedAt)
+      const now = new Date()
+
+      switch (archiveFilters.dateFilter) {
+        case 'yesterday':
+          const yesterday = new Date(now)
+          yesterday.setDate(yesterday.getDate() - 1)
+          yesterday.setHours(0, 0, 0, 0)
+          const yesterdayEnd = new Date(yesterday)
+          yesterdayEnd.setHours(23, 59, 59, 999)
+          return articleDate >= yesterday && articleDate <= yesterdayEnd
+
+        case 'week':
+          const weekAgo = new Date(now)
+          weekAgo.setDate(weekAgo.getDate() - 7)
+          return articleDate >= weekAgo
+
+        case 'month':
+          const monthAgo = new Date(now)
+          monthAgo.setMonth(monthAgo.getMonth() - 1)
+          return articleDate >= monthAgo
+
+        case 'custom':
+          if (archiveFilters.customStartDate && archiveFilters.customEndDate) {
+            const startDate = new Date(archiveFilters.customStartDate)
+            const endDate = new Date(archiveFilters.customEndDate)
+            endDate.setHours(23, 59, 59, 999)
+            return articleDate >= startDate && articleDate <= endDate
+          }
+          return true
+
+        default: // 'all'
+          return true
+      }
+    })
+
+    return filtered
   }
 
   const estimateReadTime = (text: string) => {
@@ -384,7 +500,8 @@ export default function Home() {
               {[
                 { id: 'pour-vous', label: 'Pour Vous', icon: '👤' },
                 { id: 'tendances', label: 'Tendances', icon: '🔥' },
-                { id: 'suivis', label: 'Suivis', icon: '👥' }
+                { id: 'suivis', label: 'Suivis', icon: '👥' },
+                { id: 'archives', label: 'Archives', icon: '📚' }
               ].map((tab) => (
                 <button
                   key={tab.id}
