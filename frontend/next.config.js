@@ -25,27 +25,8 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
     NEXT_PUBLIC_WHATSAPP_CHANNEL: process.env.NEXT_PUBLIC_WHATSAPP_CHANNEL || 'https://wa.me/24177123456',
   },
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-        ],
-      },
-    ];
-  },
+  // Note: headers() n'est pas compatible avec output: 'export'
+  // Les headers de sécurité sont gérés via netlify.toml
 };
 
 module.exports = nextConfig;
