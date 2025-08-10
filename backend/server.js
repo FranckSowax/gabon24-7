@@ -151,6 +151,7 @@ app.get('/api/homepage/articles', async (req, res) => {
         published_at,
         created_at,
         read_time_minutes,
+        view_count,
         is_published,
         sentiment,
         category,
@@ -209,6 +210,58 @@ app.get('/api/homepage/articles', async (req, res) => {
       success: true,
       articles: fallbackArticles,
       total: fallbackArticles.length
+    });
+  }
+});
+
+// Route pour incrémenter le nombre de vues d'un article
+app.post('/api/articles/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`👁️ Incrémentation des vues pour l'article: ${id}`);
+
+    // D'abord récupérer l'article pour obtenir le view_count actuel
+    const { data: currentArticle, error: fetchError } = await supabaseService.supabase
+      .from('articles')
+      .select('view_count')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('❌ Erreur récupération article:', fetchError);
+      throw fetchError;
+    }
+
+    const newViewCount = (currentArticle?.view_count || 0) + 1;
+
+    // Incrémenter le compteur de vues
+    const { data, error } = await supabaseService.supabase
+      .from('articles')
+      .update({ 
+        view_count: newViewCount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select('view_count')
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur incrémentation vues:', error);
+      throw error;
+    }
+
+    console.log(`✅ Vues incrémentées: ${data?.view_count || newViewCount}`);
+    res.json({
+      success: true,
+      view_count: data?.view_count || newViewCount,
+      message: 'Vue comptabilisée avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur API incrémentation vues:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la comptabilisation de la vue'
     });
   }
 });

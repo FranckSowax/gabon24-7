@@ -18,7 +18,8 @@ interface Article {
   publishedAt: string
   published_at?: string
   category: string
-  readTime: string
+  viewCount: string  // Remplace readTime - nombre de vues formaté
+  view_count?: number  // Valeur brute pour les calculs
   trending?: boolean
   author?: string
   url?: string
@@ -52,7 +53,8 @@ export default function Home() {
       source: 'Gabon Matin',
       publishedAt: '2 heures',
       category: 'Économie',
-      readTime: '3 min',
+      viewCount: '0 vue',
+      view_count: 0,
       trending: true
     },
     {
@@ -62,7 +64,8 @@ export default function Home() {
       source: 'L\'Union',
       publishedAt: '4 heures',
       category: 'Environnement',
-      readTime: '2 min',
+      viewCount: '0 vue',
+      view_count: 0,
       trending: true
     },
     {
@@ -72,7 +75,8 @@ export default function Home() {
       source: 'Gabon Review',
       publishedAt: '6 heures',
       category: 'Infrastructure',
-      readTime: '4 min'
+      viewCount: '0 vue',
+      view_count: 0
     }
   ]
 
@@ -151,16 +155,50 @@ export default function Home() {
     }
   }
 
-  const handleShareArticle = (article: Article) => {
-    const text = `${article.title}\n\n${article.summary}\n\nSource: ${article.source}\nVia GabonNews`
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
-    window.open(whatsappUrl, '_blank')
+  const handleShare = (article: any) => {
+    const shareUrl = `https://wa.me/?text=${encodeURIComponent(`${article.title} - ${article.url}`)}`
+    window.open(shareUrl, '_blank')
     
     setNotification({
       type: 'success',
       title: 'Article partagé',
       message: 'L\'article a été partagé sur WhatsApp.'
     })
+  }
+
+  // Fonction pour incrémenter les vues quand un utilisateur clique sur un article
+  const handleArticleClick = async (article: any) => {
+    try {
+      // Ouvrir l'article dans un nouvel onglet
+      window.open(article.url, '_blank')
+      
+      // Incrémenter le compteur de vues
+      const response = await axios.post(`http://localhost:3001/api/articles/${article.id}/view`)
+      
+      if (response.data.success) {
+        console.log(`👁️ Vue comptabilisée pour: ${article.title} (${response.data.view_count} vues)`)
+        
+        // Mettre à jour le compteur local pour un feedback immédiat
+        setArticles(prevArticles => 
+          prevArticles.map(a => 
+            a.id === article.id 
+              ? { ...a, view_count: response.data.view_count, viewCount: formatViewCount(response.data.view_count) }
+              : a
+          )
+        )
+        setFilteredArticles(prevArticles => 
+          prevArticles.map(a => 
+            a.id === article.id 
+              ? { ...a, view_count: response.data.view_count, viewCount: formatViewCount(response.data.view_count) }
+              : a
+          )
+        )
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la comptabilisation de la vue:', error)
+      // Ouvrir l'article même en cas d'erreur de comptage
+      window.open(article.url, '_blank')
+    }
   }
 
   // Effects
@@ -182,8 +220,8 @@ export default function Home() {
             publishedAt: formatTimeAgo(article.published_at || article.created_at),
             published_at: article.published_at,
             category: article.category,
-            readTime: formatReadTime(article.read_time_minutes), // Durée réelle de lecture calculée
-            read_time_minutes: article.read_time_minutes, // Valeur brute pour debug
+            viewCount: formatViewCount(article.view_count || 0), // Nombre de vues
+            view_count: article.view_count || 0, // Valeur brute pour debug
             author: article.author || 'Rédaction',
             url: article.url,
             image_url: article.image_urls?.[0] || null, // Image principale
@@ -288,11 +326,13 @@ export default function Home() {
     return summary;
   }
 
-  const formatReadTime = (minutes: number) => {
-    // Utiliser la valeur calculée réelle du backend
-    if (!minutes || minutes < 1) return '1 min de lecture'
-    if (minutes === 1) return '1 min de lecture'
-    return `${minutes} min de lecture`
+  const formatViewCount = (count: number) => {
+    // Formater le nombre de vues
+    if (!count || count < 1) return '0 vue'
+    if (count === 1) return '1 vue'
+    if (count < 1000) return `${count} vues`
+    if (count < 1000000) return `${(count / 1000).toFixed(1)}k vues`
+    return `${(count / 1000000).toFixed(1)}M vues`
   }
 
   const estimateReadTime = (text: string) => {
@@ -322,8 +362,8 @@ export default function Home() {
           onMobileClose={() => setIsMobileSidebarOpen(false)}
         />
 
-        {/* Contenu Central -        {/* Main Content */}
-        <main className="flex-1 lg:max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:ml-0">
+        {/* Contenu Central -        {/* Main Content - Centré au milieu */}
+        <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
           {/* Subscription Banner - Mobile optimized */}
           <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 sm:p-6 rounded-xl mb-4 sm:mb-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
@@ -385,7 +425,8 @@ export default function Home() {
                     article={article}
                     variant="featured"
                     onSave={handleSaveArticle}
-                    onShare={handleShareArticle}
+                    onShare={handleShare}
+                    onClick={handleArticleClick}
                   />
                 ))}
               </div>
@@ -398,7 +439,8 @@ export default function Home() {
                     article={article}
                     variant="list"
                     onSave={handleSaveArticle}
-                    onShare={handleShareArticle}
+                    onShare={handleShare}
+                    onClick={handleArticleClick}
                   />
                 ))}
               </div>

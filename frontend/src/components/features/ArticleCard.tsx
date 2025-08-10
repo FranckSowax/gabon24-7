@@ -7,7 +7,8 @@ interface Article {
   source: string
   publishedAt: string
   category: string
-  readTime: string
+  viewCount: string  // Remplace readTime - nombre de vues formaté
+  view_count?: number  // Valeur brute pour les calculs
   trending?: boolean
   imageUrl?: string
   image_url?: string
@@ -21,13 +22,15 @@ interface ArticleCardProps {
   variant?: 'featured' | 'list'
   onSave?: (articleId: string) => void
   onShare?: (article: Article) => void
+  onClick?: (article: Article) => void
 }
 
 export default function ArticleCard({ 
   article, 
   variant = 'list', 
   onSave, 
-  onShare 
+  onShare,
+  onClick
 }: ArticleCardProps) {
   const handleSave = () => {
     if (onSave) {
@@ -88,7 +91,7 @@ export default function ArticleCard({
             </div>
             <h3 
               className="text-base sm:text-xl font-bold mb-2 leading-tight line-clamp-2 hover:text-orange-300 cursor-pointer transition-colors"
-              onClick={() => window.open(article.url, '_blank')}
+              onClick={() => onClick ? onClick(article) : window.open(article.url, '_blank')}
             >
               {article.title}
             </h3>
@@ -100,7 +103,7 @@ export default function ArticleCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
               <span className="truncate">{article.publishedAt}</span>
-              <span className="hidden sm:inline">{article.readTime}</span>
+              <span className="hidden sm:inline">{article.viewCount}</span>
             </div>
             <div className="flex items-center space-x-1 sm:space-x-2">
               <button 
@@ -167,7 +170,7 @@ export default function ArticleCard({
           
           <h3 
             className="text-lg font-semibold text-gray-900 mb-2 hover:text-orange-600 cursor-pointer line-clamp-2 transition-colors"
-            onClick={() => window.open(article.url, '_blank')}
+            onClick={() => onClick ? onClick(article) : window.open(article.url, '_blank')}
           >
             {article.title}
           </h3>
@@ -177,7 +180,7 @@ export default function ArticleCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <span>{article.publishedAt}</span>
-              <span>{article.readTime} de lecture</span>
+              <span>{article.viewCount}</span>
               {article.author && (
                 <>
                   <span className="text-gray-400">•</span>
