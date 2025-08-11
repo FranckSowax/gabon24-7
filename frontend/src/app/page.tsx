@@ -22,10 +22,10 @@ interface Article {
   trending?: boolean
 }
 
-interface ArchiveFilters {
+interface ArchiveFiltersType {
   dateFilter: 'all' | 'yesterday' | 'week' | 'month' | 'custom'
-  startDate: string
-  endDate: string
+  customStartDate: string
+  customEndDate: string
   searchKeyword: string
 }
 
@@ -41,10 +41,10 @@ export default function HomePage() {
   const [savedArticles, setSavedArticles] = useState<string[]>([])
   const [notification, setNotification] = useState<any>(null)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
-  const [archiveFilters, setArchiveFilters] = useState<ArchiveFilters>({
+  const [archiveFilters, setArchiveFilters] = useState<ArchiveFiltersType>({
     dateFilter: 'all',
-    startDate: '',
-    endDate: '',
+    customStartDate: '',
+    customEndDate: '',
     searchKeyword: ''
   })
 
@@ -238,7 +238,7 @@ export default function HomePage() {
   }
 
   // Fonction de filtrage des archives
-  const filterArchivedArticles = (articles: Article[], filters: ArchiveFilters): Article[] => {
+  const filterArchivedArticles = (articles: Article[], filters: ArchiveFiltersType): Article[] => {
     let filtered = [...articles]
     
     // Filtre par date
@@ -261,9 +261,9 @@ export default function HomePage() {
           startDate.setMonth(startDate.getMonth() - 1)
           break
         case 'custom':
-          if (filters.startDate && filters.endDate) {
-            const start = new Date(filters.startDate)
-            const end = new Date(filters.endDate)
+          if (filters.customStartDate && filters.customEndDate) {
+            const start = new Date(filters.customStartDate)
+            const end = new Date(filters.customEndDate)
             filtered = filtered.filter(article => {
               const articleDate = new Date(article.published_at || article.publishedAt)
               return articleDate >= start && articleDate <= end
@@ -435,6 +435,7 @@ export default function HomePage() {
             <ArchiveFilters
               filters={archiveFilters}
               onFiltersChange={setArchiveFilters}
+              onApplyFilters={() => {}}
             />
           </div>
         )}
@@ -458,7 +459,6 @@ export default function HomePage() {
                   onClick={() => handleArticleClick(article)}
                   onSave={() => handleSaveArticle(article.id)}
                   onShare={() => handleShare(article)}
-                  isSaved={savedArticles.includes(article.id)}
                 />
               ))
             ) : (

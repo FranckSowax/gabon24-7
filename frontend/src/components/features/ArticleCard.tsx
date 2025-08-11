@@ -25,7 +25,7 @@ interface ArticleCardProps {
   onClick?: (article: Article) => void
 }
 
-export default function ArticleCard({ 
+export function ArticleCard({ 
   article, 
   variant = 'list', 
   onSave, 

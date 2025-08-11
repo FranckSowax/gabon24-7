@@ -13,7 +13,7 @@ interface ArchiveFiltersProps {
   onApplyFilters: () => void
 }
 
-export default function ArchiveFilters({ filters, onFiltersChange, onApplyFilters }: ArchiveFiltersProps) {
+export function ArchiveFilters({ filters, onFiltersChange, onApplyFilters }: ArchiveFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const handleFilterChange = (key: string, value: string) => {

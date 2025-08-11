@@ -6,7 +6,7 @@ interface LoadingProps {
   className?: string
 }
 
-export default function Loading({ size = 'md', text, className = '' }: LoadingProps) {
+export function Loading({ size = 'md', text, className = '' }: LoadingProps) {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-8 h-8',
