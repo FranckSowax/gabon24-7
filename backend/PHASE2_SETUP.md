@@ -123,12 +123,12 @@ API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3000
 
 # 📧 NEWSLETTER (optionnel)
-SENDGRID_API_KEY=
+SENDGRID_API_KEY=votre_cle_sendgrid
 
 # 💬 WHATSAPP (optionnel)
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_WHATSAPP_NUMBER=
+TWILIO_ACCOUNT_SID=votre_account_sid
+TWILIO_AUTH_TOKEN=votre_auth_token
+TWILIO_WHATSAPP_NUMBER=votre_numero
 
 # 🔒 JWT (optionnel)
 JWT_SECRET=votre_secret_jwt_aleatoire_et_securise
