@@ -17,35 +17,89 @@ const { URL } = require('url');
 
 /**
  * Liste blanche des domaines autorisés pour le proxy d'images
+ * MISE À JOUR: 2025-12-30 - Liste étendue pour couvrir tous les médias gabonais
  */
 const ALLOWED_DOMAINS = [
-  // Facebook
+  // Facebook & Meta
   'facebook.com', 'www.facebook.com', 'm.facebook.com',
   'fbcdn.net', 'scontent.xx.fbcdn.net', 'external.xx.fbcdn.net',
   'scontent-cdg4-2.xx.fbcdn.net', 'scontent-cdg4-1.xx.fbcdn.net',
+  'scontent-cdt1-1.xx.fbcdn.net', 'scontent.flbv1-1.fna.fbcdn.net',
+  'lookaside.fbsbx.com', 'platform-lookaside.fbsbx.com',
+  'instagram.com', 'cdninstagram.com', 'scontent.cdninstagram.com',
 
-  // Médias gabonais
-  'gabonactu.com', 'gabonreview.com', 'directinfosgabon.com',
-  'gabonmediatime.com', 'gabonmailinfos.com', 'focusgroupemedia.com',
-  'insidenews241.com', 'kongossanews.info', 'vxp241.com',
-  'lunion.ga', 'gaboneco.com', 'gabonallsport.com', 'sport241.com',
-  'gaboma.info', 'gabon-info.com', 'gabonclic.info', 'fr.infosgabon.com',
-  'depeches241.com', 'gabon-newsroom.com', 'journaldugabon.com',
-  'mediapostegabon.com', 'echosdeleco.com', 'lenouveaugabon.com',
-  '7joursinfo.com', 'g9infos.com', 'leconfidentiel.net',
-  'agenceequateur.com', 'courrierdesjournalistes.net', 'letouracovert.com',
-  'peupleinfos.com', 'relaisinfosgabon.com', 'biba241.com',
-  'agpgabon.ga', 'sonapresse.com',
+  // Médias gabonais - Liste complète
+  'gabonactu.com', 'www.gabonactu.com',
+  'gabonreview.com', 'www.gabonreview.com',
+  'directinfosgabon.com', 'www.directinfosgabon.com',
+  'gabonmediatime.com', 'www.gabonmediatime.com',
+  'gabonmailinfos.com', 'www.gabonmailinfos.com',
+  'focusgroupemedia.com', 'www.focusgroupemedia.com',
+  'insidenews241.com', 'www.insidenews241.com',
+  'kongossanews.info', 'www.kongossanews.info',
+  'vxp241.com', 'www.vxp241.com',
+  'lunion.ga', 'www.lunion.ga', 'union.sonapresse.com',
+  'gaboneco.com', 'www.gaboneco.com', 'gabon-eco.com',
+  'gabonallsport.com', 'www.gabonallsport.com',
+  'sport241.com', 'www.sport241.com',
+  'gaboma.info', 'www.gaboma.info',
+  'gabon-info.com', 'www.gabon-info.com',
+  'gabonclic.info', 'www.gabonclic.info',
+  'infogabon.com', 'www.infogabon.com', 'infogabon.ga', 'fr.infosgabon.com',
+  'depeches241.com', 'www.depeches241.com',
+  'gabon-newsroom.com', 'www.gabon-newsroom.com',
+  'journaldugabon.com', 'www.journaldugabon.com',
+  'mediapostegabon.com', 'www.mediapostegabon.com',
+  'echosdeleco.com', 'www.echosdeleco.com',
+  'lenouveaugabon.com', 'www.lenouveaugabon.com',
+  '7joursinfo.com', 'www.7joursinfo.com',
+  'g9infos.com', 'www.g9infos.com',
+  'leconfidentiel.net', 'www.leconfidentiel.net', 'leconfidentiel.ga',
+  'agenceequateur.com', 'www.agenceequateur.com',
+  'courrierdesjournalistes.net', 'www.courrierdesjournalistes.net',
+  'letouracovert.com', 'www.letouracovert.com',
+  'peupleinfos.com', 'www.peupleinfos.com',
+  'relaisinfosgabon.com', 'www.relaisinfosgabon.com',
+  'biba241.com', 'www.biba241.com',
+  'agpgabon.ga', 'www.agpgabon.ga',
+  'sonapresse.com', 'www.sonapresse.com',
+  'gabonews.com', 'www.gabonews.com',
+  'gabon24.com', 'www.gabon24.com', 'gabon24.tv',
+  'lalibreville.com', 'www.lalibreville.com',
+  'actualite-gabon.com', 'www.actualite-gabon.com',
+  'bdpmodwo.com', 'www.bdpmodwo.com',
+  'infos241.com', 'www.infos241.com',
+  'gabonenerveur.com', 'www.gabonenerveur.com',
+  'direct-infos.com', 'www.direct-infos.com',
+  'mediaguinee.org', 'www.mediaguinee.org',
 
-  // Médias internationaux
-  'rfi.fr', 'latribune-afrique.com', 'africaintelligence.fr',
+  // Médias internationaux Afrique
+  'rfi.fr', 'www.rfi.fr',
+  'latribune-afrique.com', 'www.latribune-afrique.com',
+  'africaintelligence.fr', 'www.africaintelligence.fr',
+  'jeuneafrique.com', 'www.jeuneafrique.com',
+  'afrik.com', 'www.afrik.com',
+  'lemonde.fr', 'www.lemonde.fr',
+  'france24.com', 'www.france24.com',
+  'tv5monde.com', 'www.tv5monde.com',
 
   // CDN et images courantes
   'cloudinary.com', 'res.cloudinary.com',
   'imgur.com', 'i.imgur.com',
-  'wp.com', 'i0.wp.com', 'i1.wp.com', 'i2.wp.com',
-  'googleusercontent.com',
-  'twimg.com', 'pbs.twimg.com'
+  'wp.com', 'i0.wp.com', 'i1.wp.com', 'i2.wp.com', 'i3.wp.com',
+  'googleusercontent.com', 'lh3.googleusercontent.com',
+  'twimg.com', 'pbs.twimg.com', 'abs.twimg.com',
+  'supabase.co', 'ykytsadwfqoyusleoflf.supabase.co',
+
+  // CDN WordPress et hébergeurs courants
+  'wordpress.com', 's0.wp.com', 's1.wp.com', 's2.wp.com',
+  'secure.gravatar.com', 'gravatar.com',
+  'staticflickr.com', 'live.staticflickr.com',
+  'unsplash.com', 'images.unsplash.com',
+  'pexels.com', 'images.pexels.com',
+
+  // Services RSS
+  'rss.app', 'rss2json.com', 'feedburner.com'
 ];
 
 /**

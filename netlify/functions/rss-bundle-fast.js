@@ -63,27 +63,15 @@ function isValidImageUrl(url) {
   return true;
 }
 
-// 🔄 Proxy d'image UNIQUEMENT pour CORS
+// 🔄 Traitement d'image - Retourne l'URL directe
+// Le proxy CORS est maintenant géré côté frontend via Railway /api/image-proxy
 function processImageUrl(imageUrl) {
   if (!imageUrl || !isValidImageUrl(imageUrl)) {
     return null;
   }
-  
-  // Domaines nécessitant un proxy pour CORS
-  const needsProxy = [
-    'gabonews.com',
-    'infogabon.ga',
-    'gabon24.com',
-    'union.sonapresse.com',
-    'gabonactu.com'
-  ];
-  
-  const needsProxyCheck = needsProxy.some(domain => imageUrl.includes(domain));
-  
-  if (needsProxyCheck) {
-    return `/.netlify/functions/image-proxy?url=${encodeURIComponent(imageUrl)}`;
-  }
-  
+
+  // Retourner l'URL directe - le frontend gère le proxy CORS
+  // Cela évite de stocker des URLs de proxy obsolètes dans la BDD
   return imageUrl;
 }
 
