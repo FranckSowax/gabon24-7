@@ -247,6 +247,42 @@ CREATE TABLE IF NOT EXISTS public.users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ajouter colonnes manquantes si la table existe deja
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'is_admin'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN is_admin BOOLEAN DEFAULT false;
+    RAISE NOTICE '✅ Colonne is_admin ajoutee a users';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'role'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN role TEXT DEFAULT 'user';
+    RAISE NOTICE '✅ Colonne role ajoutee a users';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'full_name'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN full_name TEXT;
+    RAISE NOTICE '✅ Colonne full_name ajoutee a users';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'avatar_url'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN avatar_url TEXT;
+    RAISE NOTICE '✅ Colonne avatar_url ajoutee a users';
+  END IF;
+END $$;
+
 -- Trigger pour synchroniser avec auth.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -286,15 +322,16 @@ CREATE POLICY "Users can update own profile"
   FOR UPDATE
   USING (auth.uid() = id);
 
+-- Policy admin avec verification securisee (sans reference circulaire)
 DROP POLICY IF EXISTS "Admins can view all users" ON public.users;
 CREATE POLICY "Admins can view all users"
   ON public.users
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND (u.is_admin = true OR u.role = 'admin')
-    )
+    -- Verifier le role dans le JWT directement (evite reference circulaire)
+    auth.jwt() ->> 'role' = 'admin' OR
+    auth.jwt() ->> 'is_admin' = 'true' OR
+    (auth.jwt() ->> 'email') LIKE '%@admin.gabon247.com'
   );
 
 -- =====================================================

@@ -13,6 +13,27 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { URL } = require('url');
 
+// ==================== MIDDLEWARE CORS GLOBAL ====================
+
+/**
+ * Middleware CORS pour tous les endpoints du proxy d'images
+ * Résout l'erreur ERR_BLOCKED_BY_RESPONSE.NotSameOrigin
+ */
+router.use((req, res, next) => {
+  // Headers CORS essentiels
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+  // Gestion des requêtes preflight OPTIONS
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
 // ==================== SÉCURITÉ SSRF ====================
 
 /**
@@ -216,6 +237,7 @@ router.get('/facebook-og', async (req, res) => {
 /**
  * GET /api/image-proxy/facebook-image
  * Résout l'image d'un post Facebook (og:image) et la renvoie en binaire (stream)
+ * Pour les Reels et posts sans image, retourne une image placeholder
  */
 router.get('/facebook-image', async (req, res) => {
   try {
@@ -229,16 +251,41 @@ router.get('/facebook-image', async (req, res) => {
       return res.status(403).json({ success: false, error: 'URL non autorisée' });
     }
 
-    // 1) Tenter d'obtenir l'URL de l'image via nos stratégies
-    let imageUrl = await tryFacebookCrawler(url);
-    if (!imageUrl) imageUrl = await tryMobileScraping(url);
-    if (!imageUrl) imageUrl = await tryExtractFromPostId(url);
+    // Détection des Reels Facebook (pas d'image og:image disponible)
+    const isReel = url.includes('/reel/') || url.includes('/reels/');
 
-    if (!imageUrl) {
-      return res.status(404).json({ success: false, error: 'Image Facebook introuvable' });
+    // 1) Tenter d'obtenir l'URL de l'image via nos stratégies
+    let imageUrl = null;
+    if (!isReel) {
+      imageUrl = await tryFacebookCrawler(url);
+      if (!imageUrl) imageUrl = await tryMobileScraping(url);
+      if (!imageUrl) imageUrl = await tryExtractFromPostId(url);
     }
 
-    // 2) Récupérer l'image et la streamer
+    // 2) Si pas d'image trouvée, retourner un placeholder SVG Facebook
+    if (!imageUrl) {
+      console.log(`⚠️ Pas d'image pour ${isReel ? 'Reel' : 'post'} Facebook:`, url);
+
+      // Placeholder SVG stylisé pour Facebook/Reel
+      const placeholderSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+          <rect fill="#1877F2" width="400" height="300"/>
+          <text x="200" y="140" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle">
+            ${isReel ? '🎬' : '📘'}
+          </text>
+          <text x="200" y="190" font-family="Arial, sans-serif" font-size="18" fill="white" text-anchor="middle">
+            ${isReel ? 'Facebook Reel' : 'Facebook Post'}
+          </text>
+        </svg>
+      `.trim();
+
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('X-Image-Source', 'placeholder');
+      return res.send(placeholderSvg);
+    }
+
+    // 3) Récupérer l'image et la streamer
     const response = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 20000,
@@ -253,16 +300,25 @@ router.get('/facebook-image', async (req, res) => {
     const contentType = response.headers['content-type'] || 'image/jpeg';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('X-Image-Source', 'facebook-resolved');
     return res.send(Buffer.from(response.data));
 
   } catch (error) {
     console.error('❌ Erreur facebook-image:', error.message);
-    return res.status(500).json({ success: false, error: error.message });
+
+    // En cas d'erreur, retourner un placeholder au lieu d'une erreur JSON
+    const errorPlaceholder = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect fill="#4267B2" width="400" height="300"/>
+        <text x="200" y="150" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle">📘</text>
+        <text x="200" y="200" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">Facebook</text>
+      </svg>
+    `.trim();
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache 1h pour les erreurs
+    res.setHeader('X-Image-Source', 'error-placeholder');
+    return res.send(errorPlaceholder);
   }
 });
 
