@@ -1,7 +1,4 @@
 # Désactiver la détection automatique des variables d'environnement
-[variables]
-# Ne pas inclure les variables vides dans le Dockerfile
-
 [phases.setup]
 nixPkgs = ["nodejs_22"]
 # Pas de variables ENV dans le setup
