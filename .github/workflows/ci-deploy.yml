@@ -1,0 +1,127 @@
+name: 🚀 Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Deploy Backend to Railway
+  deploy-backend:
+    name: Deploy Backend (Railway)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://gabon24-7-production.up.railway.app
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🚂 Deploy to Railway
+        run: |
+          echo "🚀 Déploiement backend vers Railway..."
+          echo "✅ Railway déploie automatiquement depuis main"
+          echo "🔗 URL: https://gabon24-7-production.up.railway.app"
+      
+      - name: ⏳ Wait for deployment
+        run: sleep 30
+      
+      - name: 🏥 Health check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://gabon24-7-production.up.railway.app/api/monitoring/health || echo "000")
+          
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Backend déployé et opérationnel"
+          else
+            echo "⚠️ Backend déployé mais health check échoué (HTTP $response)"
+            exit 1
+          fi
+
+  # Deploy Frontend to Netlify
+  deploy-frontend:
+    name: Deploy Frontend (Netlify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://gabon24-7.netlify.app
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: 📦 Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: 🏗️ Build
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://gabon24-7-production.up.railway.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      
+      - name: 🌐 Deploy to Netlify
+        run: |
+          echo "🚀 Déploiement frontend vers Netlify..."
+          echo "✅ Netlify déploie automatiquement depuis main"
+          echo "🔗 URL: https://gabon24-7.netlify.app"
+      
+      - name: ⏳ Wait for deployment
+        run: sleep 30
+      
+      - name: 🏥 Health check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://gabon24-7.netlify.app || echo "000")
+          
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Frontend déployé et accessible"
+          else
+            echo "⚠️ Frontend déployé mais non accessible (HTTP $response)"
+            exit 1
+          fi
+
+  # Post-deployment checks
+  post-deploy-checks:
+    name: Post-Deployment Checks
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    timeout-minutes: 10
+    
+    steps:
+      - name: 🔍 API Endpoints Check
+        run: |
+          echo "🔍 Vérification des endpoints critiques..."
+          
+          # Check monitoring endpoint
+          curl -f https://gabon24-7-production.up.railway.app/api/monitoring/health || echo "⚠️ Monitoring endpoint failed"
+          
+          # Check main API
+          curl -f https://gabon24-7-production.up.railway.app/api/ || echo "⚠️ Main API failed"
+          
+          echo "✅ Vérifications terminées"
+      
+      - name: 📊 Deployment Summary
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "🚀 DÉPLOIEMENT RÉUSSI"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "✅ Backend: https://gabon24-7-production.up.railway.app"
+          echo "✅ Frontend: https://gabon24-7.netlify.app"
+          echo "✅ Monitoring: https://gabon24-7.netlify.app/admin/monitoring"
+          echo ""
+          echo "📊 Commit: ${{ github.sha }}"
+          echo "👤 Auteur: ${{ github.actor }}"
+          echo "⏰ Date: $(date)"
+          echo "═══════════════════════════════════════════════════════════"

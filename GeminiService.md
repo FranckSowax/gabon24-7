@@ -1,0 +1,776 @@
+C'est un défi classique avec les LLM : l'instabilité de la connexion (timeout) et le "bavardage" du modèle qui casse le format JSON attendu par ton code.
+
+Pour régler cela avec **Cascade (l'IA de Windsurf)**, il ne faut pas juste lui demander "d'installer l'API". Il faut lui demander de créer une **classe de service robuste (Wrapper)** qui gère les erreurs et force le formatage.
+
+Voici le prompt exact, optimisé pour l'architecture SaaS, à copier-coller dans ton chat Windsurf/Cascade.
+
+### **Le Prompt pour Cascade (Windsurf)**
+
+Copie ce bloc et colle-le dans la fenêtre de chat de Windsurf :
+
+**Context :** Je développe un SaaS et je dois intégrer l'API Google Gemini (version 3 Pro ou dernière stable) de manière ultra-robuste. J'ai déjà ma clé API.
+
+**Problème actuel :** J'ai souvent des timeouts ou le modèle me répond avec du texte au lieu du JSON strict, ce qui fait planter mon application.
+
+**Tâche :** Agis comme un Senior Backend Engineer. Crée-moi un module/service dédié (ex: GeminiService ou AIService) pour interagir avec l'API. Ce service doit respecter impérativement les critères suivants :
+
+1. **Configuration Centralisée :** Utilise le SDK officiel Google Generative AI. Le modèle (ex: gemini-1.5-pro ou gemini-3.0-pro) et la Clé API doivent être chargés depuis les variables d'environnement (.env).  
+2. **Mode JSON Strict :** Configure l'initialisation du modèle pour forcer le response\_mime\_type à application/json.  
+3. **Gestion des Erreurs et Retries (Retry Pattern) :** Implémente une fonction d'exécution qui inclut un système de "Retry" automatique (3 tentatives) avec un "exponential backoff" (attente progressive) en cas d'erreur 503, 429 ou de timeout.  
+4. **Interface Générique :** Crée une méthode principale (ex: generateJson(prompt, schema)) que n'importe quelle autre fonction du SaaS peut appeler. Elle doit prendre en entrée le prompt système et le prompt utilisateur, et retourner un objet JSON parsé, prêt à l'emploi.  
+5. **Nettoyage du code :** Si le modèle renvoie des balises Markdown (comme \`\`\`json ... \`\`\`), le service doit les nettoyer automatiquement avant de parser le résultat.
+
+**Action :** Analyse mon code actuel pour voir où placer ce fichier (dossier services ou lib), installe les packages nécessaires et écris le code complet de ce service.
+
+---
+
+### **Pourquoi ce prompt va résoudre tes problèmes ?**
+
+Voici les points techniques que ce prompt verrouille pour toi :
+
+1. **Le "JSON Mode" (response\_mime\_type: "application/json") :**  
+   * C'est la fonctionnalité native de Gemini. En l'activant dans la configuration, le modèle *sait* qu'il est techniquement interdit de répondre autre chose que du JSON. Cela élimine 95% des erreurs de formatage.  
+2. **Le Retry Pattern (Backoff Exponentiel) :**  
+   * Souvent, l'API ne répond pas parce qu'elle est surchargée (erreur 503\) pendant une micro-seconde.  
+   * Au lieu de faire planter ton SaaS, ce code va dire : "Ça a échoué ? J'attends 1 seconde et je réessaie. Encore échoué ? J'attends 2 secondes et je réessaie." Ton utilisateur ne verra rien, mais le taux de succès passera de 80% à 99%.  
+3. **Le Nettoyage (Sanitization) :**  
+   * Même en mode JSON, les LLM aiment parfois ajouter des petits commentaires ou des balises markdown (\`\`\`json). Le prompt demande à Cascade d'écrire une petite fonction (regex) qui supprime tout ce qui n'est pas du JSON pur avant de faire le JSON.parse().
+
+### **Une fois que Cascade a généré le code**
+
+Pour utiliser ce nouveau service dans tes fonctionnalités (par exemple pour ton module d'achat ou de suivi de travaux), tu pourras simplement dire à Cascade :
+
+*"Utilise le GeminiService que tu viens de créer pour analyser cette facture. Voici la structure JSON que je veux en sortie : { montant, date, fournisseur }."*
+
+Veux-tu que je prépare un exemple de code (Node.js ou Python) pour voir à quoi cela devrait ressembler si Cascade a besoin d'un guide ?
+
+C'est noté. Pour être **strict** sur la version "Gemini 3 Pro" (et ne pas laisser l'API choisir une version inférieure ou par défaut), il faut verrouiller le **Model ID** précis dans le code et la configuration.
+
+Voici les 2 modifications à faire : le **Prompt mis à jour** pour Windsurf et la **configuration spécifique**.
+
+### **1\. Le Prompt Mis à jour pour Windsurf (Strict Gemini 3 Pro)**
+
+Copie ceci à Cascade. J'ai ajouté une contrainte explicite sur le modèle.
+
+**Context :** Je développe un SaaS.
+
+**Tâche :** Crée un service TypeScript (GeminiService) pour interagir avec l'API Google via le SDK @google/generative-ai.
+
+**Exigence CRITIQUE (Strict Mode) :**
+
+1. Le service doit **OBLIGATOIREMENT** utiliser le modèle identifié comme gemini-3.0-pro (ou l'ID exact de la version 3 Pro disponible dans la documentation). **Interdiction d'utiliser gemini-pro générique.**  
+2. Si le modèle 3.0 n'est pas disponible ou mal configuré, le service doit lever une erreur immédiate au démarrage (Fail Fast).  
+3. Active le mode response\_mime\_type: "application/json".  
+4. Implémente un système de Retry (3 tentatives) avec backoff exponentiel.  
+5. Nettoie les balises markdown des réponses.
+
+**Action :** Installe le package, configure le client, et écris le code du service en durcissant la sélection du modèle.
+
+---
+
+### **2\. La modification technique (Code)**
+
+Si tu veux vérifier ce que Cascade écrit, ou le forcer toi-même, voici la partie du code qui change pour être "Stricte" :
+
+Dans le fichier .env (Variables d'environnement), force la valeur :
+
+Extrait de code
+
+\# Ne laisse pas de doute ici  
+GEMINI\_MODEL\_NAME="gemini-3.0-pro"   
+\# Vérifie l'ID exact dans Google AI Studio, cela peut être "gemini-3.0-pro-001"
+
+Et dans le code du service (gemini.service.ts), voici comment on verrouille :
+
+TypeScript
+
+// ... imports
+
+const REQUIRED\_MODEL \= "gemini-3.0-pro"; // Ou via process.env mais avec validation stricte
+
+export class GeminiService {  
+  // ...  
+  constructor() {  
+    // Vérification stricte au démarrage  
+    const modelId \= process.env.GEMINI\_MODEL\_NAME || REQUIRED\_MODEL;  
+      
+    if (\!modelId.includes("3.0") && \!modelId.includes("3-pro")) {  
+       console.warn("⚠️ ATTENTION: Tu n'utilises pas Gemini 3 Pro \! Modèle actuel : " \+ modelId);  
+       // Décommente la ligne dessous pour bloquer l'app si ce n'est pas le bon modèle  
+       // throw new Error("Violation de contrainte : Gemini 3 Pro est requis.");  
+    }
+
+    this.model \= this.genAI.getGenerativeModel({  
+      model: modelId, // Utilise l'ID strict  
+      generationConfig: {  
+        responseMimeType: "application/json"  
+      }  
+    });  
+  }  
+  // ... reste du code  
+}
+
+Conseil important :
+
+Les noms de modèles (Model IDs) chez Google changent souvent légèrement (ex: gemini-1.5-pro-latest, gemini-1.5-pro-001).
+
+Assure-toi de copier l'ID exact qui s'affiche dans ton interface Google AI Studio sous le nom "Gemini 3 Pro" pour le mettre dans ton .env. Si tu mets un nom qui n'existe pas, l'API renverra une erreur 404 instantanée.
+
+Gemini 3 is our most intelligent model family to date, built on a foundation of state-of-the-art reasoning. It is designed to bring any idea to life by mastering agentic workflows, autonomous coding, and complex multimodal tasks. This guide covers key features of the Gemini 3 model family and how to get the most out of it.
+
+\[Try Gemini 3 Pro for free\](https://aistudio.google.com?model=gemini-3-pro-preview)
+
+Explore our\[collection of Gemini 3 apps\](https://aistudio.google.com/app/apps?source=showcase\&showcaseTag=gemini-3)to see how the model handles advanced reasoning, autonomous coding, and complex multimodal tasks.
+
+Gemini 3 Pro uses dynamic thinking by default to reason through prompts. For faster, lower-latency responses when complex reasoning isn't required, you can constrain the model's thinking level to\[\`low\`\](https://ai.google.dev/docs/gemini-3?thinking=high\#thinking\_level).  
+
+\#\#\# Python
+
+    from google import genai
+
+    client \= genai.Client()
+
+    response \= client.models.generate\_content(  
+        model="gemini-3-pro-preview",  
+        contents="Find the race condition in this multi-threaded C++ snippet: \[code here\]",  
+    )
+
+    print(response.text)
+
+\#\#\# JavaScript
+
+    import { GoogleGenAI } from "@google/genai";
+
+    const ai \= new GoogleGenAI({});
+
+    async function run() {  
+      const response \= await ai.models.generateContent({  
+        model: "gemini-3-pro-preview",  
+        contents="Find the race condition in this multi-threaded C++ snippet: \[code here\]",  
+      });
+
+      console.log(response.text);  
+    }
+
+    run();
+
+\#\#\# REST
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent" \\  
+      \-H "x-goog-api-key: $GEMINI\_API\_KEY" \\  
+      \-H 'Content-Type: application/json' \\  
+      \-X POST \\  
+      \-d '{  
+        "contents": \[{  
+          "parts": \[{"text": "Find the race condition in this multi-threaded C++ snippet: \[code here\]"}\]  
+        }\]  
+      }'
+
+\#\# Meet Gemini 3
+
+Gemini 3 Pro is the first model in the new series.\`gemini-3-pro-preview\`is best for your complex tasks that require broad world knowledge and advanced reasoning across modalities.
+
+|            Model ID            | Context Window (In / Out) | Knowledge Cutoff |            Pricing (Input / Output)\\\*             |  
+|--------------------------------|---------------------------|------------------|---------------------------------------------------|  
+| \*\*gemini-3-pro-preview\*\*       | 1M / 64k                  | Jan 2025         | $2 / $12 (\\\<200k tokens) $4 / $18 (\\\>200k tokens) |  
+| \*\*gemini-3-pro-image-preview\*\* | 65k / 32k                 | Jan 2025         | $2 (Text Input) / $0.134 (Image Output)\\\*\\\*       |
+
+\*\\\* Pricing is per 1 million tokens unless otherwise noted.\* \*\\\*\\\* Image pricing varies by resolution. See the\[pricing page\](https://ai.google.dev/gemini-api/docs/pricing)for details.\*
+
+For detailed rate limits, batch pricing, and additional information, see the\[models page\](https://ai.google.dev/gemini-api/docs/models/gemini).
+
+\#\# New API features in Gemini 3
+
+Gemini 3 introduces new parameters designed to give developers more control over latency, cost, and multimodal fidelity.
+
+\#\#\# Thinking level
+
+The\`thinking\_level\`parameter controls the\*\*maximum\*\* depth of the model's internal reasoning process before it produces a response. Gemini 3 treats these levels as relative allowances for thinking rather than strict token guarantees. If\`thinking\_level\`is not specified, Gemini 3 Pro will default to\`high\`.
+
+\- \`low\`: Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput applications  
+\- \`medium\`: (Coming soon), not supported at launch  
+\- \`high\`(Default): Maximizes reasoning depth. The model may take significantly longer to reach a first token, but the output will be more carefully reasoned.
+
+| \*\*Important:\*\* You cannot use both\`thinking\_level\`and the legacy\`thinking\_budget\`parameter in the same request. Doing so will return a 400 error.
+
+\#\#\# Media resolution
+
+Gemini 3 introduces granular control over multimodal vision processing via the\`media\_resolution\`parameter. Higher resolutions improve the model's ability to read fine text or identify small details, but increase token usage and latency. The\`media\_resolution\`parameter determines the\*\*maximum number of tokens allocated per input image or video frame.\*\*
+
+You can now set the resolution to\`media\_resolution\_low\`,\`media\_resolution\_medium\`, or\`media\_resolution\_high\`per individual media part or globally (via\`generation\_config\`). If unspecified, the model uses optimal defaults based on the media type.
+
+\*\*Recommended settings\*\*
+
+|      Media Type       |                 Recommended Setting                 |   Max Tokens    |                                                                                  Usage Guidance                                                                                   |  
+|-----------------------|-----------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|  
+| \*\*Images\*\*            | \`media\_resolution\_high\`                             | 1120            | Recommended for most image analysis tasks to ensure maximum quality.                                                                                                              |  
+| \*\*PDFs\*\*              | \`media\_resolution\_medium\`                           | 560             | Optimal for document understanding; quality typically saturates at\`medium\`. Increasing to\`high\`rarely improves OCR results for standard documents.                                |  
+| \*\*Video\*\*(General)    | \`media\_resolution\_low\`(or\`media\_resolution\_medium\`) | 70 (per frame)  | \*\*Note:\*\* For video,\`low\`and\`medium\`settings are treated identically (70 tokens) to optimize context usage. This is sufficient for most action recognition and description tasks. |  
+| \*\*Video\*\*(Text-heavy) | \`media\_resolution\_high\`                             | 280 (per frame) | Required only when the use case involves reading dense text (OCR) or small details within video frames.                                                                           |
+
+\*\*Note:\*\* The\`media\_resolution\`parameter maps to different token counts depending on the input type. While images scale linearly (\`media\_resolution\_low\`: 280,\`media\_resolution\_medium\`: 560,\`media\_resolution\_high\`: 1120), Video is compressed more aggressively. For Video, both\`media\_resolution\_low\`and\`media\_resolution\_medium\`are capped at 70 tokens per frame, and\`media\_resolution\_high\`is capped at 280 tokens. See full details\[here\](https://ai.google.dev/gemini-api/docs/media-resolution\#token-counts)  
+
+\#\#\# Python
+
+    from google import genai  
+    from google.genai import types  
+    import base64
+
+    \# The media\_resolution parameter is currently only available in the v1alpha API version.  
+    client \= genai.Client(http\_options={'api\_version': 'v1alpha'})
+
+    response \= client.models.generate\_content(  
+        model="gemini-3-pro-preview",  
+        contents=\[  
+            types.Content(  
+                parts=\[  
+                    types.Part(text="What is in this image?"),  
+                    types.Part(  
+                        inline\_data=types.Blob(  
+                            mime\_type="image/jpeg",  
+                            data=base64.b64decode("..."),  
+                        ),  
+                        media\_resolution={"level": "media\_resolution\_high"}  
+                    )  
+                \]  
+            )  
+        \]  
+    )
+
+    print(response.text)
+
+\#\#\# JavaScript
+
+    import { GoogleGenAI } from "@google/genai";
+
+    // The media\_resolution parameter is currently only available in the v1alpha API version.  
+    const ai \= new GoogleGenAI({ apiVersion: "v1alpha" });
+
+    async function run() {  
+      const response \= await ai.models.generateContent({  
+        model: "gemini-3-pro-preview",  
+        contents: \[  
+          {  
+            parts: \[  
+              { text: "What is in this image?" },  
+              {  
+                inlineData: {  
+                  mimeType: "image/jpeg",  
+                  data: "...",  
+                },  
+                mediaResolution: {  
+                  level: "media\_resolution\_high"  
+                }  
+              }  
+            \]  
+          }  
+        \]  
+      });
+
+      console.log(response.text);  
+    }
+
+    run();
+
+\#\#\# REST
+
+    curl "https://generativelanguage.googleapis.com/v1alpha/models/gemini-3-pro-preview:generateContent" \\  
+      \-H "x-goog-api-key: $GEMINI\_API\_KEY" \\  
+      \-H 'Content-Type: application/json' \\  
+      \-X POST \\  
+      \-d '{  
+        "contents": \[{  
+          "parts": \[  
+            { "text": "What is in this image?" },  
+            {  
+              "inlineData": {  
+                "mimeType": "image/jpeg",  
+                "data": "..."  
+              },  
+              "mediaResolution": {  
+                "level": "media\_resolution\_high"  
+              }  
+            }  
+          \]  
+        }\]  
+      }'
+
+\#\#\# Temperature
+
+For Gemini 3, we strongly recommend keeping the temperature parameter at its default value of\`1.0\`.
+
+While previous models often benefited from tuning temperature to control creativity versus determinism, Gemini 3's reasoning capabilities are optimized for the default setting. Changing the temperature (setting it below 1.0) may lead to unexpected behavior, such as looping or degraded performance, particularly in complex mathematical or reasoning tasks.
+
+\#\#\# Thought signatures
+
+Gemini 3 uses\[Thought signatures\](https://ai.google.dev/gemini-api/docs/thought-signatures)to maintain reasoning context across API calls. These signatures are encrypted representations of the model's internal thought process. To ensure the model maintains its reasoning capabilities you must return these signatures back to the model in your request exactly as they were received:
+
+\- \*\*Function Calling (Strict):\*\*The API enforces strict validation on the "Current Turn". Missing signatures will result in a 400 error.  
+\- \*\*Text/Chat:\*\*Validation is not strictly enforced, but omitting signatures will degrade the model's reasoning and answer quality.  
+\- \*\*Image generation/editing (Strict)\*\* : The API enforces strict validation on all Model parts including a\`thoughtSignature\`. Missing signatures will result in a 400 error.
+
+| \*\*Success:\*\* If you use the\[official SDKs (Python, Node, Java)\](https://ai.google.dev/gemini-api/docs/function-calling?example=meeting\#thinking)and standard chat history, Thought Signatures are handled automatically. You do not need to manually manage these fields.
+
+\#\#\#\# Function calling (strict validation)
+
+When Gemini generates a\`functionCall\`, it relies on the\`thoughtSignature\`to process the tool's output correctly in the next turn. The "Current Turn" includes all Model (\`functionCall\`) and User (\`functionResponse\`) steps that occurred since the last standard\*\*User\*\* \`text\`message.
+
+\- \*\*Single Function Call:\*\* The\`functionCall\`part contains a signature. You must return it.  
+\- \*\*Parallel Function Calls:\*\* Only the first\`functionCall\`part in the list will contain the signature. You must return the parts in the exact order received.  
+\- \*\*Multi-Step (Sequential):\*\* If the model calls a tool, receives a result, and calls\*another\* tool (within the same turn),\*\*both\*\* function calls have signatures. You must return\*\*all\*\*accumulated signatures in the history.
+
+\#\#\#\# Text and streaming
+
+For standard chat or text generation, the presence of a signature is not guaranteed.
+
+\- \*\*Non-Streaming\*\* : The final content part of the response may contain a\`thoughtSignature\`, though it is not always present. If one is returned, you should send it back to maintain best performance.  
+\- \*\*Streaming\*\*: If a signature is generated, it may arrive in a final chunk that contains an empty text part. Ensure your stream parser checks for signatures even if the text field is empty.
+
+\#\#\#\# Image generation and editing
+
+For\`gemini-3-pro-image-preview\`, thought signatures are critical for conversational editing. When you ask the model to modify an image it relies on the\`thoughtSignature\`from the previous turn to understand the composition and logic of the original image.
+
+\- \*\*Editing:\*\* Signatures are guaranteed on the first part after the thoughts of the response (\`text\`or\`inlineData\`) and on every subsequent\`inlineData\`part. You must return all of these signatures to avoid errors.
+
+\#\#\#\# Code examples
+
+\#\#\#\# Multi-step Function Calling (Sequential)
+
+The user asks a question requiring two separate steps (Check Flight \-\\\> Book Taxi) in one turn.  
+
+\*\*Step 1: Model calls Flight Tool.\*\*     
+The model returns a signature\`\<Sig\_A\>\`  
+
+\`\`\`java  
+// Model Response (Turn 1, Step 1\)  
+  {  
+    "role": "model",  
+    "parts": \[  
+      {  
+        "functionCall": { "name": "check\_flight", "args": {...} },  
+        "thoughtSignature": "\<Sig\_A\>" // SAVE THIS  
+      }  
+    \]  
+  }  
+\`\`\`
+
+\*\*Step 2: User sends Flight Result\*\*     
+We must send back\`\<Sig\_A\>\`to keep the model's train of thought.  
+
+\`\`\`java  
+// User Request (Turn 1, Step 2\)  
+\[  
+  { "role": "user", "parts": \[{ "text": "Check flight AA100..." }\] },  
+  {   
+    "role": "model",   
+    "parts": \[  
+      {   
+        "functionCall": { "name": "check\_flight", "args": {...} },   
+        "thoughtSignature": "\<Sig\_A\>" // REQUIRED  
+      }   
+    \]  
+  },  
+  { "role": "user", "parts": \[{ "functionResponse": { "name": "check\_flight", "response": {...} } }\] }  
+\]  
+\`\`\`
+
+\*\*Step 3: Model calls Taxi Tool\*\*     
+The model remembers the flight delay via\`\<Sig\_A\>\`and now decides to book a taxi. It generates a\*new\* signature\`\<Sig\_B\>\`.  
+
+\`\`\`java  
+// Model Response (Turn 1, Step 3\)  
+{  
+  "role": "model",  
+  "parts": \[  
+    {  
+      "functionCall": { "name": "book\_taxi", "args": {...} },  
+      "thoughtSignature": "\<Sig\_B\>" // SAVE THIS  
+    }  
+  \]  
+}  
+\`\`\`
+
+\*\*Step 4: User sends Taxi Result\*\*     
+To complete the turn, you must send back the entire chain:\`\<Sig\_A\>\`AND\`\<Sig\_B\>\`.  
+
+\`\`\`java  
+// User Request (Turn 1, Step 4\)  
+\[  
+  // ... previous history ...  
+  {   
+    "role": "model",   
+    "parts": \[  
+       { "functionCall": { "name": "check\_flight", ... }, "thoughtSignature": "\<Sig\_A\>" }   
+    \]  
+  },  
+  { "role": "user", "parts": \[{ "functionResponse": {...} }\] },  
+  {   
+    "role": "model",   
+    "parts": \[  
+       { "functionCall": { "name": "book\_taxi", ... }, "thoughtSignature": "\<Sig\_B\>" }   
+    \]  
+  },  
+  { "role": "user", "parts": \[{ "functionResponse": {...} }\] }  
+\]  
+\`\`\`  
+
+\#\#\#\# Parallel Function Calling
+
+The user asks: "Check the weather in Paris and London." The model returns two function calls in one response.  
+
+\`\`\`java  
+// User Request (Sending Parallel Results)  
+\[  
+  {  
+    "role": "user",  
+    "parts": \[  
+      { "text": "Check the weather in Paris and London." }  
+    \]  
+  },  
+  {  
+    "role": "model",  
+    "parts": \[  
+      // 1\. First Function Call has the signature  
+      {  
+        "functionCall": { "name": "check\_weather", "args": { "city": "Paris" } },  
+        "thoughtSignature": "\<Signature\_A\>"   
+      },  
+      // 2\. Subsequent parallel calls DO NOT have signatures  
+      {  
+        "functionCall": { "name": "check\_weather", "args": { "city": "London" } }  
+      }   
+    \]  
+  },  
+  {  
+    "role": "user",  
+    "parts": \[  
+      // 3\. Function Responses are grouped together in the next block  
+      {  
+        "functionResponse": { "name": "check\_weather", "response": { "temp": "15C" } }  
+      },  
+      {  
+        "functionResponse": { "name": "check\_weather", "response": { "temp": "12C" } }  
+      }  
+    \]  
+  }  
+\]  
+\`\`\`  
+
+\#\#\#\# Text/In-Context Reasoning (No Validation)
+
+The user asks a question that requires in-context reasoning without external tools. While not strictly validated, including the signature helps the model maintain the reasoning chain for follow-up questions.  
+
+\`\`\`java  
+// User Request (Follow-up question)  
+\[  
+  {   
+    "role": "user",   
+    "parts": \[{ "text": "What are the risks of this investment?" }\]   
+  },  
+  {   
+    "role": "model",   
+    "parts": \[  
+      {  
+        "text": "I need to calculate the risk step-by-step. First, I'll look at volatility...",  
+        "thoughtSignature": "\<Signature\_C\>" // Recommended to include  
+      }  
+    \]  
+  },  
+  {   
+    "role": "user",   
+    "parts": \[{ "text": "Summarize that in one sentence." }\]   
+  }  
+\]  
+\`\`\`  
+
+\#\#\#\# Image Generation \\& Editing
+
+For image generation, signatures are strictly validated. They appear on the\*\*first part\*\* (text or image) and\*\*all subsequent image parts\*\*. All must be returned in the next turn.  
+
+\`\`\`java  
+// Model Response (Turn 1\)  
+{  
+  "role": "model",  
+  "parts": \[  
+    // 1\. First part ALWAYS has a signature (even if text)  
+    {  
+      "text": "I will generate a cyberpunk city...",  
+      "thoughtSignature": "\<Signature\_D\>"   
+    },  
+    // 2\. ALL InlineData (Image) parts ALWAYS have signatures  
+    {  
+      "inlineData": { ... },   
+      "thoughtSignature": "\<Signature\_E\>"   
+    },  
+  \]  
+}
+
+// User Request (Turn 2 \- Requesting an Edit)  
+{  
+  "contents": \[  
+    // History must include ALL signatures received  
+    {  
+      "role": "user",  
+      "parts": \[{ "text": "Generate a cyberpunk city" }\]  
+    },  
+    {  
+      "role": "model",  
+      "parts": \[  
+         { "text": "...", "thoughtSignature": "\<Signature\_D\>" },  
+         { "inlineData": "...", "thoughtSignature": "\<Signature\_E\>" },  
+      \]  
+    },  
+    // New User Prompt  
+    {  
+      "role": "user",  
+      "parts": \[{ "text": "Make it daytime." }\]  
+    }  
+  \]  
+}  
+\`\`\`
+
+\#\#\#\# Migrating from other models
+
+If you are transferring a conversation trace from another model (e.g., Gemini 2.5) or injecting a custom function call that was not generated by Gemini 3, you will not have a valid signature.
+
+To bypass strict validation in these specific scenarios, populate the field with this specific dummy string:\`"thoughtSignature": "context\_engineering\_is\_the\_way\_to\_go"\`
+
+\#\#\# Structured Outputs with tools
+
+Gemini 3 allows you to combine\[Structured Outputs\](https://ai.google.dev/gemini-api/docs/structured-output)with built-in tools, including\[Grounding with Google Search\](https://ai.google.dev/gemini-api/docs/google-search),\[URL Context\](https://ai.google.dev/gemini-api/docs/url-context), and\[Code Execution\](https://ai.google.dev/gemini-api/docs/code-execution).  
+
+\#\#\# Python
+
+    from google import genai  
+    from google.genai import types  
+    from pydantic import BaseModel, Field  
+    from typing import List
+
+    class MatchResult(BaseModel):  
+        winner: str \= Field(description="The name of the winner.")  
+        final\_match\_score: str \= Field(description="The final match score.")  
+        scorers: List\[str\] \= Field(description="The name of the scorer.")
+
+    client \= genai.Client()
+
+    response \= client.models.generate\_content(  
+        model="gemini-3-pro-preview",  
+        contents="Search for all details for the latest Euro.",  
+        config={  
+            "tools": \[  
+                {"google\_search": {}},  
+                {"url\_context": {}}  
+            \],  
+            "response\_mime\_type": "application/json",  
+            "response\_json\_schema": MatchResult.model\_json\_schema(),  
+        },    
+    )
+
+    result \= MatchResult.model\_validate\_json(response.text)  
+    print(result)
+
+\#\#\# JavaScript
+
+    import { GoogleGenAI } from "@google/genai";  
+    import { z } from "zod";  
+    import { zodToJsonSchema } from "zod-to-json-schema";
+
+    const ai \= new GoogleGenAI({});
+
+    const matchSchema \= z.object({  
+      winner: z.string().describe("The name of the winner."),  
+      final\_match\_score: z.string().describe("The final score."),  
+      scorers: z.array(z.string()).describe("The name of the scorer.")  
+    });
+
+    async function run() {  
+      const response \= await ai.models.generateContent({  
+        model: "gemini-3-pro-preview",  
+        contents: "Search for all details for the latest Euro.",  
+        config: {  
+          tools: \[  
+            { googleSearch: {} },  
+            { urlContext: {} }  
+          \],  
+          responseMimeType: "application/json",  
+          responseJsonSchema: zodToJsonSchema(matchSchema),  
+        },  
+      });
+
+      const match \= matchSchema.parse(JSON.parse(response.text));  
+      console.log(match);  
+    }
+
+    run();
+
+\#\#\# REST
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent" \\  
+      \-H "x-goog-api-key: $GEMINI\_API\_KEY" \\  
+      \-H 'Content-Type: application/json' \\  
+      \-X POST \\  
+      \-d '{  
+        "contents": \[{  
+          "parts": \[{"text": "Search for all details for the latest Euro."}\]  
+        }\],  
+        "tools": \[  
+          {"googleSearch": {}},  
+          {"urlContext": {}}  
+        \],  
+        "generationConfig": {  
+            "responseMimeType": "application/json",  
+            "responseJsonSchema": {  
+                "type": "object",  
+                "properties": {  
+                    "winner": {"type": "string", "description": "The name of the winner."},  
+                    "final\_match\_score": {"type": "string", "description": "The final score."},  
+                    "scorers": {  
+                        "type": "array",  
+                        "items": {"type": "string"},  
+                        "description": "The name of the scorer."  
+                    }  
+                },  
+                "required": \["winner", "final\_match\_score", "scorers"\]  
+            }  
+        }  
+      }'
+
+\#\#\# Image generation
+
+Gemini 3 Pro Image lets you generate and edit images from text prompts. It uses reasoning to "think" through a prompt and can retrieve real-time data---such as weather forecasts or stock charts---before using\[Google Search\](https://ai.google.dev/gemini-api/docs/google-search)grounding before generating high-fidelity images.
+
+\*\*New \\& improved capabilities:\*\*
+
+\- \*\*4K \\& text rendering:\*\*Generate sharp, legible text and diagrams with up to 2K and 4K resolutions.  
+\- \*\*Grounded generation:\*\* Use the\`google\_search\`tool to verify facts and generate imagery based on real-world information.  
+\- \*\*Conversational editing:\*\* Multi-turn image editing by simply asking for changes (e.g., "Make the background a sunset"). This workflow relies on\*\*Thought Signatures\*\*to preserve visual context between turns.
+
+For complete details on aspect ratios, editing workflows, and configuration options, see the\[Image Generation guide\](https://ai.google.dev/gemini-api/docs/image-generation).  
+
+\#\#\# Python
+
+    from google import genai  
+    from google.genai import types
+
+    client \= genai.Client()
+
+    response \= client.models.generate\_content(  
+        model="gemini-3-pro-image-preview",  
+        contents="Generate an infographic of the current weather in Tokyo.",  
+        config=types.GenerateContentConfig(  
+            tools=\[{"google\_search": {}}\],  
+            image\_config=types.ImageConfig(  
+                aspect\_ratio="16:9",  
+                image\_size="4K"  
+            )  
+        )  
+    )
+
+    image\_parts \= \[part for part in response.parts if part.inline\_data\]
+
+    if image\_parts:  
+        image \= image\_parts\[0\].as\_image()  
+        image.save('weather\_tokyo.png')  
+        image.show()
+
+\#\#\# JavaScript
+
+    import { GoogleGenAI } from "@google/genai";  
+    import \* as fs from "node:fs";
+
+    const ai \= new GoogleGenAI({});
+
+    async function run() {  
+      const response \= await ai.models.generateContent({  
+        model: "gemini-3-pro-image-preview",  
+        contents: "Generate a visualization of the current weather in Tokyo.",  
+        config: {  
+          tools: \[{ googleSearch: {} }\],  
+          imageConfig: {  
+            aspectRatio: "16:9",  
+            imageSize: "4K"  
+          }  
+        }  
+      });
+
+      for (const part of response.candidates\[0\].content.parts) {  
+        if (part.inlineData) {  
+          const imageData \= part.inlineData.data;  
+          const buffer \= Buffer.from(imageData, "base64");  
+          fs.writeFileSync("weather\_tokyo.png", buffer);  
+        }  
+      }  
+    }
+
+    run();
+
+\#\#\# REST
+
+    curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent" \\  
+      \-H "x-goog-api-key: $GEMINI\_API\_KEY" \\  
+      \-H 'Content-Type: application/json' \\  
+      \-X POST \\  
+      \-d '{  
+        "contents": \[{  
+          "parts": \[{"text": "Generate a visualization of the current weather in Tokyo."}\]  
+        }\],  
+        "tools": \[{"googleSearch": {}}\],  
+        "generationConfig": {  
+            "imageConfig": {  
+              "aspectRatio": "16:9",  
+              "imageSize": "4K"  
+          }  
+        }  
+      }'
+
+\*\*Example Response\*\*
+
+\!\[Weather Tokyo\](https://ai.google.dev/static/gemini-api/docs/images/weather-tokyo.jpg)
+
+\#\# Migrating from Gemini 2.5
+
+Gemini 3 is our most capable model family to date and offers a stepwise improvement over Gemini 2.5 Pro. When migrating, consider the following:
+
+\- \*\*Thinking:\*\* If you were previously using complex prompt engineering (like Chain-of-thought) to force Gemini 2.5 to reason, try Gemini 3 with\`thinking\_level: "high"\`and simplified prompts.  
+\- \*\*Temperature settings:\*\*If your existing code explicitly sets temperature (especially to low values for deterministic outputs), we recommend removing this parameter and using the Gemini 3 default of 1.0 to avoid potential looping issues or performance degradation on complex tasks.  
+\- \*\*PDF \\& document understanding:\*\* Default OCR resolution for PDFs has changed. If you relied on specific behavior for dense document parsing, test the new\`media\_resolution\_high\`setting to ensure continued accuracy.  
+\- \*\*Token consumption:\*\* Migrating to Gemini 3 Pro defaults may\*\*increase\*\* token usage for PDFs but\*\*decrease\*\*token usage for video. If requests now exceed the context window due to higher default resolutions, we recommend explicitly reducing the media resolution.  
+\- \*\*Image segmentation:\*\* Image segmentation capabilities (returning pixel-level masks for objects) are not supported in Gemini 3 Pro. For workloads requiring native image segmentation, we recommend continuing to utilize Gemini 2.5 Flash with thinking turned off or\[Gemini Robotics-ER 1.5\](https://ai.google.dev/gemini-api/docs/robotics-overview).
+
+\#\# OpenAI compatibility
+
+For users utilizing the OpenAI compatibility layer, standard parameters are automatically mapped to Gemini equivalents:
+
+\- \`reasoning\_effort\`(OAI) maps to\`thinking\_level\`(Gemini). Note that\`reasoning\_effort\`medium maps to\`thinking\_level\`high.
+
+\#\# Prompting best practices
+
+Gemini 3 is a reasoning model, which changes how you should prompt.
+
+\- \*\*Precise instructions:\*\*Be concise in your input prompts. Gemini 3 responds best to direct, clear instructions. It may over-analyze verbose or overly complex prompt engineering techniques used for older models.  
+\- \*\*Output verbosity:\*\*By default, Gemini 3 is less verbose and prefers providing direct, efficient answers. If your use case requires a more conversational or "chatty" persona, you must explicitly steer the model in the prompt (e.g., "Explain this as a friendly, talkative assistant").  
+\- \*\*Context management:\*\*When working with large datasets (e.g., entire books, codebases, or long videos), place your specific instructions or questions at the end of the prompt, after the data context. Anchor the model's reasoning to the provided data by starting your question with a phrase like, "Based on the information above...".
+
+Learn more about prompt design strategies in the\[prompt engineering guide\](https://ai.google.dev/gemini-api/docs/prompting-strategies).
+
+\#\# FAQ
+
+1\. \*\*What is the knowledge cutoff for Gemini 3 Pro?\*\* Gemini 3 has a knowledge cutoff of January 2025\. For more recent information, use the\[Search Grounding\](https://ai.google.dev/gemini-api/docs/google-search)tool.
+
+2\. \*\*What are the context window limits?\*\*Gemini 3 Pro supports a 1 million token input context window and up to 64k tokens of output.
+
+3\. \*\*Is there a free tier for Gemini 3 Pro?\*\* You can try the model for free in Google AI Studio, but currently, there is no free tier available for\`gemini-3-pro-preview\`in the Gemini API.
+
+4\. \*\*Will my old\`thinking\_budget\`code still work?\*\* Yes,\`thinking\_budget\`is still supported for backward compatibility, but we recommend migrating to\`thinking\_level\`for more predictable performance. Do not use both in the same request.
+
+5\. \*\*Does Gemini 3 support the Batch API?\*\* Yes, Gemini 3 supports the\[Batch API.\](https://ai.google.dev/gemini-api/docs/batch-api)
+
+6\. \*\*Is Context Caching supported?\*\* Yes,\[Context Caching\](https://ai.google.dev/gemini-api/docs/caching?lang=python)is supported for Gemini 3\. The minimum token count required to initiate caching is 2,048 tokens.
+
+7\. \*\*Which tools are supported in Gemini 3?\*\* Gemini 3 supports\[Google Search\](https://ai.google.dev/gemini-api/docs/google-search),\[File Search\](https://ai.google.dev/gemini-api/docs/file-search),\[Code Execution\](https://ai.google.dev/gemini-api/docs/code-execution), and\[URL Context\](https://ai.google.dev/gemini-api/docs/url-context). It also supports standard\[Function Calling\](https://ai.google.dev/gemini-api/docs/function-calling?example=meeting)for your own custom tools. Please note that\[Grounding with Google Maps\](https://ai.google.dev/gemini-api/docs/maps-grounding)and\[Computer Use\](https://ai.google.dev/gemini-api/docs/computer-use)are currently not supported.
+
+\#\# Next steps
+
+\- Get started with the\[Gemini 3 Cookbook\](https://colab.research.google.com/github/google-gemini/cookbook/blob/main/quickstarts/Get\_started.ipynb\#templateParams=%7B%22MODEL\_ID%22%3A+%22gemini-3-pro-preview%22%7D)  
+\- Check the dedicated Cookbook guide on\[thinking levels\](https://colab.research.google.com/github/google-gemini/cookbook/blob/main/quickstarts/Get\_started\_thinking\_REST.ipynb\#gemini3)and how to migrate from thinking budget to thinking levels.
+

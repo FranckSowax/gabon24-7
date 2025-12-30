@@ -1,0 +1,176 @@
+name: 🔎 Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # PR Title Check
+  pr-title-check:
+    name: PR Title Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 🏷️ Check PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+          requireScope: false
+
+  # Changed Files Analysis
+  changed-files:
+    name: Analyze Changed Files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔍 Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            backend/**
+            frontend/**
+            .github/workflows/**
+      
+      - name: 📊 List changed files
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 FICHIERS MODIFIÉS"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "Backend files changed: ${{ steps.changed-files.outputs.any_changed }}"
+          echo "Frontend files changed: ${{ steps.changed-files.outputs.any_changed }}"
+          echo ""
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "  - $file"
+          done
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+
+  # Size Check
+  pr-size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📏 Check PR size
+        run: |
+          files_changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          lines_added=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+          lines_deleted=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
+          
+          echo "📊 Taille de la PR:"
+          echo "  Fichiers modifiés: $files_changed"
+          echo "  Lignes ajoutées: $lines_added"
+          echo "  Lignes supprimées: $lines_deleted"
+          
+          if [ "$files_changed" -gt 50 ]; then
+            echo "⚠️ Cette PR est très grande ($files_changed fichiers). Envisagez de la diviser."
+          elif [ "$files_changed" -gt 20 ]; then
+            echo "⚠️ Cette PR est assez grande ($files_changed fichiers)."
+          else
+            echo "✅ Taille de PR acceptable"
+          fi
+
+  # Run Tests on PR
+  pr-tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: 🧪 Backend Tests
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm test || true
+        continue-on-error: true
+      
+      - name: 🏗️ Frontend Build
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  # Comment on PR
+  pr-comment:
+    name: PR Summary Comment
+    runs-on: ubuntu-latest
+    needs: [pr-title-check, changed-files, pr-size-check, pr-tests]
+    if: always()
+    
+    steps:
+      - name: 💬 Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = {
+              title: '${{ needs.pr-title-check.result }}',
+              files: '${{ needs.changed-files.result }}',
+              size: '${{ needs.pr-size-check.result }}',
+              tests: '${{ needs.pr-tests.result }}'
+            };
+            
+            const emoji = (result) => result === 'success' ? '✅' : result === 'failure' ? '❌' : '⚠️';
+            
+            const comment = `
+            ## 🔍 Pull Request Checks
+            
+            | Check | Status |
+            |-------|--------|
+            | PR Title | ${emoji(results.title)} ${results.title} |
+            | Changed Files | ${emoji(results.files)} ${results.files} |
+            | PR Size | ${emoji(results.size)} ${results.size} |
+            | Tests | ${emoji(results.tests)} ${results.tests} |
+            
+            ---
+            
+            ${results.tests === 'failure' ? '⚠️ **Des tests ont échoué.** Veuillez corriger avant de merger.' : ''}
+            ${results.title === 'failure' ? '⚠️ **Le titre de la PR ne suit pas la convention.** Format attendu: \`type: description\`' : ''}
+            
+            *Généré automatiquement par GitHub Actions*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

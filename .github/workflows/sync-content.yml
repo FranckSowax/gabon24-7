@@ -1,0 +1,186 @@
+name: 🔄 Synchronisation Automatique du Contenu
+
+on:
+  # Cron automatique (3 fois par jour)
+  schedule:
+    # 6h00 WAT (05h00 UTC) - Matin
+    - cron: '0 5 * * *'
+    # 13h00 WAT (12h00 UTC) - Après-midi
+    - cron: '0 12 * * *'
+    # 21h00 WAT (20h00 UTC) - Soir
+    - cron: '0 20 * * *'
+  
+  # Déclenchement manuel possible
+  workflow_dispatch:
+
+jobs:
+  sync-content:
+    name: Synchronisation Journal TV + Résumés Audio
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📺 Extraction Journal TV
+        id: journal
+        run: |
+          echo "🔄 Extraction du journal TV depuis RSS..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://gabon24-7-production.up.railway.app/api/youtube/extract" \
+            -H "Content-Type: application/json" \
+            --max-time 60)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Journal TV extrait avec succès"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Erreur extraction (HTTP $http_code)"
+            echo "$body"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: 🇫🇷 Génération Résumé Français
+        id: audio_fr
+        run: |
+          echo "🔄 Génération résumé audio FR..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
+            -H "Content-Type: application/json" \
+            -d '{"language":"fr"}' \
+            --max-time 180)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Résumé FR généré"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Erreur génération FR (HTTP $http_code)"
+            echo "$body"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: 🇬🇧 Génération Résumé Anglais
+        id: audio_en
+        run: |
+          echo "🔄 Génération résumé audio EN..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
+            -H "Content-Type: application/json" \
+            -d '{"language":"en"}' \
+            --max-time 180)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Résumé EN généré"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Erreur génération EN (HTTP $http_code)"
+            echo "$body"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: 🇨🇳 Génération Résumé Chinois
+        id: audio_zh
+        run: |
+          echo "🔄 Génération résumé audio ZH..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
+            -H "Content-Type: application/json" \
+            -d '{"language":"zh"}' \
+            --max-time 180)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Résumé ZH généré"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Erreur génération ZH (HTTP $http_code)"
+            echo "$body"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: 📊 Résumé de la Synchronisation
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 RÉSUMÉ DE LA SYNCHRONISATION"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          
+          # Comptage réussis/échoués
+          success_count=0
+          failed_count=0
+          
+          # Journal TV
+          if [ "${{ steps.journal.outputs.success }}" == "true" ]; then
+            echo "✅ Journal TV: Extrait"
+            success_count=$((success_count + 1))
+          else
+            echo "❌ Journal TV: Échec"
+            failed_count=$((failed_count + 1))
+          fi
+          
+          # Résumé FR
+          if [ "${{ steps.audio_fr.outputs.success }}" == "true" ]; then
+            echo "✅ Résumé FR: Généré"
+            success_count=$((success_count + 1))
+          else
+            echo "❌ Résumé FR: Échec"
+            failed_count=$((failed_count + 1))
+          fi
+          
+          # Résumé EN
+          if [ "${{ steps.audio_en.outputs.success }}" == "true" ]; then
+            echo "✅ Résumé EN: Généré"
+            success_count=$((success_count + 1))
+          else
+            echo "❌ Résumé EN: Échec"
+            failed_count=$((failed_count + 1))
+          fi
+          
+          # Résumé ZH
+          if [ "${{ steps.audio_zh.outputs.success }}" == "true" ]; then
+            echo "✅ Résumé ZH: Généré"
+            success_count=$((success_count + 1))
+          else
+            echo "❌ Résumé ZH: Échec"
+            failed_count=$((failed_count + 1))
+          fi
+          
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+          echo "   ✅ Réussis: $success_count"
+          echo "   ❌ Échoués: $failed_count"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          
+          # Afficher URL de vérification
+          echo "🔗 Vérifier sur:"
+          echo "   📺 Journal TV: https://gabon24-7.netlify.app/"
+          echo "   🔊 Résumés: https://gabon24-7.netlify.app/audio/daily"
+          echo ""
+          
+          # Échouer si aucune tâche n'a réussi
+          if [ $success_count -eq 0 ]; then
+            echo "❌ ÉCHEC TOTAL: Aucune synchronisation n'a réussi"
+            exit 1
+          elif [ $failed_count -gt 0 ]; then
+            echo "⚠️ SUCCÈS PARTIEL: Certaines tâches ont échoué"
+          else
+            echo "🎉 SUCCÈS COMPLET: Toutes les synchronisations ont réussi"
+          fi

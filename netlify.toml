@@ -1,0 +1,91 @@
+# ============================================
+# Configuration Netlify pour Next.js
+# UNIFIÉ: Backend sur Railway, Scheduled Functions sur Netlify
+# Mise à jour: 28 Décembre 2025
+# ============================================
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+  functions = "../netlify/functions"
+
+# Configuration pour Next.js Runtime
+[build.environment]
+  NODE_VERSION = "20"
+  SASS_BINARY_SITE = "https://github.com/sass/dart-sass/releases/download"
+  SASS_FORCE_REBUILD = "true"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NPM_FLAGS = "--prefer-offline --no-audit"
+
+# Plugin Next.js pour Netlify
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Plugin pour installer automatiquement les dépendances des fonctions
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
+# ============================================
+# FONCTIONS SERVERLESS (Scheduled uniquement)
+# Les fonctions API ont été migrées vers Railway
+# Fonctions archivées dans: netlify/functions/_archived/
+# ============================================
+[functions]
+  directory = "../netlify/functions"
+  external_node_modules = ["@supabase/supabase-js", "axios", "rss-parser", "node-fetch", "dotenv"]
+
+# ============================================
+# SCHEDULED FUNCTIONS (9 fonctions actives)
+# ============================================
+
+# RSS sync - Toutes les 15 minutes
+[functions."scheduled-rss-sync"]
+  schedule = "*/15 * * * *"
+
+# Processeur IA - Toutes les 3 minutes
+[functions."scheduled-ai-processor"]
+  schedule = "*/3 * * * *"
+
+# Messages ticker - Toutes les 3 heures
+[functions."process-ticker-news"]
+  schedule = "0 */3 * * *"
+
+# Alertes - Toutes les 5 minutes
+[functions."scheduled-alert-processor"]
+  schedule = "*/5 * * * *"
+
+# Sondage quotidien - 18h UTC (19h Gabon)
+[functions."generate-daily-poll"]
+  schedule = "0 18 * * *"
+
+# Clôture sondages - 18h55 UTC
+[functions."scheduled-poll-closer"]
+  schedule = "55 18 * * *"
+
+# Publication sondages - 19h UTC
+[functions."scheduled-poll-publisher"]
+  schedule = "0 19 * * *"
+
+# Audio quotidien - 6h UTC (7h Gabon)
+[functions."scheduled-audio-daily"]
+  schedule = "0 6 * * *"
+
+# Nettoyage audio - Toutes les heures
+[functions."scheduled-audio-cleanup"]
+  schedule = "0 * * * *"
+
+# Headers de sécurité
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache des assets statiques
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

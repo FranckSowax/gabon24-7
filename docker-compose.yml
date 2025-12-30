@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL (Supabase local)
+  postgres:
+    image: postgres:15
+    container_name: gabon-news-postgres
+    environment:
+      POSTGRES_DB: gabon_news
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - gabon-news-network
+
+  # Redis pour le cache et les queues
+  redis:
+    image: redis:7-alpine
+    container_name: gabon-news-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gabon-news-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gabon-news-backend
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - SUPABASE_URL=http://postgres:5432
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - gabon-news-network
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gabon-news-frontend
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - gabon-news-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  gabon-news-network:
+    driver: bridge

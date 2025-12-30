@@ -1,0 +1,40 @@
+# Railway Configuration
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+  builder = "NIXPACKS"
+  buildCommand = "cd backend && npm install"
+  
+[deploy]
+  startCommand = "cd backend && node server.js"
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 10
+
+# ⏰ CRON JOBS
+# Timezone: Africa/Libreville (WAT = UTC+1)
+
+# Extraction Journaux TV (toutes les 6h)
+[[crons]]
+  name = "extract-youtube-journals"
+  schedule = "0 */6 * * *"
+  command = "cd backend && node scripts/extract-youtube-journals.js"
+  timezone = "Africa/Libreville"
+
+# Génération Résumés Audio Automatiques
+[[crons]]
+  name = "morning-summaries"
+  schedule = "0 7 * * *"
+  command = "cd backend && node scripts/generate-morning-summaries.js"
+  timezone = "Africa/Libreville"
+
+[[crons]]
+  name = "afternoon-summaries"
+  schedule = "0 13 * * *"
+  command = "cd backend && node scripts/generate-afternoon-summaries.js"
+  timezone = "Africa/Libreville"
+
+[[crons]]
+  name = "evening-summaries"
+  schedule = "0 20 * * *"
+  command = "cd backend && node scripts/generate-evening-summaries.js"
+  timezone = "Africa/Libreville"

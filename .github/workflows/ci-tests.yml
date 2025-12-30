@@ -1,0 +1,178 @@
+name: 🧪 Tests & Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  # Tests Backend
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: 🧪 Run tests
+        working-directory: ./backend
+        run: npm test
+        env:
+          NODE_ENV: test
+      
+      - name: 📊 Upload coverage
+        if: matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./backend/coverage
+          flags: backend
+          fail_ci_if_error: false
+
+  # Tests Frontend
+  frontend-tests:
+    name: Frontend Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: 📦 Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: 🔍 Lint check
+        working-directory: ./frontend
+        run: npm run lint
+      
+      - name: 🏗️ Build check
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  # Lint Backend
+  backend-lint:
+    name: Backend Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: 🔍 Run ESLint
+        working-directory: ./backend
+        run: npm run lint || true
+        continue-on-error: true
+
+  # Security Audit
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: 🔒 Backend Security Audit
+        working-directory: ./backend
+        run: npm audit --audit-level=moderate || true
+        continue-on-error: true
+      
+      - name: 🔒 Frontend Security Audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate || true
+        continue-on-error: true
+
+  # Dependency Check
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔍 Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  # Summary
+  tests-summary:
+    name: Tests Summary
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, backend-lint, security-audit]
+    if: always()
+    
+    steps:
+      - name: 📊 Check results
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 RÉSUMÉ DES TESTS CI/CD"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "Backend Tests: ${{ needs.backend-tests.result }}"
+          echo "Frontend Tests: ${{ needs.frontend-tests.result }}"
+          echo "Backend Lint: ${{ needs.backend-lint.result }}"
+          echo "Security Audit: ${{ needs.security-audit.result }}"
+          echo ""
+          
+          if [ "${{ needs.backend-tests.result }}" == "failure" ] || [ "${{ needs.frontend-tests.result }}" == "failure" ]; then
+            echo "❌ ÉCHEC: Des tests ont échoué"
+            exit 1
+          else
+            echo "✅ SUCCÈS: Tous les tests ont réussi"
+          fi

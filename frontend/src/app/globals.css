@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Updated: 2025-09-19 22:33:26 - Force rebuild to deploy MCP-enhanced homepage articles fix */
+/* MCP Enhanced Image System v1.1 - Fixed hybrid RSS + Supabase integration */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-primary {
+  background-color: #009639;
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #007a2e;
+}
+
+.gradient-gabon {
+  background: linear-gradient(135deg, #009639 0%, #FCD116 50%, #3A75C4 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, #009639, #FCD116, #3A75C4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.animate-counter {
+  animation: counter 2s ease-out forwards;
+}
+
+@keyframes counter {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Mobile Responsive Utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Mobile container constraints */
+@media (max-width: 768px) {
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+    max-width: 100vw !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  /* Prevent grid overflow */
+  .grid {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* Responsive images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Flexible containers */
+  .flex {
+    flex-wrap: wrap;
+  }
+  
+  /* Prevent text overflow */
+  .truncate, .line-clamp-1, .line-clamp-2, .line-clamp-3 {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Ultra-responsive mobile optimizations */
+@media (max-width: 640px) {
+  /* Ensure minimum touch targets */
+  button, .btn, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize text sizes for mobile */
+  .text-xs { font-size: 0.75rem; }
+  .text-sm { font-size: 0.875rem; }
+  .text-base { font-size: 1rem; }
+  
+  /* Reduce padding on small screens */
+  .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .py-4 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  
+  /* Ensure proper spacing */
+  .space-x-2 > * + * { margin-left: 0.5rem; }
+  .space-x-4 > * + * { margin-left: 0.75rem; }
+  
+  /* Optimize sticky elements */
+  .sticky { position: -webkit-sticky; position: sticky; }
+  
+  /* Mobile-specific constraints */
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Prevent horizontal scroll */
+  .overflow-x-auto {
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+/* Extra small devices optimization */
+@media (max-width: 375px) {
+  .px-2 { padding-left: 0.25rem; padding-right: 0.25rem; }
+  .text-xs { font-size: 0.7rem; }
+  
+  /* Compact button spacing */
+  .space-x-1 > * + * { margin-left: 0.25rem; }
+  
+  /* Ultra-compact containers */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, .btn, [role="button"] {
+  transition: all 0.2s ease-in-out;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Improve touch feedback */
+button:active, .btn:active, [role="button"]:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
+/* Progress bar shimmer animation */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Pulse animation for in-progress items */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

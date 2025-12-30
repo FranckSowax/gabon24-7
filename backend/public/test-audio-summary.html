@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Génération Résumé Audio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+    
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border-left: 4px solid #1976d2;
+    }
+    
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+      border-left: 4px solid #388e3c;
+    }
+    
+    .status.error {
+      background: #ffebee;
+      color: #d32f2f;
+      border-left: 4px solid #d32f2f;
+    }
+    
+    .result {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    
+    .result h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+    
+    .summary-text {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #e0e0e0;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      color: #333;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .meta-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .meta-item {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .meta-label {
+      font-size: 12px;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+    
+    .meta-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔊 Test Génération Résumé Audio</h1>
+    <p class="subtitle">Générez et testez les résumés audio quotidiens</p>
+    
+    <div class="controls">
+      <button class="btn btn-primary" onclick="generateSummary('fr')" id="btnFr">
+        🇫🇷 Générer Français
+      </button>
+      <button class="btn btn-primary" onclick="generateSummary('en')" id="btnEn">
+        🇺🇸 Générer English
+      </button>
+      <button class="btn btn-primary" onclick="generateSummary('zh')" id="btnZh">
+        🇨🇳 Générer 中文
+      </button>
+      <button class="btn btn-secondary" onclick="fetchLatest()" id="btnRefresh">
+        🔄 Actualiser
+      </button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin;
+    
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+    
+    function disableButtons(disabled) {
+      document.querySelectorAll('.btn').forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+    
+    async function generateSummary(language) {
+      showStatus(`<div class="loading"></div> Génération du résumé ${language.toUpperCase()} en cours...`, 'info');
+      disableButtons(true);
+      
+      try {
+        const response = await fetch(`${API_URL}/api/audio/generate-test-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showStatus(`✅ ${data.message} - Attente de 15 secondes...`, 'success');
+          
+          // Attendre 15 secondes puis récupérer
+          await new Promise(resolve => setTimeout(resolve, 15000));
+          await fetchLatest(language);
+        } else {
+          showStatus(`❌ Erreur: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        showStatus(`❌ Erreur: ${error.message}`, 'error');
+      } finally {
+        disableButtons(false);
+      }
+    }
+    
+    async function fetchLatest(language = 'fr') {
+      showStatus('🔍 Récupération du dernier résumé...', 'info');
+      
+      try {
+        const response = await fetch(`${API_URL}/api/audio/latest-public?language=${language}`);
+        const data = await response.json();
+        
+        if (data.success && data.summary) {
+          const summary = data.summary;
+          
+          showStatus(`✅ Résumé récupéré - ${summary.status}`, 'success');
+          
+          const resultDiv = document.getElementById('result');
+          resultDiv.innerHTML = `
+            <div class="result">
+              <h3>📊 Informations du résumé</h3>
+              <div class="meta-info">
+                <div class="meta-item">
+                  <div class="meta-label">Langue</div>
+                  <div class="meta-value">${summary.language || 'N/A'}</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-label">Articles</div>
+                  <div class="meta-value">${summary.articles_count || 0}</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-label">Status</div>
+                  <div class="meta-value">${summary.status || 'N/A'}</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-label">Créé le</div>
+                  <div class="meta-value">${new Date(summary.created_at).toLocaleString('fr-FR')}</div>
+                </div>
+              </div>
+              
+              ${summary.text_summary ? `
+                <h3>📝 Résumé généré (${summary.text_summary.length} caractères)</h3>
+                <div class="summary-text">${summary.text_summary}</div>
+              ` : '<p style="color: #999;">⚠️  Aucun résumé texte disponible</p>'}
+              
+              ${summary.audio_url ? `
+                <div style="margin-top: 20px;">
+                  <h3>🔊 Audio</h3>
+                  <audio controls style="width: 100%; margin-top: 10px;">
+                    <source src="${summary.audio_url}" type="audio/mpeg">
+                  </audio>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        } else {
+          showStatus('⚠️  Aucun résumé trouvé pour cette langue', 'error');
+          document.getElementById('result').innerHTML = '';
+        }
+      } catch (error) {
+        showStatus(`❌ Erreur: ${error.message}`, 'error');
+      }
+    }
+    
+    // Charger automatiquement au démarrage
+    fetchLatest();
+  </script>
+</body>
+</html>

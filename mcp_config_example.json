@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-deepwiki"]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-netlify"]
+    },
+    "perplexity-ask": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-perplexity-ask"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "supabase-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server"]
+    },
+    "replicate": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote@latest", "https://mcp.replicate.com/sse"]
+    }
+  }
+}

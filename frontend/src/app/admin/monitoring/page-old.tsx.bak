@@ -1,0 +1,352 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { 
+  Activity, 
+  Server, 
+  Database, 
+  Globe, 
+  Clock, 
+  AlertCircle, 
+  CheckCircle, 
+  XCircle,
+  Cpu,
+  HardDrive,
+  Zap,
+  RefreshCw,
+  Shield,
+  Bot,
+  Users,
+  DollarSign,
+  BarChart2,
+  Terminal,
+  TrendingUp,
+  AlertTriangle
+} from 'lucide-react'
+
+// Types
+interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'error'
+  timestamp: number
+  issues: Array<{
+    severity: string
+    message: string
+  }>
+  metrics: {
+    uptime: number
+    requestsTotal: number
+    errorRate: string
+    avgResponseTime: string
+    memoryUsage: string
+  }
+}
+
+interface PerformanceMetrics {
+  timestamp: number
+  uptime: number
+  requests: {
+    total: number
+    success: number
+    errors: number
+    successRate: string
+    requestsPerMinute: number
+    byStatusCode: Record<string, number>
+    topEndpoints: Array<{
+      endpoint: string
+      count: number
+      avgDuration: number
+      errorRate: string
+    }>
+  }
+  performance: {
+    averageResponseTime: number
+    slowRequestsCount: number
+    recentSlowRequests: any[]
+  }
+  resources: {
+    memory: {
+      used: string
+      total: string
+      percentage: string
+    }
+    process: {
+      pid: number
+      uptime: string
+      nodeVersion: string
+    }
+  }
+  errors: {
+    total: number
+    byType: Record<string, number>
+    recent: any[]
+  }
+  database: {
+    queries: number
+    errors: number
+    slowQueries: any[]
+  }
+}
+
+export default function MonitoringPage() {
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
+  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState(new Date())
+
+  useEffect(() => {
+    loadData()
+    
+    // Rafraîchir toutes les 30 secondes
+    const interval = setInterval(loadData, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      // Récupérer le token admin depuis le localStorage
+      const token = localStorage.getItem('supabase.auth.token')
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      // Charger health status (public)
+      const healthRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/monitoring/health`)
+      if (healthRes.ok) {
+        const healthData = await healthRes.json()
+        setHealthStatus(healthData.data)
+      }
+
+      // Charger métriques complètes (admin)
+      const metricsRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/monitoring/metrics`,
+        { headers }
+      )
+      
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json()
+        setMetrics(metricsData.data)
+      } else if (metricsRes.status === 401) {
+        setError('Authentification requise pour voir les métriques détaillées')
+      }
+
+      setLastRefresh(new Date())
+    } catch (err) {
+      console.error('Erreur monitoring:', err)
+      setError('Impossible de charger les données de monitoring')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'text-green-500 bg-green-50'
+      case 'degraded': return 'text-yellow-500 bg-yellow-50'
+      case 'error': return 'text-red-500 bg-red-50'
+      default: return 'text-gray-500 bg-gray-50'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy': return <CheckCircle className="w-5 h-5 text-green-500" />
+      case 'degraded': return <AlertTriangle className="w-5 h-5 text-yellow-500" />
+      case 'error': return <XCircle className="w-5 h-5 text-red-500" />
+      default: return <Activity className="w-5 h-5 text-gray-500" />
+    }
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Activity className="w-7 h-7 text-orange-500" />
+            Monitoring Système
+          </h1>
+          <p className="text-gray-600 mt-1">
+            État en temps réel des services et de l'infrastructure
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">
+            Dernière màj: {lastRefresh.toLocaleTimeString()}
+          </span>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Vue d'ensemble */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">Statut Global</h3>
+            <Shield className="w-5 h-5 text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-green-600">Opérationnel</p>
+          <p className="text-xs text-gray-500 mt-1">Tous les systèmes critiques sont actifs</p>
+        </div>
+        
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">API Latency</h3>
+            <Zap className="w-5 h-5 text-blue-500" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">125ms</p>
+          <p className="text-xs text-gray-500 mt-1">Moyenne sur les 5 dernières minutes</p>
+        </div>
+        
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">Requêtes IA (24h)</h3>
+            <Bot className="w-5 h-5 text-purple-500" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            {aiStats.reduce((acc, curr) => acc + curr.requests, 0).toLocaleString()}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Coût estimé: ${aiStats.reduce((acc, curr) => acc + curr.cost, 0).toFixed(2)}
+          </p>
+        </div>
+        
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-gray-500 text-sm font-medium">Base de données</h3>
+            <Database className="w-5 h-5 text-orange-500" />
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{dbStats?.size || '-'}</p>
+          <p className="text-xs text-gray-500 mt-1">{dbStats?.activeConnections || 0} connexions actives</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* État des Services */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Server className="w-5 h-5 text-blue-500" />
+              État des Services
+            </h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {systemHealth.map((status, idx) => (
+              <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className={`w-2 h-2 rounded-full ${
+                    status.status === 'operational' ? 'bg-green-500' : 
+                    status.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`} />
+                  <div>
+                    <p className="font-medium text-gray-900">{status.service}</p>
+                    <p className="text-xs text-gray-500">Dernier check: {new Date(status.lastChecked).toLocaleTimeString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{status.latency}ms</p>
+                    <p className="text-xs text-gray-500">Latence</p>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(status.status)}`}>
+                    {status.status === 'operational' ? 'Opérationnel' : 
+                     status.status === 'degraded' ? 'Dégradé' : 'Panne'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Utilisation IA par Modèle */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-purple-500" />
+              Usage IA par Modèle
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
+            {aiStats.map((stat, idx) => (
+              <div key={idx} className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">{stat.model}</span>
+                  <span className="text-gray-500">{stat.requests} req.</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div 
+                    className="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${(stat.requests / Math.max(...aiStats.map(s => s.requests))) * 100}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>${stat.cost.toFixed(2)}</span>
+                  <span className={stat.errors > 0 ? 'text-red-500' : 'text-green-500'}>
+                    {stat.errors} erreurs
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Logs Système Récents */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-gray-700" />
+            Logs Système Récents
+          </h3>
+          <button className="text-sm text-blue-600 hover:text-blue-800">Voir tout</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th className="px-6 py-3">Timestamp</th>
+                <th className="px-6 py-3">Niveau</th>
+                <th className="px-6 py-3">Source</th>
+                <th className="px-6 py-3">Message</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {recentLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
+                    {new Date(log.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getLogLevelColor(log.level)}`}>
+                      {log.level.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-medium text-gray-900">
+                    {log.source}
+                  </td>
+                  <td className="px-6 py-4 text-gray-600 max-w-md truncate">
+                    {log.message}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

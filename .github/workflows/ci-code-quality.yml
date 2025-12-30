@@ -1,0 +1,195 @@
+name: 🔍 Code Quality & Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run weekly on Monday at 9am
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  # Code Quality Analysis
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: 📊 Code Statistics
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "📊 STATISTIQUES DU CODE"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "Backend:"
+          find backend -name "*.js" -o -name "*.ts" | wc -l | xargs echo "  Fichiers JS/TS:"
+          find backend -name "*.js" -o -name "*.ts" | xargs wc -l | tail -1 | awk '{print "  Lignes de code: " $1}'
+          echo ""
+          echo "Frontend:"
+          find frontend/src -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" | wc -l | xargs echo "  Fichiers:"
+          find frontend/src -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" | xargs wc -l | tail -1 | awk '{print "  Lignes de code: " $1}'
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"
+
+  # Security Scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔒 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+      
+      - name: 📤 Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # Dependency Updates Check
+  dependency-updates:
+    name: Check for Updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: 📦 Check Backend Updates
+        working-directory: ./backend
+        run: |
+          echo "🔍 Vérification des mises à jour backend..."
+          npm outdated || true
+      
+      - name: 📦 Check Frontend Updates
+        working-directory: ./frontend
+        run: |
+          echo "🔍 Vérification des mises à jour frontend..."
+          npm outdated || true
+
+  # Performance Budget
+  performance-check:
+    name: Performance Budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: 📦 Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: 🏗️ Build for analysis
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      
+      - name: 📊 Bundle Size Analysis
+        working-directory: ./frontend
+        run: |
+          echo "📊 Analyse de la taille du bundle..."
+          du -sh .next/ || true
+          find .next/static -name "*.js" -exec du -h {} \; | sort -rh | head -10 || true
+
+  # Documentation Check
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 📚 Check Documentation
+        run: |
+          echo "📚 Vérification de la documentation..."
+          
+          # Check for README files
+          if [ -f "README.md" ]; then
+            echo "✅ README.md présent"
+          else
+            echo "⚠️ README.md manquant"
+          fi
+          
+          # Check for backend docs
+          if [ -d "backend/docs" ]; then
+            echo "✅ Documentation backend présente"
+            ls -la backend/docs/
+          else
+            echo "⚠️ Dossier backend/docs manquant"
+          fi
+          
+          # Check for API documentation
+          if [ -f "backend/docs/MONITORING_APM.md" ]; then
+            echo "✅ Documentation APM présente"
+          fi
+          
+          if [ -f "backend/docs/RATE_LIMITING.md" ]; then
+            echo "✅ Documentation Rate Limiting présente"
+          fi
+
+  # Quality Summary
+  quality-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, security-scan, dependency-updates, performance-check, documentation-check]
+    if: always()
+    
+    steps:
+      - name: 📊 Summary
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "🔍 RÉSUMÉ QUALITÉ DU CODE"
+          echo "═══════════════════════════════════════════════════════════"
+          echo ""
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Security Scan: ${{ needs.security-scan.result }}"
+          echo "Dependency Updates: ${{ needs.dependency-updates.result }}"
+          echo "Performance Check: ${{ needs.performance-check.result }}"
+          echo "Documentation: ${{ needs.documentation-check.result }}"
+          echo ""
+          echo "═══════════════════════════════════════════════════════════"

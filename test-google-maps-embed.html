@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Maps Embed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; border: 1px solid #ccc; padding: 15px; }
+        iframe { width: 100%; height: 300px; border: 1px solid #ddd; }
+        h3 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Test URLs Google Maps Embed</h1>
+    
+    <div class="test-section">
+        <h3>1. URL Embed API Directions (actuelle)</h3>
+        <iframe 
+            src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dOWTgHz-TK7VgM&origin=0.4986986,9.3923625&destination=0.4410335,9.417713&language=fr&region=GA"
+            allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+
+    <div class="test-section">
+        <h3>2. URL Embed Standard pb (actuelle)</h3>
+        <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d31916.469135780246!2d9.375362!3d0.4698661!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e0!4m5!1s0x107f2a2a2a2a2a2a%3A0x1234567890abcdef!2s0.4986986%2C9.3923625!3m2!1d0.4986986!2d9.3923625!4m5!1s0x107f2b2b2b2b2b2b%3A0xfedcba0987654321!2s0.4410335%2C9.417713!3m2!1d0.4410335!2d9.417713!5e0!3m2!1sfr!2sga!4v1694598000000!5m2!1sfr!2sga"
+            allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Simple Directions</h3>
+        <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d31916.46913578!2d9.375362!3d0.469866!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e0!4m5!1s!2s0.4986986%2C9.3923625!3m2!1d0.4986986!2d9.3923625!4m5!1s!2s0.4410335%2C9.417713!3m2!1d0.4410335!2d9.417713!5e0!3m2!1sfr!2sga!4v1694598123456!5m2!1sfr!2sga"
+            allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+
+    <div class="test-section">
+        <h3>4. URL Actualisée (avec paramètres corrects)</h3>
+        <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d31916.932!2d9.384490500000001!3d0.473803!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e0!4m5!1s0x0%3A0x0!2s0.4986986%2C9.3923625!3m2!1d0.4986986!2d9.3923625!4m5!1s0x0%3A0x0!2s0.4410335%2C9.417713!3m2!1d0.4410335!2d9.417713!5e0!3m2!1sfr!2sga!4v1694598000001!5m2!1sfr!2sga"
+            allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Test Embed Simple (sans pb complexe)</h3>
+        <iframe 
+            src="https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dOWTgHz-TK7VgM&origin=0.4986986,9.3923625&destination=0.4410335,9.417713&mode=driving&language=fr&region=GA"
+            allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+
+    <div class="test-section">
+        <h3>Lien original de l'utilisateur</h3>
+        <p><strong>URL courte:</strong> <a href="https://maps.app.goo.gl/B5iQcdHgXNZ9ghjn8" target="_blank">https://maps.app.goo.gl/B5iQcdHgXNZ9ghjn8</a></p>
+        <p><em>Cliquez pour voir l'itinéraire réel sur Google Maps</em></p>
+    </div>
+
+</body>
+</html>
