@@ -24,6 +24,116 @@ function parseEventDate(dateString) {
 }
 
 /**
+ * Extrait l'image depuis plusieurs sources possibles dans un item RSS
+ */
+function extractImageFromRssItem(item, description) {
+  // 1. media:content (format standard RSS/Atom)
+  const mediaContent = item['media:content']?.[0];
+  if (mediaContent) {
+    const url = mediaContent.$?.url || mediaContent.url;
+    if (url && isValidImageUrl(url)) {
+      console.log('📷 Image trouvée via media:content');
+      return url;
+    }
+  }
+
+  // 2. media:thumbnail
+  const mediaThumbnail = item['media:thumbnail']?.[0];
+  if (mediaThumbnail) {
+    const url = mediaThumbnail.$?.url || mediaThumbnail.url;
+    if (url && isValidImageUrl(url)) {
+      console.log('📷 Image trouvée via media:thumbnail');
+      return url;
+    }
+  }
+
+  // 3. enclosure (podcasts et certains flux)
+  const enclosure = item.enclosure?.[0];
+  if (enclosure) {
+    const url = enclosure.$?.url || enclosure.url;
+    const type = enclosure.$?.type || enclosure.type || '';
+    if (url && (type.startsWith('image/') || isValidImageUrl(url))) {
+      console.log('📷 Image trouvée via enclosure');
+      return url;
+    }
+  }
+
+  // 4. image (certains flux RSS custom)
+  const image = item.image?.[0];
+  if (image) {
+    const url = typeof image === 'string' ? image : (image.url?.[0] || image.$?.url);
+    if (url && isValidImageUrl(url)) {
+      console.log('📷 Image trouvée via image tag');
+      return url;
+    }
+  }
+
+  // 5. Recherche dans la description HTML
+  if (description) {
+    // Format <img src="...">
+    const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && isValidImageUrl(imgMatch[1])) {
+      console.log('📷 Image trouvée via <img> dans description');
+      return imgMatch[1];
+    }
+
+    // Format background-image: url(...)
+    const bgMatch = description.match(/background-image:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+    if (bgMatch && isValidImageUrl(bgMatch[1])) {
+      console.log('📷 Image trouvée via background-image');
+      return bgMatch[1];
+    }
+
+    // URLs d'images directes dans le texte
+    const urlMatch = description.match(/(https?:\/\/[^\s"'<>]+\.(jpg|jpeg|png|webp|gif))/i);
+    if (urlMatch && isValidImageUrl(urlMatch[1])) {
+      console.log('📷 Image trouvée via URL directe');
+      return urlMatch[1];
+    }
+  }
+
+  // 6. content:encoded (souvent contient du HTML riche)
+  const contentEncoded = item['content:encoded']?.[0];
+  if (contentEncoded && contentEncoded !== description) {
+    const imgMatch = contentEncoded.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && isValidImageUrl(imgMatch[1])) {
+      console.log('📷 Image trouvée via content:encoded');
+      return imgMatch[1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Vérifie si une URL est une image valide
+ */
+function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+
+  // Vérifier que c'est une URL valide
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
+
+  // Exclure les images trop petites (icônes, pixels de tracking)
+  const excludePatterns = [
+    /1x1\./i,
+    /pixel\./i,
+    /tracker/i,
+    /spacer/i,
+    /blank\./i,
+    /favicon/i,
+    /icon/i,
+    /logo.*small/i
+  ];
+
+  for (const pattern of excludePatterns) {
+    if (pattern.test(url)) return false;
+  }
+
+  return true;
+}
+
+/**
  * Extrait les informations d'un événement depuis un item RSS
  */
 function extractEventInfo(item) {
@@ -31,34 +141,30 @@ function extractEventInfo(item) {
   const description = item.description?.[0] || item['content:encoded']?.[0] || '';
   const link = item.link?.[0] || item.guid?.[0] || '';
   const pubDate = item.pubDate?.[0] || item['dc:date']?.[0] || '';
-  
+
   // Extraction d'informations supplémentaires depuis la description
   let location = '';
   let organizer = '';
-  let imageUrl = '';
   let category = 'Événement';
-  
-  // Recherche d'une image dans la description
-  const imgMatch = description.match(/<img[^>]+src="([^"]+)"/i);
-  if (imgMatch) {
-    imageUrl = imgMatch[1];
-  }
-  
+
+  // Extraction d'image améliorée (multi-sources)
+  const imageUrl = extractImageFromRssItem(item, description);
+
   // Recherche de lieu dans la description
-  const locationMatch = description.match(/lieu\s*:?\s*([^\n<]+)/i) || 
+  const locationMatch = description.match(/lieu\s*:?\s*([^\n<]+)/i) ||
                        description.match(/adresse\s*:?\s*([^\n<]+)/i) ||
                        description.match(/où\s*:?\s*([^\n<]+)/i);
   if (locationMatch) {
     location = locationMatch[1].trim();
   }
-  
+
   // Recherche d'organisateur
   const organizerMatch = description.match(/organisé?\s+par\s*:?\s*([^\n<]+)/i) ||
                         description.match(/organisateur\s*:?\s*([^\n<]+)/i);
   if (organizerMatch) {
     organizer = organizerMatch[1].trim();
   }
-  
+
   // Détection de catégorie basée sur le titre/description
   const content = (title + ' ' + description).toLowerCase();
   if (content.includes('concert') || content.includes('musique')) {
@@ -72,7 +178,7 @@ function extractEventInfo(item) {
   } else if (content.includes('formation') || content.includes('atelier')) {
     category = 'Formation';
   }
-  
+
   return {
     title: title.substring(0, 255), // Limiter la longueur
     description: description.replace(/<[^>]*>/g, '').substring(0, 1000), // Nettoyer HTML et limiter
