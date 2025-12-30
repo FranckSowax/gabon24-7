@@ -121,37 +121,61 @@ router.get('/youtube', async (req, res) => {
     
     // Trier par date de publication (plus récent en premier)
     videos.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-    
+
     console.log(`📺 Trouvé ${videos.length} vidéos dans le flux`);
-    
-    // Sélectionner le journal approprié selon l'heure (targetJournal déjà défini plus haut)
+
+    // Date du jour actuel (Gabon = UTC+1)
+    const now = new Date();
+    const todayGabon = new Date(now.getTime() + (1 * 60 * 60 * 1000)); // UTC+1
+    const todayStr = todayGabon.toISOString().split('T')[0]; // "2025-12-30"
+
+    // Sélectionner le journal approprié selon l'heure
     let selectedVideo = null;
-    
-    // Chercher le journal correspondant à l'heure cible (13h ou 20h)
+
+    /**
+     * 📺 NOUVELLE LOGIQUE DE SÉLECTION:
+     *
+     * 1. Si on cherche le journal de 20h → chercher le 20h du JOUR ACTUEL
+     * 2. Si pas de 20h aujourd'hui → prendre le journal LE PLUS RÉCENT (peut être 13h d'aujourd'hui)
+     * 3. Si on cherche le journal de 13h → chercher le 13h du JOUR ACTUEL
+     * 4. Sinon → prendre le plus récent disponible
+     *
+     * Le principe: toujours afficher le contenu le plus frais possible
+     */
+
+    // Chercher le journal correspondant à l'heure cible POUR AUJOURD'HUI
     for (const video of videos) {
       const title = video.title.toLowerCase();
       const pubDate = new Date(video.publishedAt);
-      const pubHour = pubDate.getHours();
-      
+      const pubDateStr = pubDate.toISOString().split('T')[0];
+
+      // Vérifier si c'est un journal d'aujourd'hui
+      const isToday = pubDateStr === todayStr;
+
       // Vérifier si le titre contient l'heure cible
       const is13h = title.includes('13h') || title.includes('13 h') || title.includes('midi');
       const is20h = title.includes('20h') || title.includes('20 h') || title.includes('soir') || title.includes('19h') || title.includes('19 h');
-      
-      if (targetJournal.targetHour === 13 && is13h) {
-        selectedVideo = video;
-        console.log(`📺 Journal de 13h trouvé: ${video.title}`);
-        break;
-      } else if (targetJournal.targetHour === 20 && is20h) {
-        selectedVideo = video;
-        console.log(`📺 Journal de 20h trouvé: ${video.title}`);
-        break;
+      const is23h = title.includes('23h') || title.includes('23 h');
+
+      // Priorité: Journal de l'heure cible pour aujourd'hui
+      if (isToday) {
+        if (targetJournal.targetHour === 13 && is13h) {
+          selectedVideo = video;
+          console.log(`📺 Journal de 13h d'aujourd'hui trouvé: ${video.title}`);
+          break;
+        } else if (targetJournal.targetHour === 20 && (is20h || is23h)) {
+          selectedVideo = video;
+          console.log(`📺 Journal de 20h/23h d'aujourd'hui trouvé: ${video.title}`);
+          break;
+        }
       }
     }
-    
-    // Si aucun journal spécifique trouvé, prendre le plus récent
+
+    // Si pas de journal de l'heure cible aujourd'hui → PRENDRE LE PLUS RÉCENT
+    // C'est mieux d'avoir un journal de 13h du 30/12 qu'un journal de 20h du 27/12
     if (!selectedVideo && videos.length > 0) {
       selectedVideo = videos[0];
-      console.log(`📺 Aucun journal ${targetJournal.label} trouvé, utilisation du plus récent: ${selectedVideo.title}`);
+      console.log(`📺 Pas de ${targetJournal.label} aujourd'hui → Journal le plus récent: ${selectedVideo.title}`);
     }
     
     // Retourner les 3 derniers avec le journal sélectionné en premier
