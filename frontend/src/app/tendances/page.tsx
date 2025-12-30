@@ -17,14 +17,20 @@ interface Article {
   viewCount: string;
   view_count: number;
   share_count?: number;
+  shareCount?: string;
   url: string;
   imageUrl: string;
   author: string;
   trending: boolean;
+  rank?: number;
 }
 
 interface TrendingStats {
   daily: {
+    mostViewed: Article[];
+    mostShared: Article[];
+  };
+  weekly: {
     mostViewed: Article[];
     mostShared: Article[];
   };
@@ -34,10 +40,12 @@ interface TrendingStats {
   };
 }
 
+type PeriodType = 'daily' | 'weekly' | 'monthly';
+
 export default function TendancesPage() {
   const [stats, setStats] = useState<TrendingStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>('daily');
+  const [activeTab, setActiveTab] = useState<PeriodType>('daily');
   const [activeMetric, setActiveMetric] = useState<'views' | 'shares'>('views');
 
   useEffect(() => {
@@ -47,31 +55,30 @@ export default function TendancesPage() {
   const fetchTrendingStats = async () => {
     try {
       setLoading(true);
-      console.log('📊 Récupération des statistiques de tendances...');
+      console.log('📊 Recuperation des statistiques de tendances...');
 
-      const [dailyViews, monthlyViews, dailyShares, monthlyShares] = await Promise.all([
-        axios.get(`${API_URL}/api/stats/trending/daily/views`, {
-          timeout: 10000,
-          headers: { 'Content-Type': 'application/json' }
-        }),
-        axios.get(`${API_URL}/api/stats/trending/monthly/views`, {
-          timeout: 10000,
-          headers: { 'Content-Type': 'application/json' }
-        }),
-        axios.get(`${API_URL}/api/stats/trending/daily/shares`, {
-          timeout: 10000,
-          headers: { 'Content-Type': 'application/json' }
-        }),
-        axios.get(`${API_URL}/api/stats/trending/monthly/shares`, {
-          timeout: 10000,
-          headers: { 'Content-Type': 'application/json' }
-        })
+      // Charger toutes les periodes en parallele
+      const [
+        dailyViews, dailyShares,
+        weeklyViews, weeklyShares,
+        monthlyViews, monthlyShares
+      ] = await Promise.all([
+        axios.get(`${API_URL}/api/stats/trending/daily/views`, { timeout: 15000 }),
+        axios.get(`${API_URL}/api/stats/trending/daily/shares`, { timeout: 15000 }),
+        axios.get(`${API_URL}/api/stats/trending/weekly/views`, { timeout: 15000 }),
+        axios.get(`${API_URL}/api/stats/trending/weekly/shares`, { timeout: 15000 }),
+        axios.get(`${API_URL}/api/stats/trending/monthly/views`, { timeout: 15000 }),
+        axios.get(`${API_URL}/api/stats/trending/monthly/shares`, { timeout: 15000 })
       ]);
 
       const trendingStats: TrendingStats = {
         daily: {
           mostViewed: dailyViews.data.articles || [],
           mostShared: dailyShares.data.articles || []
+        },
+        weekly: {
+          mostViewed: weeklyViews.data.articles || [],
+          mostShared: weeklyShares.data.articles || []
         },
         monthly: {
           mostViewed: monthlyViews.data.articles || [],
@@ -80,12 +87,13 @@ export default function TendancesPage() {
       };
 
       setStats(trendingStats);
-      console.log('✅ Statistiques de tendances récupérées');
+      console.log('✅ Statistiques de tendances recuperees');
     } catch (error) {
-      console.error('❌ Erreur récupération tendances:', error);
-      // Fallback avec données vides
+      console.error('❌ Erreur recuperation tendances:', error);
+      // Fallback avec donnees vides
       setStats({
         daily: { mostViewed: [], mostShared: [] },
+        weekly: { mostViewed: [], mostShared: [] },
         monthly: { mostViewed: [], mostShared: [] }
       });
     } finally {
@@ -95,12 +103,9 @@ export default function TendancesPage() {
 
   const getCurrentArticles = (): Article[] => {
     if (!stats) return [];
-    
-    if (activeTab === 'daily') {
-      return activeMetric === 'views' ? stats.daily.mostViewed : stats.daily.mostShared;
-    } else {
-      return activeMetric === 'views' ? stats.monthly.mostViewed : stats.monthly.mostShared;
-    }
+
+    const periodData = stats[activeTab];
+    return activeMetric === 'views' ? periodData.mostViewed : periodData.mostShared;
   };
 
   const handleArticleClick = (article: Article) => {
@@ -155,31 +160,41 @@ export default function TendancesPage() {
         {/* Filtres */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex flex-col sm:flex-row gap-4">
-            {/* Période */}
+            {/* Periode */}
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Période
+                Periode
               </label>
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setActiveTab('daily')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                     activeTab === 'daily'
                       ? 'bg-white text-orange-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  📅 Aujourd'hui
+                  Aujourd&apos;hui
+                </button>
+                <button
+                  onClick={() => setActiveTab('weekly')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                    activeTab === 'weekly'
+                      ? 'bg-white text-orange-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Cette semaine
                 </button>
                 <button
                   onClick={() => setActiveTab('monthly')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                     activeTab === 'monthly'
                       ? 'bg-white text-orange-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  📊 Ce mois
+                  Ce mois
                 </button>
               </div>
             </div>
@@ -228,8 +243,8 @@ export default function TendancesPage() {
                 {activeMetric === 'views' ? '👁️' : '📤'}
               </div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {activeTab === 'daily' ? 'Aujourd\'hui' : 'Ce mois'} - 
-                {activeMetric === 'views' ? ' Plus vus' : ' Plus partagés'}
+                Top 10 - {activeTab === 'daily' ? "Aujourd'hui" : activeTab === 'weekly' ? 'Cette semaine' : 'Ce mois'} -
+                {activeMetric === 'views' ? ' Plus lus' : ' Plus partages'}
               </h2>
               <div className="text-sm text-gray-500">
                 ({getCurrentArticles().length} articles)

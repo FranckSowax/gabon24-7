@@ -2055,16 +2055,17 @@ app.delete('/api/articles/test-feed', async (req, res) => {
 app.get('/api/stats/trending/daily/views', async (req, res) => {
   try {
     console.log('📊 Récupération des articles les plus vus du jour...');
-    
+
     // Récupérer tous les articles récents (dernières 24h) pour les tendances
     const now = new Date();
     const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000)); // 24h en arrière
-    
+
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .eq('is_published', true)
       .gte('published_at', yesterday.toISOString())
-      .order('view_count', { ascending: false })
+      .order('view_count', { ascending: false, nullsFirst: false })
       .limit(10);
 
     if (error) {
@@ -2072,29 +2073,26 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
       throw error;
     }
 
-    const transformedArticles = articles.map((article) => ({
+    const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
-      ai_summary: article.ai_summary,
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || null,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
-      created_at: article.created_at,
-      read_time_minutes: article.read_time_minutes || 1,
       view_count: article.view_count || 0,
-      is_published: article.is_published,
-      sentiment: article.sentiment || 'neutre',
+      share_count: article.share_count || 0,
       category: article.category,
-      rss_feeds: article.rss_feeds,
       source: getMediaNameFromUrl(article.url, article.source),
       viewCount: formatViewCount(article.view_count || 0),
-      publishedAt: formatTimeAgo(article.published_at)
+      publishedAt: formatTimeAgo(article.published_at),
+      trending: true
     }));
 
-    console.log(`✅ ${transformedArticles.length} articles tendances vues récupérés`);
-    
+    console.log(`✅ ${transformedArticles.length} articles tendances vues (daily) récupérés`);
+
     res.json({
       success: true,
       articles: transformedArticles,
@@ -2113,20 +2111,79 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
   }
 });
 
+// Endpoint pour les articles les plus vus de la semaine
+app.get('/api/stats/trending/weekly/views', async (req, res) => {
+  try {
+    console.log('📊 Récupération des articles les plus vus de la semaine...');
+
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // 7 jours en arrière
+
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .eq('is_published', true)
+      .gte('published_at', lastWeek.toISOString())
+      .order('view_count', { ascending: false, nullsFirst: false })
+      .limit(10);
+
+    if (error) {
+      console.error('❌ Erreur récupération articles tendances vues semaine:', error);
+      throw error;
+    }
+
+    const transformedArticles = (articles || []).map((article) => ({
+      id: article.id,
+      title: article.title,
+      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      url: article.url,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      author: article.author || 'Rédaction',
+      published_at: article.published_at,
+      view_count: article.view_count || 0,
+      share_count: article.share_count || 0,
+      category: article.category,
+      source: getMediaNameFromUrl(article.url, article.source),
+      viewCount: formatViewCount(article.view_count || 0),
+      publishedAt: formatTimeAgo(article.published_at),
+      trending: true
+    }));
+
+    console.log(`✅ ${transformedArticles.length} articles tendances vues (weekly) récupérés`);
+
+    res.json({
+      success: true,
+      articles: transformedArticles,
+      period: 'weekly',
+      metric: 'views',
+      count: transformedArticles.length
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur endpoint tendances vues semaine:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des tendances',
+      articles: []
+    });
+  }
+});
+
 // Endpoint pour les articles les plus vus du mois
 app.get('/api/stats/trending/monthly/views', async (req, res) => {
   try {
     console.log('📊 Récupération des articles les plus vus du mois...');
-    
-    // Récupérer tous les articles du mois en cours
+
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const { data: articles, error } = await supabaseService.supabase
+
+    const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, view_count')
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .eq('is_published', true)
       .gte('published_at', startOfMonth.toISOString())
-      .order('view_count', { ascending: false })
+      .order('view_count', { ascending: false, nullsFirst: false })
       .limit(10);
 
     if (error) {
@@ -2134,29 +2191,26 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
       throw error;
     }
 
-    const transformedArticles = (articles || []).map(article => ({
+    const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
-      ai_summary: article.ai_summary,
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || null,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
-      created_at: article.created_at,
-      read_time_minutes: article.read_time_minutes || 1,
       view_count: article.view_count || 0,
-      is_published: article.is_published,
-      sentiment: article.sentiment || 'neutre',
+      share_count: article.share_count || 0,
       category: article.category,
-      rss_feeds: article.rss_feeds,
       source: getMediaNameFromUrl(article.url, article.source),
       viewCount: formatViewCount(article.view_count || 0),
-      publishedAt: formatTimeAgo(article.published_at)
+      publishedAt: formatTimeAgo(article.published_at),
+      trending: true
     }));
 
-    console.log(`✅ ${transformedArticles.length} articles tendances vues mensuelles récupérés`);
-    
+    console.log(`✅ ${transformedArticles.length} articles tendances vues (monthly) récupérés`);
+
     res.json({
       success: true,
       articles: transformedArticles,
@@ -2179,20 +2233,16 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
 app.get('/api/stats/trending/daily/shares', async (req, res) => {
   try {
     console.log('📊 Récupération des articles les plus partagés du jour...');
-    
-    // Calculer la date d'hier 18h en heure de Libreville
+
     const now = new Date();
-    const librevilleTime = new Date(now.toLocaleString("en-US", {timeZone: "Africa/Libreville"}));
-    const yesterday = new Date(librevilleTime);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(18, 0, 0, 0);
-    const yesterdayUTC = new Date(yesterday.getTime() - (60 * 60 * 1000)); // GMT+1 = UTC+1
-    
+    const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
-      .gte('published_at', yesterdayUTC.toISOString())
-      .order('view_count', { ascending: false })
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .eq('is_published', true)
+      .gte('published_at', yesterday.toISOString())
+      .order('share_count', { ascending: false, nullsFirst: false })
       .limit(10);
 
     if (error) {
@@ -2200,26 +2250,27 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
       throw error;
     }
 
-    // Simuler les partages comme un pourcentage des vues (15%)
-    const transformedArticles = (articles || []).map(article => ({
+    const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
-      source: article.source,
-      publishedAt: formatTimeAgo(article.published_at),
-      published_at: article.published_at,
-      category: article.category || 'actualité',
-      viewCount: formatViewCount(article.view_count || 0),
-      view_count: article.view_count || 0,
-      share_count: Math.floor((article.view_count || 0) * 0.15),
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || null,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
       author: article.author || 'Rédaction',
+      published_at: article.published_at,
+      publishedAt: formatTimeAgo(article.published_at),
+      view_count: article.view_count || 0,
+      viewCount: formatViewCount(article.view_count || 0),
+      share_count: article.share_count || 0,
+      shareCount: formatViewCount(article.share_count || 0),
+      category: article.category,
+      source: getMediaNameFromUrl(article.url, article.source),
       trending: true
-    })).sort((a, b) => b.share_count - a.share_count);
+    }));
 
-    console.log(`✅ ${transformedArticles.length} articles tendances partages quotidiens récupérés`);
-    
+    console.log(`✅ ${transformedArticles.length} articles tendances partages (daily) récupérés`);
+
     res.json({
       success: true,
       articles: transformedArticles,
@@ -2238,22 +2289,80 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
   }
 });
 
+// Endpoint pour les articles les plus partagés de la semaine
+app.get('/api/stats/trending/weekly/shares', async (req, res) => {
+  try {
+    console.log('📊 Récupération des articles les plus partagés de la semaine...');
+
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .eq('is_published', true)
+      .gte('published_at', lastWeek.toISOString())
+      .order('share_count', { ascending: false, nullsFirst: false })
+      .limit(10);
+
+    if (error) {
+      console.error('❌ Erreur récupération articles tendances partages semaine:', error);
+      throw error;
+    }
+
+    const transformedArticles = (articles || []).map((article) => ({
+      id: article.id,
+      title: article.title,
+      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      url: article.url,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      author: article.author || 'Rédaction',
+      published_at: article.published_at,
+      publishedAt: formatTimeAgo(article.published_at),
+      view_count: article.view_count || 0,
+      viewCount: formatViewCount(article.view_count || 0),
+      share_count: article.share_count || 0,
+      shareCount: formatViewCount(article.share_count || 0),
+      category: article.category,
+      source: getMediaNameFromUrl(article.url, article.source),
+      trending: true
+    }));
+
+    console.log(`✅ ${transformedArticles.length} articles tendances partages (weekly) récupérés`);
+
+    res.json({
+      success: true,
+      articles: transformedArticles,
+      period: 'weekly',
+      metric: 'shares',
+      count: transformedArticles.length
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur endpoint tendances partages semaine:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des tendances',
+      articles: []
+    });
+  }
+});
+
 // Endpoint pour les articles les plus partagés du mois
 app.get('/api/stats/trending/monthly/shares', async (req, res) => {
   try {
     console.log('📊 Récupération des articles les plus partagés du mois...');
-    
-    // Calculer le début du mois en heure de Libreville
+
     const now = new Date();
-    const librevilleTime = new Date(now.toLocaleString("en-US", {timeZone: "Africa/Libreville"}));
-    const startOfMonth = new Date(librevilleTime.getFullYear(), librevilleTime.getMonth(), 1);
-    const startOfMonthUTC = new Date(startOfMonth.getTime() - (60 * 60 * 1000)); // GMT+1 = UTC+1
-    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
-      .gte('published_at', startOfMonthUTC.toISOString())
-      .order('view_count', { ascending: false })
+      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .eq('is_published', true)
+      .gte('published_at', startOfMonth.toISOString())
+      .order('share_count', { ascending: false, nullsFirst: false })
       .limit(10);
 
     if (error) {
@@ -2261,26 +2370,27 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
       throw error;
     }
 
-    // Simuler les partages comme un pourcentage des vues (15%)
-    const transformedArticles = (articles || []).map(article => ({
+    const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
-      source: article.source,
-      publishedAt: formatTimeAgo(article.published_at),
-      published_at: article.published_at,
-      category: article.category || 'actualité',
-      viewCount: formatViewCount(article.view_count || 0),
-      view_count: article.view_count || 0,
-      share_count: Math.floor((article.view_count || 0) * 0.15),
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || null,
+      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
       author: article.author || 'Rédaction',
+      published_at: article.published_at,
+      publishedAt: formatTimeAgo(article.published_at),
+      view_count: article.view_count || 0,
+      viewCount: formatViewCount(article.view_count || 0),
+      share_count: article.share_count || 0,
+      shareCount: formatViewCount(article.share_count || 0),
+      category: article.category,
+      source: getMediaNameFromUrl(article.url, article.source),
       trending: true
-    })).sort((a, b) => b.share_count - a.share_count);
+    }));
 
-    console.log(`✅ ${transformedArticles.length} articles tendances partages mensuels récupérés`);
-    
+    console.log(`✅ ${transformedArticles.length} articles tendances partages (monthly) récupérés`);
+
     res.json({
       success: true,
       articles: transformedArticles,
@@ -2290,7 +2400,7 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erreur récupération dernière mise à jour:', error);
+    console.error('❌ Erreur endpoint tendances partages mensuels:', error);
     res.status(500).json({
       success: false,
       error: 'Erreur serveur'
@@ -3522,6 +3632,15 @@ const monitoringRoutes = require('./routes/monitoring');
 app.use('/api/monitoring', monitoringRoutes);
 
 console.log('📊 Routes monitoring APM chargées');
+
+// Routes Trending (Tendances - articles les plus vus/partagés)
+const trendingRoutes = require('./routes/trending');
+app.use('/api/stats/trending', trendingRoutes);
+// Aussi monter les routes de tracking sur /api
+app.post('/api/articles/:id/view', trendingRoutes);
+app.post('/api/articles/:id/share', trendingRoutes);
+
+console.log('📈 Routes tendances chargées');
 
 // ==================== CRON MATCHING ALERTES TEMPS RÉEL ====================
 // Vérifier les nouveaux articles toutes les 5 minutes et matcher avec les alertes

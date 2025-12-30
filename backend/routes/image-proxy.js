@@ -213,6 +213,54 @@ router.get('/facebook-image', async (req, res) => {
 });
 
 /**
+ * GET /api/image-proxy (endpoint par défaut)
+ * Proxy général pour récupérer n'importe quelle image (contournement CORS)
+ * Appelé par ArticleCard avec ?url=...
+ * 🔒 SÉCURISÉ: Protection SSRF avec liste blanche de domaines
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).json({ success: false, error: 'URL manquante' });
+    }
+
+    // 🔒 Vérification SSRF - CRITIQUE pour ce endpoint générique
+    if (!isUrlSafe(url)) {
+      console.warn('🚫 Image proxy: URL non autorisée:', url);
+      return res.status(403).json({
+        success: false,
+        error: 'URL non autorisée'
+      });
+    }
+
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+      }
+    });
+
+    // Retourner l'image directement
+    const contentType = response.headers['content-type'] || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 24h
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(response.data);
+
+  } catch (error) {
+    console.error('❌ Erreur proxy image (/):', error.message);
+    // Retourner une image placeholder transparente en cas d'erreur
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * GET /api/image-proxy/fetch-image
  * Proxy général pour récupérer n'importe quelle image (contournement CORS)
  * 🔒 SÉCURISÉ: Protection SSRF avec liste blanche de domaines
