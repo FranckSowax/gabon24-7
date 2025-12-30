@@ -111,7 +111,8 @@ export function ArticleCard({
   
   // Backend API base for proxy (env or default)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-  
+
+
   // Fix URLs relatives (sport241.com, etc.)
   if (imageSrcRaw && !imageSrcRaw.startsWith('http')) {
     // Extraire le domaine depuis l'URL de l'article
@@ -119,7 +120,7 @@ export function ArticleCard({
       try {
         const articleUrl = new URL(article.url)
         const baseUrl = `${articleUrl.protocol}//${articleUrl.hostname}`
-        
+
         // Si l'URL commence par /, c'est une URL absolue relative
         if (imageSrcRaw.startsWith('/')) {
           imageSrcRaw = baseUrl + imageSrcRaw
@@ -160,16 +161,40 @@ export function ArticleCard({
       return false
     }
   }
-  // Facebook-specific handling: resolve real og:image for Facebook posts
+
+  // Détection des URLs Facebook (posts et images CDN)
   const isFacebookPost = !!article.url && article.url.toLowerCase().includes('facebook.com')
-  const isDefaultFbPlaceholder = typeof imageSrcRaw === 'string' && imageSrcRaw.includes('facebook.com/images/default-news')
+  const isFacebookCdnImage = typeof imageSrcRaw === 'string' && (
+    imageSrcRaw.includes('fbcdn.net') ||
+    imageSrcRaw.includes('fbsbx.com') ||
+    imageSrcRaw.includes('facebook.com')
+  )
+  const isDefaultFbPlaceholder = typeof imageSrcRaw === 'string' && (
+    imageSrcRaw.includes('facebook.com/images/default') ||
+    imageSrcRaw.includes('safe_image.php') ||
+    imageSrcRaw.includes('/rsrc.php')
+  )
+
+  // Utiliser le resolver Facebook si:
+  // 1. C'est un post Facebook ET (pas d'image OU image placeholder)
+  // 2. Ou si l'image existante est un placeholder Facebook
   const preferFacebookResolver = isFacebookPost && (isDefaultFbPlaceholder || !imageSrcRaw)
 
-  const proxiedImageSrc = preferFacebookResolver
-    ? `${API_BASE}/api/image-proxy/facebook-image?url=${encodeURIComponent(article.url || '')}`
-    : (imageSrcRaw && shouldProxyImage(imageSrcRaw)
-        ? `${API_BASE}/api/image-proxy?url=${encodeURIComponent(imageSrcRaw)}&title=${encodeURIComponent(article.title || article.source || '')}`
-        : imageSrcRaw)
+  // Construire l'URL de l'image avec proxy approprié
+  let proxiedImageSrc: string | undefined
+
+  if (preferFacebookResolver) {
+    // Utiliser le resolver Facebook pour obtenir la vraie image og:image
+    proxiedImageSrc = `${API_BASE}/api/image-proxy/facebook-image?url=${encodeURIComponent(article.url || '')}`
+  } else if (isFacebookCdnImage && imageSrcRaw) {
+    // Image Facebook CDN: utiliser le proxy avec User-Agent Facebook
+    proxiedImageSrc = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(imageSrcRaw)}`
+  } else if (imageSrcRaw && shouldProxyImage(imageSrcRaw)) {
+    // Image externe standard: utiliser le proxy normal
+    proxiedImageSrc = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(imageSrcRaw)}&title=${encodeURIComponent(article.title || article.source || '')}`
+  } else {
+    proxiedImageSrc = imageSrcRaw
+  }
   const debug = false
   
   // Nettoyer le summary du HTML et des images
@@ -364,26 +389,28 @@ export function ArticleCard({
               decoding="async"
               className="w-full h-full object-cover absolute inset-0"
               onError={(e) => {
-                // Retry once with direct URL if proxied version fails
+                // Retry avec URL directe si le proxy échoue
                 const img = e.currentTarget as HTMLImageElement
                 const tried = img.getAttribute('data-retry') === '1'
                 const isProxied = img.src.startsWith(`${API_BASE}/api/image-proxy`)
+
                 if (!tried && isProxied && imageSrcRaw) {
                   img.setAttribute('data-retry', '1')
                   img.src = imageSrcRaw
                   return
                 }
+
+                // Fallback: icône gradient
                 img.style.display = 'none';
                 const fallback = img.nextElementSibling as HTMLElement | null
                 if (fallback) fallback.classList.remove('hidden')
               }}
               referrerPolicy="no-referrer"
             />
-          ) : (
-            <div className="hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 h-full flex items-center justify-center">
-              <PhotoIcon className="h-8 sm:h-12 w-8 sm:w-12 text-gray-400 dark:text-gray-500 opacity-50" />
-            </div>
-          )}
+          ) : null}
+          <div className={`${proxiedImageSrc ? 'hidden' : ''} bg-gradient-to-br from-green-400 to-blue-500 h-full w-full flex items-center justify-center absolute inset-0`}>
+            <PhotoIcon className="h-8 sm:h-12 w-8 sm:w-12 text-white opacity-70" />
+          </div>
           
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 sm:p-3 md:p-4">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
@@ -490,48 +517,40 @@ export function ArticleCard({
     }`}>
       <div className="flex items-start gap-3 sm:gap-4">
         {/* Image principale de l'article */}
-        <div 
-          className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 cursor-pointer"
+        <div
+          className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 cursor-pointer relative overflow-hidden rounded-lg"
           onClick={handleCardClick}
         >
           {proxiedImageSrc ? (
-            <>
-              <img 
-                src={proxiedImageSrc} 
-                alt={article.title}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full rounded-lg object-cover"
-                onError={(e) => {
-                  if (debug) console.log(`❌ Erreur chargement image: ${proxiedImageSrc || imageSrcRaw} pour article: ${article.title}`)
-                  // Retry once with direct URL if proxied version fails
-                  const img = e.currentTarget as HTMLImageElement
-                  const tried = img.getAttribute('data-retry') === '1'
-                  const isProxied = img.src.startsWith(`${API_BASE}/api/image-proxy`)
-                  if (!tried && isProxied && imageSrcRaw) {
-                    img.setAttribute('data-retry', '1')
-                    img.src = imageSrcRaw
-                    return
-                  }
-                  // Fallback vers l'icône par défaut si l'image ne charge pas
-                  img.style.display = 'none'
-                  const fallback = img.parentElement?.querySelector('.fallback-icon') as HTMLElement | null
-                  if (fallback) fallback.classList.remove('hidden')
-                }}
-                onLoad={() => {
-                  if (debug) console.log(`✅ Image chargée: ${proxiedImageSrc || imageSrcRaw}`);
-                }}
-                referrerPolicy="no-referrer"
-              />
-              <div className="fallback-icon hidden w-full h-full bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-lg sm:text-xl text-white">📰</span>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-lg sm:text-xl text-white">📰</span>
-            </div>
-          )}
+            <img
+              src={proxiedImageSrc}
+              alt={article.title}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover absolute inset-0"
+              onError={(e) => {
+                // Retry avec URL directe si le proxy échoue
+                const img = e.currentTarget as HTMLImageElement
+                const tried = img.getAttribute('data-retry') === '1'
+                const isProxied = img.src.startsWith(`${API_BASE}/api/image-proxy`)
+
+                if (!tried && isProxied && imageSrcRaw) {
+                  img.setAttribute('data-retry', '1')
+                  img.src = imageSrcRaw
+                  return
+                }
+
+                // Fallback: icône gradient
+                img.style.display = 'none'
+                const fallback = img.parentElement?.querySelector('.fallback-icon') as HTMLElement | null
+                if (fallback) fallback.classList.remove('hidden')
+              }}
+              referrerPolicy="no-referrer"
+            />
+          ) : null}
+          <div className={`fallback-icon ${proxiedImageSrc ? 'hidden' : ''} w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center absolute inset-0`}>
+            <span className="text-lg sm:text-xl text-white">📰</span>
+          </div>
         </div>
         
         <div className="flex-1 min-w-0">

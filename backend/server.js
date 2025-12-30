@@ -765,7 +765,8 @@ app.get('/api/articles/home', async (req, res) => {
       title: article.title,
       summary: article.summary || article.content?.substring(0, 200) || '',
       source: getMediaNameFromUrl(article.url, article.source),
-      imageUrl: (article.image_urls && article.image_urls[0]) || '/images/default-news.jpg',
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       publishedAt: formatTimeAgo(article.published_at),
       category: article.category,
       readTime: `${article.read_time_minutes || 3} min`,
@@ -841,7 +842,8 @@ app.get('/api/articles/week', async (req, res) => {
       title: article.title,
       summary: article.summary || article.content?.substring(0, 200) || '',
       source: getMediaNameFromUrl(article.url, article.source),
-      imageUrl: (article.image_urls && article.image_urls[0]) || '/images/default-news.jpg',
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       publishedAt: formatTimeAgo(article.published_at),
       category: article.category,
       readTime: `${article.read_time_minutes || 3} min`,
@@ -923,7 +925,8 @@ app.get("/api/articles/trending", async (req, res) => {
       title: article.title,
       summary: article.summary || article.content?.substring(0, 200) || "Résumé non disponible",
       source: mapArticleToFeed(article, feeds),
-      imageUrl: (article.image_urls && article.image_urls[0]) || "/images/default-news.jpg",
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       url: article.url,
       category: article.category,
       created_at: article.created_at,
@@ -1015,7 +1018,8 @@ app.get('/api/articles/archives', async (req, res) => {
       title: article.title,
       summary: article.summary || article.content?.substring(0, 200) || '',
       source: getMediaNameFromUrl(article.url, article.source),
-      imageUrl: (article.image_urls && article.image_urls[0]) || '/images/default-news.jpg',
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       publishedAt: article.published_at ? formatTimeAgo(article.published_at) : 'Date inconnue',
       category: article.category,
       readTime: `${article.read_time_minutes || 3} min`,
@@ -1079,8 +1083,8 @@ app.get('/api/articles', async (req, res) => {
       id: article.id,
       title: article.title,
       summary: article.summary || article.content?.substring(0, 200) || '',
-      image_url: (article.image_urls && article.image_urls[0]) || null,
-      imageUrl: (article.image_urls && article.image_urls[0]) || '/images/default-news.jpg',
+      image_url: article.image_url || null,
+      imageUrl: article.image_url || null,
       publishedAt: formatTimeAgo(article.published_at),
       category: article.category,
       readTime: `${article.read_time_minutes || 3} min`,
@@ -1291,7 +1295,8 @@ app.get('/api/archives/articles', async (req, res) => {
 
       return {
         ...article,
-        imageUrl: (article.image_urls && article.image_urls[0]) || null,
+        imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
         source: getMediaNameFromUrl(article.url, article.source),
         viewCount: article.view_count ? `${article.view_count} vues` : '0 vues',
         publishedAt: formattedDate
@@ -1417,7 +1422,8 @@ app.get('/api/articles/all', async (req, res) => {
     // Transformer les données
     const transformedArticles = articles.map(article => ({
       ...article,
-      imageUrl: (article.image_urls && article.image_urls[0]) || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       source: getMediaNameFromUrl(article.url, article.source),
       viewCount: article.view_count ? `${article.view_count} vues` : '0 vues',
       publishedAt: new Date(article.published_at).toLocaleDateString('fr-FR', {
@@ -1510,7 +1516,8 @@ app.get('/api/homepage/articles', async (req, res) => {
         title: article.title,
         summary: article.summary || article.content?.substring(0, 200) || 'Résumé non disponible',
         source: mediaName,
-        imageUrl: (article.image_urls && article.image_urls[0]) || null,
+        imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
         publishedAt: formatTimeAgo(article.published_at),
         category: article.category,
         author: article.author || 'Rédaction',
@@ -2078,8 +2085,8 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       view_count: article.view_count || 0,
@@ -2137,8 +2144,8 @@ app.get('/api/stats/trending/weekly/views', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       view_count: article.view_count || 0,
@@ -2196,8 +2203,8 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       view_count: article.view_count || 0,
@@ -2255,8 +2262,8 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       publishedAt: formatTimeAgo(article.published_at),
@@ -2315,8 +2322,8 @@ app.get('/api/stats/trending/weekly/shares', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       publishedAt: formatTimeAgo(article.published_at),
@@ -2375,8 +2382,8 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
       title: article.title,
       summary: article.ai_summary || article.summary || 'Résumé non disponible.',
       url: article.url,
-      imageUrl: (article.image_urls && article.image_urls[0]) || article.image_url || null,
-      image_url: (article.image_urls && article.image_urls[0]) || article.image_url || null,
+      imageUrl: article.image_url || null,
+      image_url: article.image_url || null,
       author: article.author || 'Rédaction',
       published_at: article.published_at,
       publishedAt: formatTimeAgo(article.published_at),
@@ -3560,6 +3567,10 @@ app.use('/api/skill-test', skillTestRoutes);
 // Routes Proxy Images (Contournement CORS)
 const imageProxyRoutes = require('./routes/image-proxy');
 app.use('/api/image-proxy', imageProxyRoutes);
+
+// Routes Extraction d'Images (Multi-stratégie pour articles)
+const imageExtractionRoutes = require('./routes/image-extraction');
+app.use('/api/image-extraction', imageExtractionRoutes);
 
 // Routes Audio (TTS résumés)
 const audioRoutes = require('./routes/audio');
