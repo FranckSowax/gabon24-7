@@ -52,15 +52,17 @@ class PerformanceMonitor {
    * Middleware Express pour tracker les requêtes
    */
   trackRequest() {
+    const monitor = this; // Référence au PerformanceMonitor
+
     return (req, res, next) => {
       const startTime = Date.now();
       const originalSend = res.send;
 
       res.send = function(data) {
         const duration = Date.now() - startTime;
-        
-        // Enregistrer les métriques
-        this.recordRequest({
+
+        // Enregistrer les métriques (utiliser monitor, pas this)
+        monitor.recordRequest({
           method: req.method,
           url: req.url,
           statusCode: res.statusCode,
@@ -69,8 +71,9 @@ class PerformanceMonitor {
           ip: req.ip
         });
 
-        return originalSend.call(this, data);
-      }.bind(this);
+        // Appeler originalSend avec res comme contexte (pas monitor)
+        return originalSend.call(res, data);
+      };
 
       next();
     };
