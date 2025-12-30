@@ -10,12 +10,12 @@ class SchedulerService {
     console.log('⏰ Démarrage du Scheduler Service...');
 
     // ============================================================
-    // GÉNÉRATION DE QUESTIONS DE JEU - Toutes les heures à :05
+    // GÉNÉRATION DE QUESTIONS DE JEU - 2x par jour (6h et 18h)
     // ============================================================
-    // On décale à :05 pour laisser le temps aux flux RSS de se mettre à jour (souvent à :00)
-    // L'objectif est de générer des questions basées sur les articles des dernières 36h
-    this.scheduleJob('5 * * * *', async () => {
-      console.log('🎮 [CRON] Lancement génération automatique des questions...');
+    // Réduit pour économiser le quota Gemini API
+    // Génère des questions basées sur les articles des dernières 36h
+    this.scheduleJob('5 6,18 * * *', async () => {
+      console.log('🎮 [CRON] Lancement génération automatique des questions (2x/jour)...');
       try {
         const count = await gameQuestionGenerator.generateDailyQuestions();
         console.log(`✅ [CRON] Génération questions terminée : ${count} nouvelles questions.`);
@@ -25,12 +25,13 @@ class SchedulerService {
     });
 
     // ============================================================
-    // MONITORING POOL QUESTIONS - Toutes les 15 minutes
+    // MONITORING POOL QUESTIONS - Toutes les 6 heures
     // ============================================================
-    // Vérifie si le stock de questions est bas (< 50) et recharge si nécessaire
-    this.scheduleJob('*/15 * * * *', async () => {
+    // Vérifie si le stock de questions est bas (< 30) et recharge si nécessaire
+    // Réduit de 15min à 6h pour économiser le quota
+    this.scheduleJob('0 */6 * * *', async () => {
       try {
-        await gameQuestionGenerator.checkAndRefill(50);
+        await gameQuestionGenerator.checkAndRefill(30);
       } catch (error) {
         console.error('❌ [CRON] Erreur monitoring pool:', error);
       }
