@@ -30,8 +30,21 @@ const { URL } = require('url');
 const FACEBOOK_CONFIG = {
   userAgent: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
   mobileUserAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-  timeout: 20000,
-  maxRedirects: 8
+  // User-Agent qui simule un bot de scraping légitime
+  linkedInBot: 'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)',
+  // User-Agent Google
+  googleBot: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+  // WhatsApp bot - souvent bien traité par Facebook
+  whatsAppBot: 'WhatsApp/2.23.20.0 A',
+  timeout: 25000,
+  maxRedirects: 10,
+  // Services d'extraction de métadonnées (gratuits)
+  metadataServices: [
+    // Microlink - extrait les métadonnées Open Graph
+    { url: 'https://api.microlink.io/?url=', parseResponse: (data) => data?.data?.image?.url },
+    // jsonlink.io - service gratuit
+    { url: 'https://jsonlink.io/api/extract?url=', parseResponse: (data) => data?.images?.[0] }
+  ]
 };
 
 // ==================== CONFIGURATIONS PAR DOMAINE ====================
@@ -621,25 +634,64 @@ class ImageExtractor {
 
   /**
    * 📘 STRATÉGIE FACEBOOK SPÉCIALE
-   * Utilise le User-Agent facebookexternalhit pour scraper les vraies images
-   * Plusieurs tentatives avec différentes approches
+   * Utilise plusieurs approches pour extraire les images Facebook
+   * Support spécial pour les Reels, Posts, Photos et Vidéos
    */
   async tryFacebookSpecial(url) {
     console.log(`📘 [Facebook] Tentative d'extraction pour: ${url}`);
 
-    // Tentative 1: User-Agent Facebook Crawler
-    let imageUrl = await this.tryFacebookCrawler(url);
+    // Détecter le type de contenu Facebook
+    const contentType = this.detectFacebookContentType(url);
+    console.log(`📘 [Facebook] Type de contenu détecté: ${contentType}`);
+
+    let imageUrl = null;
+
+    // Stratégie 1: Services de métadonnées externes (Microlink, etc.)
+    // Ces services ont leurs propres serveurs qui peuvent accéder à Facebook
+    imageUrl = await this.tryFacebookViaMetadataService(url);
+    if (imageUrl) {
+      return { imageUrl, source: 'metadata-service', strategy: 'facebook-microlink' };
+    }
+
+    // Stratégie 2: WhatsApp Bot (Meta traite bien ses propres bots)
+    imageUrl = await this.tryFacebookWhatsAppBot(url);
+    if (imageUrl) {
+      return { imageUrl, source: 'whatsapp-bot', strategy: 'facebook-whatsapp' };
+    }
+
+    // Stratégie 3: User-Agent Facebook Crawler
+    imageUrl = await this.tryFacebookCrawler(url);
     if (imageUrl) {
       return { imageUrl, source: 'facebook-crawler', strategy: 'facebook-og' };
     }
 
-    // Tentative 2: Version mobile de Facebook
+    // Stratégie 4: User-Agent LinkedIn Bot
+    imageUrl = await this.tryFacebookWithBot(url, 'linkedin');
+    if (imageUrl) {
+      return { imageUrl, source: 'linkedin-bot', strategy: 'facebook-linkedin' };
+    }
+
+    // Stratégie 5: User-Agent Google Bot
+    imageUrl = await this.tryFacebookWithBot(url, 'google');
+    if (imageUrl) {
+      return { imageUrl, source: 'google-bot', strategy: 'facebook-google' };
+    }
+
+    // Stratégie 6: Version mobile de Facebook
     imageUrl = await this.tryFacebookMobile(url);
     if (imageUrl) {
       return { imageUrl, source: 'facebook-mobile', strategy: 'facebook-mobile' };
     }
 
-    // Tentative 3: Extraction depuis l'ID du post
+    // Stratégie 7: Extraction spéciale pour Reels/Vidéos
+    if (contentType === 'reel' || contentType === 'video') {
+      imageUrl = await this.tryFacebookReelThumbnail(url);
+      if (imageUrl) {
+        return { imageUrl, source: 'facebook-reel', strategy: 'facebook-reel-id' };
+      }
+    }
+
+    // Stratégie 8: Extraction depuis l'ID du post
     imageUrl = await this.tryFacebookPostId(url);
     if (imageUrl) {
       return { imageUrl, source: 'facebook-post-id', strategy: 'facebook-scrape' };
@@ -647,6 +699,219 @@ class ImageExtractor {
 
     console.log(`⚠️ [Facebook] Aucune image trouvée pour: ${url}`);
     return { imageUrl: null, source: null, strategy: null };
+  }
+
+  /**
+   * Détecter le type de contenu Facebook depuis l'URL
+   */
+  detectFacebookContentType(url) {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('/reel/') || lowerUrl.includes('/reels/')) return 'reel';
+    if (lowerUrl.includes('/watch/') || lowerUrl.includes('/videos/')) return 'video';
+    if (lowerUrl.includes('/photos/') || lowerUrl.includes('/photo/')) return 'photo';
+    if (lowerUrl.includes('/story/') || lowerUrl.includes('/stories/')) return 'story';
+    if (lowerUrl.includes('/posts/') || lowerUrl.includes('/permalink/')) return 'post';
+    return 'unknown';
+  }
+
+  /**
+   * 🌐 Stratégie via services de métadonnées externes
+   * Utilise des services comme Microlink qui extraient les Open Graph
+   */
+  async tryFacebookViaMetadataService(url) {
+    console.log(`  📘 [Facebook] Stratégie Services Métadonnées`);
+
+    for (const service of FACEBOOK_CONFIG.metadataServices) {
+      try {
+        const serviceUrl = `${service.url}${encodeURIComponent(url)}`;
+        const serviceName = service.url.split('/')[2];
+        console.log(`  🌐 Essai via: ${serviceName}`);
+
+        const response = await axios.get(serviceUrl, {
+          timeout: 15000,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const imageUrl = service.parseResponse(response.data);
+        if (imageUrl && this.isValidFacebookImage(imageUrl)) {
+          console.log(`  ✅ [Facebook] Image trouvée via ${serviceName}`);
+          return imageUrl;
+        }
+
+      } catch (error) {
+        console.log(`  ⚠️ [Facebook] Service échoué: ${error.message}`);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 🔍 Stratégie WhatsApp Bot
+   * WhatsApp est souvent mieux traité par Facebook car c'est Meta
+   */
+  async tryFacebookWhatsAppBot(url) {
+    try {
+      console.log(`  📘 [Facebook] Stratégie WhatsApp Bot`);
+
+      const response = await axios.get(url, {
+        timeout: FACEBOOK_CONFIG.timeout,
+        maxRedirects: FACEBOOK_CONFIG.maxRedirects,
+        headers: {
+          'User-Agent': FACEBOOK_CONFIG.whatsAppBot,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9'
+        }
+      });
+
+      const $ = cheerio.load(response.data);
+
+      // og:image
+      let imageUrl = $('meta[property="og:image"]').attr('content');
+      if (imageUrl && this.isValidFacebookImage(imageUrl)) {
+        console.log(`  ✅ [Facebook] Image trouvée via WhatsApp bot`);
+        return imageUrl;
+      }
+
+      // Chercher dans le HTML pour les données JSON
+      const html = response.data;
+
+      // Pattern pour les images dans le HTML Facebook
+      const patterns = [
+        /"image":\{"uri":"([^"]+)"/,
+        /"previewImage":"([^"]+)"/,
+        /"thumbnailImage":"([^"]+)"/,
+        /data-store=.*?"src":"([^"]+)"/,
+        /"video_thumbnail_url":"([^"]+)"/
+      ];
+
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match && match[1]) {
+          imageUrl = match[1].replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/&amp;/g, '&');
+          if (this.isValidFacebookImage(imageUrl)) {
+            console.log(`  ✅ [Facebook] Image trouvée via pattern JSON`);
+            return imageUrl;
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.log(`  ⚠️ [Facebook] WhatsApp bot échoué: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Essayer avec un bot spécifique (LinkedIn ou Google)
+   */
+  async tryFacebookWithBot(url, botType) {
+    try {
+      console.log(`  📘 [Facebook] Stratégie ${botType} bot`);
+
+      const userAgent = botType === 'linkedin' ? FACEBOOK_CONFIG.linkedInBot : FACEBOOK_CONFIG.googleBot;
+
+      const response = await axios.get(url, {
+        timeout: FACEBOOK_CONFIG.timeout,
+        maxRedirects: FACEBOOK_CONFIG.maxRedirects,
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+        }
+      });
+
+      const $ = cheerio.load(response.data);
+
+      // Chercher og:image
+      let imageUrl = $('meta[property="og:image"]').attr('content');
+      if (imageUrl && this.isValidFacebookImage(imageUrl)) {
+        console.log(`  ✅ [Facebook] Image trouvée via ${botType} bot`);
+        return imageUrl;
+      }
+
+      // Chercher dans le HTML brut pour les données JSON
+      const html = response.data;
+      const jsonMatch = html.match(/"image":\{"uri":"([^"]+)"/);
+      if (jsonMatch && jsonMatch[1]) {
+        imageUrl = jsonMatch[1].replace(/\\\//g, '/');
+        if (this.isValidFacebookImage(imageUrl)) {
+          console.log(`  ✅ [Facebook] Image JSON trouvée via ${botType} bot`);
+          return imageUrl;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.log(`  ⚠️ [Facebook] ${botType} bot échoué: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Extraction spéciale pour les Reels Facebook
+   * Les Reels ont un format d'URL spécifique et des thumbnails accessibles
+   */
+  async tryFacebookReelThumbnail(url) {
+    try {
+      console.log(`  📘 [Facebook] Stratégie Reel Thumbnail`);
+
+      // Extraire l'ID du Reel
+      const reelIdMatch = url.match(/\/reel\/(\d+)/i) || url.match(/\/reels\/(\d+)/i);
+      if (!reelIdMatch) {
+        console.log(`  ⚠️ [Facebook] Impossible d'extraire l'ID du Reel`);
+        return null;
+      }
+
+      const reelId = reelIdMatch[1];
+      console.log(`  📘 [Facebook] Reel ID: ${reelId}`);
+
+      // Essayer différentes URLs de thumbnail Facebook
+      const thumbnailUrls = [
+        `https://scontent.xx.fbcdn.net/v/t15.5256-10/${reelId}_n.jpg`,
+        `https://scontent.flis6-1.fna.fbcdn.net/v/t15.5256-10/${reelId}_n.jpg`
+      ];
+
+      for (const thumbUrl of thumbnailUrls) {
+        try {
+          const response = await axios.head(thumbUrl, {
+            timeout: 5000,
+            validateStatus: status => status === 200
+          });
+          if (response.status === 200) {
+            console.log(`  ✅ [Facebook] Thumbnail Reel trouvée`);
+            return thumbUrl;
+          }
+        } catch {
+          // Continuer avec la prochaine URL
+        }
+      }
+
+      // Fallback: essayer via le share URL
+      const shareUrl = `https://www.facebook.com/share/r/${reelId}/`;
+      const response = await axios.get(shareUrl, {
+        timeout: FACEBOOK_CONFIG.timeout,
+        maxRedirects: 5,
+        headers: {
+          'User-Agent': FACEBOOK_CONFIG.userAgent
+        }
+      });
+
+      const $ = cheerio.load(response.data);
+      const imageUrl = $('meta[property="og:image"]').attr('content');
+      if (imageUrl && this.isValidFacebookImage(imageUrl)) {
+        console.log(`  ✅ [Facebook] Image Reel trouvée via share URL`);
+        return imageUrl;
+      }
+
+      return null;
+    } catch (error) {
+      console.log(`  ⚠️ [Facebook] Reel thumbnail échoué: ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -696,12 +961,15 @@ class ImageExtractor {
    */
   async tryFacebookMobile(url) {
     try {
-      console.log(`  📘 [Facebook] Stratégie 2: Version Mobile`);
+      console.log(`  📘 [Facebook] Stratégie Version Mobile`);
 
-      // Convertir l'URL en version mobile
-      const mobileUrl = url
-        .replace('www.facebook.com', 'm.facebook.com')
-        .replace('facebook.com', 'm.facebook.com');
+      // Convertir l'URL en version mobile (éviter le double m.)
+      let mobileUrl = url;
+      if (url.includes('www.facebook.com')) {
+        mobileUrl = url.replace('www.facebook.com', 'm.facebook.com');
+      } else if (!url.includes('m.facebook.com')) {
+        mobileUrl = url.replace('facebook.com', 'm.facebook.com');
+      }
 
       const response = await axios.get(mobileUrl, {
         timeout: FACEBOOK_CONFIG.timeout,
@@ -828,10 +1096,13 @@ class ImageExtractor {
       'profile_pic',           // Photos de profil
       'avatar',                // Avatars
       'favicon',               // Favicons
-      '_n.jpg',                // Thumbnails très petits
-      '_s.jpg',                // Thumbnails très petits
-      '_t.jpg',                // Thumbnails très petits
-      '50x50',                 // Très petites images
+      // Note: _n.jpg, _s.jpg, _t.jpg sont souvent des vraies images sur scontent
+      // On les garde seulement si c'est clairement un thumbnail petit
+      '/p50x50/',              // Très petites images
+      '/p100x100/',            // Petites images
+      '/s50x50/',
+      '/s100x100/',
+      '50x50',                 // Très petites images (dans le chemin)
       '100x100',               // Petites images
       'emoji',                 // Emojis
       '/icons/',               // Icônes
