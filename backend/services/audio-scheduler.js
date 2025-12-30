@@ -37,7 +37,7 @@ async function generatePublicAudioSummary(timeSlot, language = 'fr') {
       `)
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(50);
 
     if (articlesError || !articles || articles.length === 0) {
       console.log(`⚠️  Aucun article trouvé pour ${timeSlot} [${languageLabel}]`);

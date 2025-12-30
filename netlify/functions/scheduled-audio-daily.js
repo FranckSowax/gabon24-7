@@ -34,7 +34,7 @@ async function generatePublicDailySummary() {
       .eq('is_published', true)
       .gte('published_at', since)
       .order('published_at', { ascending: false })
-      .limit(10)
+      .limit(50)
 
     if (artErr) throw artErr
     if (!articles || articles.length === 0) {
