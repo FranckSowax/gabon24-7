@@ -4,10 +4,12 @@ const geminiService = require('./gemini-service');
 class GameQuestionGenerator {
   constructor() {
     // Service Gemini injecté directement
+    // Modèle dédié pour le quiz (éviter les quotas du modèle principal)
+    this.quizModel = 'gemini-2.5-flash';
   }
 
   async generateDailyQuestions(hoursLookback = 36) {
-    console.log(`🚀 Démarrage génération questions jeu (lookback: ${hoursLookback}h) avec Gemini 3...`);
+    console.log(`🚀 Démarrage génération questions jeu (lookback: ${hoursLookback}h) avec ${this.quizModel}...`);
     
     // 1. Récupérer les articles des dernières X heures
     const now = new Date();
@@ -60,7 +62,7 @@ class GameQuestionGenerator {
     }
 
     try {
-      console.log(`🤖 Génération questions Gemini pour: ${article.title}`);
+      console.log(`🤖 Génération questions (${this.quizModel}) pour: ${article.title}`);
       
       const prompt = `
         Tu es un expert en création de quiz sur l'actualité.
@@ -96,9 +98,10 @@ class GameQuestionGenerator {
         6. Les mauvaises réponses doivent être plausibles mais fausses.
       `;
 
-      // Utilisation du service Gemini
+      // Utilisation du service Gemini avec modèle dédié (gemini-2.5-flash)
       const parsed = await geminiService.generateJSON(prompt, {
-        temperature: 0.7
+        temperature: 0.7,
+        model: this.quizModel
       });
       
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
