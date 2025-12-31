@@ -2209,7 +2209,7 @@ router.get('/dashboard/registrations', async (req, res) => {
 router.delete('/generated-questions', async (req, res) => {
   try {
     const { ids } = req.body;
-    
+
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, error: 'Liste d\'IDs requise' });
     }
@@ -2225,6 +2225,293 @@ router.delete('/generated-questions', async (req, res) => {
   } catch (error) {
     console.error('❌ Erreur suppression questions:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/game/dashboard/questions
+ * Questions générées des dernières 72h pour le dashboard admin
+ */
+router.get('/dashboard/questions', async (req, res) => {
+  try {
+    // Date limite: 72h
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - 72);
+    const cutoffISO = cutoffDate.toISOString();
+
+    const { data: questions, error } = await supabase
+      .from('game_questions')
+      .select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt, created_at')
+      .gte('created_at', cutoffISO)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Grouper par jour
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0];
+
+    const grouped = {
+      today: questions?.filter(q => q.created_at?.startsWith(today)) || [],
+      yesterday: questions?.filter(q => q.created_at?.startsWith(yesterday)) || [],
+      older: questions?.filter(q => !q.created_at?.startsWith(today) && !q.created_at?.startsWith(yesterday)) || []
+    };
+
+    // Stats par difficulté
+    const byDifficulty = {
+      Facile: questions?.filter(q => q.difficulty === 'Facile').length || 0,
+      Moyen: questions?.filter(q => q.difficulty === 'Moyen').length || 0,
+      Difficile: questions?.filter(q => q.difficulty === 'Difficile').length || 0
+    };
+
+    res.json({
+      success: true,
+      total: questions?.length || 0,
+      byDifficulty,
+      grouped,
+      questions: questions || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération questions dashboard:', error);
+    res.json({ success: true, total: 0, questions: [], error: error.message });
+  }
+});
+
+/**
+ * GET /api/game/dashboard/advanced-stats
+ * Statistiques avancées: revenus, stats par période (jour/semaine/mois)
+ */
+router.get('/dashboard/advanced-stats', async (req, res) => {
+  try {
+    const { period = 'week' } = req.query; // day, week, month
+
+    // Calculer les dates
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Lundi
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Récupérer toutes les inscriptions avec montant
+    const { data: registrations, error: regError } = await supabase
+      .from('game_registrations')
+      .select(`
+        id, player_name, whatsapp_number, status, amount_paid, created_at,
+        game_sessions (id, name, entry_fee, prize_pool)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (regError) throw regError;
+
+    // Récupérer les sessions
+    const { data: sessions, error: sessError } = await supabase
+      .from('game_sessions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (sessError) throw sessError;
+
+    // Récupérer les questions
+    const { count: totalQuestions } = await supabase
+      .from('game_questions')
+      .select('*', { count: 'exact', head: true });
+
+    // Récupérer les vainqueurs
+    const winners = registrations?.filter(r => r.status === 'winner') || [];
+
+    // Calculer les revenus
+    const calculateRevenue = (regs) => {
+      return regs?.reduce((sum, r) => {
+        const amount = r.amount_paid || r.game_sessions?.entry_fee || 0;
+        return sum + amount;
+      }, 0) || 0;
+    };
+
+    // Stats aujourd'hui
+    const todayRegs = registrations?.filter(r =>
+      new Date(r.created_at) >= today
+    ) || [];
+
+    // Stats cette semaine
+    const weekRegs = registrations?.filter(r =>
+      new Date(r.created_at) >= startOfWeek
+    ) || [];
+
+    // Stats ce mois
+    const monthRegs = registrations?.filter(r =>
+      new Date(r.created_at) >= startOfMonth
+    ) || [];
+
+    // Stats sessions par période
+    const todaySessions = sessions?.filter(s => new Date(s.created_at) >= today) || [];
+    const weekSessions = sessions?.filter(s => new Date(s.created_at) >= startOfWeek) || [];
+    const monthSessions = sessions?.filter(s => new Date(s.created_at) >= startOfMonth) || [];
+
+    // Revenus par session (top 10)
+    const sessionRevenues = sessions?.map(s => ({
+      id: s.id,
+      name: s.name,
+      players: s.current_players || 0,
+      revenue: (s.current_players || 0) * (s.entry_fee || 0),
+      prizePool: s.prize_pool || 0,
+      status: s.status,
+      createdAt: s.created_at
+    })).sort((a, b) => b.revenue - a.revenue).slice(0, 10) || [];
+
+    // Stats globales
+    const totalRevenue = calculateRevenue(registrations);
+    const totalPrizesPaid = winners.reduce((sum, w) => sum + (w.game_sessions?.prize_pool || 0), 0);
+    const netRevenue = totalRevenue - totalPrizesPaid;
+
+    res.json({
+      success: true,
+      stats: {
+        // Totaux
+        totalRevenue,
+        totalPrizesPaid,
+        netRevenue,
+        totalPlayers: registrations?.length || 0,
+        totalWinners: winners.length,
+        totalSessions: sessions?.length || 0,
+        totalQuestions: totalQuestions || 0,
+
+        // Aujourd'hui
+        today: {
+          players: todayRegs.length,
+          revenue: calculateRevenue(todayRegs),
+          sessions: todaySessions.length
+        },
+
+        // Cette semaine
+        week: {
+          players: weekRegs.length,
+          revenue: calculateRevenue(weekRegs),
+          sessions: weekSessions.length
+        },
+
+        // Ce mois
+        month: {
+          players: monthRegs.length,
+          revenue: calculateRevenue(monthRegs),
+          sessions: monthSessions.length
+        },
+
+        // Top sessions par revenus
+        topSessions: sessionRevenues,
+
+        // Vainqueurs récents
+        recentWinners: winners.slice(0, 10).map(w => ({
+          id: w.id,
+          name: w.player_name,
+          whatsapp: w.whatsapp_number,
+          session: w.game_sessions?.name,
+          prize: w.game_sessions?.prize_pool || 0,
+          date: w.created_at
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur stats avancées:', error);
+    res.json({
+      success: false,
+      error: error.message,
+      stats: {
+        totalRevenue: 0, totalPrizesPaid: 0, netRevenue: 0,
+        totalPlayers: 0, totalWinners: 0, totalSessions: 0, totalQuestions: 0,
+        today: { players: 0, revenue: 0, sessions: 0 },
+        week: { players: 0, revenue: 0, sessions: 0 },
+        month: { players: 0, revenue: 0, sessions: 0 },
+        topSessions: [], recentWinners: []
+      }
+    });
+  }
+});
+
+/**
+ * GET /api/game/dashboard/session-stats
+ * Stats détaillées par session pour l'onglet Sessions
+ */
+router.get('/dashboard/session-stats', async (req, res) => {
+  try {
+    const { period = 'all' } = req.query; // today, week, month, all
+
+    // Calculer les dates filtres
+    const now = new Date();
+    let startDate = null;
+
+    if (period === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 7);
+    } else if (period === 'month') {
+      startDate = new Date(now);
+      startDate.setMonth(now.getMonth() - 1);
+    }
+
+    // Récupérer les sessions
+    let query = supabase
+      .from('game_sessions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (startDate) {
+      query = query.gte('created_at', startDate.toISOString());
+    }
+
+    const { data: sessions, error } = await query;
+    if (error) throw error;
+
+    // Récupérer les inscriptions pour chaque session
+    const sessionIds = sessions?.map(s => s.id) || [];
+    const { data: allRegs } = await supabase
+      .from('game_registrations')
+      .select('session_id, status, amount_paid')
+      .in('session_id', sessionIds);
+
+    // Enrichir les sessions avec les stats
+    const enrichedSessions = sessions?.map(session => {
+      const regs = allRegs?.filter(r => r.session_id === session.id) || [];
+      const winners = regs.filter(r => r.status === 'winner');
+      const revenue = regs.reduce((sum, r) => sum + (r.amount_paid || session.entry_fee || 0), 0);
+
+      return {
+        ...session,
+        stats: {
+          registrations: regs.length,
+          winners: winners.length,
+          revenue,
+          fillRate: session.max_players ? Math.round((session.current_players / session.max_players) * 100) : 0
+        }
+      };
+    }) || [];
+
+    // Agrégations
+    const totals = {
+      sessions: enrichedSessions.length,
+      players: enrichedSessions.reduce((sum, s) => sum + (s.current_players || 0), 0),
+      revenue: enrichedSessions.reduce((sum, s) => sum + (s.stats?.revenue || 0), 0),
+      prizePool: enrichedSessions.reduce((sum, s) => sum + (s.prize_pool || 0), 0),
+      byStatus: {
+        upcoming: enrichedSessions.filter(s => s.status === 'upcoming').length,
+        active: enrichedSessions.filter(s => s.status === 'active').length,
+        completed: enrichedSessions.filter(s => s.status === 'completed').length,
+        cancelled: enrichedSessions.filter(s => s.status === 'cancelled').length
+      }
+    };
+
+    res.json({
+      success: true,
+      period,
+      totals,
+      sessions: enrichedSessions
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur stats sessions:', error);
+    res.json({ success: false, error: error.message, sessions: [], totals: {} });
   }
 });
 

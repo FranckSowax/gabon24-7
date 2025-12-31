@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Gamepad2, Users, Trophy, MessageCircle, Calendar, 
+import {
+  Gamepad2, Users, Trophy, MessageCircle, Calendar,
   TrendingUp, Clock, CheckCircle, XCircle, RefreshCw,
   Plus, Search, Filter, Download, Eye, Zap, HelpCircle,
-  Crown, Medal, X
+  Crown, Medal, X, DollarSign, BarChart3, CalendarDays,
+  Phone, AlertCircle, Trash2
 } from 'lucide-react'
 
 interface GameSession {
@@ -19,6 +20,12 @@ interface GameSession {
   status: 'upcoming' | 'active' | 'completed' | 'cancelled'
   scheduled_start: string | null
   created_at: string
+  stats?: {
+    registrations: number
+    winners: number
+    revenue: number
+    fillRate: number
+  }
 }
 
 interface Registration {
@@ -26,7 +33,7 @@ interface Registration {
   session_id: string
   player_name: string
   whatsapp_number: string
-  email: string | null
+  amount_paid?: number
   status: string
   created_at: string
   eliminated_at_round?: number
@@ -35,46 +42,74 @@ interface Registration {
   game_sessions?: GameSession
 }
 
-interface DashboardStats {
-  sessions: {
-    upcoming: number
-    active: number
-    completed: number
-  }
+interface Question {
+  id: string
+  difficulty: string
+  question: string
+  question_text?: string
+  answers: string[]
+  correct_index: number
+  created_at: string
+  source_excerpt?: string
+}
+
+interface AdvancedStats {
+  totalRevenue: number
+  totalPrizesPaid: number
+  netRevenue: number
+  totalPlayers: number
+  totalWinners: number
   totalSessions: number
-  totalRegistrations: number
   totalQuestions: number
-  questionsUsedToday: number
-  totalPrizePool: number
-  recentSessions: GameSession[]
+  today: { players: number; revenue: number; sessions: number }
+  week: { players: number; revenue: number; sessions: number }
+  month: { players: number; revenue: number; sessions: number }
+  topSessions: Array<{
+    id: string
+    name: string
+    players: number
+    revenue: number
+    prizePool: number
+    status: string
+  }>
+  recentWinners: Array<{
+    id: string
+    name: string
+    whatsapp: string
+    session: string
+    prize: number
+    date: string
+  }>
+}
+
+interface QuestionsData {
+  total: number
+  byDifficulty: { Facile: number; Moyen: number; Difficile: number }
+  grouped: { today: Question[]; yesterday: Question[]; older: Question[] }
+  questions: Question[]
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-// Types de sessions disponibles
-const SESSION_TYPES = [
-  { value: 'starter', label: 'Starter', entryFee: 500, maxPlayers: 50, color: 'green' },
-  { value: 'classic', label: 'Classic', entryFee: 1000, maxPlayers: 100, color: 'blue' },
-  { value: 'premium', label: 'Premium', entryFee: 2500, maxPlayers: 200, color: 'purple' },
-  { value: 'elite', label: 'Elite', entryFee: 5000, maxPlayers: 500, color: 'yellow' },
-  { value: 'mega', label: 'Mega', entryFee: 10000, maxPlayers: 1000, color: 'red' },
-]
-
 export default function GameDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'sessions' | 'winners' | 'questions'>('overview')
+
+  // Data states
+  const [advancedStats, setAdvancedStats] = useState<AdvancedStats | null>(null)
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [sessions, setSessions] = useState<GameSession[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'sessions' | 'winners'>('overview')
+  const [questionsData, setQuestionsData] = useState<QuestionsData | null>(null)
+
+  // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSession, setFilterSession] = useState<string>('')
+  const [sessionPeriod, setSessionPeriod] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [generatingQuestions, setGeneratingQuestions] = useState(false)
-  
-  // Modal création session
+
+  // Modals
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [creatingSession, setCreatingSession] = useState(false)
-  
-  // Modal détail inscription
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
   const [newSession, setNewSession] = useState({
     session_type: 'classic',
@@ -84,18 +119,32 @@ export default function GameDashboardPage() {
     scheduled_start: ''
   })
 
+  const SESSION_TYPES = [
+    { value: 'starter', label: 'Starter', entryFee: 500, maxPlayers: 50, color: 'green' },
+    { value: 'classic', label: 'Classic', entryFee: 1000, maxPlayers: 100, color: 'blue' },
+    { value: 'premium', label: 'Premium', entryFee: 2500, maxPlayers: 200, color: 'purple' },
+    { value: 'elite', label: 'Elite', entryFee: 5000, maxPlayers: 500, color: 'yellow' },
+    { value: 'mega', label: 'Mega', entryFee: 10000, maxPlayers: 1000, color: 'red' },
+  ]
+
   useEffect(() => {
     loadDashboardData()
   }, [])
 
+  useEffect(() => {
+    if (activeTab === 'sessions') {
+      loadSessionStats()
+    }
+  }, [sessionPeriod, activeTab])
+
   const loadDashboardData = async () => {
     setLoading(true)
     try {
-      // Charger les stats
-      const statsRes = await fetch(`${API_URL}/api/game/dashboard/stats`)
+      // Charger les stats avancées
+      const statsRes = await fetch(`${API_URL}/api/game/dashboard/advanced-stats`)
       const statsData = await statsRes.json()
       if (statsData.success) {
-        setStats(statsData.stats)
+        setAdvancedStats(statsData.stats)
       }
 
       // Charger les inscriptions
@@ -105,16 +154,32 @@ export default function GameDashboardPage() {
         setRegistrations(regsData.registrations)
       }
 
+      // Charger les questions
+      const questionsRes = await fetch(`${API_URL}/api/game/dashboard/questions`)
+      const questionsResData = await questionsRes.json()
+      if (questionsResData.success) {
+        setQuestionsData(questionsResData)
+      }
+
       // Charger les sessions
-      const sessionsRes = await fetch(`${API_URL}/api/game/sessions?limit=50`)
+      await loadSessionStats()
+
+    } catch (error) {
+      console.error('Erreur chargement dashboard:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadSessionStats = async () => {
+    try {
+      const sessionsRes = await fetch(`${API_URL}/api/game/dashboard/session-stats?period=${sessionPeriod}`)
       const sessionsData = await sessionsRes.json()
       if (sessionsData.success) {
         setSessions(sessionsData.sessions)
       }
     } catch (error) {
-      console.error('Erreur chargement dashboard:', error)
-    } finally {
-      setLoading(false)
+      console.error('Erreur chargement sessions:', error)
     }
   }
 
@@ -128,14 +193,14 @@ export default function GameDashboardPage() {
       })
       const data = await res.json()
       if (data.success) {
-        alert(`✅ ${data.generated} questions générées avec succès !`)
+        alert(`${data.generated} questions generees avec succes !`)
         loadDashboardData()
       } else {
-        alert(`❌ Erreur: ${data.error}`)
+        alert(`Erreur: ${data.error}`)
       }
     } catch (error) {
-      console.error('Erreur génération:', error)
-      alert('❌ Erreur lors de la génération')
+      console.error('Erreur generation:', error)
+      alert('Erreur lors de la generation')
     } finally {
       setGeneratingQuestions(false)
     }
@@ -156,7 +221,7 @@ export default function GameDashboardPage() {
       })
       const data = await res.json()
       if (data.success) {
-        alert('✅ Session créée avec succès !')
+        alert('Session creee avec succes !')
         setShowCreateModal(false)
         setNewSession({
           session_type: 'classic',
@@ -167,11 +232,11 @@ export default function GameDashboardPage() {
         })
         loadDashboardData()
       } else {
-        alert(`❌ Erreur: ${data.error}`)
+        alert(`Erreur: ${data.error}`)
       }
     } catch (error) {
-      console.error('Erreur création session:', error)
-      alert('❌ Erreur lors de la création')
+      console.error('Erreur creation session:', error)
+      alert('Erreur lors de la creation')
     } finally {
       setCreatingSession(false)
     }
@@ -193,7 +258,7 @@ export default function GameDashboardPage() {
   const winners = registrations.filter(reg => reg.status === 'winner')
 
   const filteredRegistrations = registrations.filter(reg => {
-    const matchesSearch = 
+    const matchesSearch =
       reg.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reg.whatsapp_number.includes(searchTerm)
     const matchesSession = !filterSession || reg.session_id === filterSession
@@ -206,22 +271,37 @@ export default function GameDashboardPage() {
       classic: 'bg-blue-500',
       premium: 'bg-purple-500',
       elite: 'bg-yellow-500',
-      mega: 'bg-red-500'
+      mega: 'bg-red-500',
+      training: 'bg-emerald-500'
     }
     return colors[type] || 'bg-gray-500'
   }
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { bg: string, text: string, label: string }> = {
-      upcoming: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'À venir' },
+      upcoming: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'A venir' },
       active: { bg: 'bg-green-100', text: 'text-green-800', label: 'En cours' },
-      completed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Terminée' },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Annulée' }
+      completed: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Terminee' },
+      cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Annulee' }
     }
     const badge = badges[status] || badges.upcoming
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
         {badge.label}
+      </span>
+    )
+  }
+
+  const getDifficultyBadge = (difficulty: string) => {
+    const badges: Record<string, { bg: string, text: string }> = {
+      'Facile': { bg: 'bg-green-100', text: 'text-green-800' },
+      'Moyen': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+      'Difficile': { bg: 'bg-red-100', text: 'text-red-800' }
+    }
+    const badge = badges[difficulty] || { bg: 'bg-gray-100', text: 'text-gray-800' }
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+        {difficulty}
       </span>
     )
   }
@@ -236,17 +316,27 @@ export default function GameDashboardPage() {
     })
   }
 
+  const formatMoney = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`
+    }
+    if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K`
+    }
+    return amount.toLocaleString()
+  }
+
   const exportToCSV = () => {
-    const headers = ['Nom', 'WhatsApp', 'Email', 'Session', 'Statut', 'Date inscription']
+    const headers = ['Nom', 'WhatsApp', 'Montant', 'Session', 'Statut', 'Date inscription']
     const rows = filteredRegistrations.map(reg => [
       reg.player_name,
       reg.whatsapp_number,
-      reg.email || '',
+      reg.amount_paid || reg.game_sessions?.entry_fee || 0,
       reg.game_sessions?.name || '',
       reg.status,
       formatDate(reg.created_at)
     ])
-    
+
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -291,7 +381,7 @@ export default function GameDashboardPage() {
                 ) : (
                   <HelpCircle className="w-4 h-4" />
                 )}
-                Générer Questions
+                Generer Questions
               </button>
               <button
                 onClick={loadDashboardData}
@@ -305,85 +395,6 @@ export default function GameDashboardPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 -mt-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Gamepad2 className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalSessions || 0}</p>
-                <p className="text-xs text-gray-500">Sessions</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalRegistrations || 0}</p>
-                <p className="text-xs text-gray-500">Inscrits</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Trophy className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {((stats?.totalPrizePool || 0) / 1000000).toFixed(1)}M
-                </p>
-                <p className="text-xs text-gray-500">Cagnotte FCFA</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <HelpCircle className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalQuestions || 0}</p>
-                <p className="text-xs text-gray-500">Questions</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Zap className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats?.sessions?.active || 0}</p>
-                <p className="text-xs text-gray-500">En cours</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <Clock className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats?.questionsUsedToday || 0}</p>
-                <p className="text-xs text-gray-500">Q. aujourd&apos;hui</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -391,14 +402,15 @@ export default function GameDashboardPage() {
             <nav className="flex overflow-x-auto">
               {[
                 { id: 'overview', label: 'Vue d\'ensemble', icon: Eye },
+                { id: 'questions', label: 'Questions', icon: HelpCircle },
                 { id: 'registrations', label: 'Inscriptions', icon: Users },
-                { id: 'sessions', label: 'Sessions', icon: Gamepad2 },
-                { id: 'winners', label: '🏆 Vainqueurs', icon: Crown },
+                { id: 'sessions', label: 'Sessions', icon: BarChart3 },
+                { id: 'winners', label: 'Vainqueurs', icon: Crown },
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-purple-600 text-purple-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -412,75 +424,299 @@ export default function GameDashboardPage() {
           </div>
 
           <div className="p-6">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
+            {/* ==================== VUE D'ENSEMBLE ==================== */}
+            {activeTab === 'overview' && advancedStats && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Sessions récentes</h3>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {stats?.recentSessions?.slice(0, 6).map(session => (
-                    <div key={session.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.session_type)}`} />
-                        {getStatusBadge(session.status)}
-                      </div>
-                      <h4 className="font-semibold text-gray-900 mb-1">{session.name}</h4>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {session.current_players}
-                        </span>
-                        <span className="font-medium text-green-600">
-                          {session.prize_pool.toLocaleString()} FCFA
-                        </span>
-                      </div>
+                {/* Stats principales */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Revenus</span>
                     </div>
-                  ))}
+                    <p className="text-2xl font-bold">{formatMoney(advancedStats.totalRevenue)} FCFA</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-red-500 to-pink-600 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Prix payes</span>
+                    </div>
+                    <p className="text-2xl font-bold">{formatMoney(advancedStats.totalPrizesPaid)} FCFA</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Net</span>
+                    </div>
+                    <p className="text-2xl font-bold">{formatMoney(advancedStats.netRevenue)} FCFA</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Joueurs</span>
+                    </div>
+                    <p className="text-2xl font-bold">{advancedStats.totalPlayers}</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Crown className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Vainqueurs</span>
+                    </div>
+                    <p className="text-2xl font-bold">{advancedStats.totalWinners}</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gamepad2 className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Sessions</span>
+                    </div>
+                    <p className="text-2xl font-bold">{advancedStats.totalSessions}</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <HelpCircle className="w-5 h-5 opacity-80" />
+                      <span className="text-sm opacity-80">Questions</span>
+                    </div>
+                    <p className="text-2xl font-bold">{advancedStats.totalQuestions}</p>
+                  </div>
                 </div>
 
-                {/* Dernières inscriptions */}
-                <h3 className="text-lg font-semibold text-gray-900 mt-8">Dernières inscriptions</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joueur</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WhatsApp</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {registrations.slice(0, 5).map(reg => (
-                        <tr key={reg.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            <span className="font-medium text-gray-900">{reg.player_name}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <a 
-                              href={`https://wa.me/${reg.whatsapp_number.replace(/\D/g, '')}`}
+                {/* Stats par periode */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <CalendarDays className="w-5 h-5 text-blue-500" />
+                      <h3 className="font-semibold text-gray-900">Aujourd&apos;hui</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Joueurs</span>
+                        <span className="font-bold text-gray-900">{advancedStats.today.players}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Revenus</span>
+                        <span className="font-bold text-green-600">{formatMoney(advancedStats.today.revenue)} FCFA</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sessions</span>
+                        <span className="font-bold text-gray-900">{advancedStats.today.sessions}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="w-5 h-5 text-purple-500" />
+                      <h3 className="font-semibold text-gray-900">Cette semaine</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Joueurs</span>
+                        <span className="font-bold text-gray-900">{advancedStats.week.players}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Revenus</span>
+                        <span className="font-bold text-green-600">{formatMoney(advancedStats.week.revenue)} FCFA</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sessions</span>
+                        <span className="font-bold text-gray-900">{advancedStats.week.sessions}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <BarChart3 className="w-5 h-5 text-orange-500" />
+                      <h3 className="font-semibold text-gray-900">Ce mois</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Joueurs</span>
+                        <span className="font-bold text-gray-900">{advancedStats.month.players}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Revenus</span>
+                        <span className="font-bold text-green-600">{formatMoney(advancedStats.month.revenue)} FCFA</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sessions</span>
+                        <span className="font-bold text-gray-900">{advancedStats.month.sessions}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Sessions et Vainqueurs recents */}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Top Sessions */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-green-500" />
+                      Top Sessions (par revenus)
+                    </h3>
+                    <div className="space-y-3">
+                      {advancedStats.topSessions.slice(0, 5).map((session, i) => (
+                        <div key={session.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
+                              {i + 1}
+                            </span>
+                            <div>
+                              <p className="font-medium text-gray-900">{session.name}</p>
+                              <p className="text-xs text-gray-500">{session.players} joueurs</p>
+                            </div>
+                          </div>
+                          <span className="font-bold text-green-600">{formatMoney(session.revenue)} FCFA</span>
+                        </div>
+                      ))}
+                      {advancedStats.topSessions.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">Aucune session</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vainqueurs recents */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-yellow-500" />
+                      Vainqueurs recents
+                    </h3>
+                    <div className="space-y-3">
+                      {advancedStats.recentWinners.slice(0, 5).map((winner) => (
+                        <div key={winner.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{winner.name}</p>
+                            <p className="text-xs text-gray-500">{winner.session}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600">{formatMoney(winner.prize)} FCFA</p>
+                            <a
+                              href={`https://wa.me/${winner.whatsapp.replace(/\D/g, '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-green-600 hover:text-green-700"
+                              className="text-xs text-green-600 hover:underline flex items-center gap-1"
                             >
-                              <MessageCircle className="w-4 h-4" />
-                              {reg.whatsapp_number}
+                              <Phone className="w-3 h-3" />
+                              {winner.whatsapp}
                             </a>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {reg.game_sessions?.name || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 text-sm">
-                            {formatDate(reg.created_at)}
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                      {advancedStats.recentWinners.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">Aucun vainqueur</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Registrations Tab */}
+            {/* ==================== QUESTIONS GENEREES ==================== */}
+            {activeTab === 'questions' && questionsData && (
+              <div className="space-y-6">
+                {/* Stats questions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <p className="text-sm text-gray-500">Total (72h)</p>
+                    <p className="text-2xl font-bold text-gray-900">{questionsData.total}</p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <p className="text-sm text-green-600">Facile</p>
+                    <p className="text-2xl font-bold text-green-700">{questionsData.byDifficulty.Facile}</p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <p className="text-sm text-yellow-600">Moyen</p>
+                    <p className="text-2xl font-bold text-yellow-700">{questionsData.byDifficulty.Moyen}</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <p className="text-sm text-red-600">Difficile</p>
+                    <p className="text-2xl font-bold text-red-700">{questionsData.byDifficulty.Difficile}</p>
+                  </div>
+                </div>
+
+                {/* Questions du jour */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-blue-500" />
+                    Aujourd&apos;hui ({questionsData.grouped.today.length} questions)
+                  </h3>
+                  <div className="space-y-2">
+                    {questionsData.grouped.today.map(q => (
+                      <div key={q.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getDifficultyBadge(q.difficulty)}
+                              <span className="text-xs text-gray-400">{formatDate(q.created_at)}</span>
+                            </div>
+                            <p className="text-gray-900 font-medium">{q.question || q.question_text}</p>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              {q.answers?.map((answer, i) => (
+                                <div
+                                  key={i}
+                                  className={`text-sm p-2 rounded ${i === q.correct_index ? 'bg-green-100 text-green-800 font-medium' : 'bg-gray-50 text-gray-600'}`}
+                                >
+                                  {answer}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {questionsData.grouped.today.length === 0 && (
+                      <p className="text-center text-gray-500 py-8">Aucune question generee aujourd&apos;hui</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Questions d'hier */}
+                {questionsData.grouped.yesterday.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-gray-500" />
+                      Hier ({questionsData.grouped.yesterday.length} questions)
+                    </h3>
+                    <div className="space-y-2">
+                      {questionsData.grouped.yesterday.slice(0, 5).map(q => (
+                        <div key={q.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            {getDifficultyBadge(q.difficulty)}
+                          </div>
+                          <p className="text-gray-700">{q.question || q.question_text}</p>
+                        </div>
+                      ))}
+                      {questionsData.grouped.yesterday.length > 5 && (
+                        <p className="text-center text-gray-500 text-sm">+ {questionsData.grouped.yesterday.length - 5} autres questions</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Questions plus anciennes */}
+                {questionsData.grouped.older.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-orange-500" />
+                      Plus anciennes ({questionsData.grouped.older.length} questions) - Seront supprimees bientot
+                    </h3>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <p className="text-orange-700 text-sm">
+                        Ces {questionsData.grouped.older.length} questions ont plus de 48h et seront automatiquement supprimees apres 72h.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ==================== INSCRIPTIONS ==================== */}
             {activeTab === 'registrations' && (
               <div className="space-y-4">
                 {/* Filters */}
@@ -518,7 +754,7 @@ export default function GameDashboardPage() {
 
                 {/* Count */}
                 <p className="text-sm text-gray-500">
-                  {filteredRegistrations.length} inscription(s) trouvée(s)
+                  {filteredRegistrations.length} inscription(s) trouvee(s)
                 </p>
 
                 {/* Table */}
@@ -528,7 +764,7 @@ export default function GameDashboardPage() {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joueur</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WhatsApp</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -542,7 +778,7 @@ export default function GameDashboardPage() {
                             <span className="font-medium text-gray-900">{reg.player_name}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <a 
+                            <a
                               href={`https://wa.me/${reg.whatsapp_number.replace(/\D/g, '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -552,8 +788,10 @@ export default function GameDashboardPage() {
                               {reg.whatsapp_number}
                             </a>
                           </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {reg.email || '-'}
+                          <td className="px-4 py-3">
+                            <span className="font-medium text-gray-900">
+                              {(reg.amount_paid || reg.game_sessions?.entry_fee || 0).toLocaleString()} FCFA
+                            </span>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
@@ -570,11 +808,11 @@ export default function GameDashboardPage() {
                             )}
                             {reg.status === 'eliminated' && (
                               <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                                Éliminé {reg.eliminated_at_round ? `(R${reg.eliminated_at_round})` : ''}
+                                Elimine {reg.eliminated_at_round ? `(R${reg.eliminated_at_round})` : ''}
                               </span>
                             )}
                             {reg.status === 'winner' && (
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">🏆 Gagnant</span>
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Gagnant</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-gray-500 text-sm">
@@ -585,7 +823,7 @@ export default function GameDashboardPage() {
                               onClick={() => setSelectedRegistration(reg)}
                               className="text-purple-600 hover:text-purple-800 text-sm font-medium"
                             >
-                              Détails
+                              Details
                             </button>
                           </td>
                         </tr>
@@ -596,12 +834,34 @@ export default function GameDashboardPage() {
               </div>
             )}
 
-            {/* Sessions Tab */}
+            {/* ==================== SESSIONS AVEC STATS ==================== */}
             {activeTab === 'sessions' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Toutes les sessions</h3>
-                  <button 
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Sessions</h3>
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                      {[
+                        { value: 'today', label: 'Aujourd\'hui' },
+                        { value: 'week', label: 'Semaine' },
+                        { value: 'month', label: 'Mois' },
+                        { value: 'all', label: 'Tout' }
+                      ].map(p => (
+                        <button
+                          key={p.value}
+                          onClick={() => setSessionPeriod(p.value as typeof sessionPeriod)}
+                          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            sessionPeriod === p.value
+                              ? 'bg-white text-purple-600 shadow-sm'
+                              : 'text-gray-600 hover:text-gray-900'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
                     onClick={() => setShowCreateModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                   >
@@ -610,6 +870,33 @@ export default function GameDashboardPage() {
                   </button>
                 </div>
 
+                {/* Stats globales periode */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <p className="text-sm text-purple-600">Sessions</p>
+                    <p className="text-2xl font-bold text-purple-700">{sessions.length}</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-sm text-blue-600">Joueurs</p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {sessions.reduce((sum, s) => sum + (s.current_players || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <p className="text-sm text-green-600">Revenus</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      {formatMoney(sessions.reduce((sum, s) => sum + (s.stats?.revenue || 0), 0))} FCFA
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <p className="text-sm text-yellow-600">Cagnottes</p>
+                    <p className="text-2xl font-bold text-yellow-700">
+                      {formatMoney(sessions.reduce((sum, s) => sum + (s.prize_pool || 0), 0))} FCFA
+                    </p>
+                  </div>
+                </div>
+
+                {/* Liste sessions */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {sessions.map(session => (
                     <div key={session.id} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
@@ -622,7 +909,7 @@ export default function GameDashboardPage() {
                           {getStatusBadge(session.status)}
                         </div>
                         <h4 className="font-semibold text-gray-900 mb-3">{session.name}</h4>
-                        
+
                         <div className="space-y-2 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 flex items-center gap-1">
@@ -635,17 +922,26 @@ export default function GameDashboardPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 flex items-center gap-1">
+                              <DollarSign className="w-4 h-4" />
+                              Revenus
+                            </span>
+                            <span className="font-medium text-green-600">
+                              {formatMoney(session.stats?.revenue || 0)} FCFA
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500 flex items-center gap-1">
                               <Trophy className="w-4 h-4" />
                               Cagnotte
                             </span>
-                            <span className="font-medium text-green-600">
-                              {session.prize_pool.toLocaleString()} FCFA
+                            <span className="font-medium text-purple-600">
+                              {formatMoney(session.prize_pool)} FCFA
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 flex items-center gap-1">
                               <Zap className="w-4 h-4" />
-                              Entrée
+                              Entree
                             </span>
                             <span className="font-medium">
                               {session.entry_fee > 0 ? `${session.entry_fee.toLocaleString()} FCFA` : 'Gratuit'}
@@ -656,13 +952,13 @@ export default function GameDashboardPage() {
                         {/* Progress bar */}
                         <div className="mt-4">
                           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className={`h-full ${getSessionTypeColor(session.session_type)} transition-all`}
-                              style={{ width: `${(session.current_players / session.max_players) * 100}%` }}
+                              style={{ width: `${session.stats?.fillRate || 0}%` }}
                             />
                           </div>
                           <p className="text-xs text-gray-500 mt-1 text-right">
-                            {Math.round((session.current_players / session.max_players) * 100)}% rempli
+                            {session.stats?.fillRate || 0}% rempli
                           </p>
                         </div>
 
@@ -671,22 +967,27 @@ export default function GameDashboardPage() {
                             <Calendar className="w-3 h-3" />
                             {formatDate(session.created_at)}
                           </span>
-                          <button className="text-purple-600 hover:text-purple-700 font-medium">
-                            Voir détails →
-                          </button>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {sessions.length === 0 && (
+                  <div className="text-center py-12">
+                    <Gamepad2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Aucune session</h4>
+                    <p className="text-gray-500">Aucune session pour cette periode</p>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Winners Tab */}
+            {/* ==================== VAINQUEURS ==================== */}
             {activeTab === 'winners' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">🏆 Tableau des Vainqueurs</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Tableau des Vainqueurs</h3>
                   <span className="text-sm text-gray-500">{winners.length} vainqueur(s)</span>
                 </div>
 
@@ -694,71 +995,70 @@ export default function GameDashboardPage() {
                   <div className="text-center py-12">
                     <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h4 className="text-lg font-medium text-gray-900 mb-2">Aucun vainqueur pour le moment</h4>
-                    <p className="text-gray-500">Les vainqueurs des sessions apparaîtront ici</p>
+                    <p className="text-gray-500">Les vainqueurs des sessions apparaitront ici</p>
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {winners.map((winner, index) => (
-                      <div 
-                        key={winner.id} 
-                        className={`relative rounded-xl overflow-hidden ${
-                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500' :
-                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
-                          'bg-gradient-to-br from-purple-500 to-indigo-600'
-                        } p-1`}
-                      >
-                        <div className="bg-white rounded-lg p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                              index === 0 ? 'bg-yellow-100' :
-                              index === 1 ? 'bg-gray-100' :
-                              index === 2 ? 'bg-orange-100' :
-                              'bg-purple-100'
-                            }`}>
-                              {index === 0 ? (
-                                <Crown className="w-6 h-6 text-yellow-600" />
-                              ) : index <= 2 ? (
-                                <Medal className="w-6 h-6 text-gray-600" />
-                              ) : (
-                                <Trophy className="w-6 h-6 text-purple-600" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-900">{winner.player_name}</p>
-                              <p className="text-sm text-gray-500">{winner.game_sessions?.name || 'Session'}</p>
-                            </div>
-                            {index < 3 && (
-                              <span className="ml-auto text-2xl font-bold text-gray-400">#{index + 1}</span>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-sm">
-                            <a 
-                              href={`https://wa.me/${winner.whatsapp_number.replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-green-600 hover:text-green-700"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                              Contacter
-                            </a>
-                            <span className="text-gray-500">{formatDate(winner.created_at)}</span>
-                          </div>
-
-                          {winner.game_sessions && (
-                            <div className="mt-3 pt-3 border-t border-gray-100">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Cagnotte gagnée</span>
-                                <span className="font-bold text-green-600">
-                                  {winner.game_sessions.prize_pool?.toLocaleString() || 0} FCFA
-                                </span>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-yellow-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">#</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">Joueur</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">Contact</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">Session</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">Gains</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {winners.map((winner, index) => (
+                          <tr key={winner.id} className="hover:bg-yellow-50/50">
+                            <td className="px-4 py-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                index === 1 ? 'bg-gray-300 text-gray-700' :
+                                index === 2 ? 'bg-orange-400 text-orange-900' :
+                                'bg-purple-100 text-purple-600'
+                              }`}>
+                                {index < 3 ? (
+                                  <Crown className="w-4 h-4" />
+                                ) : (
+                                  <span className="text-sm font-bold">{index + 1}</span>
+                                )}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-bold text-gray-900">{winner.player_name}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <a
+                                href={`https://wa.me/${winner.whatsapp_number.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
+                              >
+                                <Phone className="w-4 h-4" />
+                                {winner.whatsapp_number}
+                              </a>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${getSessionTypeColor(winner.game_sessions?.session_type || '')}`} />
+                                <span className="text-gray-600">{winner.game_sessions?.name || 'Session'}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-bold text-green-600">
+                                {(winner.game_sessions?.prize_pool || 0).toLocaleString()} FCFA
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 text-sm">
+                              {formatDate(winner.created_at)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -767,14 +1067,14 @@ export default function GameDashboardPage() {
         </div>
       </div>
 
-      {/* Modal Création Session */}
+      {/* Modal Creation Session */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreateModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Créer une nouvelle session</h3>
-              <button 
+              <h3 className="text-xl font-bold text-gray-900">Creer une nouvelle session</h3>
+              <button
                 onClick={() => setShowCreateModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -797,7 +1097,7 @@ export default function GameDashboardPage() {
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <span className={`block w-3 h-3 rounded-full mx-auto mb-1 bg-${type.color}-500`} />
+                      <span className={`block w-3 h-3 rounded-full mx-auto mb-1 ${getSessionTypeColor(type.value)}`} />
                       <span className="text-xs font-medium">{type.label}</span>
                     </button>
                   ))}
@@ -816,10 +1116,10 @@ export default function GameDashboardPage() {
                 />
               </div>
 
-              {/* Frais d'entrée et Max joueurs */}
+              {/* Frais d'entree et Max joueurs */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais d&apos;entrée (FCFA)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frais d&apos;entree (FCFA)</label>
                   <input
                     type="number"
                     value={newSession.entry_fee}
@@ -838,9 +1138,9 @@ export default function GameDashboardPage() {
                 </div>
               </div>
 
-              {/* Date de début */}
+              {/* Date de debut */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date de début (optionnel)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date de debut (optionnel)</label>
                 <input
                   type="datetime-local"
                   value={newSession.scheduled_start}
@@ -849,12 +1149,12 @@ export default function GameDashboardPage() {
                 />
               </div>
 
-              {/* Résumé */}
+              {/* Resume */}
               <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-medium text-purple-900 mb-2">Résumé</h4>
+                <h4 className="font-medium text-purple-900 mb-2">Resume</h4>
                 <div className="text-sm text-purple-700 space-y-1">
                   <p>Type: <strong>{SESSION_TYPES.find(t => t.value === newSession.session_type)?.label}</strong></p>
-                  <p>Entrée: <strong>{newSession.entry_fee.toLocaleString()} FCFA</strong></p>
+                  <p>Entree: <strong>{newSession.entry_fee.toLocaleString()} FCFA</strong></p>
                   <p>Cagnotte potentielle: <strong>{(newSession.entry_fee * newSession.max_players).toLocaleString()} FCFA</strong></p>
                 </div>
               </div>
@@ -875,12 +1175,12 @@ export default function GameDashboardPage() {
                   {creatingSession ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      Création...
+                      Creation...
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4" />
-                      Créer la session
+                      Creer la session
                     </>
                   )}
                 </button>
@@ -890,7 +1190,7 @@ export default function GameDashboardPage() {
         </div>
       )}
 
-      {/* Modal Détail Inscription */}
+      {/* Modal Detail Inscription */}
       {selectedRegistration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedRegistration(null)} />
@@ -905,13 +1205,13 @@ export default function GameDashboardPage() {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{selectedRegistration.player_name}</h3>
                   <p className="text-sm text-gray-500">
-                    {selectedRegistration.status === 'winner' ? '🏆 Gagnant' : 
-                     selectedRegistration.status === 'eliminated' ? '❌ Éliminé' : 
-                     selectedRegistration.status === 'playing' ? '🎮 En jeu' : '📝 Inscrit'}
+                    {selectedRegistration.status === 'winner' ? 'Gagnant' :
+                     selectedRegistration.status === 'eliminated' ? 'Elimine' :
+                     selectedRegistration.status === 'playing' ? 'En jeu' : 'Inscrit'}
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedRegistration(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
@@ -925,11 +1225,20 @@ export default function GameDashboardPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-green-50 rounded-lg p-3">
                   <p className="text-xs text-green-600">WhatsApp</p>
-                  <p className="font-medium text-green-800">{selectedRegistration.whatsapp_number}</p>
+                  <a
+                    href={`https://wa.me/${selectedRegistration.whatsapp_number.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-green-800 hover:underline"
+                  >
+                    {selectedRegistration.whatsapp_number}
+                  </a>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">Inscrit le</p>
-                  <p className="font-medium text-gray-800">{formatDate(selectedRegistration.created_at)}</p>
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs text-blue-600">Montant paye</p>
+                  <p className="font-medium text-blue-800">
+                    {(selectedRegistration.amount_paid || selectedRegistration.game_sessions?.entry_fee || 0).toLocaleString()} FCFA
+                  </p>
                 </div>
               </div>
             </div>
@@ -951,59 +1260,10 @@ export default function GameDashboardPage() {
               </div>
             </div>
 
-            {/* Résultat */}
+            {/* Date inscription */}
             <div className="mb-6">
-              <p className="text-xs text-gray-500 uppercase font-medium mb-2">Résultat</p>
-              {selectedRegistration.status === 'winner' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <Trophy className="w-8 h-8 text-yellow-500" />
-                    <div>
-                      <p className="font-bold text-yellow-800">Vainqueur ! 🎉</p>
-                      <p className="text-sm text-yellow-600">A remporté la cagnotte</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {selectedRegistration.status === 'eliminated' && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <XCircle className="w-8 h-8 text-red-500" />
-                    <div>
-                      <p className="font-bold text-red-800">
-                        Éliminé au Round {selectedRegistration.eliminated_at_round || '?'}
-                      </p>
-                      {selectedRegistration.eliminated_at_question && (
-                        <p className="text-sm text-red-600 mt-1">
-                          Question: {selectedRegistration.eliminated_at_question.substring(0, 80)}...
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {selectedRegistration.status === 'playing' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <Gamepad2 className="w-8 h-8 text-green-500" />
-                    <div>
-                      <p className="font-bold text-green-800">En jeu</p>
-                      <p className="text-sm text-green-600">Partie en cours...</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {selectedRegistration.status === 'registered' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-8 h-8 text-blue-500" />
-                    <div>
-                      <p className="font-bold text-blue-800">Inscrit</p>
-                      <p className="text-sm text-blue-600">En attente du début de la session</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <p className="text-xs text-gray-500 uppercase font-medium mb-2">Date d&apos;inscription</p>
+              <p className="text-gray-900">{formatDate(selectedRegistration.created_at)}</p>
             </div>
 
             <button
