@@ -509,20 +509,66 @@ function generateSingleFallbackQuestion(round, difficulty) {
   
   // Sélectionner une question aléatoire parmi celles disponibles
   const q = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-  
+
   // Marquer comme posée
   askedQuestions.add(q.id);
-  
+
+  // Mélanger les réponses aléatoirement (sauf pour Anti-IA où toutes sont valides)
+  let shuffledAnswers = [...q.answers];
+  let newCorrectIndex = q.correct;
+
+  if (!q.isAntiAI && q.correct >= 0) {
+    const correctAnswer = q.answers[q.correct];
+    // Fisher-Yates shuffle
+    for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+    }
+    // Trouver le nouvel index de la bonne réponse
+    newCorrectIndex = shuffledAnswers.indexOf(correctAnswer);
+  }
+
   return {
     id: `${round}-${q.id}-${Date.now()}`,
     round,
     difficulty,
     question: q.question,
-    answers: q.answers,
-    correct: q.correct,
+    answers: shuffledAnswers,
+    correct: newCorrectIndex,
     timeLimit: difficulty === 'Facile' ? 15 : difficulty === 'Moyen' ? 12 : difficulty === 'Difficile' ? 10 : difficulty === 'Expert' ? 7 : 5,
     isAntiAI: q.isAntiAI || false
   };
+}
+
+/**
+ * Génère une liste de questions par défaut mélangées avec réponses randomisées
+ * @param {number} count - Nombre de questions à générer
+ * @returns {Array} Questions formatées avec réponses mélangées
+ */
+function getDefaultQuestions(count = 10) {
+  const allQuestions = [];
+
+  // Distribution: 30% Facile, 40% Moyen, 30% Difficile
+  const facileCount = Math.ceil(count * 0.3);
+  const moyenCount = Math.ceil(count * 0.4);
+  const difficileCount = count - facileCount - moyenCount;
+
+  // Générer les questions avec difficulté progressive
+  for (let i = 0; i < facileCount; i++) {
+    allQuestions.push(generateSingleFallbackQuestion(allQuestions.length + 1, 'Facile'));
+  }
+  for (let i = 0; i < moyenCount; i++) {
+    allQuestions.push(generateSingleFallbackQuestion(allQuestions.length + 1, 'Moyen'));
+  }
+  for (let i = 0; i < difficileCount; i++) {
+    allQuestions.push(generateSingleFallbackQuestion(allQuestions.length + 1, 'Difficile'));
+  }
+
+  // Réassigner les numéros de round
+  return allQuestions.slice(0, count).map((q, index) => ({
+    ...q,
+    round: index + 1
+  }));
 }
 
 // ==================== LE PACTE - KILLER FEATURE ====================

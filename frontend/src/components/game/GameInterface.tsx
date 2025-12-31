@@ -372,14 +372,51 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-  // Questions pour le mode Démo
-  const DEMO_QUESTIONS: Question[] = [
+  // Fonction pour mélanger un tableau (Fisher-Yates shuffle)
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
+
+  // Fonction pour randomiser les réponses d'une question
+  const shuffleQuestionAnswers = (q: Question): Question => {
+    const correctAnswer = q.answers[q.correct]
+    const shuffledAnswers = shuffleArray(q.answers)
+    const newCorrectIndex = shuffledAnswers.indexOf(correctAnswer)
+    return {
+      ...q,
+      answers: shuffledAnswers,
+      correct: newCorrectIndex
+    }
+  }
+
+  // Questions brutes pour le mode Démo (seront randomisées à l'utilisation)
+  const RAW_DEMO_QUESTIONS: Question[] = [
     { id: 'demo1', round: 1, difficulty: 'Facile', question: "Quelle est la capitale du Gabon ?", answers: ["Libreville", "Port-Gentil", "Franceville", "Oyem"], correct: 0, timeLimit: 15 },
     { id: 'demo2', round: 2, difficulty: 'Facile', question: "Quelle est la monnaie du Gabon ?", answers: ["Euro", "Dollar", "Franc CFA", "Naira"], correct: 2, timeLimit: 15 },
     { id: 'demo3', round: 3, difficulty: 'Moyen', question: "Quel est le fleuve principal ?", answers: ["Komo", "Ogooué", "Nyanga", "Ivindo"], correct: 1, timeLimit: 12 },
     { id: 'demo4', round: 4, difficulty: 'Moyen', question: "Qui est le président de la Transition ?", answers: ["Ali Bongo", "Oligui Nguema", "Jean Ping", "Léon Mba"], correct: 1, timeLimit: 12 },
     { id: 'demo5', round: 5, difficulty: 'Difficile', question: "Combien de provinces compte le Gabon ?", answers: ["7", "9", "10", "12"], correct: 1, timeLimit: 10 },
+    { id: 'demo6', round: 6, difficulty: 'Facile', question: "Sur quel continent se trouve le Gabon ?", answers: ["Asie", "Europe", "Afrique", "Amérique"], correct: 2, timeLimit: 15 },
+    { id: 'demo7', round: 7, difficulty: 'Moyen', question: "Quel océan borde le Gabon ?", answers: ["Pacifique", "Indien", "Atlantique", "Arctique"], correct: 2, timeLimit: 12 },
+    { id: 'demo8', round: 8, difficulty: 'Difficile', question: "En quelle année le Gabon a-t-il obtenu son indépendance ?", answers: ["1958", "1960", "1962", "1964"], correct: 1, timeLimit: 10 },
   ]
+
+  // Générer les questions DEMO avec réponses mélangées (recalculé à chaque session)
+  const getShuffledDemoQuestions = (): Question[] => {
+    return shuffleArray(RAW_DEMO_QUESTIONS).map((q, index) => ({
+      ...shuffleQuestionAnswers(q),
+      id: `demo-${Date.now()}-${index}`,
+      round: index + 1
+    }))
+  }
+
+  // Référence stable pour DEMO_QUESTIONS (utilisée comme fallback)
+  const DEMO_QUESTIONS = RAW_DEMO_QUESTIONS.map(shuffleQuestionAnswers)
 
   // Charger une question démo
   const loadDemoQuestion = () => {
@@ -739,7 +776,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
       const firstQuestion = questionsToUse[0]
       // S'assurer que demoQuestions est défini pour les prochaines questions
       if (demoQuestions.length === 0) {
-        setDemoQuestions(DEMO_QUESTIONS)
+        setDemoQuestions(getShuffledDemoQuestions())
       }
       setCurrentQuestion(firstQuestion)
       setMaxTime(getTimeLimit(1))
@@ -1069,14 +1106,14 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             } else {
                 console.error('❌ Pas de questions reçues, utilisation questions par défaut')
                 // Fallback: utiliser les questions DEMO par défaut
-                setDemoQuestions(DEMO_QUESTIONS)
+                setDemoQuestions(getShuffledDemoQuestions())
                 setIsRegistering(false)
             }
         })
         .catch(err => {
             console.error('Erreur chargement questions:', err)
             // Fallback: utiliser les questions DEMO par défaut
-            setDemoQuestions(DEMO_QUESTIONS)
+            setDemoQuestions(getShuffledDemoQuestions())
             setIsRegistering(false)
         })
         return
@@ -1790,7 +1827,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
 
           // S'assurer que les questions sont chargées (fallback DEMO si pas prêtes)
           if (demoQuestions.length === 0) {
-            setDemoQuestions(DEMO_QUESTIONS)
+            setDemoQuestions(getShuffledDemoQuestions())
           }
 
           // Passer en salle d'attente finale (5 secondes au lieu de 30 pour réactivité)
