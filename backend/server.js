@@ -375,13 +375,21 @@ initWhatsAppScheduler();
 app.get('/api/routes', async (req, res) => {
   try {
     console.log('🗺️  Récupération des trajets...');
+    // Sélectionner toutes les colonnes disponibles avec fallback gracieux
     const { data: routes, error } = await supabase
       .from('map_routes')
-      .select('id, name, description, start_point, end_point, waypoints, distance_km, estimated_duration_min, transport_type, difficulty, is_active, display_order')
+      .select('*')
       .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .order('display_order', { ascending: true, nullsFirst: false });
 
-    if (error) throw error;
+    if (error) {
+      // Si erreur de colonne manquante, retourner tableau vide
+      if (error.message?.includes('does not exist')) {
+        console.warn('⚠️ Table map_routes incomplète, retourne tableau vide');
+        return res.json({ success: true, routes: [] });
+      }
+      throw error;
+    }
 
     res.json({
       success: true,
