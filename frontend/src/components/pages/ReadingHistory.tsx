@@ -224,6 +224,18 @@ export default function ReadingHistory() {
     })
   }
 
+  // Proxy pour les images externes
+  const getProxiedImage = (url?: string, title?: string): string => {
+    if (!url) return ''
+    if (url.startsWith('/') || url.startsWith('data:') || url.startsWith('blob:')) return url
+    try {
+      const u = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://gabon24-7.com')
+      const isSameOrigin = typeof window !== 'undefined' && u.hostname === window.location.hostname
+      if (isSameOrigin) return url
+    } catch {}
+    return `${API_URL}/api/image-proxy?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || '')}`
+  }
+
   // Si l'utilisateur n'est pas connecté
   if (!user && !loading) {
     return (
@@ -454,10 +466,23 @@ export default function ReadingHistory() {
                       className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all group"
                     >
                       <div className="flex gap-4">
-                        {/* Image placeholder */}
+                        {/* Image article */}
                         <div className="hidden sm:block w-24 h-24 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex-shrink-0 overflow-hidden">
                           {item.image_url ? (
-                            <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={getProxiedImage(item.image_url, item.article_title)}
+                              alt={item.article_title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                target.parentElement?.classList.add('flex', 'items-center', 'justify-center')
+                                const icon = document.createElement('div')
+                                icon.innerHTML = '<svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>'
+                                target.parentElement?.appendChild(icon)
+                              }}
+                              referrerPolicy="no-referrer"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <BookOpen className="w-8 h-8 text-orange-400" />

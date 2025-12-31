@@ -432,6 +432,26 @@ app.get('/api/user/history', async (req, res) => {
 
     if (error) throw error;
 
+    // Enrichir avec les images des articles
+    let enrichedHistory = data || [];
+    if (enrichedHistory.length > 0) {
+      const articleIds = enrichedHistory.map(h => h.article_id).filter(Boolean);
+      if (articleIds.length > 0) {
+        const { data: articlesImages } = await supabase
+          .from('articles')
+          .select('id, image_url')
+          .in('id', articleIds);
+
+        if (articlesImages) {
+          const imageMap = new Map(articlesImages.map(a => [a.id, a.image_url]));
+          enrichedHistory = enrichedHistory.map(h => ({
+            ...h,
+            image_url: imageMap.get(h.article_id) || h.image_url || null
+          }));
+        }
+      }
+    }
+
     // Récupérer TOUTES les données pour les statistiques globales
     const { data: allHistory, error: allError } = await supabase
       .from('user_reading_history')
@@ -465,7 +485,7 @@ app.get('/api/user/history', async (req, res) => {
 
     res.json({
       success: true,
-      history: data || [],
+      history: enrichedHistory,
       stats,
       total: count,
       page: parseInt(page),
