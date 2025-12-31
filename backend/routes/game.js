@@ -47,9 +47,14 @@ router.post('/generate-daily', async (req, res) => {
  */
 router.post('/questions', async (req, res) => {
   try {
-    const { rounds = 10 } = req.body;
+    const { rounds = 10, sessionType = 'training' } = req.body;
 
-    console.log(`🎮 [GAME] Demande de ${rounds} questions...`);
+    // Déterminer le type de questions à récupérer
+    // training = questions gratuites pour entraînement
+    // paid = questions pour sessions payantes (différentes du training!)
+    const questionType = sessionType === 'training' ? 'training' : 'paid';
+
+    console.log(`🎮 [GAME] Demande de ${rounds} questions (type: ${questionType})...`);
 
     // Date limite: questions des dernières 72h uniquement
     const cutoffDate = new Date();
@@ -57,11 +62,32 @@ router.post('/questions', async (req, res) => {
     const cutoffISO = cutoffDate.toISOString();
 
     // Récupérer des questions récentes de chaque niveau de difficulté
-    // Distribution: 35% Facile, 40% Moyen, 25% Difficile
+    // Filtrer par question_type pour séparer Training des sessions payantes
+    const buildQuery = (difficulty) => {
+      let query = supabase
+        .from('game_questions')
+        .select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt, question_type')
+        .eq('difficulty', difficulty)
+        .gte('created_at', cutoffISO)
+        .order('created_at', { ascending: false })
+        .limit(60);
+
+      // Filtrer par type si la colonne existe (graceful degradation)
+      // Les questions sans type sont considérées comme 'paid'
+      if (questionType === 'training') {
+        query = query.eq('question_type', 'training');
+      } else {
+        // Pour paid, on accepte 'paid' ou null (anciennes questions)
+        query = query.or('question_type.eq.paid,question_type.is.null');
+      }
+
+      return query;
+    };
+
     const [facileRes, moyenRes, difficileRes] = await Promise.all([
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Facile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Moyen').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Difficile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50)
+      buildQuery('Facile'),
+      buildQuery('Moyen'),
+      buildQuery('Difficile')
     ]);
 
     // Grouper par difficulté et mélanger aléatoirement

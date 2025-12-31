@@ -6,16 +6,18 @@ class GameQuestionGenerator {
     // Service Gemini injecté directement
     // Modèle dédié pour le quiz (éviter les quotas du modèle principal)
     this.quizModel = 'gemini-2.5-flash';
-    // Objectif quotidien de questions
-    this.dailyTarget = 100;
+    // Objectif quotidien de questions (150 pour avoir assez pour Training + Payantes)
+    this.dailyTarget = 150;
     // Durée de vie des questions (72h)
     this.questionLifespanHours = 72;
-    // Distribution cible des difficultés (sur 100 questions)
+    // Distribution cible des difficultés (sur 150 questions)
     this.difficultyDistribution = {
-      'Facile': 35,      // 35% faciles
-      'Moyen': 40,       // 40% moyennes
-      'Difficile': 25    // 25% difficiles
+      'Facile': 50,      // ~33% faciles
+      'Moyen': 60,       // ~40% moyennes
+      'Difficile': 40    // ~27% difficiles
     };
+    // Types de questions: training (gratuites) vs paid (sessions payantes)
+    this.questionTypes = ['training', 'paid'];
   }
 
   /**
@@ -382,7 +384,7 @@ Résumé: ${article.summary || (article.content ? article.content.substring(0, 6
     ];
   }
 
-  async saveQuestion(questionData) {
+  async saveQuestion(questionData, questionType = null) {
     // Validation basique
     if (!questionData.question || !questionData.answers || questionData.correct_index === undefined) {
       return false;
@@ -400,6 +402,10 @@ Résumé: ${article.summary || (article.content ? article.content.substring(0, 6
       }
     }
 
+    // Assigner un type de question (training ou paid) aléatoirement si non spécifié
+    // Distribution: 40% training, 60% paid (les sessions payantes ont besoin de plus de variété)
+    const type = questionType || (Math.random() < 0.4 ? 'training' : 'paid');
+
     const { error } = await supabaseService.supabase
       .from('game_questions')
       .insert([{
@@ -408,6 +414,7 @@ Résumé: ${article.summary || (article.content ? article.content.substring(0, 6
         correct_answer_index: questionData.correct_index,
         difficulty: difficulty,
         category: questionData.category,
+        question_type: type
         // source_url: questionData.source_url,
         // source_title: questionData.source_title,
         // used_count: 0
@@ -418,7 +425,7 @@ Résumé: ${article.summary || (article.content ? article.content.substring(0, 6
       return false;
     }
 
-    console.log(`💾 [${difficulty}] Question sauvegardée: ${questionData.question.substring(0, 40)}...`);
+    console.log(`💾 [${difficulty}/${type}] Question sauvegardée: ${questionData.question.substring(0, 40)}...`);
     return true;
   }
 

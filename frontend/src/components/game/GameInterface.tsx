@@ -788,10 +788,11 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
       console.log('❓ Première question:', firstQuestion.question)
     } else {
       // Fallback: charger les questions maintenant (ne devrait jamais arriver)
+      const sessionType = selectedSession?.id === 'training' ? 'training' : 'paid'
       fetch(`${API_URL}/api/game/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rounds: 10 })
+        body: JSON.stringify({ rounds: 10, sessionType })
       })
       .then(res => res.json())
       .then(data => {
@@ -1091,11 +1092,11 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             })
         }).catch(err => console.error('Erreur enregistrement training:', err))
 
-        // Charger les questions en parallèle
+        // Charger les questions TRAINING en parallèle (pool séparé des sessions payantes)
         fetch(`${API_URL}/api/game/questions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rounds: 10 })
+            body: JSON.stringify({ rounds: 10, sessionType: 'training' })
         })
         .then(res => res.json())
         .then(data => {
@@ -1801,7 +1802,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
         fetch(`${API_URL}/api/game/questions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rounds: 10 })
+          body: JSON.stringify({ rounds: 10, sessionType: 'paid' })
         })
         .then(res => res.json())
         .then(data => {
