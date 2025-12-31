@@ -1171,7 +1171,7 @@ app.get('/api/articles', async (req, res) => {
   }
 });
 
-// Route pour trouver des articles similaires avec IA
+// Route pour trouver des articles similaires avec IA (matching STRICT)
 app.post('/api/articles/similar', async (req, res) => {
   try {
     const { projectTitle, projectDescription, sector, problematique, excludeUrl } = req.body;
@@ -1183,7 +1183,7 @@ app.post('/api/articles/similar', async (req, res) => {
       });
     }
 
-    console.log('🔍 Recherche articles similaires avec IA pour:', { projectTitle, sector });
+    console.log('🔍 Recherche articles similaires STRICT avec IA pour:', { projectTitle, sector });
 
     // 1. Récupérer les articles récents
     const { data: articles, error } = await supabase
@@ -1209,9 +1209,9 @@ app.post('/api/articles/similar', async (req, res) => {
       `[${i}] "${a.title}" - ${a.summary?.substring(0, 150) || 'Pas de résumé'}`
     ).join('\n');
 
-    const prompt = `Tu es un expert en analyse de contenu.
+    const prompt = `Tu es un expert STRICT en analyse de pertinence de contenu.
 
-PROJET À ANALYSER:
+PROJET BUSINESS À ANALYSER:
 - Titre: ${projectTitle || 'Non spécifié'}
 - Description: ${projectDescription?.substring(0, 300) || 'Non spécifiée'}
 - Secteur: ${sector || 'Non spécifié'}
@@ -1220,43 +1220,53 @@ PROJET À ANALYSER:
 ARTICLES DISPONIBLES:
 ${articlesList}
 
-MISSION: Identifie les 5 articles les plus pertinents qui traitent du même sujet, de la même problématique ou du même secteur d'activité que ce projet business.
+MISSION: Identifie UNIQUEMENT les articles qui ont un lien DIRECT et ÉVIDENT avec ce projet.
 
-Critères de pertinence:
-- Même secteur économique ou industrie
-- Même problématique ou enjeu
-- Même zone géographique (Gabon, Afrique centrale)
-- Thématiques connexes ou complémentaires
-- Actualités impactant ce type de projet
+⚠️ RÈGLES STRICTES DE PERTINENCE:
+1. L'article DOIT traiter du MÊME SECTEUR D'ACTIVITÉ EXACT (pas juste économie générale)
+2. L'article DOIT mentionner des éléments directement liés au projet (acteurs, zone géographique spécifique, problématique identique)
+3. Les articles généraux sur l'économie, la politique ou l'Afrique NE SONT PAS pertinents sauf s'ils concernent DIRECTEMENT le secteur du projet
+4. Si un article ne mentionne pas clairement le secteur ou la problématique du projet, il N'EST PAS pertinent
+
+IMPORTANT:
+- Retourne un tableau VIDE si aucun article n'est vraiment pertinent
+- Il vaut mieux ne rien retourner que de suggérer des articles sans lien réel
+- Chaque article sélectionné DOIT avoir un score de confiance >= 70/100
 
 Réponds UNIQUEMENT avec un JSON:
 {
-  "similar_indices": [0, 5, 12, 23, 45],
-  "relevance_reasons": ["Même secteur agricole", "Traite des investissements au Gabon", "Politique économique liée", "Acteur mentionné dans le projet", "Infrastructure concernée"]
+  "similar_articles": [
+    {"index": 0, "confidence": 85, "reason": "Traite exactement du secteur agricole au Gabon mentionné dans le projet"},
+    {"index": 5, "confidence": 72, "reason": "Concerne la même zone économique spéciale citée dans le projet"}
+  ]
 }
 
-IMPORTANT: Retourne les indices des articles (numéros entre crochets) les plus pertinents. Maximum 5 articles.`;
+Si AUCUN article n'atteint le seuil de pertinence de 70%, retourne:
+{
+  "similar_articles": []
+}`;
 
     // 3. Appeler l'IA
     const geminiService = require('./services/gemini-service');
     const aiResult = await geminiService.generateJSON(prompt, {
-      systemPrompt: 'Tu es un expert en analyse sémantique et en correspondance de contenus. Réponds uniquement en JSON valide.',
-      temperature: 0.3
+      systemPrompt: 'Tu es un expert en analyse sémantique STRICT. Tu ne retournes que des articles ayant un lien DIRECT avec le projet. En cas de doute, tu ne retournes rien. Réponds uniquement en JSON valide.',
+      temperature: 0.2 // Plus bas = plus strict
     });
 
-    // 4. Extraire les articles correspondants
-    const indices = aiResult?.similar_indices || [];
-    const reasons = aiResult?.relevance_reasons || [];
+    // 4. Extraire les articles avec filtrage par score de confiance
+    const similarResults = aiResult?.similar_articles || [];
+    const MIN_CONFIDENCE = 70; // Score minimum de confiance
 
-    const similarArticles = indices
-      .filter(i => i >= 0 && i < filteredArticles.length)
+    const similarArticles = similarResults
+      .filter(item => item.confidence >= MIN_CONFIDENCE && item.index >= 0 && item.index < filteredArticles.length)
       .slice(0, 5)
-      .map((idx, i) => ({
-        ...filteredArticles[idx],
-        relevance_reason: reasons[i] || 'Article pertinent'
+      .map(item => ({
+        ...filteredArticles[item.index],
+        relevance_reason: item.reason || 'Article pertinent',
+        confidence_score: item.confidence
       }));
 
-    console.log(`✅ Trouvé ${similarArticles.length} articles similaires via IA`);
+    console.log(`✅ Trouvé ${similarArticles.length} articles vraiment similaires via IA (sur ${similarResults.length} candidats)`);
 
     res.json({
       success: true,
@@ -1267,10 +1277,31 @@ IMPORTANT: Retourne les indices des articles (numéros entre crochets) les plus 
   } catch (error) {
     console.error('❌ Erreur recherche articles similaires:', error);
 
-    // Fallback: recherche basique par mots-clés
+    // Fallback: recherche basique STRICTE par mots-clés
     try {
-      const { projectTitle, sector, excludeUrl } = req.body;
-      const searchTerms = [projectTitle, sector].filter(Boolean).join(' ').toLowerCase();
+      const { projectTitle, sector, problematique, excludeUrl } = req.body;
+
+      // Extraire les mots-clés importants (minimum 5 caractères pour être significatif)
+      const extractKeywords = (text) => {
+        if (!text) return [];
+        const stopWords = ['avec', 'dans', 'pour', 'cette', 'celui', 'celle', 'leurs', 'notre', 'votre', 'entre', 'aussi', 'comme', 'après', 'avant', 'faire', 'projet', 'business', 'entreprise', 'activité', 'développement', 'gabon', 'afrique'];
+        return text
+          .toLowerCase()
+          .replace(/[^\wàâäéèêëïîôùûüç\s]/g, ' ')
+          .split(/\s+/)
+          .filter(word => word.length >= 5 && !stopWords.includes(word));
+      };
+
+      const titleKeywords = extractKeywords(projectTitle);
+      const sectorKeywords = extractKeywords(sector);
+      const problemKeywords = extractKeywords(problematique);
+
+      // Combiner et dédupliquer
+      const allKeywords = [...new Set([...titleKeywords, ...sectorKeywords, ...problemKeywords])];
+
+      if (allKeywords.length === 0) {
+        return res.json({ success: true, articles: [], method: 'fallback' });
+      }
 
       const { data: articles } = await supabase
         .from('articles')
@@ -1279,17 +1310,40 @@ IMPORTANT: Retourne les indices des articles (numéros entre crochets) les plus 
         .order('published_at', { ascending: false })
         .limit(50);
 
-      const similar = (articles || [])
+      // Calculer un score de pertinence pour chaque article
+      const scoredArticles = (articles || [])
         .filter(a => a.url !== excludeUrl)
-        .filter(a => {
-          const content = `${a.title} ${a.summary}`.toLowerCase();
-          return searchTerms.split(' ').some(term => term.length > 3 && content.includes(term));
+        .map(a => {
+          const content = `${a.title} ${a.summary || ''}`.toLowerCase();
+          let score = 0;
+          let matchedKeywords = [];
+
+          allKeywords.forEach(keyword => {
+            if (content.includes(keyword)) {
+              score += keyword.length; // Plus le mot est long, plus il est significatif
+              matchedKeywords.push(keyword);
+            }
+          });
+
+          return { ...a, score, matchedKeywords };
         })
-        .slice(0, 5);
+        .filter(a => a.score >= 15 && a.matchedKeywords.length >= 2) // Minimum 2 mots-clés et score >= 15
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(a => ({
+          id: a.id,
+          title: a.title,
+          summary: a.summary,
+          category: a.category,
+          published_at: a.published_at,
+          source: a.source,
+          url: a.url,
+          relevance_reason: `Mots-clés: ${a.matchedKeywords.slice(0, 3).join(', ')}`
+        }));
 
       res.json({
         success: true,
-        articles: similar,
+        articles: scoredArticles,
         method: 'fallback'
       });
     } catch (fallbackError) {
