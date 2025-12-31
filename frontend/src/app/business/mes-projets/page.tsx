@@ -4261,7 +4261,7 @@ export default function MesProjetsPage() {
                         <button
                           onClick={() => {
                             setSelectedDocument(null)
-                            const tid = selectedDocument.metadata.training_id || selectedDocument.metadata.trainingId
+                            const tid = selectedDocument.metadata?.training_id || selectedDocument.metadata?.trainingId
                             router.push(`/training/${tid}?resume=true&projectId=${selectedProject?.id}`)
                           }}
                           className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all text-lg"
