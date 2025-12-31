@@ -199,6 +199,7 @@ router.post('/generate', async (req, res) => {
     try {
       const insertBody = {
         user_id: userId || null,
+        project_id: projectId || null,  // 🔗 Lien direct au projet
         article_id: articleId || null,
         user_analysis: userAnalysis || {},
         article_context: {
@@ -713,7 +714,18 @@ router.get('/project/:project_id', async (req, res) => {
 
     console.log(`📚 Récupération formations pour projet ${project_id}`);
 
-    // Chercher dans training_progress par project_id
+    // 1. Chercher directement dans ai_trainings par project_id
+    const { data: directTrainings, error: directError } = await supabaseService.supabase
+      .from('ai_trainings')
+      .select('*')
+      .eq('project_id', project_id)
+      .order('created_at', { ascending: false });
+
+    if (directError && directError.code !== 'PGRST116') {
+      console.warn('⚠️ Erreur recherche directe ai_trainings:', directError.message);
+    }
+
+    // 2. Chercher aussi dans training_progress par project_id (pour les progressions)
     const { data: progressData, error: progressError } = await supabaseService.supabase
       .from('training_progress')
       .select('*')
@@ -721,28 +733,42 @@ router.get('/project/:project_id', async (req, res) => {
       .order('last_accessed_at', { ascending: false });
 
     if (progressError && progressError.code !== 'PGRST116') {
-      throw progressError;
+      console.warn('⚠️ Erreur recherche training_progress:', progressError.message);
     }
 
-    // Pour chaque progression, récupérer les détails de la formation
-    const trainingsWithProgress = [];
+    // 3. Combiner les résultats (éviter les doublons)
+    const trainingsMap = new Map();
 
+    // Ajouter les formations directes
+    for (const training of (directTrainings || [])) {
+      // Trouver la progression correspondante
+      const progress = (progressData || []).find(p => p.training_id === training.id);
+      trainingsMap.set(training.id, {
+        ...training,
+        progress: progress || null
+      });
+    }
+
+    // Ajouter les formations depuis training_progress (si pas déjà présentes)
     for (const progress of (progressData || [])) {
-      // Essayer de récupérer depuis ai_trainings
-      const { data: training } = await supabaseService.supabase
-        .from('ai_trainings')
-        .select('*')
-        .eq('id', progress.training_id)
-        .single();
+      if (!trainingsMap.has(progress.training_id)) {
+        // Récupérer les détails de la formation
+        const { data: training } = await supabaseService.supabase
+          .from('ai_trainings')
+          .select('*')
+          .eq('id', progress.training_id)
+          .single();
 
-      if (training) {
-        trainingsWithProgress.push({
-          ...training,
-          progress
-        });
+        if (training) {
+          trainingsMap.set(training.id, {
+            ...training,
+            progress
+          });
+        }
       }
     }
 
+    const trainingsWithProgress = Array.from(trainingsMap.values());
     console.log(`✅ ${trainingsWithProgress.length} formations trouvées pour le projet`);
 
     res.json({

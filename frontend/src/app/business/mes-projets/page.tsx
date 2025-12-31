@@ -1255,7 +1255,14 @@ export default function MesProjetsPage() {
         })
         await fetchProjectActions(project.id)
       }
-      
+
+      // 🔄 Invalider le cache des formations pour forcer le rechargement
+      setProjectTrainings(prev => {
+        const newState = { ...prev }
+        delete newState[project.id]  // Supprimer le cache pour ce projet
+        return newState
+      })
+
       setAiModalProgress(100)
       setAiModalStatus('success')
       setAiModalMessage('Formation personnalisée générée avec succès !')
