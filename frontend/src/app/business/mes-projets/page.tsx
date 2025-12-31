@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle } from 'lucide-react'
+import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
@@ -261,6 +261,9 @@ export default function MesProjetsPage() {
   const [generatingActionPlan, setGeneratingActionPlan] = useState(false)
   // État pour la popup d'onboarding
   const [showOnboarding, setShowOnboarding] = useState(false)
+  // État pour les articles similaires
+  const [similarArticles, setSimilarArticles] = useState<any[]>([])
+  const [loadingSimilarArticles, setLoadingSimilarArticles] = useState(false)
 
   // Vérifier si c'est la première visite de l'utilisateur sur une carte projet (une seule fois)
   useEffect(() => {
@@ -293,6 +296,55 @@ export default function MesProjetsPage() {
       }
     } catch (error) {
       console.error('Error fetching project actions:', error)
+    }
+  }
+
+  // Fonction pour récupérer les articles similaires basés sur le secteur et la problématique
+  const fetchSimilarArticles = async (project: SavedProject) => {
+    if (!project) return
+
+    setLoadingSimilarArticles(true)
+    try {
+      // Récupérer tous les articles
+      const response = await fetch(`${API_URL}/api/articles?limit=100`)
+      const data = await response.json()
+
+      if (data.articles && Array.isArray(data.articles)) {
+        // Filtrer les articles similaires basés sur le secteur ou des mots-clés de la problématique
+        const secteur = project.secteur_selectionne?.toLowerCase() || ''
+        const problematique = project.problematique_centrale?.toLowerCase() || ''
+        const titre = project.proposition_titre?.toLowerCase() || ''
+
+        // Extraire des mots-clés de la problématique (mots de plus de 4 caractères)
+        const keywords = problematique
+          .split(/[\s,.:;!?]+/)
+          .filter(word => word.length > 4)
+          .slice(0, 5)
+
+        const similar = data.articles
+          .filter((article: any) => {
+            const articleTitle = article.title?.toLowerCase() || ''
+            const articleSummary = article.summary?.toLowerCase() || ''
+            const articleContent = `${articleTitle} ${articleSummary}`
+
+            // Exclure l'article source du projet
+            if (article.url === project.article_url) return false
+
+            // Vérifier si l'article contient le secteur
+            if (secteur && articleContent.includes(secteur)) return true
+
+            // Vérifier si l'article contient un des mots-clés
+            return keywords.some(keyword => articleContent.includes(keyword))
+          })
+          .slice(0, 5) // Maximum 5 articles
+
+        setSimilarArticles(similar)
+      }
+    } catch (error) {
+      console.error('Error fetching similar articles:', error)
+      setSimilarArticles([])
+    } finally {
+      setLoadingSimilarArticles(false)
     }
   }
 
@@ -346,6 +398,15 @@ export default function MesProjetsPage() {
       }
     }
   }, [projects, setSelectedProject])
+
+  // Charger les articles similaires quand un projet est sélectionné
+  useEffect(() => {
+    if (selectedProject) {
+      fetchSimilarArticles(selectedProject)
+    } else {
+      setSimilarArticles([])
+    }
+  }, [selectedProject])
 
   const restartAnalysis = async (projectId: string) => {
     if (!confirm('⚠️ Relancer l\'analyse va supprimer tous les documents et actions IA générés. Voulez-vous continuer ?')) {
@@ -1539,6 +1600,79 @@ export default function MesProjetsPage() {
               </div>
             </div>
           </div>
+        </motion.div>
+
+        {/* Articles Similaires */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <Newspaper className="w-7 h-7 text-blue-400" />
+            Articles Similaires
+          </h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Articles de notre base de données traitant du même sujet ou de la même problématique
+          </p>
+
+          {loadingSimilarArticles ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+              <span className="ml-3 text-gray-400">Recherche d'articles similaires...</span>
+            </div>
+          ) : similarArticles.length > 0 ? (
+            <div className="space-y-3">
+              {similarArticles.map((article: any, idx: number) => (
+                <motion.a
+                  key={article.id || idx}
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:border-blue-500/50 transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                    <Newspaper className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-medium mb-1 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                      {article.title}
+                    </h3>
+                    {article.summary && (
+                      <p className="text-gray-400 text-sm line-clamp-2 mb-2">
+                        {article.summary}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {article.source && (
+                        <span className="px-2 py-1 bg-white/5 rounded-full">
+                          {article.source}
+                        </span>
+                      )}
+                      {article.published_at && (
+                        <span>
+                          {new Date(article.published_at).toLocaleDateString('fr-FR')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ExternalLink className="w-5 h-5 text-gray-500 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                </motion.a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500">Aucun article similaire trouvé</p>
+              <p className="text-gray-600 text-sm mt-1">
+                Nous n'avons pas trouvé d'articles correspondant au secteur ou à la problématique de ce projet
+              </p>
+            </div>
+          )}
         </motion.div>
       </div>
     )
