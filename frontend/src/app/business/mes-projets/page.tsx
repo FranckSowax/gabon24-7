@@ -3832,6 +3832,8 @@ export default function MesProjetsPage() {
           contextAdded: `Proposition: ${project.proposition_titre}`,
           metadata: {
             trainingId,
+            training_id: trainingId,  // Alias pour compatibilité
+            modules: training.modules, // Sauvegarder les modules pour affichage structuré
             moduleCount: training.modules.length,
             totalDuration: training.total_duration,
             pricing: training.pricing,
@@ -4251,9 +4253,96 @@ export default function MesProjetsPage() {
 
                 {/* Content */}
                 <div className="prose prose-invert max-w-none mb-6">
-                  <div className="bg-white/5 rounded-lg p-6 text-gray-300 whitespace-pre-wrap">
-                    {selectedDocument.content}
-                  </div>
+                  {(selectedDocument.document_type === 'custom-training' || selectedDocument.type === 'custom-training') ? (
+                    /* Affichage spécial pour les formations */
+                    <div className="space-y-4">
+                      {/* Bouton Reprendre la formation en haut */}
+                      {(selectedDocument.metadata?.training_id || selectedDocument.metadata?.trainingId) && (
+                        <button
+                          onClick={() => {
+                            setSelectedDocument(null)
+                            const tid = selectedDocument.metadata.training_id || selectedDocument.metadata.trainingId
+                            router.push(`/training/${tid}?resume=true&projectId=${selectedProject?.id}`)
+                          }}
+                          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all text-lg"
+                        >
+                          <Play className="w-6 h-6" />
+                          Reprendre la formation
+                        </button>
+                      )}
+
+                      {/* Modules de la formation */}
+                      {selectedDocument.metadata?.modules && Array.isArray(selectedDocument.metadata.modules) ? (
+                        <div className="space-y-3">
+                          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <GraduationCap className="w-5 h-5 text-purple-400" />
+                            Modules de la formation ({selectedDocument.metadata.modules.length})
+                          </h3>
+                          {selectedDocument.metadata.modules.map((mod: any, idx: number) => (
+                            <div key={idx} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold flex-shrink-0">
+                                  {idx + 1}
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-white">{mod.competence || mod.title}</h4>
+                                  <p className="text-sm text-gray-400 mt-1">{mod.objective || mod.description}</p>
+                                  <div className="flex gap-2 mt-2">
+                                    {mod.priority && (
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        mod.priority === 'Haute' ? 'bg-red-500/20 text-red-400' :
+                                        mod.priority === 'Moyenne' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-green-500/20 text-green-400'
+                                      }`}>
+                                        {mod.priority}
+                                      </span>
+                                    )}
+                                    {mod.duration && (
+                                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium">
+                                        {mod.duration}
+                                      </span>
+                                    )}
+                                    {mod.level && (
+                                      <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium">
+                                        {mod.level}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Fallback: afficher le contenu texte formaté */
+                        <div className="bg-white/5 rounded-lg p-6 text-gray-300">
+                          {selectedDocument.content?.split('\n').map((line: string, idx: number) => {
+                            if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold text-white mt-4 mb-2">{line.slice(2)}</h1>
+                            if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold text-white mt-4 mb-2">{line.slice(3)}</h2>
+                            if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold text-purple-400 mt-3 mb-1">{line.slice(4)}</h3>
+                            if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-semibold text-white">{line.slice(2, -2)}</p>
+                            if (line.startsWith('- ')) return <li key={idx} className="ml-4 text-gray-300">{line.slice(2)}</li>
+                            if (line.trim() === '---') return <hr key={idx} className="border-white/10 my-4" />
+                            if (line.trim() === '') return <br key={idx} />
+                            return <p key={idx} className="text-gray-300">{line}</p>
+                          })}
+                        </div>
+                      )}
+
+                      {/* Infos supplémentaires */}
+                      {selectedDocument.metadata?.totalDuration && (
+                        <div className="flex items-center gap-2 text-gray-400 text-sm">
+                          <Clock className="w-4 h-4" />
+                          <span>Durée totale: {selectedDocument.metadata.totalDuration}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Affichage standard pour les autres documents */
+                    <div className="bg-white/5 rounded-lg p-6 text-gray-300 whitespace-pre-wrap">
+                      {selectedDocument.content}
+                    </div>
+                  )}
                 </div>
 
                 {/* Contexte actuel */}
