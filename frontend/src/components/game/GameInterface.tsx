@@ -1057,7 +1057,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
 
                 // Questions prêtes -> lancer la salle d'attente
                 setGamePhase('waiting-room')
-                setWaitingCountdown(3) // 3 secondes avant de commencer
+                setWaitingCountdown(5) // 5 secondes avant de commencer
                 setIsRegistering(false)
                 setSurvivors(100)
             } else {
@@ -1768,9 +1768,9 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
           })
           .catch(console.error)
           
-          // Passer en salle d'attente finale (10 secondes)
+          // Passer en salle d'attente finale (30 secondes)
           setGamePhase('waiting-room')
-          setWaitingCountdown(10)
+          setWaitingCountdown(30)
           setSurvivors(selectedSession.currentPlayers || 50)
         }
       }, 1000)
