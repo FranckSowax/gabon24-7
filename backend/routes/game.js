@@ -2241,7 +2241,7 @@ router.get('/dashboard/questions', async (req, res) => {
 
     const { data: questions, error } = await supabase
       .from('game_questions')
-      .select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt, created_at')
+      .select('id, difficulty, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt, created_at')
       .gte('created_at', cutoffISO)
       .order('created_at', { ascending: false });
 

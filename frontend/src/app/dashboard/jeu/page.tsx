@@ -45,8 +45,7 @@ interface Registration {
 interface Question {
   id: string
   difficulty: string
-  question: string
-  question_text?: string
+  question_text: string
   answers: string[]
   correct_index: number
   created_at: string
@@ -655,7 +654,7 @@ export default function GameDashboardPage() {
                               {getDifficultyBadge(q.difficulty)}
                               <span className="text-xs text-gray-400">{formatDate(q.created_at)}</span>
                             </div>
-                            <p className="text-gray-900 font-medium">{q.question || q.question_text}</p>
+                            <p className="text-gray-900 font-medium">{q.question_text}</p>
                             <div className="mt-2 grid grid-cols-2 gap-2">
                               {q.answers?.map((answer, i) => (
                                 <div
@@ -689,7 +688,7 @@ export default function GameDashboardPage() {
                           <div className="flex items-center gap-2 mb-2">
                             {getDifficultyBadge(q.difficulty)}
                           </div>
-                          <p className="text-gray-700">{q.question || q.question_text}</p>
+                          <p className="text-gray-700">{q.question_text}</p>
                         </div>
                       ))}
                       {questionsData.grouped.yesterday.length > 5 && (
