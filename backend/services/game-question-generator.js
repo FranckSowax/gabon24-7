@@ -6,56 +6,250 @@ class GameQuestionGenerator {
     // Service Gemini injecté directement
     // Modèle dédié pour le quiz (éviter les quotas du modèle principal)
     this.quizModel = 'gemini-2.5-flash';
+    // Objectif quotidien de questions
+    this.dailyTarget = 100;
+    // Durée de vie des questions (72h)
+    this.questionLifespanHours = 72;
+    // Distribution cible des difficultés (sur 100 questions)
+    this.difficultyDistribution = {
+      'Facile': 35,      // 35% faciles
+      'Moyen': 40,       // 40% moyennes
+      'Difficile': 25    // 25% difficiles
+    };
+  }
+
+  /**
+   * Génère un hash simple d'une question pour détecter les doublons
+   */
+  generateQuestionHash(questionText) {
+    // Normaliser: minuscules, supprimer ponctuation et espaces multiples
+    const normalized = questionText
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Prendre les 100 premiers caractères pour le hash
+    return normalized.substring(0, 100);
+  }
+
+  /**
+   * Vérifie si une question similaire existe déjà
+   */
+  async isDuplicateQuestion(questionText) {
+    try {
+      const hash = this.generateQuestionHash(questionText);
+
+      // Chercher des questions récentes avec un texte similaire
+      const { data, error } = await supabaseService.supabase
+        .from('game_questions')
+        .select('question_text')
+        .limit(500); // Vérifier les 500 dernières questions
+
+      if (error || !data) return false;
+
+      // Comparer les hashs
+      for (const existing of data) {
+        const existingHash = this.generateQuestionHash(existing.question_text || '');
+        // Si les 50 premiers caractères sont identiques, c'est probablement un doublon
+        if (existingHash.substring(0, 50) === hash.substring(0, 50)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('❌ Erreur vérification doublon:', error.message);
+      return false; // En cas d'erreur, on laisse passer
+    }
+  }
+
+  /**
+   * Compte les questions par difficulté pour aujourd'hui
+   */
+  async getTodayDifficultyStats() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const stats = { 'Facile': 0, 'Moyen': 0, 'Difficile': 0 };
+
+      for (const difficulty of Object.keys(stats)) {
+        const { count, error } = await supabaseService.supabase
+          .from('game_questions')
+          .select('*', { count: 'exact', head: true })
+          .eq('difficulty', difficulty)
+          .gte('created_at', today.toISOString());
+
+        if (!error) {
+          stats[difficulty] = count || 0;
+        }
+      }
+
+      return stats;
+    } catch (error) {
+      console.error('❌ Erreur stats difficultés:', error.message);
+      return { 'Facile': 0, 'Moyen': 0, 'Difficile': 0 };
+    }
+  }
+
+  /**
+   * Détermine quelles difficultés sont nécessaires selon la distribution cible
+   */
+  async getNeededDifficulties() {
+    const stats = await this.getTodayDifficultyStats();
+    const needed = [];
+
+    for (const [difficulty, target] of Object.entries(this.difficultyDistribution)) {
+      const current = stats[difficulty] || 0;
+      const missing = Math.max(0, target - current);
+      if (missing > 0) {
+        needed.push({ difficulty, missing, current, target });
+      }
+    }
+
+    // Trier par manque (le plus manquant en premier)
+    needed.sort((a, b) => b.missing - a.missing);
+
+    console.log('📊 Distribution actuelle:', stats);
+    console.log('📊 Difficultés manquantes:', needed.map(n => `${n.difficulty}: ${n.missing}`).join(', '));
+
+    return needed;
+  }
+
+  /**
+   * Supprime les questions de plus de 72 heures
+   */
+  async deleteOldQuestions() {
+    try {
+      const cutoffTime = new Date();
+      cutoffTime.setHours(cutoffTime.getHours() - this.questionLifespanHours);
+
+      const { data, error } = await supabaseService.supabase
+        .from('game_questions')
+        .delete()
+        .lt('created_at', cutoffTime.toISOString())
+        .select('id');
+
+      if (error) {
+        console.error('❌ Erreur suppression anciennes questions:', error.message);
+        return 0;
+      }
+
+      const count = data?.length || 0;
+      console.log(`🗑️ ${count} questions de plus de ${this.questionLifespanHours}h supprimées`);
+      return count;
+    } catch (error) {
+      console.error('❌ Erreur deleteOldQuestions:', error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Compte les questions générées aujourd'hui
+   */
+  async getTodayQuestionsCount() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabaseService.supabase
+        .from('game_questions')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString());
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('❌ Erreur comptage questions du jour:', error.message);
+      return 0;
+    }
   }
 
   async generateDailyQuestions(hoursLookback = 36) {
     console.log(`🚀 Démarrage génération questions jeu (lookback: ${hoursLookback}h) avec ${this.quizModel}...`);
-    
-    // 1. Récupérer les articles des dernières X heures
+    console.log(`🎯 Objectif: ${this.dailyTarget} questions/jour`);
+
+    // 0. D'abord, supprimer les questions de plus de 72h
+    await this.deleteOldQuestions();
+
+    // 1. Vérifier combien de questions on a déjà générées aujourd'hui
+    const todayCount = await this.getTodayQuestionsCount();
+    const remaining = Math.max(0, this.dailyTarget - todayCount);
+
+    if (remaining === 0) {
+      console.log(`✅ Objectif quotidien atteint (${todayCount}/${this.dailyTarget}). Pas de génération nécessaire.`);
+      return 0;
+    }
+
+    console.log(`📊 Questions aujourd'hui: ${todayCount}/${this.dailyTarget}. Besoin de ${remaining} supplémentaires.`);
+
+    // 1.5 Analyser la distribution des difficultés nécessaires
+    const neededDifficulties = await this.getNeededDifficulties();
+
+    // 2. Récupérer les articles des dernières X heures
     const now = new Date();
     const pastTime = new Date(now.getTime() - (hoursLookback * 60 * 60 * 1000));
-    
-    // Récupérer plus d'articles pour atteindre l'objectif de ~100 questions
+
+    // Calculer combien d'articles récupérer (3 questions par article en moyenne)
+    const articlesNeeded = Math.ceil(remaining / 3) + 5; // +5 marge de sécurité
+
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
       .select('id, title, summary, content, url, category')
       .gt('published_at', pastTime.toISOString())
       .order('published_at', { ascending: false })
-      .limit(40); // 40 articles * 3 questions = ~120 questions
-      
+      .limit(articlesNeeded);
+
     if (error) {
       console.log('⚠️ Erreur récupération articles:', error);
-      return;
+      return 0;
     }
-    
+
     if (!articles || articles.length === 0) {
       console.log('⚠️ Pas d\'articles récents (< 36h) trouvés.');
-      return;
+      return 0;
     }
 
     console.log(`📝 ${articles.length} articles récents trouvés.`);
     let totalGenerated = 0;
+    let duplicatesSkipped = 0;
 
     for (const article of articles) {
-      // Générer les questions via IA
-      const questions = await this.generateQuestionsForArticle(article);
-      
+      // Vérifier si on a atteint l'objectif
+      if (totalGenerated >= remaining) {
+        console.log(`✅ Objectif atteint (${totalGenerated} questions générées)`);
+        break;
+      }
+
+      // Générer les questions via IA avec les difficultés nécessaires
+      const questions = await this.generateQuestionsForArticle(article, neededDifficulties);
+
       if (questions && questions.length > 0) {
         for (const q of questions) {
-          await this.saveQuestion(q);
-          totalGenerated++;
+          // Vérifier les doublons avant de sauvegarder
+          const isDuplicate = await this.isDuplicateQuestion(q.question);
+          if (isDuplicate) {
+            console.log(`⏭️ Doublon détecté, question ignorée: ${q.question.substring(0, 40)}...`);
+            duplicatesSkipped++;
+            continue;
+          }
+
+          const saved = await this.saveQuestion(q);
+          if (saved) {
+            totalGenerated++;
+          }
         }
       }
-      
+
       // Petit délai pour éviter le rate limit si on boucle vite
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
-    console.log(`✅ Génération terminée. ${totalGenerated} questions créées.`);
+
+    console.log(`✅ Génération terminée. ${totalGenerated} questions créées, ${duplicatesSkipped} doublons évités.`);
     return totalGenerated;
   }
 
-  async generateQuestionsForArticle(article) {
+  async generateQuestionsForArticle(article, neededDifficulties = []) {
     if (!process.env.GEMINI_API_KEY) {
       console.log('⚠️ Gemini API Key manquante, génération mock pour:', article.title);
       return this.generateMockQuestions(article);
@@ -63,54 +257,82 @@ class GameQuestionGenerator {
 
     try {
       console.log(`🤖 Génération questions (${this.quizModel}) pour: ${article.title}`);
-      
-      const prompt = `
-        Tu es un expert en création de quiz sur l'actualité.
-        Génère 3 questions de quiz (QCM) basées sur cet article d'actualité.
-        
-        Niveaux requis :
-        1. Facile (Grand public)
-        2. Moyen (Lecteur attentif)
-        3. Difficile (Expert du sujet)
 
-        Article: ${article.title}
-        Résumé: ${article.summary || (article.content ? article.content.substring(0, 500) : '')}...
-        
-        Format de réponse attendu : UN SEUL objet JSON contenant un tableau "questions".
-        Exemple :
-        {
-          "questions": [
-            {
-              "question": "Question ?",
-              "answers": ["Reponse 1", "Reponse 2", "Reponse 3", "Reponse 4"],
-              "correct_index": 0,
-              "difficulty": "Facile"
-            }
-          ]
+      // Déterminer quelles difficultés générer selon les besoins
+      let difficultiesToGenerate = ['Facile', 'Moyen', 'Difficile'];
+      if (neededDifficulties.length > 0) {
+        // Prioriser les difficultés les plus manquantes
+        difficultiesToGenerate = neededDifficulties.slice(0, 3).map(d => d.difficulty);
+        // S'assurer qu'on a au moins une de chaque si possible
+        if (!difficultiesToGenerate.includes('Facile') && neededDifficulties.some(d => d.difficulty === 'Facile')) {
+          difficultiesToGenerate.push('Facile');
         }
-        
-        Règles CRITIQUES de rédaction :
-        1. AUTONOMIE TOTALE : Le joueur n'a PAS lu l'article. La question doit contenir tout le contexte nécessaire (lieu, personnes, événement).
-        2. INTERDIT : Ne JAMAIS utiliser "Selon l'article", "Dans ce texte", "D'après le titre", "Ci-dessus".
-        3. PRÉCISION : Commence par situer le contexte. Ex: "Au Gabon, lors de la visite du Président X...", "Concernant le projet de route Y..."
-        4. Les réponses doivent être en français.
-        5. La bonne réponse doit être à l'index indiqué par correct_index.
-        6. Les mauvaises réponses doivent être plausibles mais fausses.
-      `;
+      }
+
+      const difficultiesStr = difficultiesToGenerate.join(', ');
+
+      const prompt = `
+Tu es un expert en création de quiz sur l'actualité gabonaise.
+Génère exactement 3 questions de quiz (QCM) UNIQUES et ORIGINALES basées sur cet article.
+
+📰 ARTICLE:
+Titre: ${article.title}
+Résumé: ${article.summary || (article.content ? article.content.substring(0, 600) : '')}
+
+🎯 DIFFICULTÉS REQUISES: ${difficultiesStr}
+- Facile: Question générale, réponse évidente dans le titre/résumé
+- Moyen: Question sur un détail spécifique, nécessite lecture attentive
+- Difficile: Question sur un chiffre précis, une date, un nom complet, un détail technique
+
+📋 FORMAT JSON STRICT:
+{
+  "questions": [
+    {
+      "question": "Question complète et autonome ?",
+      "answers": ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
+      "correct_index": 0,
+      "difficulty": "Facile"
+    }
+  ]
+}
+
+⚠️ RÈGLES OBLIGATOIRES:
+1. UNICITÉ: Chaque question doit être TOTALEMENT DIFFÉRENTE des autres (sujet, angle, formulation)
+2. AUTONOMIE: Le joueur n'a PAS lu l'article. Inclure TOUT le contexte dans la question
+3. INTERDIT: "Selon l'article", "Dans ce texte", "D'après le titre", "Mentionné ci-dessus"
+4. CONTEXTE: Toujours commencer par situer (lieu, personne, événement). Ex: "Au Gabon, le ministre X a annoncé..."
+5. VARIÉTÉ:
+   - Question 1: Qui/Quoi (personne, organisation, sujet principal)
+   - Question 2: Où/Quand/Comment (lieu, date, méthode)
+   - Question 3: Pourquoi/Combien (raison, chiffre, conséquence)
+6. RÉPONSES: 4 réponses plausibles, une seule correcte. Les mauvaises réponses doivent être crédibles.
+7. LANGUE: Tout en français correct
+8. LONGUEUR: Questions de 15-40 mots maximum
+`;
 
       // Utilisation du service Gemini avec modèle dédié (gemini-2.5-flash)
       const parsed = await geminiService.generateJSON(prompt, {
-        temperature: 0.7,
+        temperature: 0.8, // Un peu plus de créativité pour éviter les répétitions
         model: this.quizModel
       });
-      
+
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
         console.error('Format JSON invalide reçu de Gemini:', JSON.stringify(parsed));
         return [];
       }
 
+      // Valider et filtrer les questions
+      const validQuestions = parsed.questions.filter(q => {
+        if (!q.question || !q.answers || q.correct_index === undefined) return false;
+        if (q.answers.length !== 4) return false;
+        // Vérifier que la question ne contient pas de références à l'article
+        const forbidden = ['selon l\'article', 'dans ce texte', 'd\'après le titre', 'ci-dessus', 'mentionné'];
+        const lowerQ = q.question.toLowerCase();
+        return !forbidden.some(f => lowerQ.includes(f));
+      });
+
       // Ajouter les métadonnées
-      return parsed.questions.map(q => ({
+      return validQuestions.map(q => ({
         ...q,
         source_url: article.url,
         source_title: article.title,
@@ -163,14 +385,19 @@ class GameQuestionGenerator {
   async saveQuestion(questionData) {
     // Validation basique
     if (!questionData.question || !questionData.answers || questionData.correct_index === undefined) {
-      return;
+      return false;
     }
 
     // Normaliser la difficulté
     let difficulty = questionData.difficulty;
-    const validDiffs = ['Facile', 'Moyen', 'Difficile', 'Expert'];
+    const validDiffs = ['Facile', 'Moyen', 'Difficile'];
     if (!validDiffs.includes(difficulty)) {
-      difficulty = 'Moyen'; // Fallback
+      // Mapper Expert vers Difficile
+      if (difficulty === 'Expert') {
+        difficulty = 'Difficile';
+      } else {
+        difficulty = 'Moyen'; // Fallback
+      }
     }
 
     const { error } = await supabaseService.supabase
@@ -185,9 +412,14 @@ class GameQuestionGenerator {
         // source_title: questionData.source_title,
         // used_count: 0
       }]);
-      
-    if (error) console.error('Erreur sauvegarde question:', error.message);
-    else console.log('💾 Question sauvegardée:', questionData.question.substring(0, 30) + '...');
+
+    if (error) {
+      console.error('Erreur sauvegarde question:', error.message);
+      return false;
+    }
+
+    console.log(`💾 [${difficulty}] Question sauvegardée: ${questionData.question.substring(0, 40)}...`);
+    return true;
   }
 
   /**

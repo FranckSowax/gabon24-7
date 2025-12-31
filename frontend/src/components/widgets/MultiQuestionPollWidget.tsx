@@ -53,6 +53,12 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
   const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
+  // État pour les styles dynamiques basés sur l'heure (évite hydration mismatch)
+  const [timeBasedStyles, setTimeBasedStyles] = useState({
+    gradient: 'from-orange-50 via-rose-50 to-pink-50', // Valeur par défaut (jour)
+    isNight: false
+  })
+
   // Calculer le temps restant jusqu'au prochain sondage (19h UTC)
   const calculateTimeRemaining = () => {
     const now = new Date()
@@ -363,23 +369,30 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
     }
   }, [user, polls])
 
-  // Gradient dynamique selon l'heure
-  const getGradientByTime = () => {
-    const hour = new Date().getHours()
-    if (hour >= 6 && hour < 12) return 'from-orange-50 via-amber-50 to-yellow-50'
-    if (hour >= 12 && hour < 18) return 'from-orange-50 via-rose-50 to-pink-50'
-    if (hour >= 18 && hour < 21) return 'from-purple-100 via-pink-100 to-orange-100'
-    return 'from-slate-800 via-purple-900 to-slate-900'
-  }
+  // Calcul des styles côté client uniquement (évite hydration mismatch)
+  useEffect(() => {
+    const updateTimeStyles = () => {
+      const hour = new Date().getHours()
+      let gradient = 'from-orange-50 via-rose-50 to-pink-50'
+      if (hour >= 6 && hour < 12) gradient = 'from-orange-50 via-amber-50 to-yellow-50'
+      else if (hour >= 12 && hour < 18) gradient = 'from-orange-50 via-rose-50 to-pink-50'
+      else if (hour >= 18 && hour < 21) gradient = 'from-purple-100 via-pink-100 to-orange-100'
+      else gradient = 'from-slate-800 via-purple-900 to-slate-900'
 
-  const isNight = () => {
-    const hour = new Date().getHours()
-    return hour >= 21 || hour < 6
-  }
+      setTimeBasedStyles({
+        gradient,
+        isNight: hour >= 21 || hour < 6
+      })
+    }
+
+    updateTimeStyles()
+    const interval = setInterval(updateTimeStyles, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (loading) {
     return (
-      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${getGradientByTime()} shadow-xl border border-white/20 p-4 ${className}`}>
+      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${timeBasedStyles.gradient} shadow-xl border border-white/20 p-4 ${className}`}>
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-white/30 rounded-xl w-2/3"></div>
           <div className="h-4 bg-white/20 rounded-lg w-1/2"></div>
@@ -395,14 +408,14 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
 
   if (pollQuestions.length === 0) {
     return (
-      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${getGradientByTime()} ${isNight() ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 p-4 ${className}`}>
+      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${timeBasedStyles.gradient} ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 p-4 ${className}`}>
         <div className="h-full flex flex-col items-center justify-center text-center">
           <BarChart3 className="w-16 h-16 mb-4 opacity-50" />
           <h3 className="text-lg font-semibold mb-2">Aucun sondage disponible</h3>
-          <p className={`text-sm mb-4 ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+          <p className={`text-sm mb-4 ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
             Prochain sondage dans :
           </p>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${isNight() ? 'bg-white/10' : 'bg-white/50'}`}>
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'}`}>
             <Clock className="w-5 h-5 text-orange-500" />
             <span className="text-xl font-mono font-bold text-orange-500">{timeRemaining}</span>
           </div>
@@ -417,32 +430,32 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
   const currentStats = questionStats[currentQuestion?.id || ''] || []
 
   return (
-    <div className={`rounded-3xl h-[500px] overflow-hidden bg-gradient-to-br ${getGradientByTime()} ${isNight() ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 ${className}`}>
+    <div className={`rounded-3xl h-[500px] overflow-hidden bg-gradient-to-br ${timeBasedStyles.gradient} ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 ${className}`}>
       {/* Contenu principal */}
       <div className="p-4 h-full box-border">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-xl ${isNight() ? 'bg-white/10' : 'bg-white/50'}`}>
+            <div className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'}`}>
               <BarChart3 className="w-5 h-5 text-orange-500" />
             </div>
             <div>
               <h3 className="text-sm font-semibold">Sondage du jour</h3>
               {pollQuestions.length > 1 && (
-                <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+                <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
                   Question {currentQuestionIndex + 1}/{pollQuestions.length}
                 </p>
               )}
             </div>
           </div>
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${isNight() ? 'bg-white/10' : 'bg-white/50'}`}>
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'}`}>
             <Clock className="w-3 h-3 text-orange-500" />
             <span className="font-mono text-orange-500">{timeRemaining}</span>
           </div>
         </div>
 
         {/* Question */}
-        <div className={`rounded-2xl p-3 mb-3 ${isNight() ? 'bg-white/5' : 'bg-white/40'}`}>
+        <div className={`rounded-2xl p-3 mb-3 ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/40'}`}>
           <h4 className="text-sm font-medium mb-3">{currentQuestion?.question_text}</h4>
 
           {!hasVotedForCurrent && !showResults ? (
@@ -453,8 +466,8 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
                     onClick={() => handleAnswerSelect(currentQuestion.id, 'Oui')}
                     className={`w-full p-3 text-left rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]
                       ${selectedAnswer === 'Oui'
-                        ? `${isNight() ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
-                        : `${isNight() ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
+                        ? `${timeBasedStyles.isNight ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
+                        : `${timeBasedStyles.isNight ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
                       }`}
                   >
                     ✅ Oui
@@ -463,8 +476,8 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
                     onClick={() => handleAnswerSelect(currentQuestion.id, 'Non')}
                     className={`w-full p-3 text-left rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]
                       ${selectedAnswer === 'Non'
-                        ? `${isNight() ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
-                        : `${isNight() ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
+                        ? `${timeBasedStyles.isNight ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
+                        : `${timeBasedStyles.isNight ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
                       }`}
                   >
                     ❌ Non
@@ -477,8 +490,8 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
                     onClick={() => handleAnswerSelect(currentQuestion.id, option)}
                     className={`w-full p-3 text-left rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]
                       ${selectedAnswer === option
-                        ? `${isNight() ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
-                        : `${isNight() ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
+                        ? `${timeBasedStyles.isNight ? 'bg-orange-500/30 border-orange-400' : 'bg-orange-100 border-orange-400'} border-2`
+                        : `${timeBasedStyles.isNight ? 'bg-white/5 hover:bg-white/10' : 'bg-white/50 hover:bg-white/70'} border-2 border-transparent`
                       }`}
                   >
                     {option}
@@ -515,12 +528,12 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
               </div>
               
               {currentStats.map((stat, index) => (
-                <div key={index} className={`p-2 rounded-xl ${isNight() ? 'bg-white/5' : 'bg-white/50'}`}>
+                <div key={index} className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/50'}`}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium">{stat.response_value}</span>
                     <span className="text-orange-500 font-semibold">{stat.percentage.toFixed(0)}%</span>
                   </div>
-                  <div className={`h-2 rounded-full ${isNight() ? 'bg-white/10' : 'bg-gray-200'}`}>
+                  <div className={`h-2 rounded-full ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-gray-200'}`}>
                     <div
                       className="h-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500"
                       style={{ width: `${stat.percentage}%` }}
@@ -539,7 +552,7 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
               onClick={goToPrevious}
               disabled={currentQuestionIndex === 0}
               className={`p-2 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-30
-                ${isNight() ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'}`}
+                ${timeBasedStyles.isNight ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'}`}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -553,7 +566,7 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
                       ? 'bg-orange-500 w-4'
                       : votedQuestions.has(pollQuestions[index]?.id || '')
                       ? 'bg-green-500'
-                      : isNight() ? 'bg-white/30' : 'bg-gray-300'
+                      : timeBasedStyles.isNight ? 'bg-white/30' : 'bg-gray-300'
                   }`}
                 />
               ))}
@@ -563,7 +576,7 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
               onClick={goToNext}
               disabled={currentQuestionIndex === pollQuestions.length - 1}
               className={`p-2 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-30
-                ${isNight() ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'}`}
+                ${timeBasedStyles.isNight ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'}`}
             >
               <ChevronRight className="w-5 h-5" />
             </button>

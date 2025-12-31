@@ -10,12 +10,12 @@ class SchedulerService {
     console.log('⏰ Démarrage du Scheduler Service...');
 
     // ============================================================
-    // GÉNÉRATION DE QUESTIONS DE JEU - 2x par jour (6h et 18h)
+    // GÉNÉRATION QUOTIDIENNE DE QUESTIONS - 1x par jour à 5h00
     // ============================================================
-    // Réduit pour économiser le quota Gemini API
-    // Génère des questions basées sur les articles des dernières 36h
-    this.scheduleJob('5 6,18 * * *', async () => {
-      console.log('🎮 [CRON] Lancement génération automatique des questions (2x/jour)...');
+    // Génère 100 questions basées sur les articles des dernières 36h
+    // La génération nettoie automatiquement les questions > 72h
+    this.scheduleJob('0 5 * * *', async () => {
+      console.log('🎮 [CRON] Génération quotidienne des questions (100 questions/jour)...');
       try {
         const count = await gameQuestionGenerator.generateDailyQuestions();
         console.log(`✅ [CRON] Génération questions terminée : ${count} nouvelles questions.`);
@@ -25,24 +25,37 @@ class SchedulerService {
     });
 
     // ============================================================
-    // MONITORING POOL QUESTIONS - Toutes les 6 heures
+    // COMPLÉMENT SI NÉCESSAIRE - 2x par jour (12h et 20h)
     // ============================================================
-    // Vérifie si le stock de questions est bas (< 30) et recharge si nécessaire
-    // Réduit de 15min à 6h pour économiser le quota
-    this.scheduleJob('0 */6 * * *', async () => {
+    // Vérifie si l'objectif quotidien n'est pas atteint et complète si nécessaire
+    this.scheduleJob('0 12,20 * * *', async () => {
+      console.log('🔍 [CRON] Vérification objectif quotidien...');
       try {
-        await gameQuestionGenerator.checkAndRefill(30);
+        const todayCount = await gameQuestionGenerator.getTodayQuestionsCount();
+        if (todayCount < 100) {
+          console.log(`📊 Seulement ${todayCount}/100 questions. Lancement complément...`);
+          const count = await gameQuestionGenerator.generateDailyQuestions();
+          console.log(`✅ [CRON] Complément terminé : ${count} questions ajoutées.`);
+        } else {
+          console.log(`✅ Objectif atteint : ${todayCount}/100 questions.`);
+        }
       } catch (error) {
-        console.error('❌ [CRON] Erreur monitoring pool:', error);
+        console.error('❌ [CRON] Erreur complément questions:', error);
       }
     });
 
     // ============================================================
-    // NETTOYAGE SESSIONS - Tous les jours à 04:00
+    // NETTOYAGE QUOTIDIEN - Tous les jours à 4h00
     // ============================================================
+    // Supprime les questions de plus de 72h (redondant avec génération mais safety net)
     this.scheduleJob('0 4 * * *', async () => {
-      console.log('🧹 [CRON] Nettoyage maintenance...');
-      // Ici on pourrait nettoyer les vieilles sessions ou questions trop vieilles
+      console.log('🧹 [CRON] Nettoyage quotidien des anciennes questions...');
+      try {
+        const deleted = await gameQuestionGenerator.deleteOldQuestions();
+        console.log(`🗑️ [CRON] ${deleted} questions anciennes supprimées.`);
+      } catch (error) {
+        console.error('❌ [CRON] Erreur nettoyage:', error);
+      }
     });
     
     console.log(`✅ Scheduler démarré avec ${this.jobs.length} jobs actifs.`);

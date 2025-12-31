@@ -18,13 +18,19 @@ interface Route {
 }
 
 export default function RoutesMapWidget() {
-  const [routes, setRoutes] = useState<Route[]>([])  
+  const [routes, setRoutes] = useState<Route[]>([])
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+
+  // État pour les styles dynamiques basés sur l'heure (évite hydration mismatch)
+  const [timeBasedStyles, setTimeBasedStyles] = useState({
+    gradient: 'from-teal-50 via-cyan-50 to-sky-50', // Valeur par défaut (jour)
+    isNight: false
+  })
 
   useEffect(() => {
     loadRoutes()
@@ -168,23 +174,30 @@ export default function RoutesMapWidget() {
     setTimeout(() => setIsPaused(false), 20000)
   }
 
-  // Gradient dynamique selon l'heure
-  const getGradientByTime = () => {
-    const hour = new Date().getHours()
-    if (hour >= 6 && hour < 12) return 'from-emerald-50 via-teal-50 to-cyan-50'
-    if (hour >= 12 && hour < 18) return 'from-teal-50 via-cyan-50 to-sky-50'
-    if (hour >= 18 && hour < 21) return 'from-indigo-100 via-purple-100 to-pink-100'
-    return 'from-slate-800 via-slate-900 to-gray-900'
-  }
+  // Calcul des styles côté client uniquement (évite hydration mismatch)
+  useEffect(() => {
+    const updateTimeStyles = () => {
+      const hour = new Date().getHours()
+      let gradient = 'from-teal-50 via-cyan-50 to-sky-50'
+      if (hour >= 6 && hour < 12) gradient = 'from-emerald-50 via-teal-50 to-cyan-50'
+      else if (hour >= 12 && hour < 18) gradient = 'from-teal-50 via-cyan-50 to-sky-50'
+      else if (hour >= 18 && hour < 21) gradient = 'from-indigo-100 via-purple-100 to-pink-100'
+      else gradient = 'from-slate-800 via-slate-900 to-gray-900'
 
-  const isNight = () => {
-    const hour = new Date().getHours()
-    return hour >= 21 || hour < 6
-  }
+      setTimeBasedStyles({
+        gradient,
+        isNight: hour >= 21 || hour < 6
+      })
+    }
+
+    updateTimeStyles()
+    const interval = setInterval(updateTimeStyles, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (loading) {
     return (
-      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${getGradientByTime()} shadow-xl border border-white/20 p-4`}>
+      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${timeBasedStyles.gradient} shadow-xl border border-white/20 p-4`}>
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-white/30 rounded-xl w-2/3"></div>
           <div className="h-4 bg-white/20 rounded-lg w-1/2"></div>
@@ -196,11 +209,11 @@ export default function RoutesMapWidget() {
 
   if (error || routes.length === 0) {
     return (
-      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${getGradientByTime()} ${isNight() ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 p-4`}>
+      <div className={`rounded-3xl h-[500px] bg-gradient-to-br ${timeBasedStyles.gradient} ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20 p-4`}>
         <div className="h-full flex flex-col items-center justify-center text-center">
           <Car className="w-16 h-16 mb-4 opacity-50" />
           <h3 className="text-lg font-semibold mb-2">Aucun trajet disponible</h3>
-          <p className={`text-sm ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+          <p className={`text-sm ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
             Revenez plus tard pour découvrir nos itinéraires
           </p>
         </div>
@@ -209,24 +222,24 @@ export default function RoutesMapWidget() {
   }
 
   return (
-    <div className={`rounded-3xl h-[500px] overflow-hidden bg-gradient-to-br ${getGradientByTime()} ${isNight() ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20`}>
+    <div className={`rounded-3xl h-[500px] overflow-hidden bg-gradient-to-br ${timeBasedStyles.gradient} ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-800'} shadow-xl border border-white/20`}>
       {/* Contenu principal */}
       <div className="p-4 h-full box-border flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-xl ${isNight() ? 'bg-white/10' : 'bg-white/50'}`}>
+            <div className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'}`}>
               <Car className="w-5 h-5 text-teal-500" />
             </div>
             <div>
               <h3 className="text-sm font-semibold">Trafic en temps réel</h3>
-              <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+              <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
                 {routes.length} itinéraire{routes.length > 1 ? 's' : ''}
               </p>
             </div>
           </div>
           {routes.length > 1 && (
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${isNight() ? 'bg-white/10' : 'bg-white/50'}`}>
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'}`}>
               <span className="font-medium">{currentIndex + 1}/{routes.length}</span>
             </div>
           )}
@@ -234,7 +247,7 @@ export default function RoutesMapWidget() {
 
         {/* Carte */}
         {selectedRoute && (
-          <div className={`flex-1 rounded-2xl overflow-hidden ${isNight() ? 'bg-white/5' : 'bg-white/40'} relative`}>
+          <div className={`flex-1 rounded-2xl overflow-hidden ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/40'} relative`}>
             {selectedRoute.html_content || (selectedRoute.embed_url && selectedRoute.embed_url.trim().startsWith('<iframe')) ? (
               <div 
                 className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-none"
@@ -265,14 +278,14 @@ export default function RoutesMapWidget() {
                 <button
                   onClick={goToPrevious}
                   className={`absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all duration-200 active:scale-95
-                    ${isNight() ? 'bg-black/50 hover:bg-black/70' : 'bg-white/80 hover:bg-white'} shadow-lg`}
+                    ${timeBasedStyles.isNight ? 'bg-black/50 hover:bg-black/70' : 'bg-white/80 hover:bg-white'} shadow-lg`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={goToNext}
                   className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all duration-200 active:scale-95
-                    ${isNight() ? 'bg-black/50 hover:bg-black/70' : 'bg-white/80 hover:bg-white'} shadow-lg`}
+                    ${timeBasedStyles.isNight ? 'bg-black/50 hover:bg-black/70' : 'bg-white/80 hover:bg-white'} shadow-lg`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -286,7 +299,7 @@ export default function RoutesMapWidget() {
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 active:scale-[0.98]
-              ${isNight() ? 'bg-white/10 hover:bg-white/15' : 'bg-white/50 hover:bg-white/70'}`}
+              ${timeBasedStyles.isNight ? 'bg-white/10 hover:bg-white/15' : 'bg-white/50 hover:bg-white/70'}`}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Navigation className="w-4 h-4 text-teal-500 flex-shrink-0" />
@@ -295,7 +308,7 @@ export default function RoutesMapWidget() {
                   {selectedRoute?.title || 'Sélectionner un itinéraire'}
                 </div>
                 {selectedRoute?.subtitle && (
-                  <div className={`text-xs truncate ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+                  <div className={`text-xs truncate ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
                     {selectedRoute.subtitle}
                   </div>
                 )}
@@ -307,14 +320,14 @@ export default function RoutesMapWidget() {
           {/* Menu dropdown */}
           {isDropdownOpen && (
             <div className={`absolute bottom-full left-0 right-0 mb-2 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto
-              ${isNight() ? 'bg-slate-800 border border-white/10' : 'bg-white border border-gray-200'}`}>
+              ${timeBasedStyles.isNight ? 'bg-slate-800 border border-white/10' : 'bg-white border border-gray-200'}`}>
               
               {/* Catégorie Matin */}
               {morningRoutes.length > 0 && (
                 <div>
-                  <div className={`flex items-center gap-2 px-3 py-2 ${isNight() ? 'bg-orange-500/20' : 'bg-orange-50'}`}>
+                  <div className={`flex items-center gap-2 px-3 py-2 ${timeBasedStyles.isNight ? 'bg-orange-500/20' : 'bg-orange-50'}`}>
                     <Sun className="w-4 h-4 text-orange-500" />
-                    <span className={`text-xs font-semibold ${isNight() ? 'text-orange-300' : 'text-orange-700'}`}>Matinée</span>
+                    <span className={`text-xs font-semibold ${timeBasedStyles.isNight ? 'text-orange-300' : 'text-orange-700'}`}>Matinée</span>
                   </div>
                   {morningRoutes.map((route) => (
                     <button
@@ -322,12 +335,12 @@ export default function RoutesMapWidget() {
                       onClick={() => selectRoute(route)}
                       className={`w-full text-left p-3 transition-colors text-sm
                         ${selectedRoute?.id === route.id 
-                          ? isNight() ? 'bg-white/10' : 'bg-orange-50' 
-                          : isNight() ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                          ? timeBasedStyles.isNight ? 'bg-white/10' : 'bg-orange-50' 
+                          : timeBasedStyles.isNight ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
                     >
-                      <div className={`font-medium ${isNight() ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
+                      <div className={`font-medium ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
                       {route.subtitle && (
-                        <div className={`text-xs mt-0.5 ${isNight() ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
+                        <div className={`text-xs mt-0.5 ${timeBasedStyles.isNight ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
                       )}
                     </button>
                   ))}
@@ -337,9 +350,9 @@ export default function RoutesMapWidget() {
               {/* Catégorie Soir */}
               {eveningRoutes.length > 0 && (
                 <div>
-                  <div className={`flex items-center gap-2 px-3 py-2 ${isNight() ? 'bg-indigo-500/20' : 'bg-indigo-50'}`}>
+                  <div className={`flex items-center gap-2 px-3 py-2 ${timeBasedStyles.isNight ? 'bg-indigo-500/20' : 'bg-indigo-50'}`}>
                     <Moon className="w-4 h-4 text-indigo-500" />
-                    <span className={`text-xs font-semibold ${isNight() ? 'text-indigo-300' : 'text-indigo-700'}`}>Soir</span>
+                    <span className={`text-xs font-semibold ${timeBasedStyles.isNight ? 'text-indigo-300' : 'text-indigo-700'}`}>Soir</span>
                   </div>
                   {eveningRoutes.map((route) => (
                     <button
@@ -347,12 +360,12 @@ export default function RoutesMapWidget() {
                       onClick={() => selectRoute(route)}
                       className={`w-full text-left p-3 transition-colors text-sm
                         ${selectedRoute?.id === route.id 
-                          ? isNight() ? 'bg-white/10' : 'bg-indigo-50' 
-                          : isNight() ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                          ? timeBasedStyles.isNight ? 'bg-white/10' : 'bg-indigo-50' 
+                          : timeBasedStyles.isNight ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
                     >
-                      <div className={`font-medium ${isNight() ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
+                      <div className={`font-medium ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
                       {route.subtitle && (
-                        <div className={`text-xs mt-0.5 ${isNight() ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
+                        <div className={`text-xs mt-0.5 ${timeBasedStyles.isNight ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
                       )}
                     </button>
                   ))}
@@ -363,9 +376,9 @@ export default function RoutesMapWidget() {
               {otherRoutes.length > 0 && (
                 <div>
                   {(morningRoutes.length > 0 || eveningRoutes.length > 0) && (
-                    <div className={`flex items-center gap-2 px-3 py-2 ${isNight() ? 'bg-white/5' : 'bg-gray-50'}`}>
+                    <div className={`flex items-center gap-2 px-3 py-2 ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-gray-50'}`}>
                       <Clock className="w-4 h-4 text-gray-500" />
-                      <span className={`text-xs font-semibold ${isNight() ? 'text-white/70' : 'text-gray-700'}`}>Autres</span>
+                      <span className={`text-xs font-semibold ${timeBasedStyles.isNight ? 'text-white/70' : 'text-gray-700'}`}>Autres</span>
                     </div>
                   )}
                   {otherRoutes.map((route) => (
@@ -374,12 +387,12 @@ export default function RoutesMapWidget() {
                       onClick={() => selectRoute(route)}
                       className={`w-full text-left p-3 transition-colors text-sm
                         ${selectedRoute?.id === route.id 
-                          ? isNight() ? 'bg-white/10' : 'bg-gray-100' 
-                          : isNight() ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                          ? timeBasedStyles.isNight ? 'bg-white/10' : 'bg-gray-100' 
+                          : timeBasedStyles.isNight ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
                     >
-                      <div className={`font-medium ${isNight() ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
+                      <div className={`font-medium ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-900'}`}>{route.title}</div>
                       {route.subtitle && (
-                        <div className={`text-xs mt-0.5 ${isNight() ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
+                        <div className={`text-xs mt-0.5 ${timeBasedStyles.isNight ? 'text-white/50' : 'text-gray-500'}`}>{route.subtitle}</div>
                       )}
                     </button>
                   ))}
@@ -399,7 +412,7 @@ export default function RoutesMapWidget() {
                 className={`h-2 rounded-full transition-all duration-200 ${
                   currentIndex === index
                     ? 'bg-teal-500 w-4'
-                    : isNight() ? 'bg-white/30 w-2 hover:bg-white/50' : 'bg-gray-300 w-2 hover:bg-gray-400'
+                    : timeBasedStyles.isNight ? 'bg-white/30 w-2 hover:bg-white/50' : 'bg-gray-300 w-2 hover:bg-gray-400'
                 }`}
               />
             ))}

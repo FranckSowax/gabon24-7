@@ -113,6 +113,7 @@ interface GameSession {
   scheduledHour?: number // Heure programmée (0-23)
   difficulty: 'Débutant' | 'Standard' | 'Expert' | 'Élite'
   color: string
+  backgroundImage?: string // Image de fond pour la carte
   icon: string
   description?: string
 }
@@ -190,6 +191,7 @@ const HOURLY_SESSIONS: GameSession[] = [
     scheduledHour: 12,
     difficulty: 'Débutant',
     color: 'from-yellow-500 to-orange-500',
+    backgroundImage: '/midi.jpg',
     icon: '☀️',
     description: 'Lancement à 12h00 précises. Min. garanti: 10,000 FCFA'
   },
@@ -207,6 +209,7 @@ const HOURLY_SESSIONS: GameSession[] = [
     scheduledHour: 18,
     difficulty: 'Standard',
     color: 'from-blue-500 to-indigo-600',
+    backgroundImage: '/after.jpg',
     icon: '🌆',
     description: 'Lancement à 18h00 précises. Min. garanti: 25,000 FCFA'
   },
@@ -224,6 +227,7 @@ const HOURLY_SESSIONS: GameSession[] = [
     scheduledHour: 20,
     difficulty: 'Expert',
     color: 'from-orange-500 to-red-600',
+    backgroundImage: '/nightowl.jpg',
     icon: '🔥',
     description: 'Lancement à 20h00 précises. Min. garanti: 25,000 FCFA'
   },
@@ -241,6 +245,7 @@ const HOURLY_SESSIONS: GameSession[] = [
     scheduledHour: 22,
     difficulty: 'Expert',
     color: 'from-purple-500 to-indigo-600',
+    backgroundImage: '/midnight.jpg',
     icon: '🌙',
     description: 'Lancement à 22h00 précises. Min. garanti: 50,000 FCFA'
   }
@@ -313,6 +318,7 @@ const TRAINING_SESSION: GameSession = {
   status: 'open',
   difficulty: 'Débutant',
   color: 'from-emerald-500 to-teal-600',
+  backgroundImage: '/training.jpg',
   icon: '🎓',
   description: 'Entraînez-vous gratuitement ! Même gameplay que les sessions live.'
 }
@@ -1260,38 +1266,51 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
                     isTraining ? 'border-emerald-500/30 hover:border-emerald-400/50' : 'border-white/10 hover:border-white/30'
                   }`}
                 >
-                  {/* Header coloré */}
-                  <div className={`bg-gradient-to-r ${session.color} p-4 md:p-6 relative`}>
-                    {/* Badge */}
-                    <div className="absolute top-2 right-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        isTraining ? 'bg-emerald-400 text-emerald-900' : 'bg-white/30 text-white'
-                      }`}>
-                        {isTraining ? '🎓 GRATUIT' : `⏰ ${session.scheduledHour}h00`}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-3xl md:text-4xl">{session.icon}</span>
-                    </div>
-                    <h4 className="text-xl md:text-2xl font-black text-white">{session.name}</h4>
-                    
-                    {/* Info Training ou Countdown */}
-                    {isTraining ? (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-white/80" />
-                        <span className="text-white/90 text-sm font-medium">
-                          Disponible 24h/24
+                  {/* Header avec image de fond */}
+                  <div
+                    className="relative p-4 md:p-6 min-h-[140px] bg-cover bg-center"
+                    style={{
+                      backgroundImage: session.backgroundImage
+                        ? `url(${session.backgroundImage})`
+                        : undefined
+                    }}
+                  >
+                    {/* Overlay gradient pour lisibilité */}
+                    <div className={`absolute inset-0 ${session.backgroundImage ? 'bg-black/40' : ''} bg-gradient-to-t from-black/70 via-black/30 to-transparent`} />
+
+                    {/* Contenu du header */}
+                    <div className="relative z-10">
+                      {/* Badge */}
+                      <div className="absolute top-0 right-0">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          isTraining ? 'bg-emerald-400 text-emerald-900' : 'bg-white/30 text-white backdrop-blur-sm'
+                        }`}>
+                          {isTraining ? '🎓 GRATUIT' : `⏰ ${session.scheduledHour}h00`}
                         </span>
                       </div>
-                    ) : session.startsAt && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-white/80" />
-                        <span className="text-white/90 text-sm font-medium">
-                          Lancement dans {getTimeRemaining()}
-                        </span>
+
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-3xl md:text-4xl drop-shadow-lg">{session.icon}</span>
                       </div>
-                    )}
+                      <h4 className="text-xl md:text-2xl font-black text-white drop-shadow-lg">{session.name}</h4>
+
+                      {/* Info Training ou Countdown */}
+                      {isTraining ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-white/80" />
+                          <span className="text-white/90 text-sm font-medium drop-shadow">
+                            Disponible 24h/24
+                          </span>
+                        </div>
+                      ) : session.startsAt && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-white/80" />
+                          <span className="text-white/90 text-sm font-medium drop-shadow">
+                            Lancement dans {getTimeRemaining()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Contenu */}
@@ -1426,41 +1445,52 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
           </div>
 
           {/* Session Card */}
-          <div className={`bg-gradient-to-r ${selectedSession.color} rounded-3xl p-6 md:p-8 mb-6`}>
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-5xl">{selectedSession.icon}</span>
-              <div>
-                <span className="px-2 py-1 bg-white/20 rounded-full text-xs font-bold text-white">
-                  {selectedSession.difficulty}
-                </span>
-                <h2 className="text-2xl md:text-3xl font-black text-white">{selectedSession.name}</h2>
-              </div>
-            </div>
-            
-            {/* Countdown pour mode horaire */}
-            {selectedSession.mode === 'hourly' && selectedSession.startsAt && (
-              <div className="bg-black/30 rounded-2xl p-4 mb-4 text-center">
-                <p className="text-white/70 text-sm mb-1">LANCEMENT DANS</p>
-                <p className="text-3xl md:text-4xl font-black text-white animate-pulse">
-                  {getTimeRemaining()}
-                </p>
-              </div>
-            )}
-            
-            <div className="bg-white/20 rounded-2xl p-4 text-center">
-              <p className="text-white/80 text-sm">
-                {selectedSession.mode === 'hourly' ? 'CAGNOTTE ACTUELLE' : 'CAGNOTTE À GAGNER'}
-              </p>
-              <p className="text-4xl md:text-5xl font-black text-white">
-                {dynamicPrize.toLocaleString('fr-FR')} FCFA
-              </p>
-              {selectedSession.mode === 'hourly' && selectedSession.minPrize && (
-                <p className="text-green-300 text-sm mt-2">
-                  ✓ Minimum garanti: {selectedSession.minPrize.toLocaleString('fr-FR')} FCFA
-                </p>
-              )}
-            </div>
+          <div
+            className="relative rounded-3xl overflow-hidden mb-6 bg-cover bg-center"
+            style={{
+              backgroundImage: selectedSession.backgroundImage
+                ? `url(${selectedSession.backgroundImage})`
+                : undefined
+            }}
+          >
+            {/* Overlay gradient pour lisibilité */}
+            <div className={`absolute inset-0 ${selectedSession.backgroundImage ? 'bg-black/50' : ''} bg-gradient-to-b from-black/30 via-black/40 to-black/60`} />
 
+            <div className="relative z-10 p-6 md:p-8">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-5xl drop-shadow-lg">{selectedSession.icon}</span>
+                <div>
+                  <span className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-bold text-white">
+                    {selectedSession.difficulty}
+                  </span>
+                  <h2 className="text-2xl md:text-3xl font-black text-white drop-shadow-lg">{selectedSession.name}</h2>
+                </div>
+              </div>
+
+              {/* Countdown pour mode horaire */}
+              {selectedSession.mode === 'hourly' && selectedSession.startsAt && (
+                <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 mb-4 text-center">
+                  <p className="text-white/70 text-sm mb-1">LANCEMENT DANS</p>
+                  <p className="text-3xl md:text-4xl font-black text-white animate-pulse">
+                    {getTimeRemaining()}
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 text-center">
+                <p className="text-white/80 text-sm">
+                  {selectedSession.mode === 'hourly' ? 'CAGNOTTE ACTUELLE' : 'CAGNOTTE À GAGNER'}
+                </p>
+                <p className="text-4xl md:text-5xl font-black text-white drop-shadow-lg">
+                  {dynamicPrize.toLocaleString('fr-FR')} FCFA
+                </p>
+                {selectedSession.mode === 'hourly' && selectedSession.minPrize && (
+                  <p className="text-green-300 text-sm mt-2">
+                    ✓ Minimum garanti: {selectedSession.minPrize.toLocaleString('fr-FR')} FCFA
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Infos */}

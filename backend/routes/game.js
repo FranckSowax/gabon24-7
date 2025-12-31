@@ -43,66 +43,74 @@ router.post('/generate-daily', async (req, res) => {
 /**
  * POST /api/game/questions
  * Génère des questions de quiz basées sur les articles récents
+ * Privilégie les questions générées dans les dernières 72h (actualité fraîche)
  */
 router.post('/questions', async (req, res) => {
   try {
     const { rounds = 10 } = req.body;
-    
+
     console.log(`🎮 [GAME] Demande de ${rounds} questions...`);
 
-    // 1. Récupérer un échantillon aléatoire de questions par difficulté
-    // Utiliser un offset aléatoire pour varier les questions à chaque partie
-    const randomOffset = Math.floor(Math.random() * 1000); // Offset aléatoire parmi les milliers de questions
-    
-    // Récupérer des questions de chaque niveau de difficulté
-    const [facileRes, moyenRes, difficileRes, expertRes] = await Promise.all([
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Facile').range(randomOffset % 500, (randomOffset % 500) + 50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Moyen').range(randomOffset % 800, (randomOffset % 800) + 50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Difficile').range(randomOffset % 600, (randomOffset % 600) + 50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Expert').range(randomOffset % 400, (randomOffset % 400) + 50)
+    // Date limite: questions des dernières 72h uniquement
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - 72);
+    const cutoffISO = cutoffDate.toISOString();
+
+    // Récupérer des questions récentes de chaque niveau de difficulté
+    // Distribution: 35% Facile, 40% Moyen, 25% Difficile
+    const [facileRes, moyenRes, difficileRes] = await Promise.all([
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Facile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Moyen').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Difficile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50)
     ]);
-    
-    // Grouper par difficulté
+
+    // Grouper par difficulté et mélanger aléatoirement
     const byDifficulty = {
       'Facile': (facileRes.data || []).sort(() => Math.random() - 0.5),
       'Moyen': (moyenRes.data || []).sort(() => Math.random() - 0.5),
-      'Difficile': (difficileRes.data || []).sort(() => Math.random() - 0.5),
-      'Expert': (expertRes.data || []).sort(() => Math.random() - 0.5)
+      'Difficile': (difficileRes.data || []).sort(() => Math.random() - 0.5)
     };
-    
+
     const totalQuestions = Object.values(byDifficulty).reduce((sum, arr) => sum + arr.length, 0);
-    console.log(`✅ ${totalQuestions} questions récupérées (Facile: ${byDifficulty['Facile'].length}, Moyen: ${byDifficulty['Moyen'].length}, Difficile: ${byDifficulty['Difficile'].length}, Expert: ${byDifficulty['Expert'].length})`);
+    console.log(`✅ ${totalQuestions} questions récupérées (Facile: ${byDifficulty['Facile'].length}, Moyen: ${byDifficulty['Moyen'].length}, Difficile: ${byDifficulty['Difficile'].length})`);
 
     if (totalQuestions >= rounds) {
-      // Construire la liste progressive: 2-3 faciles, 2-3 moyennes, reste difficile/expert
+      // Distribution progressive pour une session de 10 questions:
+      // Rounds 1-3: Facile (échauffement)
+      // Rounds 4-7: Moyen (cœur du jeu)
+      // Rounds 8-10: Difficile (défi final)
       const selected = [];
+      const usedIds = new Set(); // Éviter les doublons
+
       const addQuestions = (arr, count) => {
-        const toAdd = arr.splice(0, count);
-        selected.push(...toAdd);
+        let added = 0;
+        for (const q of arr) {
+          if (added >= count) break;
+          if (!usedIds.has(q.id)) {
+            selected.push(q);
+            usedIds.add(q.id);
+            added++;
+          }
+        }
+        return added;
       };
-      
-      // 2-3 questions faciles
-      addQuestions(byDifficulty['Facile'], Math.min(3, byDifficulty['Facile'].length));
-      // Si pas assez de faciles, compléter avec moyennes
-      if (selected.length < 3) {
-        addQuestions(byDifficulty['Moyen'], 3 - selected.length);
-      }
-      
-      // 2-3 questions moyennes
-      addQuestions(byDifficulty['Moyen'], Math.min(3, byDifficulty['Moyen'].length));
-      
-      // Reste en difficile puis expert
-      const remaining = rounds - selected.length;
-      addQuestions(byDifficulty['Difficile'], Math.min(remaining, byDifficulty['Difficile'].length));
-      addQuestions(byDifficulty['Expert'], rounds - selected.length);
-      
-      // Si toujours pas assez, compléter avec ce qui reste
+
+      // Phase 1: 3 questions faciles (30%)
+      const facilesAdded = addQuestions(byDifficulty['Facile'], Math.ceil(rounds * 0.3));
+
+      // Phase 2: 4 questions moyennes (40%)
+      const moyennesAdded = addQuestions(byDifficulty['Moyen'], Math.ceil(rounds * 0.4));
+
+      // Phase 3: 3 questions difficiles (30%)
+      const difficilesAdded = addQuestions(byDifficulty['Difficile'], Math.ceil(rounds * 0.3));
+
+      // Compléter si nécessaire avec ce qui reste
       if (selected.length < rounds) {
-        const allRemaining = [...byDifficulty['Facile'], ...byDifficulty['Moyen'], ...byDifficulty['Difficile'], ...byDifficulty['Expert']];
+        const allRemaining = [...byDifficulty['Facile'], ...byDifficulty['Moyen'], ...byDifficulty['Difficile']];
         addQuestions(allRemaining, rounds - selected.length);
       }
-      
-      console.log(`📊 Distribution finale: Facile=${selected.filter(q => q.difficulty === 'Facile').length}, Moyen=${selected.filter(q => q.difficulty === 'Moyen').length}, Difficile=${selected.filter(q => q.difficulty === 'Difficile').length}, Expert=${selected.filter(q => q.difficulty === 'Expert').length}`);
+
+      console.log(`📊 Distribution finale: Facile=${selected.filter(q => q.difficulty === 'Facile').length}, Moyen=${selected.filter(q => q.difficulty === 'Moyen').length}, Difficile=${selected.filter(q => q.difficulty === 'Difficile').length}`);
       
       // Mapper vers le format attendu par le frontend avec mélange des réponses
       const formattedQuestions = selected.slice(0, rounds).map((q, index) => {

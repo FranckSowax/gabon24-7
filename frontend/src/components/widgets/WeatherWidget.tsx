@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 import axios from 'axios';
 import { 
@@ -196,25 +196,39 @@ export function WeatherWidget() {
 
   const freshnessInfo = weatherData ? getDataFreshnessInfo(weatherData.lastUpdate) : null;
 
-  // Gradient dynamique selon l'heure
-  const getGradientByTime = () => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 12) return 'from-amber-50 via-orange-50 to-sky-100';
-    if (hour >= 12 && hour < 18) return 'from-sky-50 via-blue-50 to-indigo-100';
-    if (hour >= 18 && hour < 21) return 'from-orange-100 via-rose-100 to-purple-200';
-    return 'from-indigo-900 via-purple-900 to-slate-900';
-  };
+  // État pour les styles dynamiques basés sur l'heure (évite hydration mismatch)
+  const [timeBasedStyles, setTimeBasedStyles] = useState({
+    gradient: 'from-sky-50 via-blue-50 to-indigo-100', // Valeur par défaut (jour)
+    isNight: false
+  });
 
-  const isNight = () => {
-    const hour = new Date().getHours();
-    return hour >= 21 || hour < 6;
-  };
+  // Calcul des styles côté client uniquement
+  useEffect(() => {
+    const updateTimeStyles = () => {
+      const hour = new Date().getHours();
+      let gradient = 'from-sky-50 via-blue-50 to-indigo-100';
+      if (hour >= 6 && hour < 12) gradient = 'from-amber-50 via-orange-50 to-sky-100';
+      else if (hour >= 12 && hour < 18) gradient = 'from-sky-50 via-blue-50 to-indigo-100';
+      else if (hour >= 18 && hour < 21) gradient = 'from-orange-100 via-rose-100 to-purple-200';
+      else gradient = 'from-indigo-900 via-purple-900 to-slate-900';
+
+      setTimeBasedStyles({
+        gradient,
+        isNight: hour >= 21 || hour < 6
+      });
+    };
+
+    updateTimeStyles();
+    // Mettre à jour toutes les minutes
+    const interval = setInterval(updateTimeStyles, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div 
+    <div
       className={`rounded-3xl h-[500px] w-full overflow-hidden
-        bg-gradient-to-br ${getGradientByTime()}
-        ${isNight() ? 'text-white' : 'text-gray-800'}
+        bg-gradient-to-br ${timeBasedStyles.gradient}
+        ${timeBasedStyles.isNight ? 'text-white' : 'text-gray-800'}
         shadow-xl border border-white/20`}
     >
       {/* Contenu principal */}
@@ -222,12 +236,12 @@ export function WeatherWidget() {
         {/* Header */}
         <div className="flex items-center justify-between mb-3 w-full">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={`p-1.5 sm:p-2 rounded-xl ${isNight() ? 'bg-white/10' : 'bg-white/50'} flex-shrink-0`}>
+            <div className={`p-1.5 sm:p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/10' : 'bg-white/50'} flex-shrink-0`}>
               <MapPin className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold opacity-90">Météo Gabon</h3>
-              <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'} truncate`}>
+              <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'} truncate`}>
                 {freshnessInfo?.message ? `Mis à jour ${freshnessInfo.message}` : 'Chargement...'}
               </p>
             </div>
@@ -236,7 +250,7 @@ export function WeatherWidget() {
             onClick={() => fetchWeatherData()}
             disabled={loading}
             className={`p-1.5 sm:p-2 rounded-xl flex-shrink-0 ml-2
-              ${isNight() ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'} 
+              ${timeBasedStyles.isNight ? 'bg-white/10 hover:bg-white/20' : 'bg-white/50 hover:bg-white/70'} 
               transition-all disabled:opacity-50`}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -252,7 +266,7 @@ export function WeatherWidget() {
         {weatherData && (
           <div>
               {/* Zone météo principale */}
-              <div className={`rounded-2xl p-3 mb-3 ${isNight() ? 'bg-white/5' : 'bg-white/40'}`}>
+              <div className={`rounded-2xl p-3 mb-3 ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/40'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <WeatherIcon icon={weatherData.icon} size="xl" />
@@ -260,14 +274,14 @@ export function WeatherWidget() {
                       <div className="text-3xl font-light">
                         {formatTemperature(weatherData.temp)}
                       </div>
-                      <p className={`text-sm ${isNight() ? 'text-white/70' : 'text-gray-600'}`}>
+                      <p className={`text-sm ${timeBasedStyles.isNight ? 'text-white/70' : 'text-gray-600'}`}>
                         {weatherData.description}
                       </p>
                     </div>
                   </div>
                   <div className="text-right text-sm">
                     <p className="font-semibold">{selectedCity}</p>
-                    <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+                    <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
                       {GABON_CITIES.find(c => c.name === selectedCity)?.province}
                     </p>
                   </div>
@@ -275,16 +289,16 @@ export function WeatherWidget() {
 
                 {/* Stats météo */}
                 <div className="grid grid-cols-3 gap-2 mt-3">
-                  <div className={`p-2 rounded-xl ${isNight() ? 'bg-white/5' : 'bg-white/30'}`}>
-                    <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>Ressenti</p>
+                  <div className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/30'}`}>
+                    <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>Ressenti</p>
                     <p className="text-sm font-medium">{formatTemperature(weatherData.feels_like)}</p>
                   </div>
-                  <div className={`p-2 rounded-xl ${isNight() ? 'bg-white/5' : 'bg-white/30'}`}>
-                    <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>Humidité</p>
+                  <div className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/30'}`}>
+                    <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>Humidité</p>
                     <p className="text-sm font-medium">{weatherData.humidity}%</p>
                   </div>
-                  <div className={`p-2 rounded-xl ${isNight() ? 'bg-white/5' : 'bg-white/30'}`}>
-                    <p className={`text-xs ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>Vent</p>
+                  <div className={`p-2 rounded-xl ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/30'}`}>
+                    <p className={`text-xs ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>Vent</p>
                     <p className="text-sm font-medium">{weatherData.wind_speed} km/h</p>
                   </div>
                 </div>
@@ -298,8 +312,8 @@ export function WeatherWidget() {
                     onClick={() => setSelectedCity(city.name)}
                     className={`p-2 rounded-xl text-xs font-medium transition-all
                       ${selectedCity === city.name
-                        ? `${isNight() ? 'bg-white/20' : 'bg-white/70'} shadow-lg`
-                        : `${isNight() ? 'bg-white/5 hover:bg-white/10' : 'bg-white/30 hover:bg-white/50'}`
+                        ? `${timeBasedStyles.isNight ? 'bg-white/20' : 'bg-white/70'} shadow-lg`
+                        : `${timeBasedStyles.isNight ? 'bg-white/5 hover:bg-white/10' : 'bg-white/30 hover:bg-white/50'}`
                       }`}
                   >
                     {city.name}
@@ -309,8 +323,8 @@ export function WeatherWidget() {
 
               {/* Prévisions 5 jours */}
               {forecast.length > 0 && (
-                <div className={`rounded-2xl p-3 ${isNight() ? 'bg-white/5' : 'bg-white/40'}`}>
-                  <p className={`text-xs font-medium mb-2 ${isNight() ? 'text-white/70' : 'text-gray-600'}`}>
+                <div className={`rounded-2xl p-3 ${timeBasedStyles.isNight ? 'bg-white/5' : 'bg-white/40'}`}>
+                  <p className={`text-xs font-medium mb-2 ${timeBasedStyles.isNight ? 'text-white/70' : 'text-gray-600'}`}>
                     Prévisions 5 jours
                   </p>
                   <div className="grid grid-cols-5 gap-1">
@@ -321,7 +335,7 @@ export function WeatherWidget() {
                       
                       return (
                         <div key={index} className="text-center p-1">
-                          <p className={`text-xs mb-1 ${isNight() ? 'text-white/60' : 'text-gray-500'}`}>
+                          <p className={`text-xs mb-1 ${timeBasedStyles.isNight ? 'text-white/60' : 'text-gray-500'}`}>
                             {dayName}
                           </p>
                           <div className="flex justify-center mb-1">
