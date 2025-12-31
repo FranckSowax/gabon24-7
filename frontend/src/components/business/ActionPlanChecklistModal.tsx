@@ -310,7 +310,7 @@ IMPORTANT:
           documentType,
           taskDescription,
           stepTitle: stepData?.title || '',
-          stepDescription: stepData?.description || '',
+          stepDescription: stepData?.objective || '',
           projectContext: {
             titre: projectData.titre,
             secteur: projectData.secteur,

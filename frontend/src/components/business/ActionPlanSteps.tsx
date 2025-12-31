@@ -448,7 +448,7 @@ Exemple de format attendu:
           documentType,
           taskDescription,
           stepTitle: currentStepData?.title || '',
-          stepDescription: currentStepData?.description || '',
+          stepDescription: currentStepData?.objective || '',
           projectContext: {
             titre: projectData.titre,
             secteur: projectData.secteur,
