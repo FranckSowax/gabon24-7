@@ -119,7 +119,7 @@ function calculatePricing(modules = []) {
 // POST /api/training/generate - Générer une formation sur mesure avec Replicate nano-gpt
 router.post('/generate', async (req, res) => {
   try {
-    const { userAnalysis = {}, article = {}, sectorResults = {}, userId = null, articleId = null } = req.body || {};
+    const { userAnalysis = {}, article = {}, sectorResults = {}, userId = null, articleId = null, projectId = null } = req.body || {};
 
     console.log('🎓 Génération formation pour:', sectorResults?.selectedPropositions?.[0] || article?.title);
 
@@ -324,6 +324,22 @@ router.get('/:training_id', async (req, res) => {
 
 // POST /api/training/:training_id/generate-module - Générer le contenu détaillé d'un module
 router.post('/:training_id/generate-module', async (req, res) => {
+  // Timeout de sécurité pour éviter les 502 Railway
+  const timeoutMs = 55000; // 55 secondes (Railway timeout = 60s)
+  let timeoutReached = false;
+
+  const timeout = setTimeout(() => {
+    timeoutReached = true;
+    if (!res.headersSent) {
+      console.error('⏱️ Timeout génération module atteint (55s)');
+      return res.status(504).json({
+        success: false,
+        error: 'Timeout de génération',
+        message: 'La génération a pris trop de temps. Veuillez réessayer.'
+      });
+    }
+  }, timeoutMs);
+
   try {
     const { training_id } = req.params;
     const { moduleId, trainingData } = req.body;
@@ -351,6 +367,7 @@ router.post('/:training_id/generate-module', async (req, res) => {
         .single();
 
       if (error || !data) {
+        clearTimeout(timeout);
         return res.status(404).json({
           success: false,
           error: 'Formation non trouvée'
@@ -362,6 +379,7 @@ router.post('/:training_id/generate-module', async (req, res) => {
     // Trouver le module dans le sommaire
     const module = training.modules?.find(m => m.id === moduleId);
     if (!module) {
+      clearTimeout(timeout);
       return res.status(404).json({
         success: false,
         error: 'Module non trouvé'
@@ -453,21 +471,23 @@ Take a deep breath and work on this problem step-by-step.`;
       console.log('✅ Gemini 3: Génération réussie');
       
     } catch (geminiError) {
+      clearTimeout(timeout);
       console.error('❌ Erreur Gemini:', geminiError.message);
-      return res.status(502).json({ 
+      return res.status(502).json({
         success: false,
         error: 'Erreur Gemini API',
         details: geminiError.message
       });
     }
-    
+
     if (!parsed || !parsed.content_sections) {
+      clearTimeout(timeout);
       console.error('❌ Format de réponse AI invalide');
       console.error('🔧 Objet parsé:', JSON.stringify(parsed, null, 2));
-      
-      return res.status(502).json({ 
+
+      return res.status(502).json({
         success: false,
-        error: 'Format de réponse AI invalide', 
+        error: 'Format de réponse AI invalide',
         message: 'Le modèle AI n\'a pas retourné le format JSON attendu',
         debug: {
           parsed: parsed
@@ -476,6 +496,11 @@ Take a deep breath and work on this problem step-by-step.`;
     }
 
     console.log('✅ Module généré:', parsed.module_title);
+
+    // Clear le timeout
+    clearTimeout(timeout);
+
+    if (timeoutReached) return; // Ne pas répondre si timeout déjà atteint
 
     res.json({
       success: true,
@@ -487,6 +512,10 @@ Take a deep breath and work on this problem step-by-step.`;
     });
 
   } catch (error) {
+    clearTimeout(timeout);
+
+    if (timeoutReached) return; // Ne pas répondre si timeout déjà atteint
+
     console.error('❌ Erreur generate module:', error);
     res.status(500).json({
       success: false,
