@@ -257,10 +257,7 @@ export default function MesProjetsPage() {
   // État pour filtre bibliothèque
   const [bibliothequeFilter, setBibliothequeFilter] = useState<string>('all')
   // État pour tabs contexte & bibliothèque
-  const [contexteActiveTab, setContexteActiveTab] = useState<'contexte' | 'documents' | 'notes' | 'timeline' | 'formations'>('contexte')
-  // État pour les formations du projet
-  const [projectTrainings, setProjectTrainings] = useState<{[key: string]: any[]}>({})
-  const [loadingTrainings, setLoadingTrainings] = useState(false)
+  const [contexteActiveTab, setContexteActiveTab] = useState<'contexte' | 'documents' | 'notes' | 'timeline'>('contexte')
   const [currentSkillTest, setCurrentSkillTest] = useState<any | null>(null)
   const [skillTestScores, setSkillTestScores] = useState<{[key: string]: any[]}>({})
   const [startTime, setStartTime] = useState<number>(0)
@@ -382,32 +379,6 @@ export default function MesProjetsPage() {
     }
   }
 
-  // Fonction pour récupérer les formations liées au projet
-  const fetchProjectTrainings = async (projectId: string) => {
-    if (projectTrainings[projectId]) return // Déjà chargé
-
-    setLoadingTrainings(true)
-    try {
-      const response = await fetch(`${API_URL}/api/training/project/${projectId}`)
-      const data = await response.json()
-      if (data.success) {
-        setProjectTrainings(prev => ({
-          ...prev,
-          [projectId]: data.trainings || []
-        }))
-      }
-    } catch (error) {
-      console.error('Error fetching project trainings:', error)
-      setProjectTrainings(prev => ({
-        ...prev,
-        [projectId]: []
-      }))
-    } finally {
-      setLoadingTrainings(false)
-    }
-  }
-
-
   useEffect(() => {
     if (Array.isArray(projects) && projects.length > 0) {
       projects.forEach(project => {
@@ -452,12 +423,6 @@ export default function MesProjetsPage() {
     }
   }, [selectedProject])
 
-  // Charger les formations quand l'onglet formations est activé
-  useEffect(() => {
-    if (selectedProject && contexteActiveTab === 'formations') {
-      fetchProjectTrainings(selectedProject.id)
-    }
-  }, [selectedProject, contexteActiveTab])
 
   const restartAnalysis = async (projectId: string) => {
     if (!confirm('⚠️ Relancer l\'analyse va supprimer tous les documents et actions IA générés. Voulez-vous continuer ?')) {
@@ -1273,13 +1238,6 @@ export default function MesProjetsPage() {
         })
         await fetchProjectActions(project.id)
       }
-
-      // 🔄 Invalider le cache des formations pour forcer le rechargement
-      setProjectTrainings(prev => {
-        const newState = { ...prev }
-        delete newState[project.id]  // Supprimer le cache pour ce projet
-        return newState
-      })
 
       setAiModalProgress(100)
       setAiModalStatus('success')
@@ -2339,23 +2297,6 @@ export default function MesProjetsPage() {
               />
             )}
           </button>
-          <button
-            onClick={() => setContexteActiveTab('formations')}
-            className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
-              contexteActiveTab === 'formations'
-                ? 'text-purple-400'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <BookOpen className="w-5 h-5 inline mr-2" />
-            Formations ({projectTrainings[selectedProject.id]?.length || 0})
-            {contexteActiveTab === 'formations' && (
-              <motion.div
-                layoutId="contexteTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-400"
-              />
-            )}
-          </button>
         </div>
 
         {/* Contenu selon tab actif */}
@@ -2789,127 +2730,6 @@ export default function MesProjetsPage() {
           )
         )}
 
-        {/* Onglet Formations */}
-        {contexteActiveTab === 'formations' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            {loadingTrainings ? (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4" />
-                <p className="text-gray-400">Chargement des formations...</p>
-              </div>
-            ) : (projectTrainings[selectedProject.id]?.length || 0) > 0 ? (
-              <div className="space-y-4">
-                {projectTrainings[selectedProject.id]?.map((training: any, idx: number) => {
-                  const progressPercent = training.progress?.progress_percentage || 0
-                  const currentModule = training.progress?.current_module_index || 0
-                  const totalModules = training.modules?.length || 0
-
-                  return (
-                    <motion.div
-                      key={training.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-purple-500/30 transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                            <GraduationCap className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">{training.training_title}</h3>
-                            <p className="text-sm text-gray-400">
-                              {totalModules} module{totalModules > 1 ? 's' : ''} • {training.total_duration || 'Durée variable'}
-                            </p>
-                          </div>
-                        </div>
-                        {progressPercent > 0 && (
-                          <div className="px-3 py-1 bg-purple-500/20 rounded-full">
-                            <span className="text-purple-400 font-semibold text-sm">{progressPercent}%</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Barre de progression */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
-                          <span>Module {currentModule + 1} / {totalModules}</span>
-                          <span>{progressPercent > 0 ? 'En cours' : 'Non commencée'}</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => router.push(`/training/${training.id}?resume=true&projectId=${selectedProject.id}`)}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2"
-                        >
-                          {progressPercent > 0 ? (
-                            <>
-                              <Play className="w-4 h-4" />
-                              Reprendre
-                            </>
-                          ) : (
-                            <>
-                              <BookOpen className="w-4 h-4" />
-                              Commencer
-                            </>
-                          )}
-                        </button>
-                        {progressPercent > 0 && (
-                          <button
-                            onClick={() => router.push(`/training/${training.id}?projectId=${selectedProject.id}`)}
-                            className="px-4 py-3 bg-white/10 text-white rounded-lg font-medium hover:bg-white/20 transition-all"
-                            title="Recommencer depuis le début"
-                          >
-                            <RotateCcw className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Dernière activité */}
-                      {training.progress?.last_accessed_at && (
-                        <p className="mt-3 text-xs text-gray-500 text-center">
-                          Dernière activité: {new Date(training.progress.last_accessed_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      )}
-                    </motion.div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
-                <GraduationCap className="w-16 h-16 text-purple-400 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-bold text-white mb-2">Aucune formation</h3>
-                <p className="text-gray-400 mb-6">
-                  Générez une formation personnalisée pour développer vos compétences
-                </p>
-                <button
-                  onClick={() => setActiveSection('conseiller')}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
-                >
-                  Demander une formation à Gabon Insight
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
       </div>
     )
   }
