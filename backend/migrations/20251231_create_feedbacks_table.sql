@@ -43,38 +43,21 @@ DROP POLICY IF EXISTS "Admins can view all feedbacks" ON feedbacks;
 DROP POLICY IF EXISTS "Users can create feedbacks" ON feedbacks;
 DROP POLICY IF EXISTS "Admins can update feedbacks" ON feedbacks;
 DROP POLICY IF EXISTS "Service role bypass" ON feedbacks;
+DROP POLICY IF EXISTS "Allow all for service role" ON feedbacks;
+DROP POLICY IF EXISTS "Anyone can insert feedback" ON feedbacks;
 
--- Politique: Service role peut tout faire (pour le backend)
-CREATE POLICY "Service role bypass"
+-- Politique: Service role peut tout faire (pour le backend avec SUPABASE_SERVICE_ROLE_KEY)
+CREATE POLICY "Allow all for service role"
   ON feedbacks FOR ALL
-  USING (auth.role() = 'service_role');
-
--- Politique: Les admins peuvent tout voir
-CREATE POLICY "Admins can view all feedbacks"
-  ON feedbacks FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.role = 'admin'
-    )
-  );
-
--- Politique: Les utilisateurs peuvent créer des feedbacks
-CREATE POLICY "Users can create feedbacks"
-  ON feedbacks FOR INSERT
+  TO service_role
+  USING (true)
   WITH CHECK (true);
 
--- Politique: Les admins peuvent mettre à jour les feedbacks
-CREATE POLICY "Admins can update feedbacks"
-  ON feedbacks FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.role = 'admin'
-    )
-  );
+-- Politique: Tout le monde peut créer des feedbacks (même anonyme)
+CREATE POLICY "Anyone can insert feedback"
+  ON feedbacks FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
 
 -- Afficher la structure
 SELECT column_name, data_type, is_nullable, column_default
