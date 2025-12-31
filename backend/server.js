@@ -907,17 +907,35 @@ app.get("/api/articles/trending", async (req, res) => {
     const { data: feeds } = await supabase.from("rss_feeds").select("*");
     
     const mapArticleToFeed = (article, feedsList) => {
+      // Priorité 1: Source déjà présente dans l'article
+      if (article.source && article.source.trim() !== '') {
+        return article.source;
+      }
+      // Priorité 2: Lookup via feed_id
       if (article.feed_id && feedsList) {
         const f = feedsList.find(feed => feed.id === article.feed_id);
         if (f) return f.name;
       }
+      // Priorité 3: Déduction depuis l'URL
       const url = article.url || "";
-      if (url.includes("agpgabon")) return "AGP - Agence Gabonaise de Presse";
+      if (url.includes("agpgabon")) return "AGP";
       if (url.includes("lunion")) return "L'Union";
       if (url.includes("gabon-insight")) return "Gabonews";
       if (url.includes("gabonactu")) return "Gabon Actu";
       if (url.includes("gabonmediatime")) return "Gabon Media Time";
-      return "Source RSS non configurée";
+      if (url.includes("facebook.com")) return "Facebook";
+      if (url.includes("7joursinfo")) return "7 Jours Info";
+      if (url.includes("directinfosgabon")) return "Direct Infos Gabon";
+      if (url.includes("biba241")) return "Biba 241";
+      if (url.includes("sport241")) return "Sport 241";
+      if (url.includes("gabonnewsroom")) return "Gabon Newsroom";
+      // Fallback: extraire le domaine
+      try {
+        const hostname = new URL(url).hostname.replace('www.', '');
+        return hostname || "Source inconnue";
+      } catch {
+        return "Source inconnue";
+      }
     };
 
     const transformed = (articles || []).map(article => ({
