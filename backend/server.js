@@ -432,21 +432,26 @@ app.get('/api/user/history', async (req, res) => {
 
     if (error) throw error;
 
-    // Enrichir avec les images des articles
+    // Enrichir avec les images des articles (priorité: image stockée dans historique, sinon jointure avec articles)
     let enrichedHistory = data || [];
     if (enrichedHistory.length > 0) {
-      const articleIds = enrichedHistory.map(h => h.article_id).filter(Boolean);
-      if (articleIds.length > 0) {
+      // Trouver les articles sans image dans l'historique
+      const articlesWithoutImage = enrichedHistory.filter(h => !h.image_url);
+      const articleIdsWithoutImage = articlesWithoutImage.map(h => h.article_id).filter(Boolean);
+
+      if (articleIdsWithoutImage.length > 0) {
         const { data: articlesImages } = await supabase
           .from('articles')
           .select('id, image_url')
-          .in('id', articleIds);
+          .in('id', articleIdsWithoutImage);
 
         if (articlesImages) {
-          const imageMap = new Map(articlesImages.map(a => [a.id, a.image_url]));
+          // Convertir les IDs UUID en strings pour la comparaison avec article_id (VARCHAR)
+          const imageMap = new Map(articlesImages.map(a => [String(a.id), a.image_url]));
           enrichedHistory = enrichedHistory.map(h => ({
             ...h,
-            image_url: imageMap.get(h.article_id) || h.image_url || null
+            // Priorité: image déjà dans historique, sinon depuis articles
+            image_url: h.image_url || imageMap.get(String(h.article_id)) || null
           }));
         }
       }

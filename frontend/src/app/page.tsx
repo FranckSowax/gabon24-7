@@ -944,6 +944,7 @@ export default function HomePage() {
               article_source: article.source || null,
               article_category: article.category || null,
               article_published_at: validPublishedAt,
+              image_url: article.imageUrl || null,
               reading_duration: 0,
               device_type: 'web',
               read_at: new Date().toISOString(),

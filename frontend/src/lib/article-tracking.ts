@@ -20,6 +20,7 @@ export interface ReadingHistoryItem {
   articleSource?: string
   articleCategory?: string
   articlePublishedAt?: string
+  articleImageUrl?: string
   readingDuration?: number
   deviceType?: string
 }
@@ -90,6 +91,7 @@ export const articleTrackingService = {
           article_source: item.articleSource || null,
           article_category: item.articleCategory || null,
           article_published_at: validPublishedAt,
+          image_url: item.articleImageUrl || null,
           reading_duration: item.readingDuration || 0,
           device_type: item.deviceType || 'web',
           read_at: new Date().toISOString(),

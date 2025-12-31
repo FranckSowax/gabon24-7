@@ -98,7 +98,6 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   const menuItems = [
     { icon: '🏠', label: 'Accueil', href: '/', active: true },
     { icon: '🕒', label: 'Historique', href: '/historique' },
-    { icon: '🗄️', label: 'Archives', href: '/archives-generales' },
     { icon: '🎮', label: 'Jeu Quiz', href: '/jeu', badge: 'NEW' }
   ]
 
@@ -354,6 +353,15 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               >
                 <span>🎧</span>
                 <span className="flex-1">Résumés audio</span>
+                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+              </a>
+              <a
+                href="/archives-generales"
+                onClick={(e) => handleToolClick(e, '/archives-generales')}
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+              >
+                <span>🗄️</span>
+                <span className="flex-1">Archives</span>
                 {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
               </a>
             </div>
