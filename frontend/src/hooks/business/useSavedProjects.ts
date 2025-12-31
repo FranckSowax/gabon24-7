@@ -1,6 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Helper pour obtenir les headers avec token d'authentification
+const getAuthHeaders = async (): Promise<HeadersInit> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  return headers;
+};
 
 export interface SavedProject {
   id: string;
@@ -69,20 +80,21 @@ export function useSavedProjects(userId?: string) {
       setLoading(false);
       return;
     }
-    
+
     try {
-      // Récupérer les projets personnels
-      const response = await fetch(`${API_URL}/api/saved-projects/${userId}`);
+      // Récupérer les projets personnels avec authentification JWT
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/saved-projects`, { headers });
       const data = await response.json();
       let allProjects: SavedProject[] = [];
-      
+
       if (data.success && Array.isArray(data.projects)) {
         allProjects = data.projects;
       }
 
       // Récupérer aussi les projets partagés avec l'utilisateur
       try {
-        const sharedResponse = await fetch(`${API_URL}/api/project-collaboration/shared-with-me/${userId}`);
+        const sharedResponse = await fetch(`${API_URL}/api/project-collaboration/shared-with-me/${userId}`, { headers });
         const sharedData = await sharedResponse.json();
         if (sharedData.success && Array.isArray(sharedData.projects)) {
           // Ajouter les projets partagés (éviter les doublons)
@@ -106,7 +118,8 @@ export function useSavedProjects(userId?: string) {
   const fetchStats = useCallback(async () => {
     if (!userId) return;
     try {
-      const response = await fetch(`${API_URL}/api/saved-projects/${userId}/stats`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/saved-projects/stats`, { headers });
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -118,16 +131,18 @@ export function useSavedProjects(userId?: string) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce projet ?')) return;
 
     try {
+      const headers = await getAuthHeaders();
       await fetch(`${API_URL}/api/saved-projects/${projectId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       });
-      
+
       setProjects(projects.filter(p => p.id !== projectId));
-      
+
       if (selectedProject?.id === projectId) {
         setSelectedProject(null);
       }
-      
+
       fetchStats();
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -155,9 +170,10 @@ export function useSavedProjects(userId?: string) {
     });
 
     try {
+      const headers = await getAuthHeaders();
       await fetch(`${API_URL}/api/saved-projects/${projectId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ plan_action_steps: updatedSteps })
       });
 

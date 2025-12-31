@@ -332,18 +332,21 @@ router.post('/', requireAuth, async (req, res) => {
 
 /**
  * DELETE /api/saved-projects/:projectId
- * Supprime un projet
+ * Supprime un projet (vérifie que l'utilisateur est propriétaire)
  */
-router.delete('/:projectId', async (req, res) => {
+router.delete('/:projectId', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
+    const userId = req.user.id;
 
-    console.log('🗑️ Suppression projet:', projectId);
+    console.log('🗑️ Suppression projet:', projectId, 'par userId:', userId);
 
+    // Supprimer seulement si l'utilisateur est propriétaire
     const { error } = await supabaseService.supabase
       .from('saved_projects')
       .delete()
-      .eq('id', projectId);
+      .eq('id', projectId)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('❌ Erreur suppression projet:', error);
