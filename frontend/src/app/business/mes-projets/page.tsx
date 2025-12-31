@@ -299,46 +299,32 @@ export default function MesProjetsPage() {
     }
   }
 
-  // Fonction pour récupérer les articles similaires basés sur le secteur et la problématique
+  // Fonction pour récupérer les articles similaires avec l'IA
   const fetchSimilarArticles = async (project: SavedProject) => {
     if (!project) return
 
     setLoadingSimilarArticles(true)
     try {
-      // Récupérer tous les articles
-      const response = await fetch(`${API_URL}/api/articles?limit=100`)
+      // Utiliser l'endpoint IA pour trouver les articles similaires
+      const response = await fetch(`${API_URL}/api/articles/similar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectTitle: project.proposition_titre,
+          projectDescription: project.proposition_description,
+          sector: project.secteur_selectionne,
+          problematique: project.problematique_centrale,
+          excludeUrl: project.article_url
+        })
+      })
+
       const data = await response.json()
 
-      if (data.articles && Array.isArray(data.articles)) {
-        // Filtrer les articles similaires basés sur le secteur ou des mots-clés de la problématique
-        const secteur = project.secteur_selectionne?.toLowerCase() || ''
-        const problematique = project.problematique_centrale?.toLowerCase() || ''
-        const titre = project.proposition_titre?.toLowerCase() || ''
-
-        // Extraire des mots-clés de la problématique (mots de plus de 4 caractères)
-        const keywords = problematique
-          .split(/[\s,.:;!?]+/)
-          .filter(word => word.length > 4)
-          .slice(0, 5)
-
-        const similar = data.articles
-          .filter((article: any) => {
-            const articleTitle = article.title?.toLowerCase() || ''
-            const articleSummary = article.summary?.toLowerCase() || ''
-            const articleContent = `${articleTitle} ${articleSummary}`
-
-            // Exclure l'article source du projet
-            if (article.url === project.article_url) return false
-
-            // Vérifier si l'article contient le secteur
-            if (secteur && articleContent.includes(secteur)) return true
-
-            // Vérifier si l'article contient un des mots-clés
-            return keywords.some(keyword => articleContent.includes(keyword))
-          })
-          .slice(0, 5) // Maximum 5 articles
-
-        setSimilarArticles(similar)
+      if (data.success && Array.isArray(data.articles)) {
+        setSimilarArticles(data.articles)
+        console.log(`✅ ${data.articles.length} articles similaires trouvés via ${data.method || 'IA'}`)
+      } else {
+        setSimilarArticles([])
       }
     } catch (error) {
       console.error('Error fetching similar articles:', error)
@@ -1647,7 +1633,12 @@ export default function MesProjetsPage() {
                         {article.summary}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      {article.relevance_reason && (
+                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
+                          {article.relevance_reason}
+                        </span>
+                      )}
                       {article.source && (
                         <span className="px-2 py-1 bg-white/5 rounded-full">
                           {article.source}
@@ -1669,7 +1660,7 @@ export default function MesProjetsPage() {
               <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500">Aucun article similaire trouvé</p>
               <p className="text-gray-600 text-sm mt-1">
-                Nous n'avons pas trouvé d'articles correspondant au secteur ou à la problématique de ce projet
+                L'IA n'a pas identifié d'articles liés au secteur ou à la problématique de ce projet
               </p>
             </div>
           )}

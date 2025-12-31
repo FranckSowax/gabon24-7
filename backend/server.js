@@ -1171,6 +1171,137 @@ app.get('/api/articles', async (req, res) => {
   }
 });
 
+// Route pour trouver des articles similaires avec IA
+app.post('/api/articles/similar', async (req, res) => {
+  try {
+    const { projectTitle, projectDescription, sector, problematique, excludeUrl } = req.body;
+
+    if (!projectTitle && !projectDescription && !sector) {
+      return res.status(400).json({
+        success: false,
+        error: 'Au moins un critère de recherche est requis'
+      });
+    }
+
+    console.log('🔍 Recherche articles similaires avec IA pour:', { projectTitle, sector });
+
+    // 1. Récupérer les articles récents
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('id, title, summary, category, published_at, source, url')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    if (!articles || articles.length === 0) {
+      return res.json({ success: true, articles: [] });
+    }
+
+    // Exclure l'article source si fourni
+    const filteredArticles = excludeUrl
+      ? articles.filter(a => a.url !== excludeUrl)
+      : articles;
+
+    // 2. Préparer le contexte pour l'IA
+    const articlesList = filteredArticles.map((a, i) =>
+      `[${i}] "${a.title}" - ${a.summary?.substring(0, 150) || 'Pas de résumé'}`
+    ).join('\n');
+
+    const prompt = `Tu es un expert en analyse de contenu.
+
+PROJET À ANALYSER:
+- Titre: ${projectTitle || 'Non spécifié'}
+- Description: ${projectDescription?.substring(0, 300) || 'Non spécifiée'}
+- Secteur: ${sector || 'Non spécifié'}
+- Problématique: ${problematique?.substring(0, 300) || 'Non spécifiée'}
+
+ARTICLES DISPONIBLES:
+${articlesList}
+
+MISSION: Identifie les 5 articles les plus pertinents qui traitent du même sujet, de la même problématique ou du même secteur d'activité que ce projet business.
+
+Critères de pertinence:
+- Même secteur économique ou industrie
+- Même problématique ou enjeu
+- Même zone géographique (Gabon, Afrique centrale)
+- Thématiques connexes ou complémentaires
+- Actualités impactant ce type de projet
+
+Réponds UNIQUEMENT avec un JSON:
+{
+  "similar_indices": [0, 5, 12, 23, 45],
+  "relevance_reasons": ["Même secteur agricole", "Traite des investissements au Gabon", "Politique économique liée", "Acteur mentionné dans le projet", "Infrastructure concernée"]
+}
+
+IMPORTANT: Retourne les indices des articles (numéros entre crochets) les plus pertinents. Maximum 5 articles.`;
+
+    // 3. Appeler l'IA
+    const geminiService = require('./services/gemini-service');
+    const aiResult = await geminiService.generateJSON(prompt, {
+      systemPrompt: 'Tu es un expert en analyse sémantique et en correspondance de contenus. Réponds uniquement en JSON valide.',
+      temperature: 0.3
+    });
+
+    // 4. Extraire les articles correspondants
+    const indices = aiResult?.similar_indices || [];
+    const reasons = aiResult?.relevance_reasons || [];
+
+    const similarArticles = indices
+      .filter(i => i >= 0 && i < filteredArticles.length)
+      .slice(0, 5)
+      .map((idx, i) => ({
+        ...filteredArticles[idx],
+        relevance_reason: reasons[i] || 'Article pertinent'
+      }));
+
+    console.log(`✅ Trouvé ${similarArticles.length} articles similaires via IA`);
+
+    res.json({
+      success: true,
+      articles: similarArticles,
+      method: 'ai'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur recherche articles similaires:', error);
+
+    // Fallback: recherche basique par mots-clés
+    try {
+      const { projectTitle, sector, excludeUrl } = req.body;
+      const searchTerms = [projectTitle, sector].filter(Boolean).join(' ').toLowerCase();
+
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('id, title, summary, category, published_at, source, url')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(50);
+
+      const similar = (articles || [])
+        .filter(a => a.url !== excludeUrl)
+        .filter(a => {
+          const content = `${a.title} ${a.summary}`.toLowerCase();
+          return searchTerms.split(' ').some(term => term.length > 3 && content.includes(term));
+        })
+        .slice(0, 5);
+
+      res.json({
+        success: true,
+        articles: similar,
+        method: 'fallback'
+      });
+    } catch (fallbackError) {
+      res.json({
+        success: true,
+        articles: [],
+        error: 'Recherche temporairement indisponible'
+      });
+    }
+  }
+});
+
 // Route pour archiver un article
 app.patch('/api/articles/:id/archive', async (req, res) => {
   try {
