@@ -99,20 +99,25 @@ function extractJson(text) {
 }
 
 function calculatePricing(modules = []) {
+  // 💰 PRICING FIXE - 150 crédits formation complète, 20 crédits par module
   const PRICING = {
     training_costs: {
-      module_unit: 2,
-      full_discount: 0.7
+      module_unit: 20,       // 20 crédits par module individuel
+      full_training: 150     // 150 crédits pour la formation complète
     }
   };
   const moduleCount = Array.isArray(modules) ? modules.length : 0;
-  const modulePrice = moduleCount * PRICING.training_costs.module_unit;
-  const fullPrice = Math.floor(modulePrice * PRICING.training_costs.full_discount);
+  const modulesIndividualPrice = moduleCount * PRICING.training_costs.module_unit;
+
+  // Prix fixe de 150 crédits pour la formation complète (économie si achat complet)
+  const fullPrice = PRICING.training_costs.full_training;
+  const savings = modulesIndividualPrice - fullPrice;
+
   return {
-    per_module: PRICING.training_costs.module_unit,
-    total_modules: modulePrice,
-    full_training: fullPrice,
-    savings: modulePrice - fullPrice
+    per_module: PRICING.training_costs.module_unit,        // 20 crédits/module
+    total_modules: modulesIndividualPrice,                 // Prix si achat module par module
+    full_training: fullPrice,                              // 150 crédits (prix fixe)
+    savings: savings > 0 ? savings : 0                     // Économie possible
   };
 }
 
