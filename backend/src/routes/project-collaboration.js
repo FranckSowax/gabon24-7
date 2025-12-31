@@ -893,7 +893,14 @@ router.get('/shared-with-me/:userId', async (req, res) => {
       .eq('collaborator_id', userId)
       .eq('status', 'accepted');
 
-    if (error) throw error;
+    // Gérer le cas où la table n'existe pas encore
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        console.log('⚠️ Table project_collaborators non trouvée, retour tableau vide');
+        return res.json({ success: true, projects: [] });
+      }
+      throw error;
+    }
 
     if (!collaborations || collaborations.length === 0) {
       return res.json({ success: true, projects: [] });
@@ -909,7 +916,7 @@ router.get('/shared-with-me/:userId', async (req, res) => {
     if (projectsError) throw projectsError;
 
     // Enrichir avec infos collaboration
-    const enrichedProjects = projects.map(project => {
+    const enrichedProjects = (projects || []).map(project => {
       const collab = collaborations.find(c => c.project_id === project.id);
       return {
         ...project,
@@ -926,7 +933,9 @@ router.get('/shared-with-me/:userId', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur get shared projects:', error);
-    res.status(500).json({ success: false, error: 'Erreur serveur' });
+    // En cas d'erreur, retourner un tableau vide plutôt qu'un 500
+    // pour éviter de bloquer le chargement de la page
+    res.json({ success: true, projects: [], error: error.message });
   }
 });
 

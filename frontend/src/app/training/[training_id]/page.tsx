@@ -90,11 +90,12 @@ export default function TrainingPage() {
         .map((m, idx) => m.detailed_content ? idx : -1)
         .filter(idx => idx !== -1);
 
-      // Préparer le cache des modules générés
-      const generatedModules: Record<number, any> = {};
+      // Préparer le cache des modules générés (par index ET par module.id pour robustesse)
+      const generatedModules: Record<string | number, any> = {};
       modulesState.forEach((m, idx) => {
         if (m.detailed_content) {
-          generatedModules[idx] = m.detailed_content;
+          generatedModules[idx] = m.detailed_content;  // Par index
+          generatedModules[`id_${m.id}`] = m.detailed_content;  // Par module.id
         }
       });
 
@@ -140,15 +141,21 @@ export default function TrainingPage() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (user?.id && training_id && modules.length > 0) {
+        // Préparer les modules générés (par index ET par module.id)
+        const generatedModules: Record<string | number, any> = {};
+        modules.forEach((m, idx) => {
+          if (m.detailed_content) {
+            generatedModules[idx] = m.detailed_content;
+            generatedModules[`id_${m.id}`] = m.detailed_content;
+          }
+        });
+
         // Utiliser sendBeacon pour sauvegarde synchrone
         const data = JSON.stringify({
           userId: user.id,
           currentModuleIndex,
           completedModules: modules.map((m, idx) => m.detailed_content ? idx : -1).filter(idx => idx !== -1),
-          generatedModules: modules.reduce((acc, m, idx) => {
-            if (m.detailed_content) acc[idx] = m.detailed_content;
-            return acc;
-          }, {} as Record<number, any>),
+          generatedModules,
           projectId: projectId || null
         });
         navigator.sendBeacon(`${API_URL}/api/training/${training_id}/progress`, data);
@@ -252,9 +259,11 @@ export default function TrainingPage() {
           if (progressData.success && progressData.progress) {
             savedProgress = progressData.progress;
             console.log('✅ Progression récupérée:', savedProgress.progress_percentage + '%');
+            console.log('📦 Modules sauvegardés:', Object.keys(savedProgress.generated_modules || {}).length);
+            console.log('🔑 Clés des modules:', Object.keys(savedProgress.generated_modules || {}));
           }
         } catch (progressError) {
-          console.warn('⚠️ Pas de progression sauvegardée');
+          console.warn('⚠️ Pas de progression sauvegardée:', progressError);
         }
       }
 
@@ -271,7 +280,17 @@ export default function TrainingPage() {
 
       // Initialiser les modules avec le contenu sauvegardé si disponible
       const initialModules: DetailedModule[] = modulesToGenerate.map((m: ModuleSummary, idx: number) => {
-        const savedContent = savedProgress?.generated_modules?.[idx];
+        // Chercher le contenu sauvegardé par plusieurs méthodes (robustesse)
+        const gm = savedProgress?.generated_modules;
+        const savedContent = gm?.[idx]  // Par index numérique
+          || gm?.[String(idx)]  // Par index string
+          || gm?.[`id_${m.id}`]  // Par module.id avec préfixe
+          || gm?.[m.id];  // Par module.id directement
+
+        if (savedContent) {
+          console.log(`🔄 Module ${idx + 1} "${m.competence}" restauré depuis la sauvegarde`);
+        }
+
         return {
           ...m,
           isGenerating: false,
@@ -280,6 +299,10 @@ export default function TrainingPage() {
       });
 
       setModules(initialModules);
+
+      // Log le nombre de modules restaurés
+      const restoredCount = initialModules.filter(m => m.detailed_content).length;
+      console.log(`✅ ${restoredCount}/${initialModules.length} modules restaurés depuis la sauvegarde`);
 
       // Restaurer la position si on reprend la formation
       if (savedProgress && (resumeMode || savedProgress.current_module_index > 0)) {

@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { trackProjectAction } from '@/utils/project-tracking'
 import { useRouter } from 'next/navigation'
 import apiCall from '@/lib/api-client'
@@ -36,6 +37,16 @@ import { BUSINESS_PLAN_SECTIONS } from '@/types/business-plan-questions'
 import { CREDIT_COSTS } from '@/types/business-tracking'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+// Helper pour obtenir les headers avec token d'authentification
+const getAuthHeaders = async (): Promise<HeadersInit> => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`
+  }
+  return headers
+}
 
 interface ProjectStats {
   total_projects: number
@@ -357,7 +368,8 @@ export default function MesProjetsPage() {
 
   const fetchProjectNotes = async (projectId: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/project-notes/${projectId}`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/project-notes/${projectId}`, { headers })
       const data = await response.json()
       if (data.success) {
         setProjectNotes(prev => ({
@@ -550,11 +562,12 @@ export default function MesProjetsPage() {
 
   const handleTimelineAddNote = async (projectId: string, note: string) => {
     if (!user?.id || !note.trim()) return
-    
+
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId,
           userId: user.id,
@@ -729,9 +742,10 @@ export default function MesProjetsPage() {
         .join('\n\n')
 
       // Ajouter au contexte cumulatif via timeline
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId,
           userId: user.id,
@@ -767,12 +781,13 @@ export default function MesProjetsPage() {
 
   const handleAddNote = async (projectId: string) => {
     if (!user?.id || !newNote.trim()) return
-    
+
     setIsAddingNote(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId,
           userId: user.id,
@@ -801,11 +816,12 @@ export default function MesProjetsPage() {
 
   const handleUpdateNote = async (noteId: string, projectId: string) => {
     if (!user?.id || !editingNoteContent.trim()) return
-    
+
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-notes/${noteId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId: user.id,
           noteContent: editingNoteContent.trim()
@@ -834,10 +850,12 @@ export default function MesProjetsPage() {
 
   const handleDeleteNote = async (noteId: string, projectId: string) => {
     if (!user?.id || !confirm('Supprimer cette note ?')) return
-    
+
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-notes/${noteId}?userId=${user.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       })
 
       const data = await response.json()
