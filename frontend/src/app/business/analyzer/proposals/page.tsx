@@ -208,32 +208,59 @@ function ProposalsContent() {
                       <p className="text-gray-400 text-xs mb-2">Premiers investissements :</p>
                       {(() => {
                         const val: any = proposal.premiers_investissements
-                        const items = Array.isArray(val)
-                          ? val
-                          : String(val || '')
-                              .split(/(?:\s*[•–—]\s+|\s-\s|[,;]|\n)+/)
-                              .map(s => s.trim())
-                              .filter(Boolean)
-                        
-                        // Fonction pour supprimer les montants XAF et parenthèses vides
-                        const removeXAF = (text: string) => {
+
+                        // Fonction pour nettoyer le texte (supprimer prix, parenthèses, etc.)
+                        const cleanText = (text: string): string => {
                           return text
-                            .replace(/\d{1,3}(?:[,.\s]\d{3})*\s*(?:XAF|FCFA|F\s*CFA)/gi, '')
-                            .replace(/\(\s*\)/g, '') // Supprimer parenthèses vides
-                            .replace(/\s+/g, ' ') // Normaliser espaces
+                            // Supprimer les montants avec devise
+                            .replace(/\d{1,3}(?:[,.\s]\d{3})*\s*(?:XAF|FCFA|F\s*CFA|€|\$|EUR|USD)/gi, '')
+                            // Supprimer les nombres seuls entre parenthèses (500), (1 500), etc.
+                            .replace(/\(\s*\d[\d\s,.]*\s*\)/g, '')
+                            // Supprimer les parenthèses vides ou avec juste des espaces
+                            .replace(/\(\s*\)/g, '')
+                            // Supprimer les nombres isolés de plus de 3 chiffres (probablement des prix)
+                            .replace(/\b\d{4,}\b/g, '')
+                            // Nettoyer les espaces multiples
+                            .replace(/\s+/g, ' ')
+                            // Supprimer les points finaux multiples ou isolés
+                            .replace(/\.{2,}/g, '.')
+                            .replace(/^\s*[.,;:]\s*/g, '')
+                            .replace(/\s*[.,;:]\s*$/g, '')
                             .trim()
                         }
-                        
-                        if (items.length > 1) {
+
+                        // Convertir en tableau propre
+                        let items: string[] = []
+                        if (Array.isArray(val)) {
+                          items = val.map(cleanText).filter(s => s.length > 2)
+                        } else {
+                          // Parser une chaîne en liste
+                          items = String(val || '')
+                            .split(/(?:\s*[•–—]\s+|\s+-\s+|[;]|\n)+/)
+                            .map(cleanText)
+                            .filter(s => s.length > 2)
+                        }
+
+                        // Filtrer les éléments trop courts ou invalides
+                        items = items.filter(item =>
+                          item.length > 3 &&
+                          !/^[\d\s.,]+$/.test(item) && // Pas que des chiffres
+                          !/^\)$/.test(item) // Pas juste une parenthèse
+                        )
+
+                        if (items.length > 0) {
                           return (
-                            <ul className="list-disc list-inside text-white text-sm space-y-1">
-                              {items.map((it, i) => (
-                                <li key={i}>{removeXAF(it)}</li>
+                            <ul className="space-y-1.5">
+                              {items.slice(0, 6).map((item, i) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-yellow-400 mt-0.5">•</span>
+                                  <span className="text-white text-sm">{item}</span>
+                                </li>
                               ))}
                             </ul>
                           )
                         }
-                        return <p className="text-white font-medium text-sm">{removeXAF(String(val))}</p>
+                        return null
                       })()}
                     </div>
                   )}

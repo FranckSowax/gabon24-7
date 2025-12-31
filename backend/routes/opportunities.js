@@ -1,8 +1,6 @@
 /**
- * 💡 ROUTES OPPORTUNITÉS IA - Powered by GPT-5 Structured (Replicate)
+ * 💡 ROUTES OPPORTUNITÉS IA - Powered by Google Gemini
  * Analyse et génération d'opportunités business intelligentes
- * 
- * 🚀 GPT-5 Nano via Replicate - JSON garanti avec schema
  */
 
 const express = require('express');
@@ -508,7 +506,11 @@ Reponds en JSON strict:
     {
       "titre": "Nom du projet",
       "description": "Description detaillee du projet (150-200 mots)",
-      "premiers_investissements": "Liste concise des 3-6 dépenses de démarrage",
+      "premiers_investissements": [
+        "Équipement ou ressource 1",
+        "Équipement ou ressource 2",
+        "Équipement ou ressource 3"
+      ],
       "delai_lancement": "Delai de lancement estime",
       "avantages": [
         "Avantage 1",
@@ -524,13 +526,17 @@ Reponds en JSON strict:
   ]
 }
 
+RÈGLES STRICTES:
+- premiers_investissements DOIT être un ARRAY de strings (3-5 éléments)
+- NE PAS inclure de prix, montants ou chiffres dans premiers_investissements
+- Chaque élément doit être une description courte (ex: "Ordinateur portable", "Logiciel de gestion", "Formation initiale")
+
 CONCENTREZ-VOUS SUR:
 - Idées strictement réalisables avec le budget spécifié
 - Adapter aux compétences, à la disponibilité et à l'expérience de l'utilisateur
 - Si des contraintes sont présentes, proposer des alternatives compatibles
 - Référencer implicitement le contexte de l'article (marché gabonais, acteurs, enjeux)
-- Évitez toute prévision de rentabilité ou revenus
-- Listez concrètement les premiers investissements nécessaires
+- Évitez toute prévision de rentabilité, revenus ou prix
 
 IMPORTANT: Reponds UNIQUEMENT avec le JSON demande.`;
 
