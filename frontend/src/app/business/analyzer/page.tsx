@@ -589,10 +589,17 @@ export default function BusinessAnalyzerPage() {
     setSavingProjects(prev => new Set(prev).add(proposalIndex))
 
     try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await getCurrentSession()
+      if (!session?.access_token) {
+        throw new Error('Token d\'authentification manquant')
+      }
+
       const response = await fetch(`${API_URL}/api/saved-projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           userId: user.id,
@@ -644,12 +651,19 @@ export default function BusinessAnalyzerPage() {
     setSavingProjects(prev => new Set(prev).add(proposalIndex))
 
     try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await getCurrentSession()
+      if (!session?.access_token) {
+        throw new Error('Token d\'authentification manquant')
+      }
+
       const budgetValue = mobileLastUserContext?.budget_principal || ''
-      
+
       const response = await fetch(`${API_URL}/api/saved-projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           userId: user.id,
