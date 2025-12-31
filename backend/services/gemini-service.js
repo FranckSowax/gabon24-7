@@ -21,11 +21,11 @@ class GeminiService {
     this.openaiApiKey = process.env.OPENAI_API_KEY;
     
     // Configuration des modèles
-    // On utilise gemini-2.0-flash-001 (stable et gratuit) comme principal
+    // On utilise gemini-2.5-flash (dernière version) comme principal
     this.models = {
-      text: 'gemini-2.0-flash-001',      // Modèle principal: Gemini 2.0 Flash (stable)
-      textFallback: 'gemini-1.5-flash',  // Fallback: Gemini 1.5 Flash (très stable)
-      image: 'gemini-2.0-flash-001'      // Modèle Image
+      text: 'gemini-2.5-flash',          // Modèle principal: Gemini 2.5 Flash
+      textFallback: 'gemini-2.0-flash',  // Fallback: Gemini 2.0 Flash (stable)
+      image: 'gemini-2.5-flash'          // Modèle Image
     };
 
     // Initialisation des IDs de modèles
