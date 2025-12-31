@@ -1043,7 +1043,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             })
         }).catch(err => console.error('Erreur enregistrement training:', err))
 
-        // Charger les questions
+        // Charger les questions AVANT de lancer la salle d'attente
         fetch(`${API_URL}/api/game/questions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1054,17 +1054,23 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             if (data.success && data.questions && data.questions.length > 0) {
                 console.log('✅ Questions chargées pour training:', data.questions.length)
                 setDemoQuestions(data.questions)
+
+                // Questions prêtes -> lancer la salle d'attente
+                setGamePhase('waiting-room')
+                setWaitingCountdown(3) // 3 secondes avant de commencer
+                setIsRegistering(false)
+                setSurvivors(100)
+            } else {
+                console.error('❌ Pas de questions reçues')
+                alert('Erreur: impossible de charger les questions. Réessayez.')
+                setIsRegistering(false)
             }
         })
-        .catch(err => console.error('Erreur chargement questions:', err))
-
-        // Démarrer immédiatement en mode training
-        setTimeout(() => {
-            setGamePhase('waiting-room')
-            setWaitingCountdown(3) // 3 secondes avant de commencer
+        .catch(err => {
+            console.error('Erreur chargement questions:', err)
+            alert('Erreur de connexion. Réessayez.')
             setIsRegistering(false)
-            setSurvivors(100)
-        }, 500)
+        })
         return
     }
     
