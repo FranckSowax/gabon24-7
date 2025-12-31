@@ -51,6 +51,7 @@ export default function ActionPlanSteps({ projectData, generatedSteps }: ActionP
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [generatingDocId, setGeneratingDocId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Utiliser les étapes générées par IA si disponibles, sinon utiliser le plan personnalisé par défaut
@@ -416,6 +417,79 @@ Exemple de format attendu:
       alert('Erreur lors de l\'upload du fichier')
     } finally {
       setUploadingId(null)
+    }
+  }
+
+  // Génération de document avec IA (coût: 5 crédits)
+  const handleGenerateDocument = async (stepNumber: number, itemId: string, documentType: string, taskDescription: string) => {
+    const stepProgress = stepsProgress[stepNumber]
+    if (!stepProgress?.checklistId) return
+
+    setGeneratingDocId(itemId)
+    try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Token d\'authentification manquant')
+      }
+
+      // Trouver l'étape actuelle pour le contexte
+      const currentStepData = personalizedSteps.find(s => s.step === stepNumber)
+
+      const response = await fetch(`${API_URL}/api/ai/generate-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          projectId: projectData.projectId,
+          userId: projectData.userId,
+          documentType,
+          taskDescription,
+          stepTitle: currentStepData?.title || '',
+          stepDescription: currentStepData?.description || '',
+          projectContext: {
+            titre: projectData.titre,
+            secteur: projectData.secteur,
+            budget: projectData.budget,
+            description: projectData.description,
+            problematique: projectData.problematique,
+            contexte: projectData.contexte
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erreur lors de la génération du document')
+      }
+
+      // Ajouter le document généré à la liste
+      setStepsProgress(prev => ({
+        ...prev,
+        [stepNumber]: {
+          ...prev[stepNumber],
+          items: {
+            ...prev[stepNumber].items,
+            [itemId]: {
+              ...prev[stepNumber].items[itemId],
+              document_urls: [...(prev[stepNumber].items[itemId]?.document_urls || []), data.documentUrl],
+              document_names: [...(prev[stepNumber].items[itemId]?.document_names || []), data.documentName]
+            }
+          }
+        }
+      }))
+
+      await saveItemToDatabase(stepNumber, itemId)
+
+      alert(`✅ Document "${data.documentName}" généré avec succès!\n\n💰 5 crédits utilisés\n📁 Disponible dans votre bibliothèque`)
+    } catch (error) {
+      console.error('Erreur génération document:', error)
+      alert(`❌ Erreur: ${error instanceof Error ? error.message : 'Erreur lors de la génération du document'}`)
+    } finally {
+      setGeneratingDocId(null)
     }
   }
 
@@ -936,28 +1010,25 @@ Exemple de format attendu:
                                       </div>
                                     ))}
                                     
-                                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-emerald-500 cursor-pointer transition-colors">
-                                      <input
-                                        type="file"
-                                        onChange={(e) => {
-                                          const file = e.target.files?.[0]
-                                          if (file) handleFileUpload(step.step, item.id, file)
-                                        }}
-                                        className="hidden"
-                                        disabled={isUploading}
-                                      />
-                                      {isUploading ? (
+                                    {/* Bouton Générer document avec IA */}
+                                    <button
+                                      onClick={() => handleGenerateDocument(step.step, item.id, item.documentType || 'Document', item.task)}
+                                      disabled={generatingDocId === item.id}
+                                      className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all w-full"
+                                    >
+                                      {generatingDocId === item.id ? (
                                         <>
-                                          <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
-                                          <span className="text-sm text-gray-600">Upload en cours...</span>
+                                          <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                                          <span className="text-sm text-purple-600">Génération en cours...</span>
                                         </>
                                       ) : (
                                         <>
-                                          <Upload className="w-5 h-5 text-gray-400" />
-                                          <span className="text-sm text-gray-600">Ajouter un document</span>
+                                          <Sparkles className="w-5 h-5 text-purple-500" />
+                                          <span className="text-sm text-purple-600 font-medium">Générer le document avec IA</span>
+                                          <span className="text-xs text-purple-400 ml-1">(5 crédits)</span>
                                         </>
                                       )}
-                                    </label>
+                                    </button>
                                   </div>
                                 </div>
                               )}

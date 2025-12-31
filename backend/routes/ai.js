@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 const aiService = require('../services/ai-generator-service');
+const geminiService = require('../services/gemini-service');
 const { requireAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
+const supabaseService = require('../supabase-config');
+
+const DOCUMENT_CREDIT_COST = 5; // Coût en crédits pour générer un document
 
 // ==================== SCHÉMAS DE VALIDATION ====================
 
@@ -41,6 +45,23 @@ const analyzeTextSchema = z.object({
 
 const regenerateDocSchema = z.object({
   prompt: z.string().min(1, 'prompt requis').max(5000),
+});
+
+const generateDocumentSchema = z.object({
+  projectId: z.string().min(1, 'projectId requis'),
+  userId: z.string().min(1, 'userId requis'),
+  documentType: z.string().min(1, 'documentType requis').max(200),
+  taskDescription: z.string().min(1, 'taskDescription requis').max(2000),
+  stepTitle: z.string().max(500).optional().default(''),
+  stepDescription: z.string().max(2000).optional().default(''),
+  projectContext: z.object({
+    titre: z.string().max(500).optional().default(''),
+    secteur: z.string().max(200).optional().default(''),
+    budget: z.string().max(200).optional().default(''),
+    description: z.string().max(5000).optional().default(''),
+    problematique: z.string().max(2000).optional().nullable(),
+    contexte: z.string().max(5000).optional().nullable()
+  }).optional().default({})
 });
 
 // ==================== ROUTES ====================
@@ -249,6 +270,179 @@ router.post('/regenerate-document', requireAuth, validateBody(regenerateDocSchem
     res.status(500).json({ 
       error: 'Erreur lors de la régénération',
       message: error.message
+    });
+  }
+});
+
+// POST /api/ai/generate-document - Générer un document adapté à une tâche
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + déduction de crédits
+router.post('/generate-document', requireAuth, validateBody(generateDocumentSchema), async (req, res) => {
+  try {
+    const {
+      projectId,
+      userId,
+      documentType,
+      taskDescription,
+      stepTitle,
+      stepDescription,
+      projectContext
+    } = req.body;
+
+    console.log(`📄 Génération document "${documentType}" pour projet ${projectId}`);
+
+    // 1. Vérifier les crédits de l'utilisateur
+    const { data: userData, error: userError } = await supabaseService.supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (userError && userError.code !== 'PGRST116') {
+      throw new Error('Erreur lors de la vérification des crédits');
+    }
+
+    const currentCredits = userData?.credits || 0;
+    if (currentCredits < DOCUMENT_CREDIT_COST) {
+      return res.status(402).json({
+        success: false,
+        error: `Crédits insuffisants. Vous avez ${currentCredits} crédits, il en faut ${DOCUMENT_CREDIT_COST}.`
+      });
+    }
+
+    // 2. Construire le prompt pour la génération du document
+    const prompt = `Tu es un expert en rédaction de documents professionnels pour les entrepreneurs au Gabon.
+
+CONTEXTE DU PROJET:
+- Titre du projet: ${projectContext.titre || 'Non spécifié'}
+- Secteur d'activité: ${projectContext.secteur || 'Non spécifié'}
+- Budget prévu: ${projectContext.budget || 'Non spécifié'}
+- Description: ${projectContext.description || 'Non spécifiée'}
+${projectContext.problematique ? `- Problématique: ${projectContext.problematique}` : ''}
+${projectContext.contexte ? `- Contexte additionnel: ${projectContext.contexte}` : ''}
+
+ÉTAPE EN COURS:
+- Titre de l'étape: ${stepTitle || 'Non spécifié'}
+- Description: ${stepDescription || 'Non spécifiée'}
+
+TÂCHE SPÉCIFIQUE:
+${taskDescription}
+
+TYPE DE DOCUMENT À GÉNÉRER: ${documentType}
+
+MISSION: Génère un modèle de document "${documentType}" professionnel, complet et adapté au contexte gabonais.
+
+INSTRUCTIONS:
+1. Le document doit être directement utilisable avec des espaces à compléter pour les informations personnelles
+2. Utilise un format professionnel avec en-têtes, sections claires
+3. Adapte le ton et le contenu au contexte entrepreneurial gabonais
+4. Inclus les formules de politesse appropriées
+5. Fournis des exemples concrets quand c'est pertinent
+6. Le document doit être en français
+
+Génère le document complet en format Markdown avec une structure claire.`;
+
+    // 3. Appeler l'IA pour générer le document
+    const generatedContent = await geminiService.generateText(prompt, {
+      systemPrompt: 'Tu es un expert en rédaction de documents professionnels pour entrepreneurs. Génère des documents complets, professionnels et adaptés au contexte africain francophone.',
+      temperature: 0.7
+    });
+
+    if (!generatedContent) {
+      throw new Error('Aucun contenu généré par l\'IA');
+    }
+
+    // 4. Créer le nom du fichier
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const sanitizedDocType = documentType.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').substring(0, 50);
+    const documentName = `${sanitizedDocType}_${timestamp}.md`;
+
+    // 5. Sauvegarder le document dans Supabase Storage
+    const filePath = `${userId}/${projectId}/documents/${documentName}`;
+    const contentBuffer = Buffer.from(generatedContent, 'utf-8');
+
+    const { error: uploadError } = await supabaseService.supabase.storage
+      .from('action-plan-documents')
+      .upload(filePath, contentBuffer, {
+        contentType: 'text/markdown',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Erreur upload document:', uploadError);
+      throw new Error('Erreur lors de la sauvegarde du document');
+    }
+
+    // 6. Obtenir une URL signée pour le document
+    const { data: urlData, error: urlError } = await supabaseService.supabase.storage
+      .from('action-plan-documents')
+      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 an
+
+    if (urlError) {
+      throw new Error('Erreur lors de la création du lien de téléchargement');
+    }
+
+    // 7. Enregistrer le document dans la bibliothèque (project_actions)
+    await supabaseService.supabase
+      .from('project_actions')
+      .insert({
+        project_id: projectId,
+        user_id: userId,
+        action_type: 'document-generated',
+        action_status: 'completed',
+        content: generatedContent.substring(0, 500) + '...', // Résumé
+        metadata: {
+          document_type: documentType,
+          document_name: documentName,
+          document_url: urlData.signedUrl,
+          task_description: taskDescription,
+          step_title: stepTitle,
+          credits_used: DOCUMENT_CREDIT_COST
+        }
+      });
+
+    // 8. Déduire les crédits
+    if (userData) {
+      await supabaseService.supabase
+        .from('user_credits')
+        .update({ credits: currentCredits - DOCUMENT_CREDIT_COST })
+        .eq('user_id', userId);
+    } else {
+      // Créer l'entrée si elle n'existe pas
+      await supabaseService.supabase
+        .from('user_credits')
+        .insert({
+          user_id: userId,
+          credits: -DOCUMENT_CREDIT_COST
+        });
+    }
+
+    // 9. Enregistrer la transaction de crédits
+    await supabaseService.supabase
+      .from('credit_transactions')
+      .insert({
+        user_id: userId,
+        amount: -DOCUMENT_CREDIT_COST,
+        type: 'usage',
+        description: `Génération document: ${documentType}`,
+        reference_id: projectId,
+        reference_type: 'document_generation'
+      });
+
+    console.log(`✅ Document "${documentName}" généré avec succès (${DOCUMENT_CREDIT_COST} crédits)`);
+
+    res.json({
+      success: true,
+      documentName,
+      documentUrl: urlData.signedUrl,
+      creditsUsed: DOCUMENT_CREDIT_COST,
+      remainingCredits: currentCredits - DOCUMENT_CREDIT_COST
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur génération document:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors de la génération du document'
     });
   }
 });

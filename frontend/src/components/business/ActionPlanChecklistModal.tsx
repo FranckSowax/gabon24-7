@@ -46,6 +46,7 @@ export default function ActionPlanChecklistModal({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [generatingDocId, setGeneratingDocId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -282,6 +283,67 @@ IMPORTANT:
       alert('Erreur lors de l\'upload du fichier')
     } finally {
       setUploadingId(null)
+    }
+  }
+
+  // Génération de document avec IA (coût: 5 crédits)
+  const handleGenerateDocument = async (itemId: string, documentType: string, taskDescription: string) => {
+    if (!checklistId) return
+
+    setGeneratingDocId(itemId)
+    try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Token d\'authentification manquant')
+      }
+
+      const response = await fetch(`${API_URL}/api/ai/generate-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          projectId: projectData.projectId,
+          userId: projectData.userId,
+          documentType,
+          taskDescription,
+          stepTitle: stepData?.title || '',
+          stepDescription: stepData?.description || '',
+          projectContext: {
+            titre: projectData.titre,
+            secteur: projectData.secteur,
+            budget: projectData.budget,
+            description: projectData.description
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erreur lors de la génération du document')
+      }
+
+      // Ajouter le document généré à la liste
+      setItemStates(prev => ({
+        ...prev,
+        [itemId]: {
+          ...prev[itemId],
+          document_urls: [...(prev[itemId]?.document_urls || []), data.documentUrl],
+          document_names: [...(prev[itemId]?.document_names || []), data.documentName]
+        }
+      }))
+
+      await saveItemToDatabase(itemId)
+
+      alert(`✅ Document "${data.documentName}" généré avec succès!\n\n💰 5 crédits utilisés\n📁 Disponible dans votre bibliothèque`)
+    } catch (error) {
+      console.error('Erreur génération document:', error)
+      alert(`❌ Erreur: ${error instanceof Error ? error.message : 'Erreur lors de la génération du document'}`)
+    } finally {
+      setGeneratingDocId(null)
     }
   }
 
@@ -581,36 +643,31 @@ IMPORTANT:
                                     </div>
                                   )}
 
-                                  {/* Upload Button */}
-                                  <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-all cursor-pointer">
-                                    <input
-                                      type="file"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0]
-                                        if (file) handleFileUpload(item.id, file)
-                                      }}
-                                      className="hidden"
-                                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv"
-                                      disabled={isUploading}
-                                    />
-                                    {isUploading ? (
+                                  {/* Bouton Générer document avec IA */}
+                                  <button
+                                    onClick={() => handleGenerateDocument(item.id, item.documentType || 'Document', item.task)}
+                                    disabled={generatingDocId === item.id}
+                                    className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all w-full"
+                                  >
+                                    {generatingDocId === item.id ? (
                                       <>
-                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                                        <span className="text-sm font-medium text-emerald-600">
-                                          Upload en cours...
+                                        <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                                        <span className="text-sm font-medium text-purple-600">
+                                          Génération en cours...
                                         </span>
                                       </>
                                     ) : (
                                       <>
-                                        <Upload className="w-5 h-5 text-gray-500" />
-                                        <span className="text-sm font-medium text-gray-700">
-                                          Ajouter un document
+                                        <Sparkles className="w-5 h-5 text-purple-500" />
+                                        <span className="text-sm font-medium text-purple-600">
+                                          Générer le document avec IA
                                         </span>
+                                        <span className="text-xs text-purple-400 ml-1">(5 crédits)</span>
                                       </>
                                     )}
-                                  </label>
+                                  </button>
                                   <p className="text-xs text-gray-500 mt-1">
-                                    PDF, Word, Excel, Images (max 10MB)
+                                    L'IA génèrera un modèle de {item.documentType || 'document'} adapté à cette tâche
                                   </p>
                                 </div>
                               )}
