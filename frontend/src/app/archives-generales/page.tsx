@@ -15,7 +15,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import UpcomingEvents from '@/components/widgets/UpcomingEvents'
 import YouTubeWidget from '@/components/widgets/YouTubeWidget'
 import TrendingWidget from '@/components/widgets/TrendingWidget'
-import StatsWidget from '@/components/widgets/StatsWidget'
 import YesterdayPollWidget from '@/components/widgets/YesterdayPollWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 
@@ -641,17 +640,14 @@ export default function ArchivesGeneralesPage() {
         <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
           {/* Widget YouTube */}
           <YouTubeWidget />
-          
+
           <UpcomingEvents />
-          
-          {/* Widget Tendances */}
-          <TrendingWidget articles={articles} />
-          
+
           {/* Widget Sondage d'hier */}
           <YesterdayPollWidget />
-          
-          {/* Widget Stats */}
-          <StatsWidget articles={articles} loading={loading} />
+
+          {/* Widget Tendances */}
+          <TrendingWidget articles={articles} />
         </aside>
       </div>
       {/* Bouton remonter en haut (desktop + mobile) */}
