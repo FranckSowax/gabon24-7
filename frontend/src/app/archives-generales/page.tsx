@@ -227,7 +227,7 @@ export default function ArchivesGeneralesPage() {
         />
         
         {/* Central Content Area */}
-        <div className="flex-1 lg:ml-0 lg:mr-80 min-w-0">
+        <div className="flex-1 lg:ml-64 lg:mr-80 min-w-0">
           <main className="w-full py-4 sm:py-8">
             <div className="w-full px-4 sm:px-6 lg:px-2">
               {/* Top Banner with Profile Widget */}

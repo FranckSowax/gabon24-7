@@ -211,7 +211,7 @@ export default function SondagesProPage() {
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
         
-        <div className="flex-1 lg:ml-0 min-w-0">
+        <div className="flex-1 lg:ml-64 min-w-0">
           <main className="w-full py-4 sm:py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
               

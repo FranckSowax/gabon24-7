@@ -3611,7 +3611,7 @@ export default function MesProjetsPage() {
           onMobileClose={() => setIsSidebarOpen(false)}
         />
 
-        <div className="flex-1 lg:ml-0 min-w-0">
+        <div className="flex-1 lg:ml-64 min-w-0">
           <main className="w-full py-8 px-4 lg:px-8 max-w-7xl mx-auto">
             {!selectedProject ? (
               <>

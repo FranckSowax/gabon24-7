@@ -905,7 +905,7 @@ export default function BusinessAnalyzerPage() {
         />
 
         {/* Main Content */}
-        <div className="flex-1 lg:ml-0 min-w-0">
+        <div className="flex-1 lg:ml-64 min-w-0">
           <main className="w-full py-4 sm:py-8 px-4 lg:px-8 max-w-7xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

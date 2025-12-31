@@ -123,16 +123,16 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
       />
       
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`
-          fixed lg:sticky top-0 left-0 lg:z-auto
+          fixed top-0 left-0
           w-64 bg-white border-r border-gray-200 h-screen
           transition-all duration-300 ease-in-out lg:translate-x-0 lg:block
           overflow-y-auto
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
         style={{
-          zIndex: isMobileOpen ? 9999 : 50
+          zIndex: isMobileOpen ? 9999 : 40
         }}
       >
         <div className="p-4 sm:p-6">

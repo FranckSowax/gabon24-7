@@ -543,7 +543,7 @@ export default function CreerProjetPage() {
       <div className="flex">
         <Sidebar isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
         
-        <main className="flex-1 lg:ml-0 pt-4 pb-10 min-h-screen">
+        <main className="flex-1 lg:ml-64 pt-4 pb-10 min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Progression collée au header */}
           <div className="py-2">

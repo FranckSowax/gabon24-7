@@ -92,7 +92,7 @@ export default function FeedbackPage() {
         />
 
         {/* Main Content */}
-        <div className="flex-1 lg:ml-0 min-w-0">
+        <div className="flex-1 lg:ml-64 min-w-0">
           <main className="w-full py-6 sm:py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
 

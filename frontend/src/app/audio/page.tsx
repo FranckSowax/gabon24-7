@@ -281,7 +281,7 @@ export default function AudioSummariesPage() {
       <div className="flex">
         <Sidebar isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
 
-        <main className="flex-1">
+        <main className="flex-1 lg:ml-64">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg border border-blue-200 mb-4">

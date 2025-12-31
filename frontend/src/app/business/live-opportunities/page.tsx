@@ -61,7 +61,7 @@ export default function LiveOpportunitiesPage() {
         />
 
         {/* Main Content */}
-        <div className="flex-1 lg:ml-0 lg:mr-80 min-w-0">
+        <div className="flex-1 lg:ml-64 lg:mr-80 min-w-0">
           <main className="w-full px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

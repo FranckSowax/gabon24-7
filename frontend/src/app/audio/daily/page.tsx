@@ -201,7 +201,7 @@ export default function AudioDailyPage() {
       <div className="flex">
         <Sidebar isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
 
-        <main className="flex-1 pb-24">
+        <main className="flex-1 lg:ml-64 pb-24">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* En-tête avec bouton personnalisé */}
             <div className="flex items-center justify-between mb-8">
