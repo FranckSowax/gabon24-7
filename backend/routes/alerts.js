@@ -97,6 +97,7 @@ router.post('/process', async (req, res) => {
                   article_id: article.id,
                   matched_keywords: matchResult.matchedKeywords,
                   confidence_score: matchResult.confidence,
+                  matching_type: 'keyword',
                   is_notified: false
                 })
                 .select()
