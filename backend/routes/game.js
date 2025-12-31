@@ -2293,11 +2293,11 @@ router.get('/dashboard/advanced-stats', async (req, res) => {
     startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Lundi
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Récupérer toutes les inscriptions avec montant
+    // Récupérer toutes les inscriptions
     const { data: registrations, error: regError } = await supabase
       .from('game_registrations')
       .select(`
-        id, player_name, whatsapp_number, status, amount_paid, created_at,
+        id, player_name, whatsapp_number, status, created_at,
         game_sessions (id, name, entry_fee, prize_pool)
       `)
       .order('created_at', { ascending: false });
@@ -2320,10 +2320,10 @@ router.get('/dashboard/advanced-stats', async (req, res) => {
     // Récupérer les vainqueurs
     const winners = registrations?.filter(r => r.status === 'winner') || [];
 
-    // Calculer les revenus
+    // Calculer les revenus (basé sur entry_fee de la session)
     const calculateRevenue = (regs) => {
       return regs?.reduce((sum, r) => {
-        const amount = r.amount_paid || r.game_sessions?.entry_fee || 0;
+        const amount = r.game_sessions?.entry_fee || 0;
         return sum + amount;
       }, 0) || 0;
     };
@@ -2468,14 +2468,14 @@ router.get('/dashboard/session-stats', async (req, res) => {
     const sessionIds = sessions?.map(s => s.id) || [];
     const { data: allRegs } = await supabase
       .from('game_registrations')
-      .select('session_id, status, amount_paid')
+      .select('session_id, status')
       .in('session_id', sessionIds);
 
     // Enrichir les sessions avec les stats
     const enrichedSessions = sessions?.map(session => {
       const regs = allRegs?.filter(r => r.session_id === session.id) || [];
       const winners = regs.filter(r => r.status === 'winner');
-      const revenue = regs.reduce((sum, r) => sum + (r.amount_paid || session.entry_fee || 0), 0);
+      const revenue = regs.length * (session.entry_fee || 0);
 
       return {
         ...session,
