@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react'
+import { supabase } from '@/lib/auth'
 
 interface DocumentUploadModalProps {
   isOpen: boolean
@@ -29,6 +30,16 @@ export default function DocumentUploadModal({
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // Helper pour obtenir les headers d'authentification
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+    return headers
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -81,14 +92,24 @@ export default function DocumentUploadModal({
     try {
       let documentUrl = ''
 
+      // Obtenir les headers d'authentification
+      const authHeaders = await getAuthHeaders() as Record<string, string>
+
       // Upload fichier si présent
       if (documentFile) {
         const formData = new FormData()
         formData.append('file', documentFile)
         formData.append('projectId', projectId)
 
+        // Pour FormData, on ne met pas Content-Type (le navigateur le gère)
+        const uploadHeaders: Record<string, string> = {}
+        if (authHeaders['Authorization']) {
+          uploadHeaders['Authorization'] = authHeaders['Authorization']
+        }
+
         const uploadResponse = await fetch(`${API_URL}/api/project-collaboration/upload-document`, {
           method: 'POST',
+          headers: uploadHeaders,
           body: formData
         })
 
@@ -103,7 +124,7 @@ export default function DocumentUploadModal({
       // Créer document
       const response = await fetch(`${API_URL}/api/project-collaboration/document`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           projectId,
           collaboratorId: userId,

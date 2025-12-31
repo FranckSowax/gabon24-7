@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, notFound } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { CheckCircle, XCircle, Users, FileText, MessageSquare, Loader2, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -26,6 +27,16 @@ export default function InvitationPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [action, setAction] = useState<'accept' | 'reject' | null>(null)
+
+  // Helper pour obtenir les headers d'authentification
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+    return headers
+  }, [])
 
   useEffect(() => {
     if (invitationId) {
@@ -62,9 +73,10 @@ export default function InvitationPage() {
     setAction('accept')
 
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/accept`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           collaboratorId: invitationId,
           userId: user.id
@@ -94,9 +106,10 @@ export default function InvitationPage() {
     setAction('reject')
 
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           collaboratorId: invitationId
         })

@@ -4,15 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Users, MessageSquare, FileText, User, Trash2, Send, RefreshCw, Upload, Link, Copy, CheckCircle, MessageCircle, Mail } from 'lucide-react'
 import DocumentUploadModal from '@/components/collaboration/DocumentUploadModal'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-// Supabase client pour récupérer le token
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
 
 interface CollaborationSectionProps {
   selectedProject: {
