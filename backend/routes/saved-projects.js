@@ -115,6 +115,100 @@ router.get('/stats', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/saved-projects/:projectId
+ * Récupère un projet spécifique par son ID
+ */
+router.get('/:projectId', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    console.log('📂 Récupération projet:', projectId, 'pour userId:', userId);
+
+    const { data, error } = await supabaseService.supabase
+      .from('saved_projects')
+      .select('*')
+      .eq('id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur récupération projet:', error);
+      return res.status(404).json({
+        success: false,
+        error: 'Projet non trouvé'
+      });
+    }
+
+    console.log('✅ Projet trouvé:', data?.proposition_titre);
+
+    res.json({
+      success: true,
+      project: data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur serveur récupération projet:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/saved-projects/:projectId/stats
+ * Récupère les statistiques d'un projet spécifique
+ */
+router.get('/:projectId/stats', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    console.log('📊 Récupération stats projet:', projectId);
+
+    const { data, error } = await supabaseService.supabase
+      .from('saved_projects')
+      .select('actions_count, total_credits_used, last_action_at, created_at')
+      .eq('id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur récupération stats projet:', error);
+      return res.status(404).json({
+        success: false,
+        error: 'Projet non trouvé'
+      });
+    }
+
+    const stats = {
+      actions_count: data?.actions_count || 0,
+      total_credits_used: data?.total_credits_used || 0,
+      last_action_at: data?.last_action_at,
+      created_at: data?.created_at,
+      days_since_creation: data?.created_at
+        ? Math.floor((Date.now() - new Date(data.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        : 0
+    };
+
+    console.log('✅ Stats projet:', stats);
+
+    res.json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur serveur stats projet:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
+/**
  * POST /api/saved-projects
  * Sauvegarde un nouveau projet
  */
