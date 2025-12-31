@@ -21,11 +21,11 @@ class GeminiService {
     this.openaiApiKey = process.env.OPENAI_API_KEY;
     
     // Configuration des modèles
-    // On priorise les modèles stables disponibles et Gemini 3 Pro
+    // On utilise gemini-2.0-flash-001 (stable et gratuit) comme principal
     this.models = {
-      text: 'gemini-3-pro-preview',      // Modèle principal: Gemini 3 Pro
-      textFallback: 'gemini-2.5-flash',  // Fallback: Gemini 2.5 Flash
-      image: 'gemini-3-pro-image-preview' // Modèle Image: Gemini 3 Image (Nano Banana Pro)
+      text: 'gemini-2.0-flash-001',      // Modèle principal: Gemini 2.0 Flash (stable)
+      textFallback: 'gemini-1.5-flash',  // Fallback: Gemini 1.5 Flash (très stable)
+      image: 'gemini-2.0-flash-001'      // Modèle Image
     };
 
     // Initialisation des IDs de modèles
