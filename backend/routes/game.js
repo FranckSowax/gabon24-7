@@ -145,7 +145,7 @@ router.post('/questions', async (req, res) => {
       });
     }
 
-    console.log(`📊 Seulement ${existingQuestions?.length || 0} questions en base, génération nécessaire...`);
+    console.log(`📊 Seulement ${totalQuestions} questions en base (< ${rounds} requises), génération nécessaire...`);
 
     // 2. Récupérer les articles des dernières 36h pour générer de nouvelles questions
     const thirtySixHoursAgo = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
