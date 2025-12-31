@@ -1447,6 +1447,29 @@ export default function BusinessAnalyzerPage() {
                   <>
                     {!mobileIsLoadingProposals && (
                       <div>
+                        {/* Gestionnaire de contextes sauvegardés - Mobile */}
+                        <SavedContextsManager
+                          userId={user?.id || null}
+                          currentContext={mobileLastUserContext}
+                          onLoadContext={(context) => {
+                            // Charger le contexte et auto-submit
+                            const loadedContext = {
+                              situation: context.situation,
+                              competences: context.competences,
+                              disponibilite: context.disponibilite,
+                              objectif_delai: context.objectif_delai,
+                              experience_entrepreneuriale: context.experience_entrepreneuriale,
+                              contraintes: context.contraintes,
+                              budget_principal: context.budget_principal
+                            }
+                            setMobileLastUserContext(loadedContext)
+                            handleMobilePersonalizationSubmit(loadedContext)
+                          }}
+                          onSaveContext={(name) => {
+                            console.log('✅ Mobile: Contexte sauvegardé:', name)
+                          }}
+                        />
+
                         <div className="text-white/90 font-medium mb-4">Personnalisez votre contexte</div>
                         <PersonalizationFormInline
                           budgetOptions={budgetLevels as any}
