@@ -731,10 +731,16 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
   // Fonction pour démarrer la première question
   const startFirstQuestion = () => {
     if (!selectedSession) return
-    
-    // Utiliser les questions préchargées (demoQuestions) ou en générer
-    if (demoQuestions.length > 0) {
-      const firstQuestion = demoQuestions[0]
+
+    // Utiliser les questions préchargées (demoQuestions) ou les questions DEMO par défaut
+    const questionsToUse = demoQuestions.length > 0 ? demoQuestions : DEMO_QUESTIONS
+
+    if (questionsToUse.length > 0) {
+      const firstQuestion = questionsToUse[0]
+      // S'assurer que demoQuestions est défini pour les prochaines questions
+      if (demoQuestions.length === 0) {
+        setDemoQuestions(DEMO_QUESTIONS)
+      }
       setCurrentQuestion(firstQuestion)
       setMaxTime(getTimeLimit(1))
       setTimeLeft(getTimeLimit(1))
@@ -744,7 +750,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
       setGamePhase('question')
       console.log('❓ Première question:', firstQuestion.question)
     } else {
-      // Fallback: charger les questions maintenant
+      // Fallback: charger les questions maintenant (ne devrait jamais arriver)
       fetch(`${API_URL}/api/game/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1032,8 +1038,13 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
     if (isTraining) {
         // Mode Training: enregistrer l'inscription en base pour le dashboard
         console.log('🎓 Mode Training - Joueur:', playerName, phoneNumber)
-        
-        // Enregistrer l'inscription Training en base (pour stats dashboard)
+
+        // IMMÉDIATEMENT passer à la salle d'attente (évite le délai perçu)
+        setGamePhase('waiting-room')
+        setWaitingCountdown(3) // Countdown court pendant le chargement
+        setSurvivors(100)
+
+        // Enregistrer l'inscription Training en base (en parallèle, non bloquant)
         fetch(`${API_URL}/api/game/sessions/training/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1043,7 +1054,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             })
         }).catch(err => console.error('Erreur enregistrement training:', err))
 
-        // Charger les questions AVANT de lancer la salle d'attente
+        // Charger les questions en parallèle
         fetch(`${API_URL}/api/game/questions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1054,21 +1065,18 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
             if (data.success && data.questions && data.questions.length > 0) {
                 console.log('✅ Questions chargées pour training:', data.questions.length)
                 setDemoQuestions(data.questions)
-
-                // Questions prêtes -> lancer la salle d'attente
-                setGamePhase('waiting-room')
-                setWaitingCountdown(5) // 5 secondes avant de commencer
                 setIsRegistering(false)
-                setSurvivors(100)
             } else {
-                console.error('❌ Pas de questions reçues')
-                alert('Erreur: impossible de charger les questions. Réessayez.')
+                console.error('❌ Pas de questions reçues, utilisation questions par défaut')
+                // Fallback: utiliser les questions DEMO par défaut
+                setDemoQuestions(DEMO_QUESTIONS)
                 setIsRegistering(false)
             }
         })
         .catch(err => {
             console.error('Erreur chargement questions:', err)
-            alert('Erreur de connexion. Réessayez.')
+            // Fallback: utiliser les questions DEMO par défaut
+            setDemoQuestions(DEMO_QUESTIONS)
             setIsRegistering(false)
         })
         return
@@ -1748,35 +1756,52 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
     // Effet pour mettre à jour le countdown et lancer le jeu à l'heure
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
+      // Précharger les questions 30 secondes avant l'heure (optimisation)
+      let questionsPreloaded = false
+      const preloadQuestions = () => {
+        if (questionsPreloaded) return
+        questionsPreloaded = true
+        fetch(`${API_URL}/api/game/questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rounds: 10 })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.questions && data.questions.length > 0) {
+            setDemoQuestions(data.questions)
+            console.log('✅ Questions préchargées pour session horaire')
+          }
+        })
+        .catch(console.error)
+      }
+
       const interval = setInterval(() => {
         const { total } = getSessionCountdown()
+
+        // Précharger les questions 30 secondes avant
+        if (total > 0 && total <= 30000 && !questionsPreloaded) {
+          preloadQuestions()
+        }
+
         if (total <= 0) {
-          // L'heure est arrivée ! Lancer le jeu
+          // L'heure est arrivée ! Lancer le jeu IMMÉDIATEMENT
           clearInterval(interval)
-          
-          // Charger les questions
-          fetch(`${API_URL}/api/game/questions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rounds: 10 })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success && data.questions && data.questions.length > 0) {
-              setDemoQuestions(data.questions)
-            }
-          })
-          .catch(console.error)
-          
-          // Passer en salle d'attente finale (30 secondes)
+
+          // S'assurer que les questions sont chargées (fallback DEMO si pas prêtes)
+          if (demoQuestions.length === 0) {
+            setDemoQuestions(DEMO_QUESTIONS)
+          }
+
+          // Passer en salle d'attente finale (5 secondes au lieu de 30 pour réactivité)
           setGamePhase('waiting-room')
-          setWaitingCountdown(30)
+          setWaitingCountdown(5)
           setSurvivors(selectedSession.currentPlayers || 50)
         }
       }, 1000)
-      
+
       return () => clearInterval(interval)
-    }, [selectedSession.startsAt])
+    }, [selectedSession.startsAt, demoQuestions.length])
     
     // Calcul cagnotte dynamique
     const dynamicPrize = Math.max(
