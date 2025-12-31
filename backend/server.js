@@ -3906,6 +3906,64 @@ cron.schedule('0 0,14,19,21 * * *', async () => {
   }
 }, { timezone: 'Africa/Libreville' });
 
+// 🖼️ CRON: EXTRACTION AUTOMATIQUE DES IMAGES (toutes les 5 minutes)
+// Traite les articles récents (< 1h) sans image
+console.log('⏰ Planification extraction automatique des images (toutes les 5 minutes)...');
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    const { imageExtractor } = require('./services/image-extractor');
+
+    // Récupérer les articles récents (< 1h) sans image
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('id, url, category, source, title')
+      .or('image_url.is.null,image_url.eq.')
+      .not('url', 'is', null)
+      .gte('created_at', oneHourAgo)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !articles || articles.length === 0) {
+      return; // Pas d'articles à traiter, sortie silencieuse
+    }
+
+    console.log(`🖼️ Cron images: ${articles.length} articles récents sans image`);
+
+    let updated = 0;
+    for (const article of articles) {
+      try {
+        const result = await imageExtractor.extractImage(article.url, {
+          category: article.category,
+          source: article.source
+        });
+
+        if (result.imageUrl) {
+          const { error: updateError } = await supabase
+            .from('articles')
+            .update({
+              image_url: result.imageUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', article.id);
+
+          if (!updateError) {
+            updated++;
+          }
+        }
+      } catch (err) {
+        // Ignorer les erreurs individuelles
+      }
+    }
+
+    if (updated > 0) {
+      console.log(`✅ Cron images: ${updated}/${articles.length} images extraites`);
+    }
+  } catch (error) {
+    console.error('❌ Cron images: erreur:', error.message);
+  }
+});
+
 // 🎬 EXTRACTION IMMÉDIATE DU JOURNAL TV AU DÉMARRAGE
 // Force Railway redeploy - Updated: 2025-10-22 21:49
 console.log('📺 Extraction immédiate du journal TV au démarrage...');
