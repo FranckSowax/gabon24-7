@@ -261,9 +261,10 @@ export default function MesProjetsPage() {
   const [generatingActionPlan, setGeneratingActionPlan] = useState(false)
   // État pour la popup d'onboarding
   const [showOnboarding, setShowOnboarding] = useState(false)
-  // État pour les articles similaires
+  // État pour les articles similaires (avec cache par projet)
   const [similarArticles, setSimilarArticles] = useState<any[]>([])
   const [loadingSimilarArticles, setLoadingSimilarArticles] = useState(false)
+  const [cachedSimilarArticles, setCachedSimilarArticles] = useState<Record<string, any[]>>({})
 
   // Vérifier si c'est la première visite de l'utilisateur sur une carte projet (une seule fois)
   useEffect(() => {
@@ -299,9 +300,16 @@ export default function MesProjetsPage() {
     }
   }
 
-  // Fonction pour récupérer les articles similaires avec l'IA
-  const fetchSimilarArticles = async (project: SavedProject) => {
+  // Fonction pour récupérer les articles similaires avec l'IA (avec cache)
+  const fetchSimilarArticles = async (project: SavedProject, forceRefresh = false) => {
     if (!project) return
+
+    // Vérifier si les articles sont déjà en cache pour ce projet
+    if (!forceRefresh && cachedSimilarArticles[project.id]) {
+      setSimilarArticles(cachedSimilarArticles[project.id])
+      console.log(`📦 Articles similaires chargés depuis le cache pour ${project.id}`)
+      return
+    }
 
     setLoadingSimilarArticles(true)
     try {
@@ -322,9 +330,19 @@ export default function MesProjetsPage() {
 
       if (data.success && Array.isArray(data.articles)) {
         setSimilarArticles(data.articles)
-        console.log(`✅ ${data.articles.length} articles similaires trouvés via ${data.method || 'IA'}`)
+        // Sauvegarder dans le cache
+        setCachedSimilarArticles(prev => ({
+          ...prev,
+          [project.id]: data.articles
+        }))
+        console.log(`✅ ${data.articles.length} articles similaires trouvés via ${data.method || 'IA'} et mis en cache`)
       } else {
         setSimilarArticles([])
+        // Mettre un tableau vide en cache pour éviter de refaire la requête
+        setCachedSimilarArticles(prev => ({
+          ...prev,
+          [project.id]: []
+        }))
       }
     } catch (error) {
       console.error('Error fetching similar articles:', error)
