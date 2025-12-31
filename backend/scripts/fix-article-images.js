@@ -35,7 +35,7 @@ const limitArg = args.find(a => a.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 100;
 
 // Sources et domaines ciblés pour --target-agp
-const TARGET_SOURCES = [
+const TARGET_SOURCES_AGP = [
   'AGP',
   'agpgabon.ga',
   'Gabon Media Time',
@@ -46,7 +46,48 @@ const TARGET_SOURCES = [
   '7 Jours Info',
   '7Jours'
 ];
-const TARGET_DOMAINS = ['agpgabon.ga', 'gabonmediatime.com', '7joursinfo.com'];
+const TARGET_DOMAINS_AGP = ['agpgabon.ga', 'gabonmediatime.com', '7joursinfo.com'];
+
+// Sources et domaines ciblés pour --target-media (autres médias problématiques)
+const TARGET_SOURCES_MEDIA = [
+  'Direct Infos Gabon',
+  'directinfosgabon.com',
+  'DirectInfosGabon',
+  'Biba 241',
+  'biba241',
+  'B France News',
+  'bfrancenews.com',
+  'L\'Union',
+  'LUnion',
+  'lunion.ga',
+  'union.sonapresse.com',
+  'Gabon Actu',
+  'gabonactu.com',
+  'GabonActu',
+  'Sport 241',
+  'sport241.com',
+  'Sport241',
+  'Gabon Newsroom',
+  'gabonnewsroom.com',
+  'GabonNewsroom'
+];
+const TARGET_DOMAINS_MEDIA = [
+  'directinfosgabon.com',
+  'biba241.com',
+  'bfrancenews.com',
+  'lunion.ga',
+  'union.sonapresse.com',
+  'gabonactu.com',
+  'sport241.com',
+  'gabonnewsroom.com'
+];
+
+// Option --target-media
+const targetMedia = args.includes('--target-media');
+
+// Sélection des sources/domaines selon l'option
+const TARGET_SOURCES = targetAgp ? TARGET_SOURCES_AGP : (targetMedia ? TARGET_SOURCES_MEDIA : []);
+const TARGET_DOMAINS = targetAgp ? TARGET_DOMAINS_AGP : (targetMedia ? TARGET_DOMAINS_MEDIA : []);
 
 const supabase = supabaseService.supabase;
 
@@ -58,6 +99,8 @@ async function main() {
   console.log(`║  Limite: ${limit} articles`.padEnd(65) + '║');
   if (targetAgp) {
     console.log(`║  Cible: AGP, Gabon Media Time, 7 Jours`.padEnd(65) + '║');
+  } else if (targetMedia) {
+    console.log(`║  Cible: Direct Infos, Biba241, L'Union, GabonActu...`.padEnd(65) + '║');
   }
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
@@ -144,9 +187,10 @@ async function main() {
     let missingArticles = [];
     let missingError = null;
 
-    if (targetAgp) {
-      // Mode ciblé: AGP, Gabon Media Time, 7 Jours
-      console.log('   🎯 Mode ciblé: AGP, Gabon Media Time, 7 Jours\n');
+    if (targetAgp || targetMedia) {
+      // Mode ciblé
+      const targetLabel = targetAgp ? 'AGP, Gabon Media Time, 7 Jours' : 'Direct Infos, Biba241, L\'Union, GabonActu, Sport241, GabonNewsroom';
+      console.log(`   🎯 Mode ciblé: ${targetLabel}\n`);
 
       // Requête 1: Par source
       const { data: bySource, error: e1 } = await supabase

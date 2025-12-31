@@ -121,11 +121,28 @@ const DOMAIN_CONFIGS = {
   },
   'directinfosgabon.com': {
     selectors: [
+      // JNews theme selectors
       '.jeg_featured_img img',
+      '.jeg_thumb img',
+      '.jeg_post_thumb img',
+      // WordPress image classes
+      'img[class*="wp-image-"]',
+      'img[class*="attachment-"]',
+      // Standard post images
+      '.post-item img',
+      'article img.wp-post-image',
+      '.featured-post img',
+      // Entry content
       '.entry-content img:first-of-type',
-      'article img.wp-post-image'
+      // Carousel/slider images
+      '.featuredslider img',
+      // WordPress uploads
+      'img[src*="wp-content/uploads"]'
     ],
-    headers: { 'Referer': 'https://directinfosgabon.com/' }
+    headers: {
+      'Referer': 'https://directinfosgabon.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   },
   'gabonmediatime.com': {
     selectors: [
@@ -151,11 +168,23 @@ const DOMAIN_CONFIGS = {
   },
   'gabonactu.com': {
     selectors: [
+      // Gabonactu utilise background-image, mais a aussi og:image
+      '.post-img-wrap img',
       '.post-thumbnail img',
       '.featured-image img',
-      '.entry-content img:first-of-type'
+      '.post-boxed img',
+      // WordPress standard
+      'article img.wp-post-image',
+      '.entry-content img:first-of-type',
+      // Images dans liens
+      'a img[alt]',
+      // WordPress uploads
+      'img[src*="wp-content/uploads"]'
     ],
-    headers: { 'Referer': 'https://gabonactu.com/' }
+    headers: {
+      'Referer': 'https://gabonactu.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   },
   'insidenews241.com': {
     selectors: [
@@ -183,19 +212,46 @@ const DOMAIN_CONFIGS = {
   },
   'lunion.ga': {
     selectors: [
+      // Drupal views selectors
+      '.views-field-field-image img',
+      '.field-name-field-image img',
+      'img[typeof="foaf:Image"]',
+      // Article images
       '.article-thumbnail img',
       '.news-image img',
-      'article img:first-of-type'
+      'article img:first-of-type',
+      // Field content
+      '.field-content img',
+      '.views-field img',
+      // Style article images
+      'img[src*="/sites/default/files/"]'
     ],
-    headers: { 'Referer': 'https://lunion.ga/' }
+    headers: {
+      'Referer': 'https://lunion.ga/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   },
   'union.sonapresse.com': {
     selectors: [
+      // Drupal views selectors (même structure que lunion.ga)
+      '.views-field-field-image img',
+      '.field-name-field-image img',
+      'img[typeof="foaf:Image"]',
+      // Article images
       '.article-thumbnail img',
       '.news-image img',
-      'article img:first-of-type'
+      'article img:first-of-type',
+      // Field content
+      '.field-content img',
+      '.views-field img',
+      // Style article images
+      'img[src*="/sites/default/files/"]',
+      'img.img-responsive'
     ],
-    headers: { 'Referer': 'https://union.sonapresse.com/' }
+    headers: {
+      'Referer': 'https://union.sonapresse.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   },
   'rfi.fr': {
     selectors: [
@@ -220,6 +276,86 @@ const DOMAIN_CONFIGS = {
       'img.article__media'
     ],
     headers: { 'Referer': 'https://www.france24.com/' }
+  },
+  // ==================== SPORT 241 ====================
+  'sport241.com': {
+    selectors: [
+      // SPIP CMS cached images
+      'img[src*="local/cache-vignettes/"]',
+      'img[src*="local/cache-gd2/"]',
+      // Portfolio/gallery images
+      '#documents_portfolio img',
+      // Standard article images
+      'article img:first-of-type',
+      '.post-content img:first-of-type',
+      '.article-content img:first-of-type',
+      // Images dans liens
+      'a[href*=".jpg"] img',
+      'a[href*=".png"] img'
+    ],
+    headers: {
+      'Referer': 'https://www.sport241.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
+  },
+  // ==================== BIBA 241 / B France News ====================
+  'bfrancenews.com': {
+    selectors: [
+      // WordPress standard
+      'img.wp-post-image',
+      '.post-thumbnail img',
+      '.featured-image img',
+      // Block editor
+      '.wp-block-image img',
+      // Content images
+      '.entry-content img:first-of-type',
+      'article img:first-of-type',
+      // WordPress uploads
+      'img[src*="wp-content/uploads"]'
+    ],
+    headers: {
+      'Referer': 'https://www.bfrancenews.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
+  },
+  'biba241.com': {
+    selectors: [
+      'img.wp-post-image',
+      '.post-thumbnail img',
+      '.featured-image img',
+      '.wp-block-image img',
+      '.entry-content img:first-of-type',
+      'article img:first-of-type',
+      'img[src*="wp-content/uploads"]'
+    ],
+    headers: {
+      'Referer': 'https://biba241.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
+  },
+  // ==================== GABON NEWSROOM ====================
+  'gabonnewsroom.com': {
+    selectors: [
+      // WordPress standard
+      'img.wp-post-image',
+      '.post-thumbnail img',
+      '.featured-image img',
+      // Theme specific
+      '.jeg_featured_img img',
+      '.jeg_thumb img',
+      // Block editor
+      '.wp-block-image img',
+      // Content images
+      '.entry-content img:first-of-type',
+      'article img:first-of-type',
+      // WordPress uploads
+      'img[src*="wp-content/uploads"]',
+      'img[class*="wp-image-"]'
+    ],
+    headers: {
+      'Referer': 'https://gabonnewsroom.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   }
 };
 
