@@ -43,22 +43,27 @@ router.post('/generate-daily', async (req, res) => {
 /**
  * POST /api/game/questions
  * Génère des questions de quiz basées sur les articles récents
- * Privilégie les questions générées dans les dernières 72h (actualité fraîche)
+ * - Training: questions des dernières 36h (actualité très fraîche)
+ * - Payant: questions des dernières 72h (plus de variété)
  */
 router.post('/questions', async (req, res) => {
   try {
     const { rounds = 10, sessionType = 'training' } = req.body;
 
     // Déterminer le type de questions à récupérer
-    // training = questions gratuites pour entraînement
-    // paid = questions pour sessions payantes (différentes du training!)
+    // training = questions gratuites pour entraînement (36h)
+    // paid = questions pour sessions payantes (72h, plus de variété)
     const questionType = sessionType === 'training' ? 'training' : 'paid';
 
-    console.log(`🎮 [GAME] Demande de ${rounds} questions (type: ${questionType})...`);
+    // Training: 36h pour actualité très récente
+    // Payant: 72h pour plus de variété de questions
+    const hoursLookback = sessionType === 'training' ? 36 : 72;
 
-    // Date limite: questions des dernières 72h uniquement
+    console.log(`🎮 [GAME] Demande de ${rounds} questions (type: ${questionType}, fenêtre: ${hoursLookback}h)...`);
+
+    // Date limite basée sur le type de session
     const cutoffDate = new Date();
-    cutoffDate.setHours(cutoffDate.getHours() - 72);
+    cutoffDate.setHours(cutoffDate.getHours() - hoursLookback);
     const cutoffISO = cutoffDate.toISOString();
 
     // Récupérer des questions récentes de chaque niveau de difficulté
