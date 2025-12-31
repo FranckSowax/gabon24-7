@@ -38,8 +38,19 @@ CREATE TRIGGER feedbacks_updated_at_trigger
 -- RLS (Row Level Security)
 ALTER TABLE feedbacks ENABLE ROW LEVEL SECURITY;
 
+-- Supprimer les politiques existantes si elles existent
+DROP POLICY IF EXISTS "Admins can view all feedbacks" ON feedbacks;
+DROP POLICY IF EXISTS "Users can create feedbacks" ON feedbacks;
+DROP POLICY IF EXISTS "Admins can update feedbacks" ON feedbacks;
+DROP POLICY IF EXISTS "Service role bypass" ON feedbacks;
+
+-- Politique: Service role peut tout faire (pour le backend)
+CREATE POLICY "Service role bypass"
+  ON feedbacks FOR ALL
+  USING (auth.role() = 'service_role');
+
 -- Politique: Les admins peuvent tout voir
-CREATE POLICY IF NOT EXISTS "Admins can view all feedbacks"
+CREATE POLICY "Admins can view all feedbacks"
   ON feedbacks FOR SELECT
   USING (
     EXISTS (
@@ -50,12 +61,12 @@ CREATE POLICY IF NOT EXISTS "Admins can view all feedbacks"
   );
 
 -- Politique: Les utilisateurs peuvent créer des feedbacks
-CREATE POLICY IF NOT EXISTS "Users can create feedbacks"
+CREATE POLICY "Users can create feedbacks"
   ON feedbacks FOR INSERT
   WITH CHECK (true);
 
 -- Politique: Les admins peuvent mettre à jour les feedbacks
-CREATE POLICY IF NOT EXISTS "Admins can update feedbacks"
+CREATE POLICY "Admins can update feedbacks"
   ON feedbacks FOR UPDATE
   USING (
     EXISTS (
