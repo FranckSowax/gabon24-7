@@ -525,4 +525,233 @@ Take a deep breath and work on this problem step-by-step.`;
   }
 });
 
+// ==================== ROUTES DE PROGRESSION ====================
+
+// POST /api/training/:training_id/progress - Sauvegarder la progression
+router.post('/:training_id/progress', async (req, res) => {
+  try {
+    const { training_id } = req.params;
+    const {
+      userId,
+      currentModuleIndex,
+      completedModules = [],
+      generatedModules = {},
+      projectId = null
+    } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId requis' });
+    }
+
+    console.log(`💾 Sauvegarde progression formation ${training_id} pour user ${userId}`);
+
+    // Calculer le pourcentage de progression
+    const totalModules = Object.keys(generatedModules).length || completedModules.length || 1;
+    const progress = Math.round((completedModules.length / totalModules) * 100);
+
+    // Vérifier si une entrée existe déjà
+    const { data: existing } = await supabaseService.supabase
+      .from('training_progress')
+      .select('id')
+      .eq('training_id', training_id)
+      .eq('user_id', userId)
+      .single();
+
+    const progressData = {
+      training_id,
+      user_id: userId,
+      project_id: projectId,
+      current_module_index: currentModuleIndex,
+      completed_modules: completedModules,
+      generated_modules: generatedModules,
+      progress_percentage: progress,
+      last_accessed_at: new Date().toISOString()
+    };
+
+    let result;
+    if (existing) {
+      // Mettre à jour
+      const { data, error } = await supabaseService.supabase
+        .from('training_progress')
+        .update(progressData)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    } else {
+      // Créer
+      const { data, error } = await supabaseService.supabase
+        .from('training_progress')
+        .insert(progressData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    }
+
+    console.log(`✅ Progression sauvegardée: ${progress}% (module ${currentModuleIndex + 1})`);
+
+    res.json({
+      success: true,
+      progress: result
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde progression:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// GET /api/training/:training_id/progress/:user_id - Récupérer la progression
+router.get('/:training_id/progress/:user_id', async (req, res) => {
+  try {
+    const { training_id, user_id } = req.params;
+
+    console.log(`📖 Récupération progression formation ${training_id} pour user ${user_id}`);
+
+    const { data, error } = await supabaseService.supabase
+      .from('training_progress')
+      .select('*')
+      .eq('training_id', training_id)
+      .eq('user_id', user_id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!data) {
+      return res.json({
+        success: true,
+        progress: null,
+        message: 'Aucune progression trouvée'
+      });
+    }
+
+    console.log(`✅ Progression trouvée: ${data.progress_percentage}%`);
+
+    res.json({
+      success: true,
+      progress: data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération progression:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// GET /api/training/user/:user_id/all - Récupérer toutes les formations d'un utilisateur
+router.get('/user/:user_id/all', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    console.log(`📚 Récupération formations pour user ${user_id}`);
+
+    // Récupérer les formations depuis ai_trainings avec leur progression
+    const { data: trainings, error: trainingsError } = await supabaseService.supabase
+      .from('ai_trainings')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false });
+
+    if (trainingsError) throw trainingsError;
+
+    // Récupérer la progression pour chaque formation
+    const { data: progressData, error: progressError } = await supabaseService.supabase
+      .from('training_progress')
+      .select('*')
+      .eq('user_id', user_id);
+
+    if (progressError && progressError.code !== 'PGRST116') {
+      console.warn('⚠️ Erreur récupération progression:', progressError);
+    }
+
+    // Combiner les données
+    const trainingsWithProgress = (trainings || []).map(training => {
+      const progress = (progressData || []).find(p => p.training_id === training.id);
+      return {
+        ...training,
+        progress: progress || null
+      };
+    });
+
+    console.log(`✅ ${trainingsWithProgress.length} formations trouvées`);
+
+    res.json({
+      success: true,
+      trainings: trainingsWithProgress
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération formations:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// GET /api/training/project/:project_id - Récupérer les formations liées à un projet
+router.get('/project/:project_id', async (req, res) => {
+  try {
+    const { project_id } = req.params;
+
+    console.log(`📚 Récupération formations pour projet ${project_id}`);
+
+    // Chercher dans training_progress par project_id
+    const { data: progressData, error: progressError } = await supabaseService.supabase
+      .from('training_progress')
+      .select('*')
+      .eq('project_id', project_id)
+      .order('last_accessed_at', { ascending: false });
+
+    if (progressError && progressError.code !== 'PGRST116') {
+      throw progressError;
+    }
+
+    // Pour chaque progression, récupérer les détails de la formation
+    const trainingsWithProgress = [];
+
+    for (const progress of (progressData || [])) {
+      // Essayer de récupérer depuis ai_trainings
+      const { data: training } = await supabaseService.supabase
+        .from('ai_trainings')
+        .select('*')
+        .eq('id', progress.training_id)
+        .single();
+
+      if (training) {
+        trainingsWithProgress.push({
+          ...training,
+          progress
+        });
+      }
+    }
+
+    console.log(`✅ ${trainingsWithProgress.length} formations trouvées pour le projet`);
+
+    res.json({
+      success: true,
+      trainings: trainingsWithProgress
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération formations projet:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

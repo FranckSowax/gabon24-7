@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, CheckCircle2, Circle, Lock, Play, ArrowLeft, Clock, Trophy, Sparkles, Loader2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, Lock, Play, ArrowLeft, Clock, Trophy, Sparkles, Loader2, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '@/contexts/AuthContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface ModuleSummary {
   id: number;
@@ -62,15 +65,99 @@ export default function TrainingPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const training_id = params?.training_id as string;
   const purchased = searchParams?.get('purchased') === 'true';
   const selectedModulesParam = searchParams?.get('modules');
+  const projectId = searchParams?.get('projectId');
+  const resumeMode = searchParams?.get('resume') === 'true';
 
   const [training, setTraining] = useState<Training | null>(null);
   const [modules, setModules] = useState<DetailedModule[]>([]);
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fonction pour sauvegarder la progression
+  const saveProgress = useCallback(async (moduleIndex: number, modulesState: DetailedModule[]) => {
+    if (!user?.id || !training_id) return;
+
+    try {
+      // Calculer les modules complétés (ceux qui ont du contenu généré)
+      const completedModules = modulesState
+        .map((m, idx) => m.detailed_content ? idx : -1)
+        .filter(idx => idx !== -1);
+
+      // Préparer le cache des modules générés
+      const generatedModules: Record<number, any> = {};
+      modulesState.forEach((m, idx) => {
+        if (m.detailed_content) {
+          generatedModules[idx] = m.detailed_content;
+        }
+      });
+
+      await fetch(`${API_URL}/api/training/${training_id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          currentModuleIndex: moduleIndex,
+          completedModules,
+          generatedModules,
+          projectId: projectId || null
+        })
+      });
+
+      console.log('💾 Progression sauvegardée automatiquement');
+    } catch (err) {
+      console.error('Erreur sauvegarde progression:', err);
+    }
+  }, [user?.id, training_id, projectId]);
+
+  // Sauvegarder la progression avec debounce quand le module change
+  useEffect(() => {
+    if (!progressLoaded || modules.length === 0) return;
+
+    // Debounce la sauvegarde
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      saveProgress(currentModuleIndex, modules);
+    }, 2000); // Sauvegarder 2s après le dernier changement
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [currentModuleIndex, modules, progressLoaded, saveProgress]);
+
+  // Sauvegarder avant de quitter la page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (user?.id && training_id && modules.length > 0) {
+        // Utiliser sendBeacon pour sauvegarde synchrone
+        const data = JSON.stringify({
+          userId: user.id,
+          currentModuleIndex,
+          completedModules: modules.map((m, idx) => m.detailed_content ? idx : -1).filter(idx => idx !== -1),
+          generatedModules: modules.reduce((acc, m, idx) => {
+            if (m.detailed_content) acc[idx] = m.detailed_content;
+            return acc;
+          }, {} as Record<number, any>),
+          projectId: projectId || null
+        });
+        navigator.sendBeacon(`${API_URL}/api/training/${training_id}/progress`, data);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user?.id, training_id, currentModuleIndex, modules, projectId]);
 
   // Charger la formation et démarrer la génération
   useEffect(() => {
@@ -125,12 +212,13 @@ export default function TrainingPage() {
   const loadTrainingAndGenerate = async () => {
     try {
       console.log('📖 Chargement formation:', training_id);
-      
+
       let trainingData = null;
-      
+      let savedProgress = null;
+
       // Essayer de charger depuis l'API
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/training/${training_id}`);
+        const response = await fetch(`${API_URL}/api/training/${training_id}`);
         const data = await response.json();
 
         if (data.success) {
@@ -156,30 +244,56 @@ export default function TrainingPage() {
         return;
       }
 
+      // Charger la progression sauvegardée si l'utilisateur est connecté
+      if (user?.id) {
+        try {
+          const progressResponse = await fetch(`${API_URL}/api/training/${training_id}/progress/${user.id}`);
+          const progressData = await progressResponse.json();
+          if (progressData.success && progressData.progress) {
+            savedProgress = progressData.progress;
+            console.log('✅ Progression récupérée:', savedProgress.progress_percentage + '%');
+          }
+        } catch (progressError) {
+          console.warn('⚠️ Pas de progression sauvegardée');
+        }
+      }
+
       setTraining(trainingData);
-      
+
       // Déterminer quels modules générer
       const modulesToGenerate = selectedModulesParam
-        ? trainingData.modules.filter((m: ModuleSummary) => 
+        ? trainingData.modules.filter((m: ModuleSummary) =>
             selectedModulesParam.split(',').includes(String(m.id))
           )
         : trainingData.modules;
 
       console.log('🎯 Modules à générer:', modulesToGenerate.length);
-      
-      // Initialiser les modules
-      const initialModules: DetailedModule[] = modulesToGenerate.map((m: ModuleSummary) => ({
-        ...m,
-        isGenerating: false,
-        detailed_content: undefined
-      }));
-      
+
+      // Initialiser les modules avec le contenu sauvegardé si disponible
+      const initialModules: DetailedModule[] = modulesToGenerate.map((m: ModuleSummary, idx: number) => {
+        const savedContent = savedProgress?.generated_modules?.[idx];
+        return {
+          ...m,
+          isGenerating: false,
+          detailed_content: savedContent || undefined
+        };
+      });
+
       setModules(initialModules);
+
+      // Restaurer la position si on reprend la formation
+      if (savedProgress && (resumeMode || savedProgress.current_module_index > 0)) {
+        const resumeIndex = Math.min(savedProgress.current_module_index, initialModules.length - 1);
+        setCurrentModuleIndex(resumeIndex);
+        console.log(`🔄 Reprise au module ${resumeIndex + 1}`);
+      }
+
+      setProgressLoaded(true);
       setLoading(false);
-      
+
       // NE PAS générer automatiquement - l'utilisateur choisira les modules à générer
       console.log('✅ Modules initialisés, prêts pour génération à la demande');
-      
+
     } catch (err: any) {
       console.error('❌ Erreur chargement:', err);
       setError(err.message || 'Erreur lors du chargement');
