@@ -6,9 +6,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Loader2, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import Turnstile from '@/components/security/Turnstile';
+
+// Clé Turnstile (à configurer dans .env.local)
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; // Test key
 
 // Utility: wrap a promise with a timeout to avoid infinite spinners on bad network
 async function withTimeout<T>(promise: Promise<T>, ms: number, label = 'Opération') : Promise<T> {
@@ -34,6 +38,8 @@ type SignInFormData = z.infer<typeof signInSchema>;
 function SignInContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -47,11 +53,30 @@ function SignInContent() {
   });
 
   const onSubmit = async (data: SignInFormData) => {
+    // Vérifier que Turnstile est validé
+    if (!turnstileToken) {
+      setTurnstileError('Veuillez compléter la vérification de sécurité');
+      return;
+    }
+
     setIsLoading(true);
-    
+
     try {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         throw new Error('Vous êtes hors ligne. Vérifiez votre connexion internet.')
+      }
+
+      // Vérifier le token Turnstile côté serveur
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const verifyResponse = await fetch(`${API_URL}/api/auth/verify-turnstile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: turnstileToken })
+      });
+
+      const verifyData = await verifyResponse.json();
+      if (!verifyData.success) {
+        throw new Error('Échec de la vérification de sécurité. Veuillez réessayer.');
       }
 
       type SupabaseSignInResult = Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>
@@ -276,10 +301,36 @@ function SignInContent() {
               </div>
             )}
 
+            {/* Cloudflare Turnstile - Protection anti-bot */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Shield className="w-4 h-4" />
+                <span>Vérification de sécurité</span>
+              </div>
+              <Turnstile
+                siteKey={TURNSTILE_SITE_KEY}
+                onVerify={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileError(null);
+                }}
+                onError={() => setTurnstileError('Erreur de vérification. Veuillez réessayer.')}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  setTurnstileError('Vérification expirée. Veuillez réessayer.');
+                }}
+                theme="light"
+                className="flex justify-center"
+                action="signin"
+              />
+              {turnstileError && (
+                <p className="text-sm text-red-500 text-center">{turnstileError}</p>
+              )}
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
               className="w-full py-4 px-6 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

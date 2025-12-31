@@ -337,11 +337,13 @@ const eventsRoutes = require('./routes/events');
 const uploadsRoutes = require('./routes/uploads');
 const feedbackRoutes = require('./routes/feedback');
 const slidesRoutes = require('./routes/slides');
+const authRoutes = require('./routes/auth');
 // NOTE: whatsappRoutes déjà chargé plus haut (section PRIORITAIRES)
 
 console.log('📦 Chargement des routes modulaires...');
 
 // Enregistrement des routes modulaires (WhatsApp déjà enregistré plus haut)
+app.use('/api/auth', authRoutes);
 app.use('/api/football', footballRoutes);
 app.use('/api/polls', pollsRoutes);
 app.use('/api/events', eventsRoutes);
