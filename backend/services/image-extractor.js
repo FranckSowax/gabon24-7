@@ -54,6 +54,62 @@ const FACEBOOK_CONFIG = {
  * Chaque site peut avoir ses propres sélecteurs CSS et headers
  */
 const DOMAIN_CONFIGS = {
+  // ==================== AGP GABON ====================
+  'agpgabon.ga': {
+    selectors: [
+      // Images WordPress avec classe wp-image
+      'img[class*="wp-image-"]',
+      // Images dans les blocs WordPress
+      '.wp-block-image img',
+      // Images dans le contenu avec URL uploads
+      'img[src*="wp-content/uploads"]',
+      // Featured image WordPress standard
+      'article img.wp-post-image',
+      '.post-thumbnail img',
+      '.entry-content img:first-of-type',
+      // Images optimisées via i0.wp.com
+      'img[src*="i0.wp.com"]',
+      'img[src*="i1.wp.com"]',
+      'img[src*="i2.wp.com"]',
+      // Figure WordPress
+      'figure img'
+    ],
+    headers: {
+      'Referer': 'https://agpgabon.ga/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    },
+    // AGP utilise souvent des images via le CDN WordPress.com
+    transformUrl: (url) => {
+      // Convertir les URLs i0.wp.com en URLs directes si nécessaire
+      if (url && url.includes('i0.wp.com')) {
+        return url.replace(/\?.*$/, ''); // Enlever les paramètres de query
+      }
+      return url;
+    }
+  },
+  // ==================== 7 JOURS INFO ====================
+  '7joursinfo.com': {
+    selectors: [
+      // Featured image WordPress
+      'img.wp-post-image',
+      '.post-thumbnail img',
+      '.featured-image img',
+      // Images dans blocs WordPress
+      '.wp-block-image img',
+      'figure.wp-block-image img',
+      // Images dans le contenu
+      '.entry-content img:first-of-type',
+      'article img:first-of-type',
+      // Images avec src WordPress uploads
+      'img[src*="wp-content/uploads"]',
+      // Thumbnail dans liens article
+      'a img[alt]'
+    ],
+    headers: {
+      'Referer': 'https://7joursinfo.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
+  },
   'gabonreview.com': {
     selectors: [
       'article img.wp-post-image',
@@ -73,11 +129,25 @@ const DOMAIN_CONFIGS = {
   },
   'gabonmediatime.com': {
     selectors: [
+      // TD Theme (Flavor theme) selectors
       '.td-post-featured-image img',
+      '.td-post-content img:first-of-type',
       '.entry-thumb img',
-      'article img.wp-post-image'
+      // WordPress standard
+      'article img.wp-post-image',
+      '.post-thumbnail img',
+      // Block editor images
+      '.wp-block-image img',
+      // Fallback pour images dans contenu
+      '.entry-content img:first-of-type',
+      '#the-post img:first-of-type',
+      // Images avec src uploads
+      'img[src*="wp-content/uploads"]'
     ],
-    headers: { 'Referer': 'https://gabonmediatime.com/' }
+    headers: {
+      'Referer': 'https://gabonmediatime.com/',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    }
   },
   'gabonactu.com': {
     selectors: [
@@ -449,8 +519,23 @@ class ImageExtractor {
     for (const selector of config.selectors) {
       const elem = $(selector).first();
       if (elem.length) {
-        const src = elem.attr('src') || elem.attr('data-src') || elem.attr('data-lazy-src');
+        // Essayer plusieurs attributs d'image (src, data-src, srcset, data-lazy-src)
+        let src = elem.attr('src') || elem.attr('data-src') || elem.attr('data-lazy-src');
+
+        // Si pas de src direct, essayer srcset (prendre la première URL)
+        if (!src) {
+          const srcset = elem.attr('srcset');
+          if (srcset) {
+            const firstSrc = srcset.split(',')[0].trim().split(' ')[0];
+            if (firstSrc) src = firstSrc;
+          }
+        }
+
         if (src && this.isValidImageUrl(src)) {
+          // Appliquer transformUrl si définie pour ce domaine
+          if (config.transformUrl && typeof config.transformUrl === 'function') {
+            src = config.transformUrl(src);
+          }
           return { imageUrl: src, source: domain, strategy: 'domain-specific' };
         }
       }

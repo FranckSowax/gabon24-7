@@ -11,10 +11,11 @@
  *   node scripts/fix-article-images.js [options]
  *
  * Options:
- *   --dry-run    Mode test sans modification
- *   --limit=N    Limiter à N articles (défaut: 100)
- *   --clean      Nettoyer les URLs Netlify uniquement
- *   --extract    Extraire les images uniquement
+ *   --dry-run      Mode test sans modification
+ *   --limit=N      Limiter à N articles (défaut: 100)
+ *   --clean        Nettoyer les URLs Netlify uniquement
+ *   --extract      Extraire les images uniquement
+ *   --target-agp   Cibler AGP, GMT et 7 Jours spécifiquement
  *
  * @author Claude Code
  * @date 2025-12-30
@@ -29,8 +30,23 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const cleanOnly = args.includes('--clean');
 const extractOnly = args.includes('--extract');
+const targetAgp = args.includes('--target-agp');
 const limitArg = args.find(a => a.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 100;
+
+// Sources et domaines ciblés pour --target-agp
+const TARGET_SOURCES = [
+  'AGP',
+  'agpgabon.ga',
+  'Gabon Media Time',
+  'gabonmediatime.com',
+  'gabonmediatime',
+  '7 Jours',
+  '7joursinfo.com',
+  '7 Jours Info',
+  '7Jours'
+];
+const TARGET_DOMAINS = ['agpgabon.ga', 'gabonmediatime.com', '7joursinfo.com'];
 
 const supabase = supabaseService.supabase;
 
@@ -40,6 +56,9 @@ async function main() {
   console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log(`║  Mode: ${dryRun ? 'DRY-RUN (aucune modification)' : 'PRODUCTION (modifications actives)'}`.padEnd(65) + '║');
   console.log(`║  Limite: ${limit} articles`.padEnd(65) + '║');
+  if (targetAgp) {
+    console.log(`║  Cible: AGP, Gabon Media Time, 7 Jours`.padEnd(65) + '║');
+  }
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   // Phase 1: Statistiques initiales
@@ -122,13 +141,68 @@ async function main() {
   if (!cleanOnly) {
     console.log('🔍 Phase 3: Extraction d\'images pour articles sans image...\n');
 
-    const { data: missingArticles, error: missingError } = await supabase
-      .from('articles')
-      .select('id, url, category, source, title')
-      .or('image_url.is.null,image_url.eq.')
-      .not('url', 'is', null)
-      .limit(limit)
-      .order('created_at', { ascending: false });
+    let missingArticles = [];
+    let missingError = null;
+
+    if (targetAgp) {
+      // Mode ciblé: AGP, Gabon Media Time, 7 Jours
+      console.log('   🎯 Mode ciblé: AGP, Gabon Media Time, 7 Jours\n');
+
+      // Requête 1: Par source
+      const { data: bySource, error: e1 } = await supabase
+        .from('articles')
+        .select('id, url, category, source, title')
+        .or('image_url.is.null,image_url.eq.')
+        .not('url', 'is', null)
+        .in('source', TARGET_SOURCES)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      // Requête 2: Par domaine dans URL
+      const domainFilter = TARGET_DOMAINS.map(d => `url.ilike.%${d}%`).join(',');
+      const { data: byDomain, error: e2 } = await supabase
+        .from('articles')
+        .select('id, url, category, source, title')
+        .or('image_url.is.null,image_url.eq.')
+        .not('url', 'is', null)
+        .or(domainFilter)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      missingError = e1 || e2;
+
+      // Fusionner et dédupliquer
+      const articlesMap = new Map();
+      [...(bySource || []), ...(byDomain || [])].forEach(a => {
+        if (!articlesMap.has(a.id)) articlesMap.set(a.id, a);
+      });
+      missingArticles = Array.from(articlesMap.values()).slice(0, limit);
+
+      // Afficher stats par source
+      const sourceCount = {};
+      missingArticles.forEach(a => {
+        const src = a.source || 'Inconnu';
+        sourceCount[src] = (sourceCount[src] || 0) + 1;
+      });
+      console.log('   📊 Répartition par source:');
+      Object.entries(sourceCount).sort((a, b) => b[1] - a[1]).forEach(([src, cnt]) => {
+        console.log(`      • ${src}: ${cnt}`);
+      });
+      console.log('');
+
+    } else {
+      // Mode normal: tous les articles
+      const { data, error } = await supabase
+        .from('articles')
+        .select('id, url, category, source, title')
+        .or('image_url.is.null,image_url.eq.')
+        .not('url', 'is', null)
+        .limit(limit)
+        .order('created_at', { ascending: false });
+
+      missingArticles = data || [];
+      missingError = error;
+    }
 
     if (missingError) {
       console.error('❌ Erreur récupération articles sans image:', missingError.message);
