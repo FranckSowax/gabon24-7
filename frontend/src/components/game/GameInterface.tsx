@@ -1061,10 +1061,10 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
         // Démarrer immédiatement en mode training
         setTimeout(() => {
             setGamePhase('waiting-room')
-            setWaitingCountdown(5) // 5 secondes avant de commencer
+            setWaitingCountdown(3) // 3 secondes avant de commencer
             setIsRegistering(false)
             setSurvivors(100)
-        }, 1000)
+        }, 500)
         return
     }
     
@@ -1762,9 +1762,9 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
           })
           .catch(console.error)
           
-          // Passer en salle d'attente finale (30 secondes)
+          // Passer en salle d'attente finale (10 secondes)
           setGamePhase('waiting-room')
-          setWaitingCountdown(30)
+          setWaitingCountdown(10)
           setSurvivors(selectedSession.currentPlayers || 50)
         }
       }, 1000)
