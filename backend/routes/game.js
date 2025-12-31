@@ -59,9 +59,9 @@ router.post('/questions', async (req, res) => {
     // Récupérer des questions récentes de chaque niveau de difficulté
     // Distribution: 35% Facile, 40% Moyen, 25% Difficile
     const [facileRes, moyenRes, difficileRes] = await Promise.all([
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Facile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Moyen').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
-      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Difficile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50)
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Facile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Moyen').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50),
+      supabase.from('game_questions').select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt').eq('difficulty', 'Difficile').gte('created_at', cutoffISO).order('created_at', { ascending: false }).limit(50)
     ]);
 
     // Grouper par difficulté et mélanger aléatoirement
@@ -115,7 +115,7 @@ router.post('/questions', async (req, res) => {
       // Mapper vers le format attendu par le frontend avec mélange des réponses
       const formattedQuestions = selected.slice(0, rounds).map((q, index) => {
         const originalAnswers = q.answers || [];
-        const originalCorrectIndex = (q.correct_index !== undefined) ? q.correct_index : q.correct_answer_index;
+        const originalCorrectIndex = q.correct_answer_index;
         const correctAnswer = originalAnswers[originalCorrectIndex];
         
         // Mélanger les réponses aléatoirement
@@ -306,7 +306,7 @@ router.get('/generated-questions', async (req, res) => {
 
     const { data, error, count } = await supabase
       .from('game_questions')
-      .select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt')
+      .select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt')
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -349,7 +349,7 @@ router.post('/question', async (req, res) => {
     // 1. Chercher une question dans la DB qui n'est pas dans excludeIds
     let query = supabase
       .from('game_questions')
-      .select('id, difficulty, question, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt')
+      .select('id, difficulty, question, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt')
       .eq('difficulty', difficulty); // On filtre par difficulté
 
     // Appliquer l'exclusion (limite de l'URL Supabase, on fait attention à la taille)
@@ -2241,7 +2241,7 @@ router.get('/dashboard/questions', async (req, res) => {
 
     const { data: questions, error } = await supabase
       .from('game_questions')
-      .select('id, difficulty, question_text, answers, correct_index, correct_answer_index, time_limit, is_anti_ai, source_excerpt, created_at')
+      .select('id, difficulty, question_text, answers, correct_answer_index, time_limit, is_anti_ai, source_excerpt, created_at')
       .gte('created_at', cutoffISO)
       .order('created_at', { ascending: false });
 
