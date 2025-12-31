@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CheckCircle, Bookmark, ArrowRight, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -60,13 +61,19 @@ function ProposalsContent() {
 
   const saveProject = async (index: number) => {
     if (!user || savedProjects.has(index)) return
-    
+
     setSavingProjects(prev => new Set(prev).add(index))
-    
+
     try {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Token d\'authentification manquant')
+      }
+
       const proposal = proposals[index]
       const analysis = JSON.parse(localStorage.getItem('mobile_analysis') || '{}')
-      
+
       // Construire l'objet article depuis localStorage ou données disponibles
       const article = {
         id: articleId,
@@ -76,10 +83,13 @@ function ProposalsContent() {
         source: originalArticle?.source || '',
         published_at: new Date().toISOString()
       }
-      
+
       const response = await fetch(`${API_URL}/api/saved-projects`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           userId: user.id,
           article: article,
