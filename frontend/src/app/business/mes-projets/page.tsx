@@ -3847,6 +3847,15 @@ export default function MesProjetsPage() {
                         >
                           {/* Header Card */}
                           <div className="p-5">
+                            {/* Badge projet partagé */}
+                            {project.is_shared && (
+                              <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 rounded-lg border border-emerald-500/30 w-fit">
+                                <Users className="w-4 h-4 text-emerald-400" />
+                                <span className="text-xs font-semibold text-emerald-400">
+                                  Partagé avec moi • {project.collaboration?.role === 'editor' ? 'Éditeur' : project.collaboration?.role === 'admin' ? 'Admin' : 'Lecteur'}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-white text-lg mb-2 line-clamp-2 leading-tight">

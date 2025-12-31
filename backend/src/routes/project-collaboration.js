@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const supabaseService = require('../../supabase-config');
+const { requireAuth } = require('../../middleware/auth');
 const {
   sendCollaboratorInvitation,
   sendCommentNotification,
@@ -51,12 +52,18 @@ const upload = multer({
 });
 
 // Inviter un collaborateur
-router.post('/invite', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/invite', requireAuth, async (req, res) => {
   try {
-    const { projectId, ownerI, collaboratorEmail, role = 'viewer', permissions } = req.body;
+    const { projectId, ownerId, collaboratorEmail, role = 'viewer', permissions } = req.body;
 
     if (!projectId || !ownerId || !collaboratorEmail) {
       return res.status(400).json({ success: false, error: 'Paramètres manquants' });
+    }
+
+    // Vérifier que l'utilisateur authentifié est bien le owner
+    if (req.user.id !== ownerId) {
+      return res.status(403).json({ success: false, error: 'Non autorisé' });
     }
 
     // Vérifier si le collaborateur existe déjà
@@ -156,7 +163,8 @@ router.post('/invite', async (req, res) => {
 });
 
 // Lister les collaborateurs d'un projet
-router.get('/list/:projectId', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.get('/list/:projectId', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
 
@@ -177,7 +185,8 @@ router.get('/list/:projectId', async (req, res) => {
 });
 
 // Accepter une invitation
-router.post('/accept', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/accept', requireAuth, async (req, res) => {
   try {
     const { collaboratorId, userId } = req.body;
 
@@ -248,7 +257,8 @@ router.post('/accept', async (req, res) => {
 });
 
 // Supprimer un collaborateur
-router.delete('/remove/:collaboratorId', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.delete('/remove/:collaboratorId', requireAuth, async (req, res) => {
   try {
     const { collaboratorId } = req.params;
 
@@ -268,7 +278,8 @@ router.delete('/remove/:collaboratorId', async (req, res) => {
 });
 
 // Ajouter un commentaire
-router.post('/comment', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/comment', requireAuth, async (req, res) => {
   try {
     const { projectId, userId, userEmail, userName, content, commentType = 'general', targetId, metadata } = req.body;
 
@@ -347,7 +358,8 @@ router.post('/comment', async (req, res) => {
 });
 
 // Lister les commentaires d'un projet
-router.get('/comments/:projectId', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.get('/comments/:projectId', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
 
@@ -368,7 +380,8 @@ router.get('/comments/:projectId', async (req, res) => {
 });
 
 // Upload fichier document
-router.post('/upload-document', upload.single('file'), async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/upload-document', requireAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Aucun fichier fourni' });
@@ -435,7 +448,8 @@ router.post('/upload-document', upload.single('file'), async (req, res) => {
 });
 
 // Ajouter un document
-router.post('/document', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/document', requireAuth, async (req, res) => {
   try {
     const { projectId, collaboratorId, collaboratorEmail, documentTitle, documentContent, documentUrl, metadata } = req.body;
 
@@ -536,7 +550,8 @@ router.post('/document', async (req, res) => {
 });
 
 // Lister les documents de collaboration
-router.get('/documents/:projectId', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.get('/documents/:projectId', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
 
@@ -599,7 +614,8 @@ router.get('/invitation/:invitationId', async (req, res) => {
 });
 
 // Refuser invitation
-router.post('/reject', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/reject', requireAuth, async (req, res) => {
   try {
     const { collaboratorId } = req.body;
 
@@ -625,7 +641,8 @@ router.post('/reject', async (req, res) => {
 });
 
 // Générer un lien de partage unique pour un projet
-router.post('/generate-share-link', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.post('/generate-share-link', requireAuth, async (req, res) => {
   try {
     const { projectId, ownerId, expiresInDays = 7 } = req.body;
 
@@ -710,7 +727,8 @@ router.post('/generate-share-link', async (req, res) => {
 });
 
 // Rejoindre un projet via lien de partage
-router.post('/join-via-link', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise (l'utilisateur doit avoir un compte)
+router.post('/join-via-link', requireAuth, async (req, res) => {
   try {
     const { shareToken, userId, userEmail } = req.body;
 
@@ -882,7 +900,8 @@ router.get('/share-link/:shareToken', async (req, res) => {
 });
 
 // Récupérer les projets partagés avec un utilisateur
-router.get('/shared-with-me/:userId', async (req, res) => {
+// 🔒 SÉCURISÉ: Authentification requise
+router.get('/shared-with-me/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
 

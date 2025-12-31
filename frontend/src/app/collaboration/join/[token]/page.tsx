@@ -1,12 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { motion } from 'framer-motion'
 import { Users, Briefcase, CheckCircle, XCircle, Loader2, LogIn, ArrowRight } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+// Supabase client pour récupérer le token
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+)
 
 interface ShareLinkInfo {
   project: {
@@ -58,6 +65,16 @@ export default function JoinProjectPage() {
     }
   }, [token])
 
+  // Helper pour obtenir les headers d'authentification
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+    return headers
+  }, [])
+
   // Rejoindre le projet
   const handleJoinProject = async () => {
     if (!user) {
@@ -70,9 +87,10 @@ export default function JoinProjectPage() {
     setError(null)
 
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/join-via-link`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           shareToken: token,
           userId: user.id,

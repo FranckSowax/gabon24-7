@@ -1,11 +1,18 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Users, MessageSquare, FileText, User, Trash2, Send, RefreshCw, Upload, Link, Copy, CheckCircle, MessageCircle, Mail } from 'lucide-react'
 import DocumentUploadModal from '@/components/collaboration/DocumentUploadModal'
+import { createClient } from '@supabase/supabase-js'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+// Supabase client pour récupérer le token
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+)
 
 interface CollaborationSectionProps {
   selectedProject: {
@@ -35,17 +42,20 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
   const [isGeneratingLink, setIsGeneratingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
 
-  useEffect(() => {
-    if (selectedProject?.id) {
-      loadCollaborators()
-      loadComments()
-      loadCollabDocuments()
+  // Helper pour obtenir les headers d'authentification
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
     }
-  }, [selectedProject?.id])
+    return headers
+  }, [])
 
-  const loadCollaborators = async () => {
+  const loadCollaborators = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/project-collaboration/list/${selectedProject.id}`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/project-collaboration/list/${selectedProject.id}`, { headers })
       const data = await response.json()
       if (data.success) {
         setCollaborators(data.collaborators || [])
@@ -53,11 +63,12 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
     } catch (error) {
       console.error('Erreur chargement collaborateurs:', error)
     }
-  }
+  }, [selectedProject?.id, getAuthHeaders])
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/project-collaboration/comments/${selectedProject.id}`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/project-collaboration/comments/${selectedProject.id}`, { headers })
       const data = await response.json()
       if (data.success) {
         setComments(data.comments || [])
@@ -65,11 +76,12 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
     } catch (error) {
       console.error('Erreur chargement commentaires:', error)
     }
-  }
+  }, [selectedProject?.id, getAuthHeaders])
 
-  const loadCollabDocuments = async () => {
+  const loadCollabDocuments = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/project-collaboration/documents/${selectedProject.id}`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/project-collaboration/documents/${selectedProject.id}`, { headers })
       const data = await response.json()
       if (data.success) {
         setCollabDocuments(data.documents || [])
@@ -77,16 +89,25 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
     } catch (error) {
       console.error('Erreur chargement documents:', error)
     }
-  }
+  }, [selectedProject?.id, getAuthHeaders])
+
+  useEffect(() => {
+    if (selectedProject?.id) {
+      loadCollaborators()
+      loadComments()
+      loadCollabDocuments()
+    }
+  }, [selectedProject?.id, loadCollaborators, loadComments, loadCollabDocuments])
 
   const handleInviteCollaborator = async () => {
     if (!collaboratorEmail || !collaboratorEmail.includes('@') || !user?.id) return
 
     setIsInviting(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/invite`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId: selectedProject.id,
           ownerId: user.id,
@@ -121,8 +142,10 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
     if (!confirm('Retirer ce collaborateur ?')) return
 
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/remove/${collaboratorId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       })
 
       const data = await response.json()
@@ -140,9 +163,10 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
 
     setIsAddingComment(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/comment`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId: selectedProject.id,
           userId: user.id,
@@ -168,12 +192,13 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
 
   const handleGenerateShareLink = async () => {
     if (!user?.id) return
-    
+
     setIsGeneratingLink(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/project-collaboration/generate-share-link`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           projectId: selectedProject.id,
           ownerId: user.id,
