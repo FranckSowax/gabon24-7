@@ -5,9 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Gamepad2, Users, Trophy, MessageCircle, Calendar,
   TrendingUp, Clock, CheckCircle, XCircle, RefreshCw,
-  Plus, Search, Download, Eye, Zap, HelpCircle,
-  Crown, Medal, X, Sparkles, Target, Award, Activity,
-  ChevronRight, Play, FileQuestion, Trash2, DollarSign,
+  Plus, Search, Download, Eye, HelpCircle,
+  Crown, X, Play, DollarSign,
   BarChart3, CalendarDays, Phone, AlertCircle
 } from 'lucide-react'
 
@@ -125,7 +124,6 @@ export default function AdminGameDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSession, setFilterSession] = useState<string>('')
   const [sessionPeriod, setSessionPeriod] = useState<'today' | 'week' | 'month' | 'all'>('all')
-  const [generatingQuestions, setGeneratingQuestions] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Modals
@@ -195,28 +193,6 @@ export default function AdminGameDashboardPage() {
       }
     } catch (error) {
       console.error('Erreur chargement sessions:', error)
-    }
-  }
-
-  const generateQuestions = async () => {
-    setGeneratingQuestions(true)
-    try {
-      const res = await fetch(`${API_URL}/api/game/generate-questions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: 30, difficulty: 'medium' })
-      })
-      const data = await res.json()
-      if (data.success) {
-        alert(`${data.generated} questions generees avec succes !`)
-        loadDashboardData()
-      } else {
-        alert(`Erreur: ${data.error}`)
-      }
-    } catch (error: any) {
-      alert('Erreur lors de la generation')
-    } finally {
-      setGeneratingQuestions(false)
     }
   }
 
@@ -373,17 +349,6 @@ export default function AdminGameDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={generateQuestions}
-                disabled={generatingQuestions}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl transition-all disabled:opacity-50 border border-white/20"
-              >
-                {generatingQuestions ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                <span className="hidden sm:inline">Generer Questions</span>
-              </motion.button>
-
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
