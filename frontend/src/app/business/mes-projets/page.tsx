@@ -2129,15 +2129,33 @@ export default function MesProjetsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {action.action_reference_id && (
+                    {action.action_status === 'completed' && (
                       <button
                         onClick={() => {
-                          // Ouvrir le document/résultat
-                          if (action.action_type === 'business-plan') {
-                            const doc = projectDocuments[selectedProject.id]?.find(
-                              d => d.id === action.action_reference_id
-                            )
-                            if (doc) setSelectedDocument(doc)
+                          // Rediriger vers le bon onglet en fonction du type d'action
+                          const actionType = action.action_type
+
+                          if (actionType === 'action-plan') {
+                            // Plan d'action → onglet Plan d'Action
+                            setActiveSection('plan-action')
+                          } else if (actionType === 'custom-training' || actionType === 'skill-test' || actionType === 'business-plan') {
+                            // Formation, Test de compétences, Business Plan → Contexte & Bibliothèque > Documents
+                            setActiveSection('contexte')
+                            setContexteActiveTab('documents')
+
+                            // Si on a une référence, ouvrir le document
+                            if (action.action_reference_id) {
+                              const doc = projectDocuments[selectedProject.id]?.find(
+                                d => d.id === action.action_reference_id
+                              )
+                              if (doc) {
+                                setTimeout(() => setSelectedDocument(doc), 100)
+                              }
+                            }
+                          } else {
+                            // Autres types → Contexte & Bibliothèque > Documents
+                            setActiveSection('contexte')
+                            setContexteActiveTab('documents')
                           }
                         }}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium hover:underline"
