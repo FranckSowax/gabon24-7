@@ -235,8 +235,8 @@ export default function VeillePageNew() {
       return false;
     }
 
-    // Filtre par confiance
-    if (match.confidence_score < filterConfidence / 100) {
+    // Filtre par confiance (les scores sont déjà en 0-100)
+    if (match.confidence_score < filterConfidence) {
       return false;
     }
 

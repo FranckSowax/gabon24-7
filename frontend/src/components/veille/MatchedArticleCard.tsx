@@ -41,15 +41,19 @@ interface MatchedArticleCardProps {
   onShare?: (article: MatchedArticle) => void;
 }
 
-export default function MatchedArticleCard({ 
-  article, 
-  onView, 
-  onBookmark, 
-  onShare 
+export default function MatchedArticleCard({
+  article,
+  onView,
+  onBookmark,
+  onShare
 }: MatchedArticleCardProps) {
-  const confidencePercent = Math.round(article.confidence_score * 100);
-  const isHighConfidence = article.confidence_score >= 0.8;
-  const isMediumConfidence = article.confidence_score >= 0.5;
+  // Le backend renvoie déjà un score entre 0-100, pas besoin de multiplier
+  // Si le score est > 1, c'est déjà en pourcentage; sinon on multiplie par 100
+  const rawScore = article.confidence_score || 0;
+  const confidencePercent = rawScore > 1 ? Math.round(rawScore) : Math.round(rawScore * 100);
+  const normalizedScore = rawScore > 1 ? rawScore / 100 : rawScore;
+  const isHighConfidence = normalizedScore >= 0.8;
+  const isMediumConfidence = normalizedScore >= 0.5;
 
   const getSentimentIcon = () => {
     if (!article.ai_sentiment) return <Minus className="w-4 h-4" />;
