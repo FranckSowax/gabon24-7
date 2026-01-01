@@ -283,6 +283,8 @@ export default function MesProjetsPage() {
   const [aiModalError, setAiModalError] = useState('')
   const [currentActionName, setCurrentActionName] = useState('')
   const [currentActionIcon, setCurrentActionIcon] = useState<React.ReactNode>(null)
+  const [currentActionCredits, setCurrentActionCredits] = useState(0)
+  const [aiGenerationAbortController, setAiGenerationAbortController] = useState<AbortController | null>(null)
   // État pour modal historique
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<any | null>(null)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
@@ -1089,15 +1091,16 @@ export default function MesProjetsPage() {
   // Générer test de compétences sur place
   const handleGenerateSkillTest = async (project: SavedProject, difficulty: 'facile' | 'moyen' | 'difficile' = 'moyen') => {
     if (!user?.id) return
-    
+
     // Ouvrir le modal
     setCurrentActionName('Test de Compétences')
     setCurrentActionIcon(<GraduationCap className="w-6 h-6 text-white" />)
+    setCurrentActionCredits(CREDIT_COSTS['skill-test'] || 30)
     setAiModalStatus('generating')
     setAiModalProgress(0)
     setAiModalMessage('Analyse de votre projet...')
     setAiModalOpen(true)
-    
+
     setIsGeneratingSkillTest(true)
     
     try {
@@ -1205,15 +1208,16 @@ export default function MesProjetsPage() {
   // Générer formation sur mesure sur place
   const handleGenerateTraining = async (project: SavedProject) => {
     if (!user?.id) return
-    
+
     // Ouvrir le modal
     setCurrentActionName('Formation Personnalisée')
     setCurrentActionIcon(<Rocket className="w-6 h-6 text-white" />)
+    setCurrentActionCredits(CREDIT_COSTS['custom-training'] || 50)
     setAiModalStatus('generating')
     setAiModalProgress(0)
     setAiModalMessage('Analyse de votre profil...')
     setAiModalOpen(true)
-    
+
     setIsGeneratingTraining(true)
     setGeneratedTraining(null)
     
@@ -4618,6 +4622,16 @@ export default function MesProjetsPage() {
         progress={aiModalProgress}
         message={aiModalMessage}
         errorMessage={aiModalError}
+        onCancel={() => {
+          // Annuler la requête en cours
+          if (aiGenerationAbortController) {
+            aiGenerationAbortController.abort()
+          }
+          setAiModalOpen(false)
+          setIsGeneratingSkillTest(false)
+          setIsGeneratingTraining(false)
+        }}
+        creditsUsed={currentActionCredits}
       />
 
       {/* Modal Test de Compétences */}
@@ -4650,7 +4664,13 @@ export default function MesProjetsPage() {
       )}
 
       {/* Modal de génération du plan d'action */}
-      <ActionPlanGenerationModal isOpen={generatingActionPlan} />
+      <ActionPlanGenerationModal
+        isOpen={generatingActionPlan}
+        onCancel={() => {
+          setGeneratingActionPlan(false)
+        }}
+        creditsUsed={CREDIT_COSTS['action-plan'] || 25}
+      />
 
       {/* Popup d'onboarding pour les nouveaux utilisateurs */}
       <ProjectCardOnboarding

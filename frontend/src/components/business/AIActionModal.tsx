@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, Sparkles, CheckCircle, AlertCircle } from 'lucide-react'
+import { X, Loader2, Sparkles, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 
 interface AIActionModalProps {
@@ -15,6 +15,8 @@ interface AIActionModalProps {
   message?: string
   errorMessage?: string
   onRetry?: () => void
+  onCancel?: () => void
+  creditsUsed?: number
 }
 
 export default function AIActionModal({
@@ -26,9 +28,28 @@ export default function AIActionModal({
   progress = 0,
   message = 'Génération en cours...',
   errorMessage,
-  onRetry
+  onRetry,
+  onCancel,
+  creditsUsed = 0
 }: AIActionModalProps) {
-  
+  const [showCancelConfirm, setShowCancelConfirm] = React.useState(false)
+
+  // Reset confirmation state when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setShowCancelConfirm(false)
+    }
+  }, [isOpen])
+
+  const handleCancelClick = () => {
+    setShowCancelConfirm(true)
+  }
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false)
+    onCancel?.()
+  }
+
   const getStatusColor = () => {
     switch (status) {
       case 'generating': return 'from-blue-500 to-purple-600'
@@ -176,20 +197,87 @@ export default function AIActionModal({
                   </div>
                 )}
 
-                {/* Info supplémentaire pour generating */}
+                {/* Info supplémentaire et bouton annuler pour generating */}
                 {status === 'generating' && (
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Sparkles className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-gray-300">
-                        <p className="font-medium text-white mb-1">Intelligence Artificielle</p>
-                        <p>Notre IA analyse votre projet et génère un document personnalisé adapté au contexte gabonais.</p>
+                  <>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-gray-300">
+                          <p className="font-medium text-white mb-1">Intelligence Artificielle</p>
+                          <p>Notre IA analyse votre projet et génère un document personnalisé adapté au contexte gabonais.</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    {/* Bouton annuler */}
+                    {onCancel && (
+                      <button
+                        onClick={handleCancelClick}
+                        className="w-full px-4 py-2.5 text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors font-medium border border-gray-700 hover:border-red-500/30"
+                      >
+                        Annuler la génération
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>
+
+            {/* Modal de confirmation d'annulation */}
+            <AnimatePresence>
+              {showCancelConfirm && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 max-w-sm w-full mx-4"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-amber-100 rounded-lg">
+                        <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+                      </div>
+                      <h4 className="text-base sm:text-lg font-bold text-gray-900">
+                        Annuler la génération ?
+                      </h4>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs sm:text-sm text-amber-800">
+                        <strong>Attention :</strong> L'annulation consommera tout de même{' '}
+                        <strong>{creditsUsed} crédits</strong> car le traitement a déjà commencé.
+                      </p>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-gray-600 mb-4">
+                      Voulez-vous vraiment annuler ? Cette action est irréversible.
+                    </p>
+
+                    <div className="flex gap-2 sm:gap-3">
+                      <button
+                        onClick={() => setShowCancelConfirm(false)}
+                        className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      >
+                        Continuer
+                      </button>
+                      <button
+                        onClick={handleConfirmCancel}
+                        className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Annuler quand même
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </>
       )}
