@@ -13,23 +13,26 @@ class GeminiRAGService {
   }
 
   /**
-   * Search relevant articles from Supabase using text search
+   * Search relevant articles using AI-enriched columns
+   * Uses: keywords, category, summary_ai, importance, sentiment_score
    */
-  async searchArticles(query, limit = 5) {
+  async searchArticles(query, limit = 8) {
     try {
-      // Extract keywords from query (simple approach)
-      const keywords = query
+      // Extract keywords from query
+      const queryKeywords = query
         .toLowerCase()
-        .replace(/[^\w\sàâäéèêëïîôùûüç]/g, '')
+        .replace(/[^\w\sàâäéèêëïîôùûüç'-]/g, '')
         .split(/\s+/)
         .filter(word => word.length > 3)
-        .slice(0, 5);
+        .slice(0, 8);
 
-      if (keywords.length === 0) {
-        // Fallback: get recent articles
+      if (queryKeywords.length === 0) {
+        // Fallback: get recent important articles
         const { data, error } = await supabase.supabase
           .from('articles')
-          .select('id, title, content, summary_ai, source, published_at, category')
+          .select('id, title, content, summary_ai, source, published_at, category, keywords, sentiment_score, importance, is_breaking')
+          .eq('is_published', true)
+          .order('importance', { ascending: false, nullsFirst: false })
           .order('published_at', { ascending: false })
           .limit(limit);
 
@@ -37,33 +40,114 @@ class GeminiRAGService {
         return data || [];
       }
 
-      // Search using ilike for first keyword
-      const { data, error } = await supabase.supabase
-        .from('articles')
-        .select('id, title, content, summary_ai, source, published_at, category')
-        .or(`title.ilike.%${keywords[0]}%,content.ilike.%${keywords[0]}%,summary_ai.ilike.%${keywords[0]}%`)
-        .order('published_at', { ascending: false })
-        .limit(limit * 2); // Get more to filter
+      // Multi-strategy search using AI-enriched columns
+      let allArticles = [];
 
-      if (error) throw error;
+      // Strategy 1: Search in AI keywords array (most relevant)
+      for (const keyword of queryKeywords.slice(0, 3)) {
+        const { data: keywordMatches } = await supabase.supabase
+          .from('articles')
+          .select('id, title, content, summary_ai, source, published_at, category, keywords, sentiment_score, importance, is_breaking')
+          .eq('is_published', true)
+          .contains('keywords', [keyword])
+          .order('importance', { ascending: false, nullsFirst: false })
+          .limit(10);
 
-      // Score and sort by relevance
-      const scored = (data || []).map(article => {
+        if (keywordMatches) allArticles.push(...keywordMatches);
+      }
+
+      // Strategy 2: Search in title and summary_ai
+      for (const keyword of queryKeywords.slice(0, 2)) {
+        const { data: textMatches } = await supabase.supabase
+          .from('articles')
+          .select('id, title, content, summary_ai, source, published_at, category, keywords, sentiment_score, importance, is_breaking')
+          .eq('is_published', true)
+          .or(`title.ilike.%${keyword}%,summary_ai.ilike.%${keyword}%`)
+          .order('published_at', { ascending: false })
+          .limit(10);
+
+        if (textMatches) allArticles.push(...textMatches);
+      }
+
+      // Strategy 3: Category-based search if query mentions categories
+      const categoryMap = {
+        'politique': 'Politique', 'gouvernement': 'Politique', 'président': 'Politique',
+        'économie': 'Économie', 'économique': 'Économie', 'finance': 'Économie',
+        'sport': 'Sport', 'football': 'Sport', 'match': 'Sport',
+        'santé': 'Santé', 'hôpital': 'Santé', 'médical': 'Santé',
+        'éducation': 'Éducation', 'école': 'Éducation', 'université': 'Éducation',
+        'culture': 'Culture', 'musique': 'Culture', 'festival': 'Culture',
+        'justice': 'Justice', 'tribunal': 'Justice', 'procès': 'Justice',
+        'environnement': 'Environnement', 'climat': 'Environnement'
+      };
+
+      for (const keyword of queryKeywords) {
+        if (categoryMap[keyword]) {
+          const { data: categoryMatches } = await supabase.supabase
+            .from('articles')
+            .select('id, title, content, summary_ai, source, published_at, category, keywords, sentiment_score, importance, is_breaking')
+            .eq('is_published', true)
+            .eq('category', categoryMap[keyword])
+            .order('importance', { ascending: false, nullsFirst: false })
+            .order('published_at', { ascending: false })
+            .limit(5);
+
+          if (categoryMatches) allArticles.push(...categoryMatches);
+        }
+      }
+
+      // Deduplicate by ID
+      const uniqueArticles = Array.from(
+        new Map(allArticles.map(a => [a.id, a])).values()
+      );
+
+      // Score and sort by relevance using AI metadata
+      const scored = uniqueArticles.map(article => {
         let score = 0;
         const titleLower = (article.title || '').toLowerCase();
-        const contentLower = (article.content || article.summary_ai || '').toLowerCase();
+        const summaryLower = (article.summary_ai || '').toLowerCase();
+        const articleKeywords = (article.keywords || []).map(k => k.toLowerCase());
 
-        for (const keyword of keywords) {
-          if (titleLower.includes(keyword)) score += 3;
-          if (contentLower.includes(keyword)) score += 1;
+        // Score based on keyword matches
+        for (const keyword of queryKeywords) {
+          // High score for keyword in AI keywords array
+          if (articleKeywords.some(k => k.includes(keyword) || keyword.includes(k))) {
+            score += 5;
+          }
+          // Medium score for title match
+          if (titleLower.includes(keyword)) {
+            score += 3;
+          }
+          // Lower score for summary match
+          if (summaryLower.includes(keyword)) {
+            score += 1;
+          }
         }
 
-        return { ...article, score };
+        // Boost based on AI importance (0-10)
+        if (article.importance) {
+          score += article.importance * 0.5;
+        }
+
+        // Boost breaking news
+        if (article.is_breaking) {
+          score += 3;
+        }
+
+        // Small recency boost (articles from last 7 days)
+        if (article.published_at) {
+          const daysSincePublished = (Date.now() - new Date(article.published_at).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSincePublished < 7) {
+            score += 2;
+          }
+        }
+
+        return { ...article, relevanceScore: score };
       });
 
       return scored
-        .filter(a => a.score > 0)
-        .sort((a, b) => b.score - a.score)
+        .filter(a => a.relevanceScore > 0)
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
         .slice(0, limit);
 
     } catch (error) {
@@ -73,50 +157,81 @@ class GeminiRAGService {
   }
 
   /**
-   * Build context from articles
+   * Build rich context from articles using AI-enriched data
    */
   buildContext(articles) {
     if (!articles || articles.length === 0) {
       return '';
     }
 
-    return articles.map(article => {
+    return articles.map((article, idx) => {
+      // Prefer AI summary, fallback to content
       const content = article.summary_ai || article.content || '';
-      const truncatedContent = content.length > 1000
-        ? content.substring(0, 1000) + '...'
+      const truncatedContent = content.length > 800
+        ? content.substring(0, 800) + '...'
         : content;
 
+      // Format sentiment
+      let sentimentLabel = 'Neutre';
+      if (article.sentiment_score !== null && article.sentiment_score !== undefined) {
+        if (article.sentiment_score > 0.3) sentimentLabel = 'Positif';
+        else if (article.sentiment_score < -0.3) sentimentLabel = 'Négatif';
+      }
+
+      // Format importance
+      const importanceLabel = article.importance
+        ? `${article.importance}/10`
+        : 'Non évalué';
+
+      // Format keywords
+      const keywordsStr = article.keywords && article.keywords.length > 0
+        ? article.keywords.slice(0, 5).join(', ')
+        : 'Aucun';
+
       return `---
-ARTICLE: ${article.title}
-SOURCE: ${article.source || 'Gabon 24/7'}
-DATE: ${article.published_at ? new Date(article.published_at).toLocaleDateString('fr-FR') : 'N/A'}
-CATÉGORIE: ${article.category || 'Général'}
-CONTENU: ${truncatedContent}
+📰 ARTICLE ${idx + 1}: ${article.title}
+📅 DATE: ${article.published_at ? new Date(article.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+📌 SOURCE: ${article.source || 'Gabon 24/7'}
+📁 CATÉGORIE: ${article.category || 'Général'}
+⭐ IMPORTANCE: ${importanceLabel}
+💭 SENTIMENT: ${sentimentLabel}
+🔑 MOTS-CLÉS: ${keywordsStr}
+${article.is_breaking ? '🚨 BREAKING NEWS' : ''}
+
+CONTENU:
+${truncatedContent}
 ---`;
     }).join('\n\n');
   }
 
   /**
-   * Chat with RAG - searches articles and uses them as context
+   * Chat with RAG - searches articles using AI metadata and generates response
    */
   async chat(query, history = []) {
     try {
-      // 1. Search relevant articles
+      // 1. Search relevant articles using AI-enriched columns
       const articles = await this.searchArticles(query);
       const context = this.buildContext(articles);
 
-      // 2. Build system prompt
-      const systemPrompt = `Tu es Insight Gab, un assistant IA spécialisé sur l'actualité du Gabon. Tu as accès à une base de plus de 20 000 articles d'actualité gabonaise.
+      // 2. Build enhanced system prompt
+      const systemPrompt = `Tu es **Insight Gab**, un assistant IA expert en actualité gabonaise. Tu as accès à une base de plus de 20 000 articles enrichis par intelligence artificielle.
 
-RÈGLES IMPORTANTES:
-- Réponds TOUJOURS en français
-- Base tes réponses sur les articles fournis en contexte
-- Si tu ne trouves pas d'information pertinente, dis-le clairement
-- Cite les sources quand c'est pertinent (nom du journal, date)
-- Sois concis mais informatif
-- Si on te demande des informations très récentes, précise que ta base peut ne pas être à jour
+## TES CAPACITÉS
+- Accès aux articles avec métadonnées IA: catégorie, sentiment, importance, mots-clés
+- Recherche sémantique dans la base de connaissances
+- Analyse des tendances et des sujets récurrents
 
-${context ? `ARTICLES DE CONTEXTE:\n${context}` : 'Aucun article trouvé pour cette requête.'}`;
+## RÈGLES IMPÉRATIVES
+1. Réponds TOUJOURS en français
+2. Base tes réponses UNIQUEMENT sur les articles fournis en contexte
+3. Si tu ne trouves pas d'information pertinente, dis-le clairement: "Je n'ai pas trouvé d'article sur ce sujet dans ma base."
+4. Cite les sources: "Selon [Source], le [Date]..."
+5. Utilise les métadonnées (importance, sentiment) pour contextualiser
+6. Sois factuel et concis
+7. Pour les sujets sensibles, reste neutre et objectif
+
+## ARTICLES DE CONTEXTE (${articles.length} trouvé${articles.length > 1 ? 's' : ''})
+${context || 'Aucun article trouvé pour cette requête. Suggère à l\'utilisateur de reformuler ou d\'utiliser d\'autres mots-clés.'}`;
 
       // 3. Initialize model
       const model = this.genAI.getGenerativeModel({
@@ -137,7 +252,7 @@ ${context ? `ARTICLES DE CONTEXTE:\n${context}` : 'Aucun article trouvé pour ce
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 1500,
         }
       });
 
@@ -148,7 +263,13 @@ ${context ? `ARTICLES DE CONTEXTE:\n${context}` : 'Aucun article trouvé pour ce
       return {
         text,
         success: true,
-        articlesUsed: articles.length
+        articlesUsed: articles.length,
+        sources: articles.map(a => ({
+          title: a.title,
+          source: a.source,
+          date: a.published_at,
+          category: a.category
+        }))
       };
 
     } catch (error) {
@@ -165,18 +286,19 @@ ${context ? `ARTICLES DE CONTEXTE:\n${context}` : 'Aucun article trouvé pour ce
    * For compatibility with admin page - returns store status
    */
   async findStore() {
-    // We use Supabase, so always "active"
-    return { name: 'supabase-articles', displayName: 'Gabon24-7 Supabase Store' };
+    return { name: 'supabase-ai-enriched', displayName: 'Gabon24-7 AI-Enriched Store' };
   }
 
   /**
-   * Get articles count for status
+   * Get enriched articles count for status
    */
   async getArticlesCount() {
     try {
       const { count, error } = await supabase.supabase
         .from('articles')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('is_published', true)
+        .not('summary_ai', 'is', null);
 
       return error ? 0 : (count || 0);
     } catch {
