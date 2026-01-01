@@ -117,26 +117,14 @@ async function getLiveFixtures(req, res) {
       });
     }
 
-    // Déterminer quelle API utiliser selon le format de la clé
-    let apiUrl, headers;
-    
-    if (apiKey.startsWith('sk_') || apiKey.length === 32) {
-      // API-Football.com (clé directe)
-      apiUrl = 'https://v3.football.api-sports.io/fixtures?live=all';
-      headers = {
-        'x-apisports-key': apiKey
-      };
-      console.log('🔑 Utilisation API-Football.com');
-    } else {
-      // RapidAPI
-      const apiHost = 'api-football-v1.p.rapidapi.com';
-      apiUrl = `https://${apiHost}/v3/fixtures?live=all`;
-      headers = {
-        'x-rapidapi-host': apiHost,
-        'x-rapidapi-key': apiKey
-      };
-      console.log('🔑 Utilisation RapidAPI');
-    }
+    // Toujours utiliser RapidAPI (clé fournie est une clé RapidAPI)
+    const apiHost = 'api-football-v1.p.rapidapi.com';
+    const apiUrl = `https://${apiHost}/v3/fixtures?live=all`;
+    const headers = {
+      'x-rapidapi-host': apiHost,
+      'x-rapidapi-key': apiKey
+    };
+    console.log('🔑 Utilisation RapidAPI');
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -149,12 +137,33 @@ async function getLiveFixtures(req, res) {
     }
 
     const data = await response.json();
-    
-    // Filtrer les matchs
-    if (data.response) {
-      data.response = filterMatches(data.response);
+
+    // Log pour debug - combien de matchs avant filtre
+    const totalBeforeFilter = data.response?.length || 0;
+    console.log(`📊 Matchs reçus de l'API: ${totalBeforeFilter}`);
+
+    // Filtrer les matchs (seulement si on en a beaucoup, sinon afficher tout)
+    if (data.response && data.response.length > 0) {
+      // Si on a plus de 20 matchs, filtrer pour ne garder que les ligues majeures
+      // Sinon, afficher tous les matchs disponibles
+      if (data.response.length > 20) {
+        const beforeFilter = data.response.length;
+        data.response = filterMatches(data.response);
+        console.log(`🔍 Après filtre: ${data.response.length}/${beforeFilter} matchs`);
+      } else {
+        console.log(`✅ Affichage de tous les ${data.response.length} matchs (< 20)`);
+      }
+
+      // Si le filtre a tout exclu et qu'on avait des matchs, afficher sans filtre
+      if (data.response.length === 0 && totalBeforeFilter > 0) {
+        console.log(`⚠️ Filtre trop restrictif, récupération des données brutes`);
+        // Refaire la requête pour avoir les données non filtrées
+        const refetch = await fetch(apiUrl, { method: 'GET', headers: headers });
+        const rawData = await refetch.json();
+        data.response = rawData.response || [];
+      }
     }
-    
+
     // Mettre en cache
     fixturesCache = {
       data: data,
@@ -202,31 +211,23 @@ let standingsCache = {};
 const STANDINGS_CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
 
 /**
- * Helper pour construire les headers API
+ * Helper pour construire les headers API (RapidAPI)
  */
 function getApiConfig() {
-  const apiKey = process.env.FOOTBALL_API_KEY || process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_FOOTBALL_KEY;
+  const apiKey = process.env.RAPIDAPI_KEY || process.env.FOOTBALL_API_KEY || process.env.RAPIDAPI_FOOTBALL_KEY;
 
   if (!apiKey) {
     return null;
   }
 
-  if (apiKey.startsWith('sk_') || apiKey.length === 32) {
-    // API-Football.com (clé directe)
-    return {
-      baseUrl: 'https://v3.football.api-sports.io',
-      headers: { 'x-apisports-key': apiKey }
-    };
-  } else {
-    // RapidAPI
-    return {
-      baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
-      headers: {
-        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-        'x-rapidapi-key': apiKey
-      }
-    };
-  }
+  // Toujours utiliser RapidAPI
+  return {
+    baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
+    headers: {
+      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+      'x-rapidapi-key': apiKey
+    }
+  };
 }
 
 /**
