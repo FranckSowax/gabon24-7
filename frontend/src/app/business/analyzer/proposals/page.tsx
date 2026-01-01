@@ -260,11 +260,11 @@ function ProposalsContent() {
 
                         if (items.length > 0) {
                           return (
-                            <ul className="space-y-1.5">
+                            <ul className="space-y-2 pl-2">
                               {items.slice(0, 6).map((item, i) => (
                                 <li key={i} className="flex items-start gap-2">
-                                  <span className="text-yellow-400 mt-0.5">•</span>
-                                  <span className="text-white text-sm">{item}</span>
+                                  <span className="text-yellow-400 mt-1 flex-shrink-0">•</span>
+                                  <span className="text-white text-sm leading-relaxed">{item}</span>
                                 </li>
                               ))}
                             </ul>

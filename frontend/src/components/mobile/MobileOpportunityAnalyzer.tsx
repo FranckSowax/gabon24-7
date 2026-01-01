@@ -819,7 +819,28 @@ export default function MobileOpportunityAnalyzer({
                             <p className="text-gray-700 text-sm mb-2">{p.description}</p>
                           )}
                           {p.premiers_investissements && (
-                            <div className="text-gray-800 text-xs mb-2"><span className="font-medium">Premiers investissements:</span> {Array.isArray(p.premiers_investissements) ? p.premiers_investissements.join(', ') : String(p.premiers_investissements)}</div>
+                            <div className="mb-2">
+                              <span className="text-gray-800 text-xs font-medium block mb-1">Premiers investissements:</span>
+                              {(() => {
+                                const val = p.premiers_investissements
+                                const items = Array.isArray(val)
+                                  ? val
+                                  : String(val || '').split(/(?:\s*[•–—]\s+|\s+-\s+|[;]|\n)+/).filter(Boolean)
+                                if (items.length > 1) {
+                                  return (
+                                    <ul className="space-y-1 pl-2">
+                                      {items.slice(0, 5).map((item: string, i: number) => (
+                                        <li key={i} className="flex items-start gap-2 text-gray-700 text-xs">
+                                          <span className="text-yellow-600 mt-0.5 flex-shrink-0">•</span>
+                                          <span className="leading-relaxed">{item}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )
+                                }
+                                return <span className="text-gray-700 text-xs">{String(val)}</span>
+                              })()}
+                            </div>
                           )}
                           <div className="flex items-center gap-2 mt-2">
                             <button

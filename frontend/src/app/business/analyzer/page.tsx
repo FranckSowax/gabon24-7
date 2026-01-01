@@ -1318,9 +1318,12 @@ export default function BusinessAnalyzerPage() {
                                           .filter(Boolean)
                                     if (items.length > 1) {
                                       return (
-                                        <ul className="list-disc list-inside text-white text-sm space-y-1">
+                                        <ul className="text-white text-sm space-y-2 pl-4">
                                           {items.map((it, i) => (
-                                            <li key={i}>{it}</li>
+                                            <li key={i} className="flex items-start gap-2">
+                                              <span className="text-yellow-400 mt-1.5 flex-shrink-0">•</span>
+                                              <span>{it}</span>
+                                            </li>
                                           ))}
                                         </ul>
                                       )
@@ -1342,11 +1345,11 @@ export default function BusinessAnalyzerPage() {
                             {proposal.avantages && proposal.avantages.length > 0 && (
                               <div className="mb-4">
                                 <p className="text-gray-400 text-xs mb-2">Avantages :</p>
-                                <div className="space-y-1">
+                                <div className="space-y-2">
                                   {proposal.avantages.slice(0, 2).map((avantage: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                      <CheckCircle className="w-4 h-4 text-green-400" />
-                                      <p className="text-gray-300 text-sm">{avantage}</p>
+                                    <div key={i} className="flex items-start gap-2">
+                                      <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                                      <p className="text-gray-300 text-sm leading-relaxed">{avantage}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -1540,9 +1543,12 @@ export default function BusinessAnalyzerPage() {
                                       .filter(Boolean)
                                 if (items.length > 1) {
                                   return (
-                                    <ul className="list-disc list-inside text-white text-sm space-y-1">
+                                    <ul className="text-white text-sm space-y-2 pl-4">
                                       {items.map((it, i) => (
-                                        <li key={i}>{it}</li>
+                                        <li key={i} className="flex items-start gap-2">
+                                          <span className="text-yellow-400 mt-1.5 flex-shrink-0">•</span>
+                                          <span>{it}</span>
+                                        </li>
                                       ))}
                                     </ul>
                                   )
@@ -1564,11 +1570,11 @@ export default function BusinessAnalyzerPage() {
                         {proposal.avantages && proposal.avantages.length > 0 && (
                           <div className="mb-4">
                             <p className="text-gray-400 text-xs mb-2">Avantages :</p>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               {proposal.avantages.slice(0, 2).map((avantage: string, i: number) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4 text-green-400" />
-                                  <p className="text-gray-300 text-sm">{avantage}</p>
+                                <div key={i} className="flex items-start gap-2">
+                                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                                  <p className="text-gray-300 text-sm leading-relaxed">{avantage}</p>
                                 </div>
                               ))}
                             </div>
