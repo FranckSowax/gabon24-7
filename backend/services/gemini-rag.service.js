@@ -1,8 +1,5 @@
-const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const supabase = require('../supabase-config');
 
 class GeminiRAGService {
   constructor() {
@@ -10,163 +7,180 @@ class GeminiRAGService {
     if (!this.apiKey) {
       console.warn('⚠️ GEMINI_API_KEY is not set. RAG Service will not function.');
     }
-    
-    // Initialize standard SDK for chat generation
+
     this.genAI = new GoogleGenerativeAI(this.apiKey);
-    this.modelName = 'gemini-flash-latest'; 
-    this.storeDisplayName = 'Gabon24-7 Knowledge Base';
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
-  }
-
-  getHeaders() {
-    return {
-      'x-goog-api-key': this.apiKey,
-      'Content-Type': 'application/json'
-    };
+    this.modelName = 'gemini-1.5-flash';
   }
 
   /**
-   * Find existing store by display name
+   * Search relevant articles from Supabase using text search
    */
-  async findStore() {
+  async searchArticles(query, limit = 5) {
     try {
-      let nextPageToken = null;
-      do {
-        const url = `${this.baseUrl}/fileSearchStores?pageSize=20${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
-        const response = await axios.get(url, { headers: this.getHeaders() });
-        
-        const stores = response.data.fileSearchStores || [];
-        const found = stores.find(s => s.displayName === this.storeDisplayName);
-        if (found) return found;
+      // Extract keywords from query (simple approach)
+      const keywords = query
+        .toLowerCase()
+        .replace(/[^\w\sàâäéèêëïîôùûüç]/g, '')
+        .split(/\s+/)
+        .filter(word => word.length > 3)
+        .slice(0, 5);
 
-        nextPageToken = response.data.nextPageToken;
-      } while (nextPageToken);
+      if (keywords.length === 0) {
+        // Fallback: get recent articles
+        const { data, error } = await supabase.supabase
+          .from('articles')
+          .select('id, title, content, summary_ai, source, published_at, category')
+          .order('published_at', { ascending: false })
+          .limit(limit);
 
-      return null;
-    } catch (error) {
-      console.error('Error listing stores:', error.response?.data || error.message);
-      return null;
-    }
-  }
+        if (error) throw error;
+        return data || [];
+      }
 
-  /**
-   * Create a new store
-   */
-  async createStore() {
-    try {
-      const response = await axios.post(
-        `${this.baseUrl}/fileSearchStores`,
-        { displayName: this.storeDisplayName },
-        { headers: this.getHeaders() }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error creating store:', error.response?.data || error.message);
-      throw error;
-    }
-  }
+      // Search using ilike for first keyword
+      const { data, error } = await supabase.supabase
+        .from('articles')
+        .select('id, title, content, summary_ai, source, published_at, category')
+        .or(`title.ilike.%${keywords[0]}%,content.ilike.%${keywords[0]}%,summary_ai.ilike.%${keywords[0]}%`)
+        .order('published_at', { ascending: false })
+        .limit(limit * 2); // Get more to filter
 
-  /**
-   * Get or Create the Store
-   */
-  async getOrCreateStore() {
-    const existing = await this.findStore();
-    if (existing) {
-      return existing;
-    }
-    console.log(`Creating new store: ${this.storeDisplayName}`);
-    return await this.createStore();
-  }
+      if (error) throw error;
 
-  /**
-   * Upload content directly to the store
-   * content: string (the text content)
-   * mimeType: string (default text/plain)
-   */
-  async uploadContentToStore(storeName, content) {
-    try {
-      // Use the GoogleAIFileManager for upload
-      const { GoogleAIFileManager } = require('@google/generative-ai/server');
-      const fileManager = new GoogleAIFileManager(this.apiKey);
-      
-      const tempPath = path.join(os.tmpdir(), `upload_${Date.now()}.txt`);
-      fs.writeFileSync(tempPath, content);
-      
-      console.log(`Uploading file to Gemini Files...`);
-      const uploadResponse = await fileManager.uploadFile(tempPath, {
-        mimeType: 'text/plain',
-        displayName: `Articles Batch ${new Date().toISOString()}`
+      // Score and sort by relevance
+      const scored = (data || []).map(article => {
+        let score = 0;
+        const titleLower = (article.title || '').toLowerCase();
+        const contentLower = (article.content || article.summary_ai || '').toLowerCase();
+
+        for (const keyword of keywords) {
+          if (titleLower.includes(keyword)) score += 3;
+          if (contentLower.includes(keyword)) score += 1;
+        }
+
+        return { ...article, score };
       });
-      
-      console.log(`File uploaded: ${uploadResponse.file.name}`);
-      
-      // Import to Store using REST
-      console.log(`Importing ${uploadResponse.file.name} to store ${storeName}...`);
-      const importUrl = `${this.baseUrl}/${storeName}:importFile`;
-      const importResponse = await axios.post(importUrl, {
-        fileName: uploadResponse.file.name
-      }, { headers: this.getHeaders() });
-      
-      // Clean up temp file
-      fs.unlinkSync(tempPath);
-      
-      return importResponse.data;
-      
+
+      return scored
+        .filter(a => a.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
     } catch (error) {
-      console.error('Error in uploadContentToStore:', error.response?.data || error.message);
-      throw error;
+      console.error('Search articles error:', error);
+      return [];
     }
   }
 
   /**
-   * Chat with RAG
+   * Build context from articles
+   */
+  buildContext(articles) {
+    if (!articles || articles.length === 0) {
+      return '';
+    }
+
+    return articles.map(article => {
+      const content = article.summary_ai || article.content || '';
+      const truncatedContent = content.length > 1000
+        ? content.substring(0, 1000) + '...'
+        : content;
+
+      return `---
+ARTICLE: ${article.title}
+SOURCE: ${article.source || 'Gabon 24/7'}
+DATE: ${article.published_at ? new Date(article.published_at).toLocaleDateString('fr-FR') : 'N/A'}
+CATÉGORIE: ${article.category || 'Général'}
+CONTENU: ${truncatedContent}
+---`;
+    }).join('\n\n');
+  }
+
+  /**
+   * Chat with RAG - searches articles and uses them as context
    */
   async chat(query, history = []) {
     try {
-      const store = await this.getOrCreateStore();
-      const storeName = store.name;
-      
+      // 1. Search relevant articles
+      const articles = await this.searchArticles(query);
+      const context = this.buildContext(articles);
+
+      // 2. Build system prompt
+      const systemPrompt = `Tu es Insight Gab, un assistant IA spécialisé sur l'actualité du Gabon. Tu as accès à une base de plus de 20 000 articles d'actualité gabonaise.
+
+RÈGLES IMPORTANTES:
+- Réponds TOUJOURS en français
+- Base tes réponses sur les articles fournis en contexte
+- Si tu ne trouves pas d'information pertinente, dis-le clairement
+- Cite les sources quand c'est pertinent (nom du journal, date)
+- Sois concis mais informatif
+- Si on te demande des informations très récentes, précise que ta base peut ne pas être à jour
+
+${context ? `ARTICLES DE CONTEXTE:\n${context}` : 'Aucun article trouvé pour cette requête.'}`;
+
+      // 3. Initialize model
       const model = this.genAI.getGenerativeModel({
         model: this.modelName,
-        tools: [
-          {
-            fileSearch: {
-                fileSearchStoreNames: [storeName]
-            }
-          }
-        ]
+        systemInstruction: systemPrompt,
       });
 
-      // Convert history
+      // 4. Convert history
       const formattedHistory = history.map(h => ({
         role: h.role === 'user' ? 'user' : 'model',
         parts: [{ text: h.content }]
       }));
 
+      // 5. Start chat and send message
       const chatSession = model.startChat({
         history: formattedHistory,
         generationConfig: {
-            temperature: 0.7,
-            topP: 0.95,
-            topK: 40,
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 1024,
         }
       });
 
       const result = await chatSession.sendMessage(query);
       const response = await result.response;
       const text = response.text();
-      
+
       return {
         text,
-        success: true
+        success: true,
+        articlesUsed: articles.length
       };
+
     } catch (error) {
       console.error('Chat RAG Error:', error);
       return {
         success: false,
         error: error.message,
-        text: "Désolé, je rencontre des difficultés pour accéder à ma base de connaissances pour le moment."
+        text: "Désolé, je rencontre des difficultés techniques. Veuillez réessayer dans quelques instants."
       };
+    }
+  }
+
+  /**
+   * For compatibility with admin page - returns store status
+   */
+  async findStore() {
+    // We use Supabase, so always "active"
+    return { name: 'supabase-articles', displayName: 'Gabon24-7 Supabase Store' };
+  }
+
+  /**
+   * Get articles count for status
+   */
+  async getArticlesCount() {
+    try {
+      const { count, error } = await supabase.supabase
+        .from('articles')
+        .select('*', { count: 'exact', head: true });
+
+      return error ? 0 : (count || 0);
+    } catch {
+      return 0;
     }
   }
 }
