@@ -457,9 +457,10 @@ router.post('/:projectId/action-plan', requireAuth, async (req, res) => {
  * PATCH /api/saved-projects/:projectId/update-steps
  * Met à jour les étapes du plan d'action
  */
-router.patch('/:projectId/update-steps', async (req, res) => {
+router.patch('/:projectId/update-steps', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
+    const userId = req.user.id;
     const { planSteps, progressPercentage } = req.body;
 
     if (!planSteps || !Array.isArray(planSteps)) {
@@ -469,6 +470,7 @@ router.patch('/:projectId/update-steps', async (req, res) => {
       });
     }
 
+    // Vérifier que l'utilisateur est propriétaire du projet
     const { data, error } = await supabaseService.supabase
       .from('saved_projects')
       .update({
@@ -477,6 +479,7 @@ router.patch('/:projectId/update-steps', async (req, res) => {
         context_updated_at: new Date().toISOString()
       })
       .eq('id', projectId)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -498,118 +501,6 @@ router.patch('/:projectId/update-steps', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur serveur'
-    });
-  }
-});
-
-/**
- * POST /api/saved-projects
- * Crée un nouveau projet sauvegardé
- */
-router.post('/', requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id; // Extrait du JWT
-    const {
-      article,
-      analysis,
-      secteurSelectionne,
-      budgetSelectionne,
-      proposition,
-      userContext
-    } = req.body;
-
-    console.log('💾 Sauvegarde projet pour userId:', userId);
-
-    // Validation
-    if (!article || !analysis || !secteurSelectionne || !budgetSelectionne || !proposition) {
-      return res.status(400).json({
-        success: false,
-        error: 'Données manquantes',
-        required: ['article', 'analysis', 'secteurSelectionne', 'budgetSelectionne', 'proposition']
-      });
-    }
-
-    // Préparer les données pour l'insertion
-    const projectData = {
-      user_id: userId,
-
-      // Données de l'article
-      article_title: article?.title || 'Titre non disponible',
-      article_summary: article?.summary || '',
-      article_url: article?.url || '',
-      article_image_url: article?.image_url || null,
-      article_source: article?.source || null,
-      article_published_at: article?.published_at || null,
-
-      // Analyse contextuelle avec fallbacks
-      problematique_centrale: analysis?.analyse_contextuelle?.problematique_centrale ||
-                             analysis?.problematique_centrale ||
-                             'Problématique non définie',
-      secteur_principal: analysis?.analyse_contextuelle?.secteur_principal ||
-                        analysis?.secteur_principal || '',
-      acteurs_impactes: Array.isArray(analysis?.analyse_contextuelle?.acteurs_impactes)
-                       ? analysis.analyse_contextuelle.acteurs_impactes.join(', ')
-                       : (analysis?.acteurs_impactes || ''),
-      urgence_score: analysis?.analyse_contextuelle?.urgence_score ||
-                    analysis?.urgence_score || 0,
-
-      // Secteur et budget sélectionnés
-      secteur_selectionne: secteurSelectionne,
-      budget_selectionne: budgetSelectionne,
-
-      // Proposition sauvegardée avec fallbacks
-      proposition_titre: proposition?.titre || 'Proposition sans titre',
-      proposition_description: proposition?.description || '',
-      proposition_investissement: proposition?.investissement_initial ||
-                                 proposition?.investissement ||
-                                 proposition?.premiers_investissements || '',
-      proposition_rentabilite: proposition?.rentabilite_prevue ||
-                              proposition?.rentabilite || '',
-      proposition_revenus_mensuels: proposition?.revenus_mensuels_estimes ||
-                                   proposition?.revenus_mensuels || '',
-      proposition_actions_immediates: Array.isArray(proposition?.actions_immediates)
-                                     ? proposition.actions_immediates
-                                     : [],
-      proposition_avantages_concurrentiels: Array.isArray(proposition?.avantages_concurrentiels)
-                                           ? proposition.avantages_concurrentiels
-                                           : (Array.isArray(proposition?.avantages) ? proposition.avantages : []),
-      proposition_score_faisabilite: proposition?.score_faisabilite || 0,
-
-      // Contexte utilisateur
-      user_context: userContext || null,
-      actions_count: 0,
-      last_action_at: null
-    };
-
-    // Insérer le projet dans Supabase
-    const { data, error } = await supabaseService.supabase
-      .from('saved_projects')
-      .insert([projectData])
-      .select('id');
-
-    if (error) {
-      console.error('❌ Erreur Supabase:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la sauvegarde',
-        details: error.message
-      });
-    }
-
-    console.log('✅ Projet sauvegardé, ID:', data[0]?.id);
-
-    res.json({
-      success: true,
-      message: 'Projet sauvegardé avec succès',
-      projectId: data[0]?.id
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur save-project:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur interne du serveur',
-      details: error.message
     });
   }
 });
