@@ -43,22 +43,7 @@ export default function AudioCustomPage() {
   const { addToast } = useToast()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Protection de la page
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/auth/signin?redirect=/audio/custom')
-      } else if (subscriptionPlan?.slug !== 'pro') {
-        router.push('/abonnement')
-      }
-    }
-  }, [user, subscriptionPlan, authLoading, router])
-
-  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
-    return <Loading />
-  }
-
-  // Articles selection
+  // Articles selection - TOUS LES HOOKS AVANT LE RETURN CONDITIONNEL
   const [articleModalOpen, setArticleModalOpen] = useState(false)
   const [availableArticles, setAvailableArticles] = useState<ArticleLite[]>([])
   const [articlesLoading, setArticlesLoading] = useState(false)
@@ -74,11 +59,23 @@ export default function AudioCustomPage() {
   const [activeSummaryId, setActiveSummaryId] = useState<string | null>(null)
   const [language, setLanguage] = useState<'fr'|'en'|'zh'>('fr')
   const [pace, setPace] = useState<'slow'|'normal'|'fast'>('normal')
+  const [cancelling, setCancelling] = useState(false)
 
   // History
   const [history, setHistory] = useState<AudioSummary[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [tick, setTick] = useState(0) // refresh timers
+
+  // Protection de la page
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/auth/signin?redirect=/audio/custom')
+      } else if (subscriptionPlan?.slug !== 'pro') {
+        router.push('/abonnement')
+      }
+    }
+  }, [user, subscriptionPlan, authLoading, router])
 
   const remainingHours = (createdAt: string, t: number) => {
     void t
@@ -228,7 +225,44 @@ export default function AudioCustomPage() {
       addToast({ kind: 'error', message: 'La génération a échoué' })
       setActiveSummaryId(null)
     }
+    if (item.status === 'cancelled') {
+      setSubmitting(false)
+      setCancelling(false)
+      addToast({ kind: 'info', message: 'Génération annulée' })
+      setActiveSummaryId(null)
+    }
   }, [history, activeSummaryId, addToast])
+
+  // Fonction d'annulation
+  const cancelGeneration = async () => {
+    if (!activeSummaryId || !user?.id) return
+    setCancelling(true)
+    try {
+      const resp = await fetch(`${API_URL}/api/audio/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summaryId: activeSummaryId, userId: user.id })
+      })
+      const json = await resp.json()
+      if (json.success) {
+        addToast({ kind: 'success', message: 'Génération annulée, crédits remboursés' })
+        setSubmitting(false)
+        setActiveSummaryId(null)
+        fetchHistory()
+      } else {
+        addToast({ kind: 'error', message: json.error || 'Impossible d\'annuler' })
+      }
+    } catch {
+      addToast({ kind: 'error', message: 'Erreur réseau' })
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  // Afficher un loader pendant la vérification (APRÈS tous les hooks)
+  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
+    return <Loading />
+  }
 
   const toggleSelect = (a: ArticleLite) => {
     setSelectedArticles(prev => {
@@ -491,12 +525,27 @@ export default function AudioCustomPage() {
       {submitting && (
         <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
-            <div className="mx-auto mb-4 w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-            <p className="font-semibold text-gray-900">{progressMsg}</p>
-            <p className="text-sm text-gray-500 mt-1">Veuillez patienter, cela peut prendre jusqu'à une minute…</p>
+            {!cancelling ? (
+              <div className="mx-auto mb-4 w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+            ) : (
+              <div className="mx-auto mb-4 w-12 h-12 rounded-full border-4 border-red-200 border-t-red-600 animate-spin" />
+            )}
+            <p className="font-semibold text-gray-900">{cancelling ? 'Annulation en cours…' : progressMsg}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {cancelling ? 'Veuillez patienter…' : 'Veuillez patienter, cela peut prendre jusqu\'à une minute…'}
+            </p>
             <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-blue-700 animate-pulse" style={{ width: '70%' }} />
+              <div className={`h-full ${cancelling ? 'bg-gradient-to-r from-red-500 to-red-700' : 'bg-gradient-to-r from-blue-500 to-blue-700'} animate-pulse`} style={{ width: '70%' }} />
             </div>
+            {!cancelling && (
+              <button
+                type="button"
+                onClick={cancelGeneration}
+                className="mt-4 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Annuler la génération
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -833,24 +833,119 @@ async function generateAudioForExistingSummary(summaryId, summary) {
   }
 }
 
+// POST /api/audio/cancel - Annuler une génération en cours et rembourser les crédits
+router.post('/cancel', async (req, res) => {
+  try {
+    const { summaryId, userId } = req.body;
+
+    if (!summaryId || !userId) {
+      return res.status(400).json({ success: false, error: 'summaryId et userId requis' });
+    }
+
+    console.log(`🛑 Demande d'annulation: ${summaryId} par utilisateur ${userId}`);
+
+    // Récupérer le résumé
+    const { data: summary, error: fetchError } = await supabaseService.supabase
+      .from('audio_summaries')
+      .select('*')
+      .eq('id', summaryId)
+      .eq('user_id', userId) // Vérifier que l'utilisateur est bien le propriétaire
+      .single();
+
+    if (fetchError || !summary) {
+      return res.status(404).json({ success: false, error: 'Résumé non trouvé ou accès refusé' });
+    }
+
+    // Vérifier si l'annulation est possible (pas déjà terminé ou échoué)
+    if (summary.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Le résumé est déjà terminé, annulation impossible' });
+    }
+
+    if (summary.status === 'cancelled') {
+      return res.status(400).json({ success: false, error: 'Le résumé a déjà été annulé' });
+    }
+
+    // Marquer comme annulé
+    const { error: updateError } = await supabaseService.supabase
+      .from('audio_summaries')
+      .update({
+        status: 'cancelled',
+        error_message: 'Annulé par l\'utilisateur'
+      })
+      .eq('id', summaryId);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour statut:', updateError);
+      return res.status(500).json({ success: false, error: 'Erreur lors de l\'annulation' });
+    }
+
+    // Rembourser les crédits
+    let refundResult = { success: false, total_balance: null };
+    try {
+      const refundAmount = 5; // Coût du service audio_summary
+      refundResult = await refundCredits(
+        userId,
+        refundAmount,
+        `Annulation résumé audio ${summaryId}`,
+        null // Pas de transaction_id spécifique
+      );
+
+      if (refundResult.success) {
+        console.log(`💸 Crédits remboursés: ${refundAmount}. Nouveau solde: ${refundResult.total_balance}`);
+      } else {
+        console.error('❌ Erreur remboursement:', refundResult.error);
+      }
+    } catch (refundError) {
+      console.error('❌ Exception remboursement:', refundError);
+    }
+
+    // Supprimer les fichiers audio si déjà uploadés
+    if (summary.audio_url) {
+      try {
+        const fileName = summary.audio_url.split('/').pop();
+        if (fileName) {
+          await supabaseService.supabase
+            .storage
+            .from('audio-summaries')
+            .remove([fileName]);
+          console.log(`🗑️ Fichier audio supprimé: ${fileName}`);
+        }
+      } catch (deleteError) {
+        console.error('⚠️ Erreur suppression fichier audio:', deleteError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Génération annulée',
+      creditsRefunded: refundResult.success,
+      newBalance: refundResult.total_balance
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur cancel:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/audio/generate-scheduled-summary - Générer résumé programmé (13h, 20h)
 router.post('/generate-scheduled-summary', async (req, res) => {
   try {
     const { timeSlot, language = 'fr' } = req.body;
-    
+
     if (!timeSlot || !['morning', 'afternoon', 'evening'].includes(timeSlot)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'timeSlot requis (morning, afternoon, evening)' 
+      return res.status(400).json({
+        success: false,
+        error: 'timeSlot requis (morning, afternoon, evening)'
       });
     }
-    
+
     console.log(`🎙️ Génération programmée: ${timeSlot} [${language}]`);
-    
+
     // Utiliser le scheduler
     const { generatePublicAudioSummary } = require('../services/audio-scheduler');
     const summaryId = await generatePublicAudioSummary(timeSlot, language);
-    
+
     if (summaryId) {
       res.json({
         success: true,
@@ -865,12 +960,12 @@ router.post('/generate-scheduled-summary', async (req, res) => {
         error: 'Échec génération résumé'
       });
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur generate-scheduled-summary:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
