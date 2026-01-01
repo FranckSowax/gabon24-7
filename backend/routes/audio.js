@@ -274,7 +274,7 @@ async function processAudioSummary(summaryId, articles, language, pace, sendWhat
       console.log(`💸 Remboursement des crédits pour l'utilisateur ${userId}`);
       const refundResult = await refundCredits(
         userId,
-        5, // Montant du service audio_summary
+        20, // Montant du service audio_summary (coût réel)
         `Échec génération résumé audio ${summaryId}`,
         transactionId
       );
@@ -882,7 +882,7 @@ router.post('/cancel', async (req, res) => {
     // Rembourser les crédits
     let refundResult = { success: false, total_balance: null };
     try {
-      const refundAmount = 5; // Coût du service audio_summary
+      const refundAmount = 20; // Coût du service audio_summary (coût réel)
       refundResult = await refundCredits(
         userId,
         refundAmount,
