@@ -2,15 +2,15 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  MessageSquare, 
-  Monitor, 
-  BarChart3, 
-  Navigation, 
-  Eye, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  MessageSquare,
+  Monitor,
+  BarChart3,
+  Navigation,
+  Eye,
   Settings,
   Bell,
   BellRing,
@@ -22,7 +22,8 @@ import {
   Wallet,
   Megaphone,
   Gamepad2,
-  Coins
+  Coins,
+  Bot
 } from 'lucide-react';
 import NotificationBell from '@/components/admin/NotificationBell';
 
@@ -44,6 +45,7 @@ export default function AdminLayout({
     { name: 'Publicités', href: '/admin/campaigns', icon: Megaphone },
     { name: 'Sondages', href: '/admin/sondages', icon: BarChart3 },
     { name: 'Veille RSS', href: '/admin/veille', icon: Eye },
+    { name: 'Insight Gab RAG', href: '/admin/insight-gab', icon: Bot, badge: 'AI' },
     { name: 'Feedbacks', href: '/admin/feedbacks', icon: MessageSquare },
     { name: 'Tarification', href: '/admin/tarification', icon: Coins },
     { name: '🎮 Jeu Quiz', href: '/admin/jeu', icon: Gamepad2, badge: 'NEW' },
