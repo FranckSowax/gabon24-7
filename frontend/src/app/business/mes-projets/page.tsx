@@ -4334,7 +4334,7 @@ export default function MesProjetsPage() {
 
         {/* Sélecteur de sections Business Plan - Mobile Optimized */}
         {businessPlanSelectorOpen && selectedProject && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, y: 100, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}

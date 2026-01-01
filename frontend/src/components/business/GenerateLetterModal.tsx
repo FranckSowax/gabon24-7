@@ -106,7 +106,7 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
