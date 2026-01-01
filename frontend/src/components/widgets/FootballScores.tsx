@@ -1,57 +1,86 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, RefreshCw } from 'lucide-react';
 
 export default function FootballScores() {
   const [fixtures, setFixtures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState(true); // true = matchs en direct, false = matchs du jour
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+  const groupByLeague = (data: any[]) => {
+    const fixturesByLeague: any = {};
+    (data || []).forEach((fixture: any) => {
+      const leagueName = fixture.league.name;
+      if (!fixturesByLeague[leagueName]) {
+        fixturesByLeague[leagueName] = {
+          league: fixture.league,
+          fixtures: []
+        };
+      }
+      fixturesByLeague[leagueName].fixtures.push(fixture);
+    });
+    return Object.values(fixturesByLeague);
+  };
+
+  const fetchFixtures = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. D'abord essayer les matchs en direct
+      const liveResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/football/fixtures`);
+
+      if (!liveResponse.ok) {
+        throw new Error('Erreur lors de la récupération des données');
+      }
+
+      const liveData = await liveResponse.json();
+
+      // Si on a des matchs en direct, les afficher
+      if (liveData.response && liveData.response.length > 0) {
+        setFixtures(groupByLeague(liveData.response));
+        setIsLive(true);
+        setLastUpdate(new Date());
+        return;
+      }
+
+      // 2. Sinon, récupérer les matchs du jour
+      const todayResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/football/fixtures/date`);
+
+      if (todayResponse.ok) {
+        const todayData = await todayResponse.json();
+        if (todayData.response && todayData.response.length > 0) {
+          setFixtures(groupByLeague(todayData.response));
+          setIsLive(false);
+          setLastUpdate(new Date());
+          return;
+        }
+      }
+
+      // 3. Aucun match trouvé
+      setFixtures([]);
+      setIsLive(false);
+      setLastUpdate(new Date());
+
+    } catch (err: any) {
+      console.error('Erreur football scores:', err);
+      setError(err.message);
+      // Charger les données de démonstration en cas d'erreur
+      loadDemoData();
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchFixtures = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // Récupérer les matchs en direct
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/football/fixtures`);
-        
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des données');
-        }
-
-        const data = await response.json();
-        
-        // Grouper les matchs par ligue
-        const fixturesByLeague: any = {};
-        (data.response || []).forEach((fixture: any) => {
-          const leagueName = fixture.league.name;
-          if (!fixturesByLeague[leagueName]) {
-            fixturesByLeague[leagueName] = {
-              league: fixture.league,
-              fixtures: []
-            };
-          }
-          fixturesByLeague[leagueName].fixtures.push(fixture);
-        });
-
-        setFixtures(Object.values(fixturesByLeague));
-      } catch (err: any) {
-        console.error('Erreur football scores:', err);
-        setError(err.message);
-        // Charger les données de démonstration en cas d'erreur
-        loadDemoData();
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFixtures();
+
+    // Rafraîchir toutes les 2 minutes
+    const interval = setInterval(fetchFixtures, 2 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // Fonction de démonstration avec données réalistes
@@ -122,13 +151,32 @@ export default function FootballScores() {
     <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-3xl shadow-2xl overflow-hidden">
       {/* Header avec matchs en direct */}
       <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-600 z-10">
-        <div className="px-4 py-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            <h3 className="text-white font-bold text-lg">⚽ Matchs en Direct</h3>
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isLive && fixtures.length > 0 && (
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              )}
+              <h3 className="text-white font-bold text-lg">
+                ⚽ {isLive && fixtures.length > 0 ? 'Matchs en Direct' : 'Matchs du Jour'}
+              </h3>
+            </div>
+            <button
+              onClick={fetchFixtures}
+              disabled={loading}
+              className="p-1.5 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
+              title="Rafraîchir"
+            >
+              <RefreshCw size={16} className={`text-white ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           <p className="text-white/90 text-xs mt-1">
-            Scores en temps réel
+            {isLive && fixtures.length > 0 ? 'Scores en temps réel' : 'Programme du jour'}
+            {lastUpdate && (
+              <span className="ml-2 opacity-75">
+                • MàJ {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </p>
         </div>
       </div>

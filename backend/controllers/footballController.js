@@ -13,19 +13,56 @@ let fixturesCache = {
 
 // IDs des compétitions majeures à conserver
 const ALLOWED_LEAGUE_IDS = [
-  61,  // Ligue 1 (France)
-  62,  // Ligue 2 (France)
+  // France
+  61,  // Ligue 1
+  62,  // Ligue 2
+
+  // Top 5 Européens
   39,  // Premier League (Angleterre)
+  40,  // Championship (Angleterre D2)
   140, // La Liga (Espagne)
+  141, // La Liga 2 (Espagne D2)
   78,  // Bundesliga (Allemagne)
+  79,  // 2. Bundesliga (Allemagne D2)
+  135, // Serie A (Italie)
+  136, // Serie B (Italie D2)
+  88,  // Eredivisie (Pays-Bas)
+  94,  // Primeira Liga (Portugal)
+
+  // Autres championnats majeurs
+  144, // Jupiler Pro League (Belgique)
+  203, // Super Lig (Turquie)
   253, // MLS (USA)
+  262, // Liga MX (Mexique)
+  71,  // Brasileirão Série A (Brésil)
+  128, // Liga Profesional (Argentine)
+  307, // Saudi Pro League (Arabie Saoudite)
+
+  // Afrique
+  233, // Championnat du Gabon (FEGAFOOT)
+  188, // Botola Pro (Maroc)
+  200, // Premier League (Égypte)
+
+  // Compétitions internationales
   2,   // UEFA Champions League
   3,   // UEFA Europa League
   848, // UEFA Europa Conference League
   1,   // World Cup
   4,   // Euro Championship
   6,   // Africa Cup of Nations
-  10   // Friendlies (International)
+  9,   // Copa America
+  10,  // Friendlies (International)
+  17,  // African Cup of Nations Qualifiers
+  29,  // World Cup Qualifiers - Africa
+  32,  // World Cup Qualifiers - Europe
+
+  // Coupes nationales
+  45,  // FA Cup (Angleterre)
+  48,  // League Cup (Angleterre)
+  66,  // Coupe de France
+  81,  // DFB Pokal (Allemagne)
+  137, // Coppa Italia
+  143  // Copa del Rey (Espagne)
 ];
 
 /**
