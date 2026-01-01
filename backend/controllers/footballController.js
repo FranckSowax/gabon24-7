@@ -104,8 +104,8 @@ async function getLiveFixtures(req, res) {
 
     console.log(`⚽ [LIVE] Récupération matchs en direct...`);
 
-    // Clé API depuis variables d'environnement (plusieurs options)
-    const apiKey = process.env.FOOTBALL_API_KEY || process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_FOOTBALL_KEY;
+    // Clé API RapidAPI uniquement (FOOTBALL_API_KEY est pour l'API directe, pas RapidAPI)
+    const apiKey = process.env.RAPIDAPI_KEY;
     
     if (!apiKey) {
       console.warn('⚠️ Aucune clé API Football trouvée (FOOTBALL_API_KEY, RAPIDAPI_KEY)');
@@ -216,7 +216,7 @@ const STANDINGS_CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
  * Helper pour construire les headers API (RapidAPI)
  */
 function getApiConfig() {
-  const apiKey = process.env.RAPIDAPI_KEY || process.env.FOOTBALL_API_KEY || process.env.RAPIDAPI_FOOTBALL_KEY;
+  const apiKey = process.env.RAPIDAPI_KEY;
 
   if (!apiKey) {
     return null;
