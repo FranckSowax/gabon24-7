@@ -13,7 +13,7 @@ class GeminiRAGService {
     
     // Initialize standard SDK for chat generation
     this.genAI = new GoogleGenerativeAI(this.apiKey);
-    this.modelName = 'gemini-1.5-flash'; 
+    this.modelName = 'gemini-flash-latest'; 
     this.storeDisplayName = 'Gabon24-7 Knowledge Base';
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   }
