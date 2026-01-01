@@ -24,8 +24,8 @@ async function generateDailySummary(articles, language = 'fr') {
       return importanceB - importanceA; // Plus important en premier
     });
 
-    // Prendre les 15 articles les plus importants
-    const topArticles = sortedArticles.slice(0, 15);
+    // Prendre les 50 articles les plus importants
+    const topArticles = sortedArticles.slice(0, 50);
 
     // Construire le contexte enrichi pour l'IA avec métadonnées
     const articlesContext = topArticles.map((a, idx) => {

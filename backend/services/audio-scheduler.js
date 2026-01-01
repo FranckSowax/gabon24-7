@@ -25,7 +25,7 @@ async function generatePublicAudioSummary(timeSlot, language = 'fr') {
     const languageLabel = { fr: 'Français', en: 'English', zh: '中文' }[language] || language;
     console.log(`\n🤖 [${new Date().toLocaleString('fr-FR')}] Génération ${timeSlot} [${languageLabel}]`);
     
-    // Récupérer les 30 derniers articles avec scores d'enrichissement + importance
+    // Récupérer les 50 derniers articles avec scores d'enrichissement + importance
     const { data: articles, error: articlesError } = await supabaseService.supabase
       .from('articles')
       .select(`

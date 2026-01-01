@@ -71,8 +71,8 @@ function prioritizeArticles(articles) {
   articlesWithPriority.sort((a, b) => b.priorityScore - a.priorityScore);
 
   // 4. Sélectionner les articles les plus pertinents
-  // Garder les 15 meilleurs pour éviter un résumé trop long
-  const topArticles = articlesWithPriority.slice(0, 15);
+  // Garder les 50 meilleurs pour une couverture complète de l'actualité
+  const topArticles = articlesWithPriority.slice(0, 50);
 
   console.log('\n📊 Analyse de priorisation:');
   console.log(`   Total articles: ${articles.length}`);
