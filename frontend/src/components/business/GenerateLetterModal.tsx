@@ -106,53 +106,54 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         {/* Overlay */}
-        <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-        {/* Modal */}
+        {/* Modal - Bottom sheet sur mobile, centré sur desktop */}
         <motion.div
-          className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          className="relative z-10 w-full sm:max-w-4xl sm:mx-4 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+          initial={{ opacity: 0, y: 100, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 100, scale: 0.98 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-white" />
+          {/* Header - Compact sur mobile */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Générer un courrier</h3>
-                <p className="text-sm text-gray-600">Courrier professionnel adapté à votre projet</p>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">Générer un courrier</h3>
+                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Courrier professionnel adapté à votre projet</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white transition-colors">
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white transition-colors flex-shrink-0 ml-2">
               <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
 
-          {/* Body */}
-          <div className="p-6 overflow-y-auto flex-1">
-            <div className="space-y-6">
+          {/* Body - Scroll optimisé mobile */}
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain">
+            <div className="space-y-5 sm:space-y-6">
               {/* Informations destinataire */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <User className="w-5 h-5 text-blue-600" />
+                <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                   Informations du destinataire
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Type de destinataire <span className="text-red-500">*</span>
                     </label>
                     <select
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       value={formData.recipientType}
                       onChange={(e) => handleChange('recipientType', e.target.value)}
                     >
@@ -164,12 +165,12 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Nom du destinataire <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Ex: Ministère de l'Économie"
                       value={formData.recipientName}
                       onChange={(e) => handleChange('recipientName', e.target.value)}
@@ -177,12 +178,12 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Fonction du destinataire
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Ex: Directeur Général"
                       value={formData.recipientPosition}
                       onChange={(e) => handleChange('recipientPosition', e.target.value)}
@@ -190,25 +191,25 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Contact
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Email ou téléphone"
                       value={formData.recipientContact}
                       onChange={(e) => handleChange('recipientContact', e.target.value)}
                     />
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Adresse
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Adresse complète du destinataire"
                       value={formData.recipientAddress}
                       onChange={(e) => handleChange('recipientAddress', e.target.value)}
@@ -219,17 +220,17 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
 
               {/* Objet et objectif du courrier */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-purple-600" />
+                <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                   Objet et objectif du courrier
                 </h4>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Objectif du courrier <span className="text-red-500">*</span>
                     </label>
                     <select
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                       value={formData.letterPurpose}
                       onChange={(e) => handleChange('letterPurpose', e.target.value)}
                     >
@@ -241,12 +242,12 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Objet du courrier <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Ex: Demande de financement pour projet d'agro-industrie"
                       value={formData.letterSubject}
                       onChange={(e) => handleChange('letterSubject', e.target.value)}
@@ -254,12 +255,12 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Contexte spécifique
                     </label>
                     <textarea
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      rows={3}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                      rows={2}
                       placeholder="Ajoutez des détails sur le contexte, les raisons de votre démarche..."
                       value={formData.specificContext}
                       onChange={(e) => handleChange('specificContext', e.target.value)}
@@ -267,12 +268,12 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                       Demandes spécifiques
                     </label>
                     <textarea
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      rows={3}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                      rows={2}
                       placeholder="Précisez ce que vous demandez, les actions attendues du destinataire..."
                       value={formData.specificRequests}
                       onChange={(e) => handleChange('specificRequests', e.target.value)}
@@ -282,20 +283,19 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
               </div>
 
               {/* Info bulle */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  💡 <strong>Astuce :</strong> Plus vous fournirez de détails, plus le courrier sera précis et adapté à votre situation.
-                  L'IA utilisera les informations de votre projet pour personnaliser le contenu.
+              <div className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs sm:text-sm text-blue-800">
+                  <strong>Astuce :</strong> Plus vous fournirez de détails, plus le courrier sera précis et adapté à votre situation.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          {/* Footer - Responsive avec boutons empilés sur mobile */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
             <button
               onClick={onClose}
-              className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm sm:text-base"
               disabled={isGenerating}
             >
               Annuler
@@ -303,17 +303,19 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
             <button
               onClick={handleSubmit}
               disabled={isGenerating || !formData.recipientType || !formData.recipientName || !formData.letterSubject || !formData.letterPurpose}
-              className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 sm:px-8 py-2.5 sm:py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Génération en cours...
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  <span className="hidden sm:inline">Génération en cours...</span>
+                  <span className="sm:hidden">Génération...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-5 h-5" />
-                  Générer le courrier
+                  <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Générer le courrier</span>
+                  <span className="sm:hidden">Générer</span>
                 </>
               )}
             </button>

@@ -163,6 +163,24 @@ const QUICK_ACTIONS = [
     credits: 15
   },
   {
+    id: 'pitch-deck',
+    title: 'Pitch investisseur',
+    description: '🎤 Présentation percutante pour lever des fonds',
+    icon: TrendingUp,
+    color: 'from-indigo-500 to-purple-600',
+    credits: 30,
+    comingSoon: true
+  },
+  {
+    id: 'swot-analysis',
+    title: 'Analyse SWOT',
+    description: '🔍 Forces, faiblesses, opportunités et menaces',
+    icon: Target,
+    color: 'from-teal-500 to-cyan-600',
+    credits: 20,
+    comingSoon: true
+  },
+  {
     id: 'skill-test',
     title: 'Test de compétences',
     description: '🎯 Évaluez vos forces et faiblesses',
@@ -177,6 +195,24 @@ const QUICK_ACTIONS = [
     icon: GraduationCap,
     color: 'from-orange-500 to-red-600',
     credits: 50
+  },
+  {
+    id: 'legal-checklist',
+    title: 'Formalités juridiques',
+    description: '⚖️ Checklist création d\'entreprise au Gabon',
+    icon: CheckCircle,
+    color: 'from-slate-500 to-gray-600',
+    credits: 15,
+    comingSoon: true
+  },
+  {
+    id: 'financial-projection',
+    title: 'Projections financières',
+    description: '💰 Prévisions de revenus sur 3 ans',
+    icon: DollarSign,
+    color: 'from-amber-500 to-yellow-600',
+    credits: 35,
+    comingSoon: true
   }
 ]
 
@@ -1972,10 +2008,15 @@ export default function MesProjetsPage() {
                 <div className="relative z-10">
                   {/* Header avec icône et badge */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <div className={`w-14 h-14 bg-gradient-to-br ${(action as any).comingSoon ? 'from-gray-400 to-gray-500' : 'from-blue-500 to-purple-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
                       <Icon className="w-7 h-7 text-white" />
                     </div>
-                    {hasCompleted && (
+                    {(action as any).comingSoon ? (
+                      <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-semibold text-amber-700">Bientôt</span>
+                      </div>
+                    ) : hasCompleted && (
                       <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
                         <CheckCircle className="w-4 h-4 text-green-600" />
                         <span className="text-xs font-semibold text-green-700">Complété</span>
@@ -2007,6 +2048,7 @@ export default function MesProjetsPage() {
                   {/* Bouton d'action */}
                   <button
                     onClick={() => {
+                      if ((action as any).comingSoon) return
                       if (action.id === 'business-plan') {
                         setBusinessPlanSelectorOpen(true)
                       } else if (action.id === 'generate-letter') {
@@ -2017,10 +2059,15 @@ export default function MesProjetsPage() {
                         handleGenerateTraining(selectedProject)
                       }
                     }}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:scale-[1.02]"
+                    disabled={(action as any).comingSoon}
+                    className={`w-full py-3 font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
+                      (action as any).comingSoon
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white hover:shadow-lg group-hover:scale-[1.02]'
+                    }`}
                   >
-                    <span>Lancer l'action</span>
-                    <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    <span>{(action as any).comingSoon ? 'Disponible prochainement' : 'Lancer l\'action'}</span>
+                    {!(action as any).comingSoon && <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />}
                   </button>
                 </div>
               </motion.div>
@@ -4281,37 +4328,38 @@ export default function MesProjetsPage() {
           />
         )}
 
-        {/* Sélecteur de sections Business Plan */}
+        {/* Sélecteur de sections Business Plan - Mobile Optimized */}
         {businessPlanSelectorOpen && selectedProject && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+              initial={{ opacity: 0, y: 100, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
             >
-              {/* Header */}
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {/* Header - Responsive */}
+              <div className="p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex-shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
                       📊 Ébauche de Business Plan
                     </h2>
-                    <p className="text-gray-600">
-                      Sélectionnez une section pour commencer à rédiger votre business plan professionnel
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      Sélectionnez une section pour commencer
                     </p>
                   </div>
                   <button
                     onClick={() => setBusinessPlanSelectorOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
               </div>
 
-              {/* Sections */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Sections Grid - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-3 sm:p-6 overscroll-contain">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                   {BUSINESS_PLAN_SECTIONS.map((section) => {
                     const isCompleted = (businessPlanProgress[selectedProject.id] || 0) >= section.section
                     return (
@@ -4321,22 +4369,22 @@ export default function MesProjetsPage() {
                           setBusinessPlanSelectorOpen(false)
                           handleOpenBusinessPlanSection(section.section)
                         }}
-                        className="text-left p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:shadow-lg transition-all bg-white"
+                        className="text-left p-3 sm:p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:shadow-lg transition-all bg-white active:scale-[0.98]"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0 ${
                             isCompleted ? 'bg-green-500' : 'bg-gray-300'
                           }`}>
                             {isCompleted ? '✓' : section.section}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 mb-1">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-0.5 sm:mb-1 line-clamp-1">
                               {section.title}
                             </h3>
-                            <p className="text-sm text-gray-600 line-clamp-2">
-                              🎯 {section.objective}
+                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                              {section.objective}
                             </p>
-                            <p className="text-xs text-green-600 mt-2">
+                            <p className="text-xs text-green-600 mt-1 sm:mt-2 font-medium">
                               {section.questions.length} questions
                             </p>
                           </div>
@@ -4347,15 +4395,15 @@ export default function MesProjetsPage() {
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    {businessPlanProgress[selectedProject.id] || 0}/10 sections complétées
+              {/* Footer - Responsive */}
+              <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {businessPlanProgress[selectedProject.id] || 0}/10 sections
                   </p>
                   <button
                     onClick={() => setBusinessPlanSelectorOpen(false)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="px-3 sm:px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
                   >
                     Fermer
                   </button>
