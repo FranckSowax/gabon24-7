@@ -80,13 +80,13 @@ class RSSProcessor {
       // Mettre à jour l'heure de dernière mise à jour
       this.lastUpdateTime = new Date();
       
-      // 🔄 SYNCHRONISATION RAG (Insight Gab)
-      console.log('🧠 Lancement synchronisation RAG...');
-      try {
-        await syncArticlesToRAG();
-      } catch (ragError) {
-        console.error('❌ Erreur synchronisation RAG:', ragError.message);
-      }
+      // 🔄 SYNCHRONISATION RAG (Désactivée - Architecture Direct-Supabase)
+      // console.log('🧠 Lancement synchronisation RAG...');
+      // try {
+      //   await syncArticlesToRAG();
+      // } catch (ragError) {
+      //   console.error('❌ Erreur synchronisation RAG:', ragError.message);
+      // }
 
     } catch (error) {
       console.error('❌ Erreur cycle RSS:', error);

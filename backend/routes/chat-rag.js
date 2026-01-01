@@ -84,17 +84,12 @@ router.post('/chat', async (req, res) => {
   }
 });
 
-// Force sync endpoint (admin only ideally)
+// Force sync endpoint (obsolete with new architecture)
 router.post('/sync', async (req, res) => {
-    try {
-        const syncScript = require('../scripts/sync-articles-to-rag');
-        // Run asynchronously
-        syncScript().catch(err => console.error('Background sync error:', err));
-
-        res.json({ success: true, message: 'Synchronisation démarrée en arrière-plan' });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+    res.json({ 
+        success: true, 
+        message: 'Synchronisation non nécessaire (lecture directe Supabase active)' 
+    });
 });
 
 module.exports = router;
