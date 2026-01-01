@@ -315,14 +315,14 @@ export default function VeillePageNew() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/30 to-amber-50/20">
       <Header onMobileMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
+
       <div className="flex">
         {/* Sidebar principale */}
         <Sidebar isMobileOpen={isSidebarOpen} onMobileClose={() => setIsSidebarOpen(false)} />
 
-        {/* Sidebar alertes */}
+        {/* Sidebar alertes - positionnée à droite de la sidebar principale */}
         <AlertsSidebar
           alerts={alerts}
           selectedAlertId={selectedAlertId}
@@ -335,73 +335,86 @@ export default function VeillePageNew() {
           onClose={() => setIsAlertsSidebarOpen(false)}
         />
 
-        {/* Contenu principal */}
-        <main className="flex-1 lg:ml-64">
-          {/* Header sticky */}
-          <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-lg border-b border-gray-200 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-              {/* Titre et stats */}
+        {/* Contenu principal - décalé pour les deux sidebars sur desktop */}
+        <main className={`flex-1 min-h-screen transition-all duration-300 ${
+          isAlertsSidebarOpen
+            ? 'lg:ml-[576px]'
+            : 'lg:ml-64'
+        }`}>
+          {/* Header sticky avec glassmorphism */}
+          <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+              {/* Titre et actions */}
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {/* Bouton toggle sidebar alertes */}
                   <button
                     onClick={() => setIsAlertsSidebarOpen(!isAlertsSidebarOpen)}
-                    className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                    className={`p-2.5 rounded-xl transition-all ${
+                      isAlertsSidebarOpen
+                        ? 'bg-orange-100 text-orange-600 shadow-inner'
+                        : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                    }`}
+                    title={isAlertsSidebarOpen ? 'Masquer les alertes' : 'Afficher les alertes'}
                   >
-                    <Menu className="w-6 h-6 text-gray-600" />
+                    <Bell className="w-5 h-5" />
                   </button>
+
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 via-orange-800 to-orange-600 bg-clip-text text-transparent">
                       Veille & Alertes
                     </h1>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       {sortedMatches.length} article{sortedMatches.length > 1 ? 's' : ''} détecté{sortedMatches.length > 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <button
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={fetchData}
-                    className="p-2 hover:bg-orange-50 text-orange-600 rounded-lg transition-colors"
+                    className="p-2.5 bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-xl shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all"
                     title="Actualiser"
                   >
-                    <RefreshCw className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 hover:bg-purple-50 text-purple-600 rounded-lg transition-colors">
+                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </motion.button>
+                  <button className="hidden sm:flex p-2.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-xl transition-colors">
                     <BarChart3 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Stats rapides */}
+              {/* Stats rapides - design moderne cards */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
                   <StatCard
-                    icon={<Bell className="w-5 h-5" />}
+                    icon={<Bell className="w-4 h-4 sm:w-5 sm:h-5" />}
                     label="Alertes actives"
                     value={stats.active_alerts}
                     color="blue"
                   />
                   <StatCard
-                    icon={<TrendingUp className="w-5 h-5" />}
+                    icon={<TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />}
                     label="Total matches"
                     value={stats.total_matches}
                     color="green"
                   />
                   <StatCard
-                    icon={<Zap className="w-5 h-5" />}
+                    icon={<Zap className="w-4 h-4 sm:w-5 sm:h-5" />}
                     label="Notifications"
                     value={stats.notifications_sent}
                     color="yellow"
                   />
                   <StatCard
-                    icon={<BarChart3 className="w-5 h-5" />}
+                    icon={<BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />}
                     label="Confiance moy."
-                    value={`${Math.round(stats.avg_confidence * 100)}%`}
+                    value={`${Math.round(stats.avg_confidence)}%`}
                     color="purple"
                   />
                   <StatCard
-                    icon={<Bell className="w-5 h-5" />}
+                    icon={<Bell className="w-4 h-4 sm:w-5 sm:h-5" />}
                     label="Total alertes"
                     value={stats.total_alerts}
                     color="indigo"
@@ -409,30 +422,30 @@ export default function VeillePageNew() {
                 </div>
               )}
 
-              {/* Barre de recherche et filtres */}
-              <div className="flex flex-col sm:flex-row gap-3">
+              {/* Barre de recherche et filtres - responsive */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 {/* Recherche */}
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Rechercher dans les articles..."
+                    placeholder="Rechercher..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                    className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 bg-white/70 border border-gray-200 rounded-xl focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all text-sm sm:text-base"
                   />
                 </div>
 
                 {/* Filtres */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                    className="flex-shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/70 border border-gray-200 rounded-xl focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all text-sm"
                   >
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>
-                        {cat === 'all' ? 'Toutes catégories' : cat}
+                        {cat === 'all' ? 'Catégories' : cat}
                       </option>
                     ))}
                   </select>
@@ -440,15 +453,15 @@ export default function VeillePageNew() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                    className="flex-shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/70 border border-gray-200 rounded-xl focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all text-sm"
                   >
-                    <option value="date">Plus récent</option>
+                    <option value="date">Récent</option>
                     <option value="confidence">Confiance</option>
                     <option value="importance">Importance</option>
                   </select>
 
-                  <button className="p-2.5 border-2 border-gray-200 hover:border-orange-500 rounded-xl transition-colors">
-                    <SlidersHorizontal className="w-5 h-5 text-gray-600" />
+                  <button className="flex-shrink-0 p-2 sm:p-2.5 bg-white/70 border border-gray-200 hover:border-orange-400 rounded-xl transition-colors">
+                    <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                   </button>
                 </div>
               </div>
@@ -456,35 +469,52 @@ export default function VeillePageNew() {
           </div>
 
           {/* Liste des articles */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             {sortedMatches.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bell className="w-10 h-10 text-gray-400" />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12 sm:py-16"
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Bell className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
                   Aucun article détecté
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md mx-auto">
                   {selectedAlertId
                     ? 'Aucun article ne correspond à cette alerte'
                     : 'Créez une alerte pour commencer à surveiller les actualités'}
                 </p>
                 {!selectedAlertId && (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handleCreateAlert}
-                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
+                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg shadow-orange-500/30"
                   >
                     Créer ma première alerte
-                  </button>
+                  </motion.button>
                 )}
-              </div>
+              </motion.div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {sortedMatches.map((match) => (
-                  <MatchedArticleCard key={match.match_id} article={match} />
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+              >
+                {sortedMatches.map((match, index) => (
+                  <motion.div
+                    key={match.match_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <MatchedArticleCard article={match} />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </div>
         </main>
@@ -519,20 +549,23 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, color }: StatCardProps) {
   const colors = {
-    blue: 'bg-orange-100 text-orange-600',
-    green: 'bg-green-100 text-green-600',
-    yellow: 'bg-yellow-100 text-yellow-600',
-    purple: 'bg-purple-100 text-purple-600',
-    indigo: 'bg-indigo-100 text-orange-600'
+    blue: 'from-orange-500 to-amber-500 shadow-orange-500/20',
+    green: 'from-emerald-500 to-green-500 shadow-emerald-500/20',
+    yellow: 'from-yellow-500 to-amber-500 shadow-yellow-500/20',
+    purple: 'from-purple-500 to-violet-500 shadow-purple-500/20',
+    indigo: 'from-indigo-500 to-blue-500 shadow-indigo-500/20'
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 border-2 border-gray-200 hover:border-gray-300 transition-colors">
-      <div className={`w-10 h-10 rounded-lg ${colors[color]} flex items-center justify-center mb-2`}>
-        {icon}
+    <motion.div
+      whileHover={{ scale: 1.02, y: -2 }}
+      className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-gray-100 hover:border-gray-200 transition-all shadow-sm hover:shadow-md"
+    >
+      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${colors[color]} shadow-lg flex items-center justify-center mb-2`}>
+        <span className="text-white">{icon}</span>
       </div>
-      <div className="text-2xl font-bold text-gray-900 mb-1">{value}</div>
-      <div className="text-xs text-gray-600">{label}</div>
-    </div>
+      <div className="text-lg sm:text-2xl font-bold text-gray-900">{value}</div>
+      <div className="text-xs text-gray-500 truncate">{label}</div>
+    </motion.div>
   );
 }

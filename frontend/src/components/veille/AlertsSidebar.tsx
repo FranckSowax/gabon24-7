@@ -84,7 +84,7 @@ export default function AlertsSidebar({
           x: isOpen ? 0 : '-100%'
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed lg:sticky top-0 left-0 h-screen w-80 bg-white border-r border-gray-200 z-50 lg:z-0 flex flex-col overflow-hidden"
+        className="fixed lg:fixed top-0 left-0 lg:left-64 h-screen w-80 bg-white border-r border-gray-200 z-40 flex flex-col overflow-hidden shadow-xl lg:shadow-none"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-50">
