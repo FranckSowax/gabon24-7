@@ -609,6 +609,10 @@ app.get('/api/supabase-articles', (req, res) => {
 const weatherRoutes = require('./src/routes/weather');
 app.use('/api/weather', weatherRoutes);
 
+// Import des routes Chat RAG (Insight Gab)
+const chatRagRoutes = require('./routes/chat-rag');
+app.use('/api/insight-gab', chatRagRoutes);
+
 // Démarrer les planificateurs (désactivé temporairement)
 try {
   // const { startPollScheduler } = require('./dist/schedulers/poll.scheduler');

@@ -330,6 +330,15 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
             </h3>
             <div className="space-y-2">
               <a
+                href="/insight-gab"
+                onClick={(e) => handleToolClick(e, '/insight-gab')}
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors group"
+              >
+                <span>🤖</span>
+                <span className="flex-1 font-bold">Insight Gab AI</span>
+                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500" />}
+              </a>
+              <a
                 href="/veille"
                 onClick={(e) => handleToolClick(e, '/veille')}
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors group"
