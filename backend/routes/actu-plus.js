@@ -7,6 +7,200 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 
+// Helper: Extraire les mots-clés importants (copié depuis related-articles.js)
+function extractKeywords(title, description, category) {
+  const text = `${title || ''} ${description || ''} ${category || ''}`.toLowerCase();
+
+  const stopWords = new Set([
+    'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'à', 'au', 'aux',
+    'et', 'ou', 'dans', 'pour', 'par', 'sur', 'avec', 'sans', 'plus',
+    'ce', 'cette', 'ces', 'mon', 'ton', 'son', 'notre', 'votre', 'leur',
+    'je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles',
+    'est', 'sont', 'sera', 'être', 'avoir', 'fait', 'faire',
+    'article', 'articles', 'gabon', 'gabonais', 'gabonaise'
+  ]);
+
+  const words = text
+    .replace(/[^\w\sàâäéèêëïîôùûüÿç]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length >= 3 && !stopWords.has(word));
+
+  const wordCount = {};
+  words.forEach(word => {
+    wordCount[word] = (wordCount[word] || 0) + 1;
+  });
+
+  const sortedWords = Object.entries(wordCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([word]) => word);
+
+  if (category) {
+    sortedWords.unshift(category.toLowerCase());
+  }
+
+  return [...new Set(sortedWords)];
+}
+
+// Helper: Calculer score de pertinence pour articles liés
+function calculateRelevanceScore(article, keywords, sourceArticles) {
+  let score = 0;
+
+  const articleText = `
+    ${article.title || ''}
+    ${article.summary || ''}
+    ${article.summary_ai || ''}
+    ${(article.keywords || []).join(' ')}
+  `.toLowerCase();
+
+  // Score élevé pour les mots-clés dans le titre
+  keywords.forEach(keyword => {
+    if (article.title && article.title.toLowerCase().includes(keyword)) {
+      score += 10;
+    }
+  });
+
+  // Score pour les mots-clés dans le contenu
+  keywords.forEach(keyword => {
+    const regex = new RegExp(keyword, 'gi');
+    const matches = articleText.match(regex);
+    if (matches) {
+      score += matches.length * 3;
+    }
+  });
+
+  // Bonus si l'article a des keywords qui matchent
+  if (article.keywords && Array.isArray(article.keywords)) {
+    keywords.forEach(keyword => {
+      if (article.keywords.some(k => k.toLowerCase().includes(keyword))) {
+        score += 6;
+      }
+    });
+  }
+
+  // Bonus pour catégorie similaire
+  const sourceCategories = sourceArticles.map(a => a.category).filter(Boolean);
+  if (article.category && sourceCategories.includes(article.category)) {
+    score += 8;
+  }
+
+  // Bonus pour sentiment positif ou neutre
+  if (article.sentiment_score > 0.3) {
+    score += 3;
+  } else if (article.sentiment_score > -0.3) {
+    score += 1;
+  }
+
+  // Bonus pour articles importants
+  if (article.importance >= 4) {
+    score += 5;
+  } else if (article.importance >= 3) {
+    score += 3;
+  }
+
+  // Bonus pour articles récents
+  const daysSincePublished = (Date.now() - new Date(article.published_at)) / (1000 * 60 * 60 * 24);
+  if (daysSincePublished <= 7) {
+    score += 5;
+  } else if (daysSincePublished <= 30) {
+    score += 3;
+  }
+
+  return score;
+}
+
+// Helper: Rechercher des articles similaires avec colonnes enrichies
+async function findRelatedArticles(sourceArticles, excludeIds, limit = 5) {
+  // Extraire mots-clés des articles sources
+  const combinedText = sourceArticles
+    .map(a => `${a.title || ''} ${a.summary || ''}`)
+    .join(' ');
+  const categories = [...new Set(sourceArticles.map(a => a.category).filter(Boolean))];
+  const keywords = extractKeywords(combinedText, '', categories[0] || '');
+
+  if (keywords.length === 0) {
+    // Fallback: articles récents
+    const { data: recent } = await supabaseService.supabase
+      .from('articles')
+      .select('id,title,source,url,category,keywords,summary_ai,importance,sentiment_score,published_at')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(limit);
+    return recent || [];
+  }
+
+  let allArticles = [];
+
+  // Recherche par titre (top 3 mots-clés)
+  for (const keyword of keywords.slice(0, 3)) {
+    const { data: titleMatches } = await supabaseService.supabase
+      .from('articles')
+      .select('id,title,source,url,category,keywords,summary_ai,importance,sentiment_score,published_at')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .eq('is_published', true)
+      .ilike('title', `%${keyword}%`)
+      .order('published_at', { ascending: false })
+      .limit(15);
+    if (titleMatches) allArticles.push(...titleMatches);
+  }
+
+  // Recherche par keywords array
+  for (const keyword of keywords.slice(0, 3)) {
+    const { data: keywordMatches } = await supabaseService.supabase
+      .from('articles')
+      .select('id,title,source,url,category,keywords,summary_ai,importance,sentiment_score,published_at')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .eq('is_published', true)
+      .contains('keywords', [keyword])
+      .order('published_at', { ascending: false })
+      .limit(10);
+    if (keywordMatches) allArticles.push(...keywordMatches);
+  }
+
+  // Recherche par summary_ai
+  for (const keyword of keywords.slice(0, 2)) {
+    const { data: summaryMatches } = await supabaseService.supabase
+      .from('articles')
+      .select('id,title,source,url,category,keywords,summary_ai,importance,sentiment_score,published_at')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .eq('is_published', true)
+      .ilike('summary_ai', `%${keyword}%`)
+      .order('published_at', { ascending: false })
+      .limit(10);
+    if (summaryMatches) allArticles.push(...summaryMatches);
+  }
+
+  // Recherche par catégorie similaire
+  if (categories.length > 0) {
+    const { data: categoryMatches } = await supabaseService.supabase
+      .from('articles')
+      .select('id,title,source,url,category,keywords,summary_ai,importance,sentiment_score,published_at')
+      .not('id', 'in', `(${excludeIds.join(',')})`)
+      .eq('is_published', true)
+      .in('category', categories)
+      .order('importance', { ascending: false })
+      .limit(10);
+    if (categoryMatches) allArticles.push(...categoryMatches);
+  }
+
+  // Dédupliquer par ID
+  const uniqueArticles = Array.from(
+    new Map(allArticles.map(article => [article.id, article])).values()
+  );
+
+  // Scorer et trier
+  const scoredArticles = uniqueArticles.map(article => ({
+    ...article,
+    relevanceScore: calculateRelevanceScore(article, keywords, sourceArticles)
+  }));
+
+  return scoredArticles
+    .filter(a => a.relevanceScore > 0)
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, limit);
+}
+
 // Helper: build prompts by service type
 function buildPrompt(serviceType, articlesText, context = '', tone = '', options = {}) {
   const { toneList = [], resume = {}, synthese = {}, fiche = {} } = options || {};
@@ -125,10 +319,10 @@ router.post('/', async (req, res) => {
     const extraCredits = usePerplexity ? 1 : 0;
     const requiredCredits = (service.credits + extraCredits) * 10;
 
-    // Récupérer les articles
+    // Récupérer les articles (avec category pour la recherche d'articles liés)
     const { data: articles, error: artErr } = await supabaseService.supabase
       .from('articles')
-      .select('id,title,summary,content,source,published_at,url')
+      .select('id,title,summary,content,source,published_at,url,category,keywords')
       .in('id', articleIds);
 
     if (artErr) {
@@ -195,17 +389,25 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Fallback Supabase si pas de Perplexity
+    // Fallback Supabase avec recherche intelligente si pas de Perplexity
     if (related.length === 0) {
-      const mainSource = articles[0]?.source || null;
-      if (mainSource) {
-        const { data: rel } = await supabaseService.supabase
-          .from('articles')
-          .select('id,title,source,url')
-          .eq('source', mainSource)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        related = rel || [];
+      try {
+        console.log('🔍 Recherche articles liés avec colonnes enrichies...');
+        related = await findRelatedArticles(articles, articleIds, 5);
+        console.log(`✅ ${related.length} articles liés trouvés`);
+      } catch (e) {
+        console.error('❌ Erreur recherche articles liés:', e);
+        // Fallback minimal si erreur
+        const mainSource = articles[0]?.source || null;
+        if (mainSource) {
+          const { data: rel } = await supabaseService.supabase
+            .from('articles')
+            .select('id,title,source,url')
+            .eq('source', mainSource)
+            .order('created_at', { ascending: false })
+            .limit(5);
+          related = rel || [];
+        }
       }
     }
 

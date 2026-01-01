@@ -81,23 +81,7 @@ export default function ActuPlusPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [step, setStep] = useState<'intro' | 'compose' | 'result'>('intro')
 
-  // Protection de la page
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/auth/signin?redirect=/actu-plus')
-      } else if (subscriptionPlan?.slug !== 'pro') {
-        router.push('/abonnement')
-      }
-    }
-  }, [user, subscriptionPlan, loading, router])
-
-  // Afficher un loader pendant la vérification
-  if (loading || !user || subscriptionPlan?.slug !== 'pro') {
-    return <Loading />
-  }
-
-  // Sélection service et options
+  // Sélection service et options - TOUS LES HOOKS AVANT LE RETURN CONDITIONNEL
   const [serviceKey, setServiceKey] = useState('resume_journalistique')
   const selectedService = useMemo(() => SERVICES.find(s => s.key === serviceKey) || SERVICES[0], [serviceKey])
   const [usePerplexity, setUsePerplexity] = useState(false)
@@ -132,7 +116,7 @@ export default function ActuPlusPage() {
   const [referenceId, setReferenceId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [topUpOpen, setTopUpOpen] = useState(false)
-  
+
   // Champs spécifiques par service
   // Résumé journalistique
   const [resumeLength, setResumeLength] = useState<'200'|'300'|'400'>('300')
@@ -148,6 +132,17 @@ export default function ActuPlusPage() {
 
   // Flow mobile (1: service -> 2: articles -> 3: personnalisation)
   const [composeMobileStep, setComposeMobileStep] = useState<1|2|3>(1)
+
+  // Protection de la page
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push('/auth/signin?redirect=/actu-plus')
+      } else if (subscriptionPlan?.slug !== 'pro') {
+        router.push('/abonnement')
+      }
+    }
+  }, [user, subscriptionPlan, loading, router])
 
   // Charger la liste d'articles pour sélection (via supabase-articles, tab=all)
   const fetchArticles = async (page = 1, q = '') => {
@@ -189,6 +184,11 @@ export default function ActuPlusPage() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, articleModalOpen])
+
+  // Afficher un loader pendant la vérification (APRÈS tous les hooks)
+  if (loading || !user || subscriptionPlan?.slug !== 'pro') {
+    return <Loading />
+  }
 
   // Gestion sélection toggle
   const toggleSelect = (a: ArticleLite) => {
