@@ -9,7 +9,7 @@ class GeminiRAGService {
     }
 
     this.genAI = new GoogleGenerativeAI(this.apiKey);
-    this.modelName = 'gemini-1.5-flash';
+    this.modelName = 'gemini-2.0-flash-exp';
   }
 
   /**
