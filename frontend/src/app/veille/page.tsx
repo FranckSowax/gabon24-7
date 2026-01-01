@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Menu,
   Search,
   Filter,
@@ -16,6 +16,7 @@ import {
   Zap
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/auth'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import AlertsSidebar from '@/components/veille/AlertsSidebar'
@@ -84,6 +85,16 @@ export default function VeillePageNew() {
   const user = DEV_MODE ? DEV_USER : authUser;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+  // Helper pour obtenir les headers d'authentification
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+    return headers
+  }, [])
+
   // Protection de la page
   useEffect(() => {
     if (!authLoading && !DEV_MODE) {
@@ -146,14 +157,16 @@ export default function VeillePageNew() {
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/alerts/user/${user?.id}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/alerts/user`, { headers });
       const data = await response.json();
       if (data.success) {
         // Compter les matches par alerte
         const alertsWithCounts = await Promise.all(
           data.alerts.map(async (alert: UserAlert) => {
             const matchesRes = await fetch(
-              `${API_URL}/api/alerts/matches/${alert.id}`
+              `${API_URL}/api/alerts/matches/${alert.id}`,
+              { headers }
             );
             const matchesData = await matchesRes.json();
             return {
@@ -171,8 +184,10 @@ export default function VeillePageNew() {
 
   const fetchMatches = async () => {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/alerts/recent-matches/${user?.id}`
+        `${API_URL}/api/alerts/recent-matches`,
+        { headers }
       );
       const data = await response.json();
       if (data.success) {
@@ -185,7 +200,8 @@ export default function VeillePageNew() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/alerts/stats/${user?.id}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/alerts/stats`, { headers });
       const data = await response.json();
       if (data.success) {
         setStats(data.stats);
@@ -253,8 +269,10 @@ export default function VeillePageNew() {
 
   const handleDeleteAlert = async (alertId: string) => {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/api/alerts/${alertId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       });
       if (response.ok) {
         await fetchAlerts();
@@ -269,9 +287,10 @@ export default function VeillePageNew() {
 
   const handleToggleAlert = async (alertId: string, isActive: boolean) => {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/api/alerts/${alertId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ is_active: isActive })
       });
       if (response.ok) {
