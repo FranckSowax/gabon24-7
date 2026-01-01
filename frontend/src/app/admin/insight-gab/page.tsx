@@ -254,7 +254,7 @@ export default function InsightGabAdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="p-3 bg-gray-50 rounded-lg">
             <span className="text-gray-500">Modele :</span>
-            <span className="ml-2 font-medium text-gray-900">Gemini 1.5 Flash</span>
+            <span className="ml-2 font-medium text-gray-900">Gemini 2.0 Flash</span>
           </div>
           <div className="p-3 bg-gray-50 rounded-lg">
             <span className="text-gray-500">Type :</span>
