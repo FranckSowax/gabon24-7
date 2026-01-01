@@ -124,7 +124,9 @@ async function getLiveFixtures(req, res) {
       'x-rapidapi-host': apiHost,
       'x-rapidapi-key': apiKey
     };
-    console.log('🔑 Utilisation RapidAPI');
+    // Log clé pour debug (premiers et derniers caractères seulement)
+    const keyPreview = apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 6)}` : 'UNDEFINED';
+    console.log(`🔑 Utilisation RapidAPI (clé: ${keyPreview}, longueur: ${apiKey?.length || 0})`);
 
     const response = await fetch(apiUrl, {
       method: 'GET',
