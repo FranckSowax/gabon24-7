@@ -208,9 +208,28 @@ ${truncatedContent}
    * Chat with RAG - searches articles using AI metadata and generates response
    */
   async chat(query, history = []) {
+    // Check API key first
+    if (!this.apiKey) {
+      console.error('GEMINI_API_KEY is not configured');
+      return {
+        success: false,
+        error: 'API key not configured',
+        text: "Le service Insight Gab n'est pas configuré. Contactez l'administrateur."
+      };
+    }
+
     try {
       // 1. Search relevant articles using AI-enriched columns
       const articles = await this.searchArticles(query);
+      console.log(`RAG: Found ${articles.length} articles for query: "${query.substring(0, 50)}..."`);
+
+      if (articles.length === 0) {
+        return {
+          success: true,
+          text: "Je n'ai pas trouvé d'articles pertinents dans ma base de données pour cette question. Essayez avec d'autres mots-clés ou reformulez votre demande.",
+          articlesUsed: 0
+        };
+      }
       const context = this.buildContext(articles);
 
       // 2. Build enhanced system prompt
@@ -273,11 +292,24 @@ ${context || 'Aucun article trouvé pour cette requête. Suggère à l\'utilisat
       };
 
     } catch (error) {
-      console.error('Chat RAG Error:', error);
+      console.error('Chat RAG Error:', error.message);
+      console.error('Chat RAG Error Stack:', error.stack);
+
+      // Provide more specific error messages
+      let errorMessage = "Désolé, je rencontre des difficultés techniques. Veuillez réessayer dans quelques instants.";
+
+      if (error.message?.includes('API_KEY')) {
+        errorMessage = "Configuration manquante: la clé API Gemini n'est pas configurée.";
+      } else if (error.message?.includes('quota') || error.message?.includes('rate')) {
+        errorMessage = "Limite de requêtes atteinte. Veuillez réessayer dans quelques minutes.";
+      } else if (error.message?.includes('network') || error.message?.includes('ECONNREFUSED')) {
+        errorMessage = "Problème de connexion au service IA. Veuillez réessayer.";
+      }
+
       return {
         success: false,
         error: error.message,
-        text: "Désolé, je rencontre des difficultés techniques. Veuillez réessayer dans quelques instants."
+        text: errorMessage
       };
     }
   }

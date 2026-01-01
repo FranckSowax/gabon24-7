@@ -1,19 +1,23 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Bot, RefreshCw, Database, FileText, CheckCircle, AlertCircle, Loader2, Play, Clock, Activity } from 'lucide-react'
+import { Bot, RefreshCw, Database, FileText, CheckCircle, AlertCircle, Loader2, Clock, Activity, Key, Sparkles } from 'lucide-react'
 
 interface SyncStatus {
   lastSyncedAt: string | null
   articlesCount: number
+  enrichedArticlesCount: number
   storeStatus: 'active' | 'inactive' | 'unknown'
+  geminiConfigured: boolean
 }
 
 export default function InsightGabAdminPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     lastSyncedAt: null,
     articlesCount: 0,
-    storeStatus: 'unknown'
+    enrichedArticlesCount: 0,
+    storeStatus: 'unknown',
+    geminiConfigured: false
   })
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -28,7 +32,9 @@ export default function InsightGabAdminPage() {
         setSyncStatus({
           lastSyncedAt: data.lastSyncedAt || null,
           articlesCount: data.articlesCount || 0,
-          storeStatus: data.storeStatus || 'unknown'
+          enrichedArticlesCount: data.enrichedArticlesCount || 0,
+          storeStatus: data.storeStatus || 'unknown',
+          geminiConfigured: data.geminiConfigured || false
         })
       }
     } catch (error) {
@@ -55,8 +61,7 @@ export default function InsightGabAdminPage() {
       const data = await response.json()
 
       if (data.success) {
-        setSyncResult({ success: true, message: data.message || 'Synchronisation lancée avec succès' })
-        // Refresh status after a delay
+        setSyncResult({ success: true, message: data.message || 'Synchronisation lancee avec succes' })
         setTimeout(fetchStatus, 3000)
       } else {
         setSyncResult({ success: false, message: data.error || 'Erreur lors de la synchronisation' })
@@ -72,7 +77,7 @@ export default function InsightGabAdminPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
             <Bot className="w-6 h-6 text-white" />
@@ -97,6 +102,17 @@ export default function InsightGabAdminPage() {
         </button>
       </div>
 
+      {/* Gemini API Key Warning */}
+      {!isLoading && !syncStatus.geminiConfigured && (
+        <div className="p-4 rounded-xl flex items-center gap-3 bg-red-50 border border-red-200 text-red-800">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <div>
+            <strong>GEMINI_API_KEY non configuree !</strong>
+            <p className="text-sm mt-1">Ajoutez la variable d'environnement GEMINI_API_KEY dans Railway pour activer le chatbot.</p>
+          </div>
+        </div>
+      )}
+
       {/* Sync Result Alert */}
       {syncResult && (
         <div className={`p-4 rounded-xl flex items-center gap-3 ${
@@ -114,10 +130,28 @@ export default function InsightGabAdminPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Gemini API Status */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+              <Key className="w-5 h-5 text-yellow-600" />
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              syncStatus.geminiConfigured
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {syncStatus.geminiConfigured ? 'OK' : 'Manquant'}
+            </span>
+          </div>
+          <h3 className="text-base font-semibold text-gray-900">API Gemini</h3>
+          <p className="text-xs text-gray-500 mt-1">Cle API configuree</p>
+        </div>
+
         {/* Store Status */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
               <Database className="w-5 h-5 text-blue-600" />
             </div>
@@ -131,43 +165,58 @@ export default function InsightGabAdminPage() {
               {syncStatus.storeStatus === 'active' ? 'Actif' : syncStatus.storeStatus === 'inactive' ? 'Inactif' : 'Inconnu'}
             </span>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">Store Gemini</h3>
-          <p className="text-sm text-gray-500 mt-1">Base de connaissances RAG</p>
+          <h3 className="text-base font-semibold text-gray-900">Store Supabase</h3>
+          <p className="text-xs text-gray-500 mt-1">Base de donnees</p>
         </div>
 
         {/* Articles Count */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
               <FileText className="w-5 h-5 text-indigo-600" />
             </div>
           </div>
-          <h3 className="text-3xl font-bold text-gray-900">
+          <h3 className="text-2xl font-bold text-gray-900">
             {isLoading ? '-' : syncStatus.articlesCount.toLocaleString()}
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Articles indexés</p>
+          <p className="text-xs text-gray-500 mt-1">Articles totaux</p>
         </div>
 
-        {/* Last Sync */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
+        {/* Enriched Articles */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-purple-600" />
+              <Sparkles className="w-5 h-5 text-purple-600" />
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {isLoading ? '-' : syncStatus.lastSyncedAt
-              ? new Date(syncStatus.lastSyncedAt).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              : 'Jamais'
-            }
+          <h3 className="text-2xl font-bold text-gray-900">
+            {isLoading ? '-' : syncStatus.enrichedArticlesCount.toLocaleString()}
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Dernière synchronisation</p>
+          <p className="text-xs text-gray-500 mt-1">Articles enrichis IA</p>
+        </div>
+      </div>
+
+      {/* Last Sync Info */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+            <Clock className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500">Derniere synchronisation</h3>
+            <p className="text-lg font-semibold text-gray-900">
+              {isLoading ? '-' : syncStatus.lastSyncedAt
+                ? new Date(syncStatus.lastSyncedAt).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Jamais synchronise'
+              }
+            </p>
+          </div>
         </div>
       </div>
 
@@ -182,38 +231,20 @@ export default function InsightGabAdminPage() {
             <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-blue-600 font-bold text-xs">1</span>
             </div>
-            <p><strong>Indexation des articles</strong> : Les articles de Gabon 24/7 sont régulièrement synchronisés vers un FileSearchStore Gemini.</p>
+            <p><strong>Recherche dans Supabase</strong> : Les articles enrichis par l'IA (keywords, category, summary_ai) sont recherches en fonction de la question.</p>
           </div>
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-blue-600 font-bold text-xs">2</span>
             </div>
-            <p><strong>Recherche sémantique</strong> : Quand un utilisateur pose une question, Gemini recherche les articles pertinents dans la base.</p>
+            <p><strong>Scoring intelligent</strong> : Les articles sont classes par pertinence (keywords, importance, recence, breaking news).</p>
           </div>
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-blue-600 font-bold text-xs">3</span>
             </div>
-            <p><strong>Génération de réponse</strong> : L'IA génère une réponse contextualisée basée sur les articles trouvés.</p>
+            <p><strong>Generation de reponse</strong> : Gemini 1.5 Flash genere une reponse basee sur le contexte des articles.</p>
           </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-white/60 rounded-xl">
-          <h4 className="font-medium text-gray-900 mb-2">Actions recommandées :</h4>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              Synchroniser après l'ajout de nouveaux articles importants
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              Vérifier le statut du store régulièrement
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              La synchronisation automatique se fait lors du traitement RSS
-            </li>
-          </ul>
         </div>
       </div>
 
@@ -222,20 +253,20 @@ export default function InsightGabAdminPage() {
         <h3 className="font-semibold text-gray-900 mb-4">Informations techniques</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-gray-500">Modèle :</span>
+            <span className="text-gray-500">Modele :</span>
             <span className="ml-2 font-medium text-gray-900">Gemini 1.5 Flash</span>
           </div>
           <div className="p-3 bg-gray-50 rounded-lg">
             <span className="text-gray-500">Type :</span>
-            <span className="ml-2 font-medium text-gray-900">FileSearchStore RAG</span>
+            <span className="ml-2 font-medium text-gray-900">Supabase + Gemini RAG</span>
           </div>
           <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-gray-500">Store :</span>
-            <span className="ml-2 font-medium text-gray-900">Gabon24-7 Knowledge Base</span>
+            <span className="text-gray-500">Colonnes IA :</span>
+            <span className="ml-2 font-medium text-gray-900">keywords, summary_ai, importance, sentiment</span>
           </div>
           <div className="p-3 bg-gray-50 rounded-lg">
-            <span className="text-gray-500">Batch size :</span>
-            <span className="ml-2 font-medium text-gray-900">100 articles/sync</span>
+            <span className="text-gray-500">Articles/requete :</span>
+            <span className="ml-2 font-medium text-gray-900">8 max (scoring)</span>
           </div>
         </div>
       </div>

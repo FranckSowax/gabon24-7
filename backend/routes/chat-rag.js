@@ -22,10 +22,21 @@ router.get('/status', async (req, res) => {
             }
         }
 
-        // Get articles count from Supabase
-        const { count, error } = await supabase.supabase
+        // Get articles count from Supabase (enriched articles with summary_ai)
+        const { count: enrichedCount } = await supabase.supabase
             .from('articles')
-            .select('*', { count: 'exact', head: true });
+            .select('*', { count: 'exact', head: true })
+            .eq('is_published', true)
+            .not('summary_ai', 'is', null);
+
+        // Get total articles count
+        const { count: totalCount } = await supabase.supabase
+            .from('articles')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_published', true);
+
+        // Check Gemini API key
+        const hasApiKey = !!process.env.GEMINI_API_KEY;
 
         // Check if store exists
         let storeStatus = 'unknown';
@@ -39,8 +50,10 @@ router.get('/status', async (req, res) => {
         res.json({
             success: true,
             lastSyncedAt,
-            articlesCount: count || 0,
-            storeStatus
+            articlesCount: totalCount || 0,
+            enrichedArticlesCount: enrichedCount || 0,
+            storeStatus,
+            geminiConfigured: hasApiKey
         });
     } catch (error) {
         console.error('Status error:', error);
