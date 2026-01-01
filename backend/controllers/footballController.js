@@ -146,8 +146,363 @@ async function getLiveFixtures(req, res) {
   }
 }
 
+/**
+ * Cache pour les confrontations directes (h2h)
+ */
+let h2hCache = {};
+const H2H_CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Cache pour les fixtures par date
+ */
+let fixturesByDateCache = {};
+const FIXTURES_DATE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Cache pour les classements
+ */
+let standingsCache = {};
+const STANDINGS_CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Helper pour construire les headers API
+ */
+function getApiConfig() {
+  const apiKey = process.env.FOOTBALL_API_KEY || process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_FOOTBALL_KEY;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  if (apiKey.startsWith('sk_') || apiKey.length === 32) {
+    // API-Football.com (clé directe)
+    return {
+      baseUrl: 'https://v3.football.api-sports.io',
+      headers: { 'x-apisports-key': apiKey }
+    };
+  } else {
+    // RapidAPI
+    return {
+      baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
+      headers: {
+        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+        'x-rapidapi-key': apiKey
+      }
+    };
+  }
+}
+
+/**
+ * Récupère les confrontations directes entre deux équipes (Head-to-Head)
+ * GET /api/football/h2h?team1=33&team2=34
+ */
+async function getHeadToHead(req, res) {
+  try {
+    const { team1, team2, last = 10 } = req.query;
+
+    if (!team1 || !team2) {
+      return res.status(400).json({
+        success: false,
+        error: 'team1 et team2 sont requis'
+      });
+    }
+
+    const cacheKey = `${team1}-${team2}`;
+    const now = Date.now();
+
+    // Vérifier le cache
+    if (h2hCache[cacheKey] && (now - h2hCache[cacheKey].timestamp) < H2H_CACHE_EXPIRY) {
+      console.log(`📋 Cache hit H2H: ${cacheKey}`);
+      return res.json(h2hCache[cacheKey].data);
+    }
+
+    console.log(`⚽ [H2H] Récupération confrontations ${team1} vs ${team2}...`);
+
+    const config = getApiConfig();
+    if (!config) {
+      return res.json({
+        success: true,
+        response: [],
+        message: 'Service Football non configuré'
+      });
+    }
+
+    const response = await fetch(`${config.baseUrl}/fixtures/headtohead?h2h=${team1}-${team2}&last=${last}`, {
+      method: 'GET',
+      headers: config.headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Football error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Mettre en cache
+    h2hCache[cacheKey] = {
+      data: data,
+      timestamp: now
+    };
+
+    console.log(`✅ ${data.response?.length || 0} confrontations récupérées`);
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ Erreur H2H:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des confrontations',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Récupère les fixtures par date
+ * GET /api/football/fixtures/date?date=2025-01-01
+ */
+async function getFixturesByDate(req, res) {
+  try {
+    const { date, league, season } = req.query;
+
+    // Date par défaut: aujourd'hui
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const cacheKey = `${targetDate}-${league || 'all'}-${season || 'current'}`;
+    const now = Date.now();
+
+    // Vérifier le cache
+    if (fixturesByDateCache[cacheKey] && (now - fixturesByDateCache[cacheKey].timestamp) < FIXTURES_DATE_CACHE_EXPIRY) {
+      console.log(`📋 Cache hit fixtures date: ${cacheKey}`);
+      return res.json(fixturesByDateCache[cacheKey].data);
+    }
+
+    console.log(`⚽ [Fixtures] Récupération matchs du ${targetDate}...`);
+
+    const config = getApiConfig();
+    if (!config) {
+      return res.json({
+        success: true,
+        response: [],
+        message: 'Service Football non configuré'
+      });
+    }
+
+    // Construire l'URL avec les paramètres optionnels
+    let url = `${config.baseUrl}/fixtures?date=${targetDate}`;
+    if (league) url += `&league=${league}`;
+    if (season) url += `&season=${season}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: config.headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Football error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Filtrer les matchs pour ne garder que les compétitions majeures
+    if (data.response && !league) {
+      data.response = filterMatches(data.response);
+    }
+
+    // Mettre en cache
+    fixturesByDateCache[cacheKey] = {
+      data: data,
+      timestamp: now
+    };
+
+    console.log(`✅ ${data.response?.length || 0} matchs récupérés pour ${targetDate}`);
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ Erreur fixtures par date:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des matchs',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Récupère le classement d'une ligue
+ * GET /api/football/standings?league=61&season=2024
+ */
+async function getStandings(req, res) {
+  try {
+    const { league, season } = req.query;
+
+    if (!league) {
+      return res.status(400).json({
+        success: false,
+        error: 'league est requis'
+      });
+    }
+
+    // Saison par défaut: année actuelle ou année précédente selon le mois
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const defaultSeason = currentMonth < 7 ? currentYear - 1 : currentYear; // Avant août = saison précédente
+    const targetSeason = season || defaultSeason;
+
+    const cacheKey = `${league}-${targetSeason}`;
+    const now = Date.now();
+
+    // Vérifier le cache
+    if (standingsCache[cacheKey] && (now - standingsCache[cacheKey].timestamp) < STANDINGS_CACHE_EXPIRY) {
+      console.log(`📋 Cache hit standings: ${cacheKey}`);
+      return res.json(standingsCache[cacheKey].data);
+    }
+
+    console.log(`⚽ [Standings] Récupération classement ligue ${league} saison ${targetSeason}...`);
+
+    const config = getApiConfig();
+    if (!config) {
+      return res.json({
+        success: true,
+        response: [],
+        message: 'Service Football non configuré'
+      });
+    }
+
+    const response = await fetch(`${config.baseUrl}/standings?league=${league}&season=${targetSeason}`, {
+      method: 'GET',
+      headers: config.headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Football error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Mettre en cache
+    standingsCache[cacheKey] = {
+      data: data,
+      timestamp: now
+    };
+
+    console.log(`✅ Classement récupéré pour ligue ${league}`);
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ Erreur standings:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération du classement',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Récupère les informations d'une équipe
+ * GET /api/football/team?id=33
+ */
+async function getTeam(req, res) {
+  try {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'id est requis'
+      });
+    }
+
+    console.log(`⚽ [Team] Récupération équipe ${id}...`);
+
+    const config = getApiConfig();
+    if (!config) {
+      return res.json({
+        success: true,
+        response: [],
+        message: 'Service Football non configuré'
+      });
+    }
+
+    const response = await fetch(`${config.baseUrl}/teams?id=${id}`, {
+      method: 'GET',
+      headers: config.headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Football error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Équipe ${id} récupérée`);
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ Erreur team:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de l\'équipe',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Recherche d'équipes par nom
+ * GET /api/football/teams/search?name=paris
+ */
+async function searchTeams(req, res) {
+  try {
+    const { name } = req.query;
+
+    if (!name || name.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'name doit contenir au moins 3 caractères'
+      });
+    }
+
+    console.log(`⚽ [Search] Recherche équipes "${name}"...`);
+
+    const config = getApiConfig();
+    if (!config) {
+      return res.json({
+        success: true,
+        response: [],
+        message: 'Service Football non configuré'
+      });
+    }
+
+    const response = await fetch(`${config.baseUrl}/teams?search=${encodeURIComponent(name)}`, {
+      method: 'GET',
+      headers: config.headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Football error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ ${data.response?.length || 0} équipes trouvées pour "${name}"`);
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ Erreur search teams:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la recherche',
+      message: error.message
+    });
+  }
+}
+
 module.exports = {
   getLiveFixtures,
+  getHeadToHead,
+  getFixturesByDate,
+  getStandings,
+  getTeam,
+  searchTeams,
   filterMatches,
   ALLOWED_LEAGUE_IDS
 };
