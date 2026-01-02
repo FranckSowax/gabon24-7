@@ -8,7 +8,8 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { generateJournalisticSummary } = require('../services/gpt5-nano-analyzer');
 const { generateAudio } = require('../services/replicate-kokoro-tts');
-const { checkCredits, consumeCredits, refundCredits } = require('../services/credit-manager-premium');
+const { checkUserCredits, deductCredits, refundServiceCredits } = require('../middleware/ai-validation');
+const pricingService = require('../services/pricing-service');
 
 // POST /api/audio/generate-summary - Générer résumé audio (daily ou custom)
 router.post('/generate-summary', async (req, res) => {
@@ -32,22 +33,22 @@ router.post('/generate-summary', async (req, res) => {
       return res.status(400).json({ success: false, error: 'action doit être "daily" ou "custom"' });
     }
 
-    // Vérifier les crédits de l'utilisateur
+    // Vérifier les crédits de l'utilisateur avec le nouveau système
     const serviceName = 'audio_summary';
-    const creditCheck = await checkCredits(userId, serviceName);
-    
-    if (!creditCheck.hasEnough) {
+    const creditCheck = await checkUserCredits(userId, serviceName);
+
+    if (!creditCheck.allowed) {
       return res.status(402).json({
         success: false,
-        error: 'Crédits insuffisants',
+        error: creditCheck.message || 'Crédits insuffisants',
         code: 'INSUFFICIENT_CREDITS',
-        balance: creditCheck.balance,
-        required: creditCheck.required,
-        missing: creditCheck.missing
+        balance: creditCheck.details?.available || 0,
+        required: creditCheck.requiredCredits || await pricingService.getServiceCost(serviceName),
+        missing: creditCheck.details?.missing || 0
       });
     }
-    
-    console.log(`✅ Crédits OK: ${creditCheck.balance} crédits disponibles, ${creditCheck.required} requis`);
+
+    console.log(`✅ Crédits OK: ${creditCheck.credits} crédits disponibles, ${creditCheck.requiredCredits} requis`);
     
     let articles = [];
     let summaryType = action;
@@ -114,42 +115,40 @@ router.post('/generate-summary', async (req, res) => {
 
     const summaryId = savedSummary.id;
 
-    // Consommer les crédits AVANT de lancer le traitement
-    const consumeResult = await consumeCredits(
+    // Consommer les crédits AVANT de lancer le traitement avec le nouveau système
+    const deductResult = await deductCredits(
       userId,
       serviceName,
-      null, // Utilise le coût par défaut du service
-      `Résumé audio ${action}`,
       summaryId,
       { action, articles_count: articles.length, language }
     );
 
-    if (!consumeResult.success) {
+    if (!deductResult.success) {
       // Supprimer le résumé créé si la consommation échoue
       await supabaseService.supabase
         .from('audio_summaries')
         .delete()
         .eq('id', summaryId);
-      
+
       return res.status(500).json({
         success: false,
         error: 'Erreur lors de la consommation des crédits',
-        details: consumeResult.error
+        details: deductResult.error
       });
     }
 
-    console.log(`💰 ${creditCheck.required} crédits consommés. Nouveau solde: ${consumeResult.total_balance}`);
+    console.log(`💰 ${deductResult.deducted} crédits consommés. Nouveau solde: ${deductResult.newBalance}`);
 
     // Répondre immédiatement au client
     res.json({
       success: true,
       summaryId: summaryId,
-      creditsConsumed: creditCheck.required,
-      newBalance: consumeResult.total_balance
+      creditsConsumed: deductResult.deducted,
+      newBalance: deductResult.newBalance
     });
 
     // Traitement asynchrone en arrière-plan
-    processAudioSummary(summaryId, articles, language, pace, sendWhatsApp, action, userId, consumeResult.transaction_id).catch(err => {
+    processAudioSummary(summaryId, articles, language, pace, sendWhatsApp, action, userId, deductResult.transaction_id).catch(err => {
       console.error('❌ Erreur traitement audio:', err);
     });
 
@@ -269,18 +268,17 @@ async function processAudioSummary(summaryId, articles, language, pace, sendWhat
       })
       .eq('id', summaryId);
     
-    // Rembourser les crédits en cas d'échec total
-    if (userId && transactionId) {
+    // Rembourser les crédits en cas d'échec total avec le nouveau système
+    if (userId) {
       console.log(`💸 Remboursement des crédits pour l'utilisateur ${userId}`);
-      const refundResult = await refundCredits(
+      const refundResult = await refundServiceCredits(
         userId,
-        20, // Montant du service audio_summary (coût réel)
-        `Échec génération résumé audio ${summaryId}`,
-        transactionId
+        'audio_summary',
+        `Échec génération résumé audio ${summaryId}`
       );
-      
+
       if (refundResult.success) {
-        console.log(`✅ Crédits remboursés. Nouveau solde: ${refundResult.total_balance}`);
+        console.log(`✅ Crédits remboursés: ${refundResult.refunded}. Nouveau solde: ${refundResult.newBalance}`);
       } else {
         console.error(`❌ Erreur remboursement crédits:`, refundResult.error);
       }
@@ -879,19 +877,17 @@ router.post('/cancel', async (req, res) => {
       return res.status(500).json({ success: false, error: 'Erreur lors de l\'annulation' });
     }
 
-    // Rembourser les crédits
-    let refundResult = { success: false, total_balance: null };
+    // Rembourser les crédits avec le nouveau système
+    let refundResult = { success: false, newBalance: null };
     try {
-      const refundAmount = 20; // Coût du service audio_summary (coût réel)
-      refundResult = await refundCredits(
+      refundResult = await refundServiceCredits(
         userId,
-        refundAmount,
-        `Annulation résumé audio ${summaryId}`,
-        null // Pas de transaction_id spécifique
+        'audio_summary',
+        `Annulation résumé audio ${summaryId}`
       );
 
       if (refundResult.success) {
-        console.log(`💸 Crédits remboursés: ${refundAmount}. Nouveau solde: ${refundResult.total_balance}`);
+        console.log(`💸 Crédits remboursés: ${refundResult.refunded}. Nouveau solde: ${refundResult.newBalance}`);
       } else {
         console.error('❌ Erreur remboursement:', refundResult.error);
       }
