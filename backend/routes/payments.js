@@ -15,7 +15,6 @@ const router = express.Router();
 const { z } = require('zod');
 const paymentService = require('../services/payment.service');
 const pvitPaymentService = require('../services/pvit-payment.service');
-const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
 
@@ -298,37 +297,140 @@ router.get('/history', requireAuth, async (req, res) => {
   }
 });
 
+// ============================================
+// 5. WEBHOOKS PVIT - Endpoints appelés par PVIT directement
+// ============================================
+
+/**
+ * POST /api/payments/pvit/callback
+ * Callback principal PVIT - Appelé par PVIT après chaque transaction
+ * URL à configurer dans le dashboard PVIT comme "Callback URL"
+ */
+router.post('/pvit/callback', async (req, res) => {
+  try {
+    console.log('📥 Callback PVIT reçu:', JSON.stringify(req.body, null, 2));
+
+    // PVIT peut envoyer les données dans différents formats
+    const callbackData = {
+      merchantReference: req.body.merchantReference || req.body.merchant_reference || req.body.reference,
+      merchantReferenceId: req.body.merchantReferenceId || req.body.merchant_reference_id,
+      operationStatus: req.body.operationStatus || req.body.status || req.body.operation_status,
+      amount: req.body.amount,
+      currency: req.body.currency || 'XAF',
+      customerMsisdn: req.body.customerMsisdn || req.body.phone,
+      ...req.body
+    };
+
+    const result = await pvitPaymentService.processCallback(callbackData);
+
+    // PVIT attend une réponse SUCCESS pour confirmer la réception
+    res.json({
+      responseCode: 'SUCCESS',
+      message: 'Callback traité avec succès',
+      ...result
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur callback PVIT:', error);
+    // Même en cas d'erreur, renvoyer un format que PVIT comprend
+    res.status(500).json({
+      responseCode: 'ERROR',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/payments/pvit/reception-secret
+ * Réception des nouvelles clés secrètes PVIT
+ * URL à configurer dans le dashboard PVIT comme "Reception URL"
+ */
+router.post('/pvit/reception-secret', async (req, res) => {
+  try {
+    console.log('🔑 Réception clé secrète PVIT:', {
+      account: req.body.operation_account_code || req.body.operationAccountCode,
+      hasKey: !!(req.body.secret_key || req.body.secretKey)
+    });
+
+    // PVIT peut envoyer les données dans différents formats
+    const keyData = {
+      operation_account_code: req.body.operation_account_code || req.body.operationAccountCode,
+      secret_key: req.body.secret_key || req.body.secretKey,
+      expires_in: req.body.expires_in || req.body.expiresIn || 86400
+    };
+
+    if (!keyData.operation_account_code || !keyData.secret_key) {
+      return res.status(400).json({
+        responseCode: 'ERROR',
+        message: 'Données de clé manquantes'
+      });
+    }
+
+    const result = await pvitPaymentService.receiveSecretKey(keyData);
+
+    if (result.success) {
+      res.json({
+        responseCode: 'SUCCESS',
+        message: 'Clé enregistrée avec succès',
+        expires_at: result.expires_at
+      });
+    } else {
+      throw new Error(result.error || 'Erreur inconnue');
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur réception clé PVIT:', error);
+    res.status(400).json({
+      responseCode: 'ERROR',
+      message: error.message
+    });
+  }
+});
+
 /**
  * POST /api/payments/webhook/pvit
- * Endpoint pour traiter les callbacks PVIT (appelé par le PHP)
+ * Alias pour compatibilité (ancien endpoint)
  */
 router.post('/webhook/pvit', async (req, res) => {
   try {
-    const { reference, status, merchant_reference_id, callback_data } = req.body;
+    console.log('📥 Webhook PVIT (legacy) reçu:', req.body);
 
-    console.log('📥 Webhook PVIT reçu:', { reference, status });
+    // Rediriger vers le nouveau handler
+    const callbackData = {
+      merchantReference: req.body.reference || req.body.merchantReference,
+      merchantReferenceId: req.body.merchant_reference_id || req.body.merchantReferenceId,
+      operationStatus: req.body.status || req.body.operationStatus,
+      amount: req.body.amount,
+      ...req.body
+    };
 
-    // Appeler la fonction RPC pour traiter le callback
-    const { data, error } = await supabaseService.supabase.rpc(
-      'process_pvit_callback',
-      {
-        p_reference: reference,
-        p_status: status,
-        p_merchant_reference_id: merchant_reference_id,
-        p_callback_data: callback_data || {}
-      }
-    );
-
-    if (error) {
-      console.error('❌ Erreur traitement callback:', error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
-
-    res.json({ success: true, result: data });
+    const result = await pvitPaymentService.processCallback(callbackData);
+    res.json({ success: true, result });
 
   } catch (error) {
-    console.error('❌ Erreur webhook:', error);
+    console.error('❌ Erreur webhook PVIT:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/payments/pvit/health
+ * Endpoint de vérification de santé pour PVIT
+ */
+router.get('/pvit/health', async (req, res) => {
+  try {
+    const hasValidKey = await pvitPaymentService.getValidPvitKey();
+    res.json({
+      status: 'ok',
+      service: 'pvit-payments',
+      hasValidKey: !!hasValidKey,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
   }
 });
 
