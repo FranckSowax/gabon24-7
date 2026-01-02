@@ -5,7 +5,19 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import { Phone, CreditCard, Shield, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
+import {
+  Phone,
+  CreditCard,
+  Shield,
+  Loader2,
+  AlertCircle,
+  ArrowLeft,
+  Smartphone,
+  CheckCircle2,
+  Zap,
+  Lock,
+  Wallet
+} from 'lucide-react'
 
 // Types de paiement supportés
 type PaymentType = 'credits' | 'subscription' | 'quiz'
@@ -35,24 +47,40 @@ function PaiementContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [selectedOperator, setSelectedOperator] = useState<'airtel' | 'moov' | null>(null)
 
   // Récupérer les paramètres de paiement depuis l'URL
   useEffect(() => {
-    if (!searchParams) return
+    if (!searchParams) {
+      setIsInitializing(false)
+      return
+    }
 
     const type = searchParams.get('type') as PaymentType
-    const amount = parseInt(searchParams.get('amount') || '0')
+    const amountStr = searchParams.get('amount')
+    const amount = amountStr ? parseInt(amountStr) : 0
     const description = searchParams.get('description') || ''
 
+    // Si on n'a pas encore les params, on attend (Suspense hydration)
+    if (!type && !amountStr) {
+      // Attendre un peu pour le hydration
+      const timer = setTimeout(() => {
+        setIsInitializing(false)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+
     if (!type || !amount) {
-      setError('Paramètres de paiement invalides')
+      setError('Paramètres de paiement invalides. Veuillez retourner à la page précédente.')
+      setIsInitializing(false)
       return
     }
 
     const config: PaymentConfig = {
       type,
       amount,
-      description,
+      description: decodeURIComponent(description),
       packageId: searchParams.get('packageId') || undefined,
       planSlug: searchParams.get('planSlug') || undefined,
       quizId: searchParams.get('quizId') || undefined,
@@ -63,6 +91,8 @@ function PaiementContent() {
     }
 
     setPaymentConfig(config)
+    setError(null)
+    setIsInitializing(false)
   }, [searchParams])
 
   // Rediriger si non connecté
@@ -77,23 +107,40 @@ function PaiementContent() {
     const phoneNumber = (user?.user_metadata as any)?.phone_number
     if (phoneNumber) {
       setPhone(phoneNumber)
+      // Détecter l'opérateur
+      detectOperator(phoneNumber)
     }
   }, [user])
 
+  const detectOperator = (phoneNumber: string) => {
+    const digits = phoneNumber.replace(/\D/g, '')
+    if (digits.startsWith('074') || digits.startsWith('077') || digits.startsWith('07')) {
+      setSelectedOperator('airtel')
+    } else if (digits.startsWith('062') || digits.startsWith('066') || digits.startsWith('06')) {
+      setSelectedOperator('moov')
+    }
+  }
+
   const formatPhone = (value: string) => {
-    // Garder uniquement les chiffres
     const digits = value.replace(/\D/g, '')
-    // Limiter à 9 chiffres (format Gabon sans indicatif)
-    return digits.slice(0, 9)
+    // Format: XX XX XX XX
+    if (digits.length <= 2) return digits
+    if (digits.length <= 4) return `${digits.slice(0, 2)} ${digits.slice(2)}`
+    if (digits.length <= 6) return `${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`
+    return `${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4, 6)} ${digits.slice(6, 8)}`
+  }
+
+  const handlePhoneChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8)
+    setPhone(digits)
+    detectOperator(digits)
   }
 
   const validatePhone = (phoneNumber: string) => {
     const digits = phoneNumber.replace(/\D/g, '')
-    // Vérifier que c'est un numéro gabonais valide (commence par 0, 6 ou 7)
     if (digits.length < 8 || digits.length > 9) {
       return false
     }
-    // Vérifier le préfixe (Airtel: 074, 077 / Moov: 062, 066)
     const validPrefixes = ['074', '077', '062', '066', '06', '07']
     return validPrefixes.some(prefix => digits.startsWith(prefix))
   }
@@ -112,11 +159,10 @@ function PaiementContent() {
     setError(null)
 
     try {
-      // Récupérer le token d'authentification Supabase
       const token = localStorage.getItem('supabase_token') || localStorage.getItem('sb-access-token')
 
       let endpoint = ''
-      let body: any = { phone }
+      let body: any = { phone: phone.replace(/\D/g, '') }
 
       switch (paymentConfig.type) {
         case 'credits':
@@ -149,11 +195,9 @@ function PaiementContent() {
         throw new Error(data.error || 'Erreur lors de l\'initiation du paiement')
       }
 
-      // Stocker la référence pour la page de succès
       localStorage.setItem('pvit_payment_reference', data.data.reference)
       localStorage.setItem('pvit_payment_type', paymentConfig.type)
 
-      // Rediriger vers la page d'attente ou afficher le message
       router.push(`/paiement/attente?reference=${data.data.reference}`)
 
     } catch (err: any) {
@@ -164,12 +208,54 @@ function PaiementContent() {
     }
   }
 
-  if (authLoading) {
+  const getTypeIcon = () => {
+    switch (paymentConfig?.type) {
+      case 'credits':
+        return <Zap className="w-6 h-6" />
+      case 'subscription':
+        return <CreditCard className="w-6 h-6" />
+      case 'quiz':
+        return <Wallet className="w-6 h-6" />
+      default:
+        return <CreditCard className="w-6 h-6" />
+    }
+  }
+
+  const getTypeLabel = () => {
+    switch (paymentConfig?.type) {
+      case 'credits':
+        return 'Achat de crédits'
+      case 'subscription':
+        return 'Abonnement'
+      case 'quiz':
+        return 'Inscription Quiz'
+      default:
+        return 'Paiement'
+    }
+  }
+
+  const getTypeColor = () => {
+    switch (paymentConfig?.type) {
+      case 'credits':
+        return 'from-yellow-500 to-orange-500'
+      case 'subscription':
+        return 'from-purple-500 to-indigo-500'
+      case 'quiz':
+        return 'from-blue-500 to-cyan-500'
+      default:
+        return 'from-orange-500 to-red-500'
+    }
+  }
+
+  if (authLoading || isInitializing) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-orange-500/30 rounded-full animate-pulse"></div>
+            <Loader2 className="w-16 h-16 animate-spin text-orange-500 absolute top-0 left-0" />
+          </div>
+          <p className="mt-4 text-gray-400">Préparation du paiement...</p>
         </div>
       </div>
     )
@@ -177,163 +263,231 @@ function PaiementContent() {
 
   if (!user) return null
 
+  // Page d'erreur si pas de config
+  if (!paymentConfig && !isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+        <div className="flex min-h-screen w-full">
+          <Sidebar isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
+          <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <div className="w-20 h-20 bg-red-500/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-red-400" />
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-3">Paramètres manquants</h1>
+              <p className="text-gray-400 mb-6">
+                Les informations de paiement sont incomplètes. Veuillez retourner à la page précédente et réessayer.
+              </p>
+              <button
+                onClick={() => router.back()}
+                className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-colors"
+              >
+                Retour
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
       <div className="flex min-h-screen w-full">
-        <Sidebar
-          isMobileOpen={isMobileMenuOpen}
-          onMobileClose={() => setIsMobileMenuOpen(false)}
-        />
+        <Sidebar isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
 
         <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8">
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-lg mx-auto pt-4">
             {/* Header */}
-            <div className="mb-8">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Retour
-              </button>
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Retour</span>
+            </button>
 
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Paiement Mobile Money</h1>
-              <p className="text-gray-600">Payez en toute sécurité avec Airtel Money ou Moov Money</p>
-            </div>
-
-            {/* Récapitulatif */}
-            {paymentConfig && (
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Récapitulatif</h2>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Type</span>
-                    <span className="font-medium text-gray-900">
-                      {paymentConfig.type === 'credits' && 'Achat de crédits'}
-                      {paymentConfig.type === 'subscription' && 'Abonnement'}
-                      {paymentConfig.type === 'quiz' && 'Inscription Quiz'}
-                    </span>
+            {/* Carte de paiement */}
+            <div className="bg-gray-800/50 backdrop-blur-xl rounded-3xl border border-gray-700/50 overflow-hidden shadow-2xl">
+              {/* Header avec gradient */}
+              <div className={`bg-gradient-to-r ${getTypeColor()} p-6`}>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                    {getTypeIcon()}
                   </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Description</span>
-                    <span className="font-medium text-gray-900">{paymentConfig.description}</span>
-                  </div>
-
-                  {paymentConfig.credits && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Crédits</span>
-                      <span className="font-medium text-green-600">
-                        {paymentConfig.credits} crédits
-                        {paymentConfig.bonus ? ` + ${paymentConfig.bonus} bonus` : ''}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-2xl font-bold text-orange-600">
-                        {paymentConfig.amount.toLocaleString('fr-FR')} FCFA
-                      </span>
-                    </div>
+                  <div>
+                    <p className="text-white/80 text-sm">{getTypeLabel()}</p>
+                    <p className="text-3xl font-bold text-white">
+                      {paymentConfig?.amount.toLocaleString('fr-FR')} <span className="text-lg">FCFA</span>
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Formulaire */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Numéro de téléphone */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Numéro de téléphone Mobile Money
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div className="absolute inset-y-0 left-10 flex items-center pointer-events-none">
-                      <span className="text-gray-500 font-medium">+241</span>
-                    </div>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(formatPhone(e.target.value))}
-                      placeholder="07 XX XX XX"
-                      className="w-full pl-24 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
-                      required
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Airtel Money (074, 077) ou Moov Money (062, 066)
+                {paymentConfig?.description && (
+                  <p className="mt-4 text-white/80 text-sm bg-white/10 rounded-xl px-4 py-2">
+                    {paymentConfig.description}
                   </p>
-                </div>
+                )}
+              </div>
 
-                {/* Erreur */}
-                {error && (
-                  <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <p className="text-sm">{error}</p>
+              {/* Contenu */}
+              <div className="p-6 space-y-6">
+                {/* Détails */}
+                {paymentConfig?.credits && (
+                  <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl">
+                    <span className="text-gray-400">Crédits</span>
+                    <span className="font-bold text-green-400">
+                      +{paymentConfig.credits}{paymentConfig.bonus ? ` + ${paymentConfig.bonus} bonus` : ''} crédits
+                    </span>
                   </div>
                 )}
 
-                {/* Instructions */}
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <h3 className="font-medium text-orange-800 mb-2">Comment ça marche ?</h3>
-                  <ol className="text-sm text-orange-700 space-y-1 list-decimal list-inside">
-                    <li>Entrez votre numéro Mobile Money</li>
-                    <li>Cliquez sur "Payer maintenant"</li>
-                    <li>Vous recevrez une notification sur votre téléphone</li>
-                    <li>Confirmez le paiement avec votre code PIN</li>
-                    <li>Vos crédits/abonnement seront activés automatiquement</li>
-                  </ol>
+                {/* Sélection opérateur */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    Choisir votre opérateur
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOperator('airtel')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        selectedOperator === 'airtel'
+                          ? 'border-red-500 bg-red-500/10'
+                          : 'border-gray-600 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-xl font-bold text-white">A</span>
+                        </div>
+                        <span className={`font-medium ${selectedOperator === 'airtel' ? 'text-red-400' : 'text-gray-400'}`}>
+                          Airtel Money
+                        </span>
+                        <span className="text-xs text-gray-500">074, 077</span>
+                      </div>
+                      {selectedOperator === 'airtel' && (
+                        <CheckCircle2 className="w-5 h-5 text-red-500 absolute top-2 right-2" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOperator('moov')}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        selectedOperator === 'moov'
+                          ? 'border-blue-500 bg-blue-500/10'
+                          : 'border-gray-600 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-xl font-bold text-white">M</span>
+                        </div>
+                        <span className={`font-medium ${selectedOperator === 'moov' ? 'text-blue-400' : 'text-gray-400'}`}>
+                          Moov Money
+                        </span>
+                        <span className="text-xs text-gray-500">062, 066</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Bouton de paiement */}
-                <button
-                  type="submit"
-                  disabled={isLoading || !paymentConfig}
-                  className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg font-semibold text-lg hover:from-orange-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Traitement en cours...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5" />
-                      Payer {paymentConfig?.amount.toLocaleString('fr-FR')} FCFA
-                    </>
+                {/* Numéro de téléphone */}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Numéro Mobile Money
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center">
+                        <div className="h-full px-4 flex items-center bg-gray-700 rounded-l-xl border-r border-gray-600">
+                          <span className="text-gray-300 font-medium flex items-center gap-2">
+                            <Smartphone className="w-4 h-4" />
+                            +241
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        type="tel"
+                        value={formatPhone(phone)}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        placeholder="07 XX XX XX"
+                        className="w-full pl-28 pr-4 py-4 bg-gray-700/50 border border-gray-600 rounded-xl text-white text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Erreur */}
+                  {error && (
+                    <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-300">{error}</p>
+                    </div>
                   )}
-                </button>
 
-                {/* Sécurité */}
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Shield className="w-4 h-4" />
-                  <span>Paiement sécurisé via PVIT</span>
-                </div>
-              </form>
+                  {/* Instructions */}
+                  <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Phone className="w-5 h-5 text-orange-400" />
+                      <h4 className="font-medium text-orange-300">Comment ça marche ?</h4>
+                    </div>
+                    <ol className="text-sm text-gray-400 space-y-2">
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">1</span>
+                        <span>Cliquez sur "Payer maintenant"</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">2</span>
+                        <span>Vous recevrez une notification sur votre téléphone</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">3</span>
+                        <span>Confirmez avec votre code PIN Mobile Money</span>
+                      </li>
+                    </ol>
+                  </div>
+
+                  {/* Bouton de paiement */}
+                  <button
+                    type="submit"
+                    disabled={isLoading || !paymentConfig || !phone}
+                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-500/25"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        Traitement en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5" />
+                        Payer {paymentConfig?.amount.toLocaleString('fr-FR')} FCFA
+                      </>
+                    )}
+                  </button>
+
+                  {/* Sécurité */}
+                  <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+                    <Shield className="w-4 h-4" />
+                    <span>Paiement sécurisé via PVIT</span>
+                  </div>
+                </form>
+              </div>
             </div>
 
-            {/* Logos opérateurs */}
-            <div className="mt-6 flex items-center justify-center gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-2xl font-bold text-red-600">A</span>
-                </div>
-                <p className="text-xs text-gray-600">Airtel Money</p>
+            {/* Badges de confiance */}
+            <div className="mt-6 flex items-center justify-center gap-6 text-gray-500">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                <span className="text-xs">SSL Sécurisé</span>
               </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-2xl font-bold text-blue-600">M</span>
-                </div>
-                <p className="text-xs text-gray-600">Moov Money</p>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span className="text-xs">PVIT Certifié</span>
               </div>
             </div>
           </div>
@@ -345,10 +499,13 @@ function PaiementContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
-        <p className="mt-4 text-gray-600">Chargement...</p>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-orange-500/30 rounded-full animate-pulse"></div>
+          <Loader2 className="w-16 h-16 animate-spin text-orange-500 absolute top-0 left-0" />
+        </div>
+        <p className="mt-4 text-gray-400">Chargement...</p>
       </div>
     </div>
   )
