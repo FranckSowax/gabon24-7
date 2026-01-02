@@ -2,7 +2,8 @@ const express = require('express');
 const OpenAI = require('openai');
 const supabaseService = require('../../supabase-config');
 const aiConfigService = require('../../services/ai-config-service');
-const { checkCredits, consumeCredits } = require('../../services/credit-manager-premium');
+const { checkUserCredits, deductCredits } = require('../../middleware/ai-validation');
+const pricingService = require('../../services/pricing-service');
 const router = express.Router();
 
 const { supabase } = supabaseService;
@@ -44,18 +45,18 @@ router.post('/send-message', async (req, res) => {
     }
 
     const configuredModel = await aiConfigService.getModel('chat_message');
-    const creditsNeeded = await aiConfigService.getCredits('chat_message');
+    const creditsNeeded = await pricingService.getServiceCost('chat_message');
 
-    // Vérifier crédits utilisateur
-    const creditCheck = await checkCredits(userId, 'chat_message');
-    
-    if (!creditCheck.hasEnough) {
-      return res.status(402).json({ 
-        success: false, 
-        error: 'Crédits insuffisants',
-        balance: creditCheck.balance,
-        required: creditCheck.required,
-        missing: creditCheck.missing
+    // Vérifier crédits utilisateur avec le nouveau système
+    const creditCheck = await checkUserCredits(userId, 'chat_message');
+
+    if (!creditCheck.allowed) {
+      return res.status(402).json({
+        success: false,
+        error: creditCheck.message || 'Crédits insuffisants',
+        balance: creditCheck.details?.available || 0,
+        required: creditCheck.details?.required || creditsNeeded,
+        missing: creditCheck.details?.missing || 0
       });
     }
 
@@ -209,17 +210,16 @@ INSTRUCTIONS:
       })
       .eq('id', currentConversationId);
 
-    // Débiter crédits utilisateur
-    const consumeResult = await consumeCredits(
+    // Débiter crédits utilisateur avec le nouveau système
+    const deductResult = await deductCredits(
       userId,
       'chat_message',
-      null, // Utilise le coût par défaut du service
-      `Chat message - Conversation ${currentConversationId}`,
-      currentConversationId
+      currentConversationId,
+      { conversationId: currentConversationId, projectId }
     );
 
-    if (!consumeResult.success) {
-      console.error('⚠️ Erreur débit crédits:', consumeResult.error);
+    if (!deductResult.success) {
+      console.error('⚠️ Erreur débit crédits:', deductResult.error);
     }
 
     res.json({
