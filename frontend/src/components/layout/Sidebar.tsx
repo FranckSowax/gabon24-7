@@ -143,7 +143,6 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   ]
 
   const settingsItems = [
-    { icon: '❓', label: 'Aide', href: '/help' },
     { icon: '📝', label: 'Envoyer Feedback', href: '/feedback' }
   ]
 
