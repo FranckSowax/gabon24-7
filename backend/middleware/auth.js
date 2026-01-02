@@ -59,16 +59,16 @@ async function requireAuth(req, res, next) {
       metadata: user.user_metadata || {}
     };
 
-    // Récupérer le rôle depuis la table users si existe
+    // Récupérer le statut admin depuis la table users si existe
     const { data: userData } = await supabaseService.supabase
       .from('users')
-      .select('role, is_admin')
+      .select('is_admin, subscription_type')
       .eq('id', user.id)
       .single();
 
     if (userData) {
-      req.user.role = userData.role || req.user.role;
-      req.user.isAdmin = userData.is_admin === true || userData.role === 'admin';
+      req.user.isAdmin = userData.is_admin === true;
+      req.user.subscriptionType = userData.subscription_type;
     }
 
     next();
@@ -109,16 +109,16 @@ async function optionalAuth(req, res, next) {
       metadata: user.user_metadata || {}
     };
 
-    // Récupérer le rôle depuis la table users
+    // Récupérer le statut admin depuis la table users
     const { data: userData } = await supabaseService.supabase
       .from('users')
-      .select('role, is_admin')
+      .select('is_admin, subscription_type')
       .eq('id', user.id)
       .single();
 
     if (userData) {
-      req.user.role = userData.role || req.user.role;
-      req.user.isAdmin = userData.is_admin === true || userData.role === 'admin';
+      req.user.isAdmin = userData.is_admin === true;
+      req.user.subscriptionType = userData.subscription_type;
     }
 
     next();
@@ -156,14 +156,14 @@ async function requireAdmin(req, res, next) {
       });
     }
 
-    // Vérifier le rôle admin dans la table users
+    // Vérifier le statut admin dans la table users
     const { data: userData, error: userError } = await supabaseService.supabase
       .from('users')
-      .select('role, is_admin')
+      .select('is_admin')
       .eq('id', user.id)
       .single();
 
-    const isAdmin = userData?.is_admin === true || userData?.role === 'admin';
+    const isAdmin = userData?.is_admin === true;
 
     if (!isAdmin) {
       console.warn(`⚠️ Accès admin refusé pour: ${user.email}`);
@@ -220,17 +220,17 @@ function requireRole(...allowedRoles) {
         });
       }
 
-      // Récupérer le rôle
+      // Récupérer le statut admin
       const { data: userData } = await supabaseService.supabase
         .from('users')
-        .select('role')
+        .select('is_admin, subscription_type')
         .eq('id', user.id)
         .single();
 
-      const userRole = userData?.role || 'user';
+      const userRole = userData?.is_admin ? 'admin' : (userData?.subscription_type || 'user');
 
       if (!allowedRoles.includes(userRole)) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
           error: `Rôle requis: ${allowedRoles.join(' ou ')}`,
           code: 'AUTH_ROLE_REQUIRED'
@@ -241,7 +241,7 @@ function requireRole(...allowedRoles) {
         id: user.id,
         email: user.email,
         role: userRole,
-        isAdmin: userRole === 'admin',
+        isAdmin: userData?.is_admin === true,
         metadata: user.user_metadata || {}
       };
 
