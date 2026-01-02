@@ -38,22 +38,30 @@ const LANGUAGE_LABELS: Record<string, { flag: string; label: string }> = {
 }
 
 export default function AudioDailyPage() {
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Protection de la page
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/audio/daily')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, authLoading, router])
+  }, [user, subscriptionPlan, authLoading, subscriptionLoading, router])
 
-  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
+  if (authLoading || subscriptionLoading || !user) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (subscriptionPlan?.slug !== 'pro') {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>

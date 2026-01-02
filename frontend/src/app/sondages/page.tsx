@@ -72,7 +72,7 @@ interface PollOrder {
 
 export default function SondagesPage() {
   const router = useRouter()
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth()
   const [polls, setPolls] = useState<Poll[]>([])
   const [archivedPolls, setArchivedPolls] = useState<Poll[]>([])
   const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null)
@@ -104,18 +104,29 @@ export default function SondagesPage() {
   })
 
   // Protection de la page - Pro uniquement
+  // IMPORTANT: Attendre que l'abonnement soit chargé avant de rediriger
   useEffect(() => {
-    if (!authLoading) {
+    // Ne pas rediriger tant que auth ET subscription ne sont pas chargés
+    if (!authLoading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/sondages')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, authLoading, router])
+  }, [user, subscriptionPlan, authLoading, subscriptionLoading, router])
 
-  // Afficher loading pendant la vérification
-  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
+  // Afficher loading pendant le chargement de l'auth OU de l'abonnement
+  if (authLoading || subscriptionLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    )
+  }
+
+  // Rediriger si non-pro (après chargement complet)
+  if (subscriptionPlan?.slug !== 'pro') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loading />

@@ -44,23 +44,27 @@ const calcCustomCreditsUnits = (count: number) => {
 }
 
 export default function AudioSummariesPage() {
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth()
   const router = useRouter()
   const { addToast } = useToast()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Protection de la page
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/audio')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, authLoading, router])
+  }, [user, subscriptionPlan, authLoading, subscriptionLoading, router])
 
-  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
+  if (authLoading || subscriptionLoading || !user) {
+    return <Loading />
+  }
+
+  if (subscriptionPlan?.slug !== 'pro') {
     return <Loading />
   }
 

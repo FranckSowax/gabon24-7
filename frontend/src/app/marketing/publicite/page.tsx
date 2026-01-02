@@ -25,24 +25,32 @@ interface Campaign {
 
 export default function PublicitePage() {
   const router = useRouter()
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<CampaignType | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
 
-  // Protection de la page - Pro uniquement
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/marketing/publicite')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, authLoading, router])
+  }, [user, subscriptionPlan, authLoading, subscriptionLoading, router])
 
   // Afficher loading pendant la vérification
-  if (authLoading || !user || subscriptionPlan?.slug !== 'pro') {
+  if (authLoading || subscriptionLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    )
+  }
+
+  if (subscriptionPlan?.slug !== 'pro') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loading />

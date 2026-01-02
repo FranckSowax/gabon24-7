@@ -76,7 +76,7 @@ interface ArticleLite {
 }
 
 export default function ActuPlusPage() {
-  const { user, subscriptionPlan, loading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [step, setStep] = useState<'intro' | 'compose' | 'result'>('intro')
@@ -133,16 +133,16 @@ export default function ActuPlusPage() {
   // Flow mobile (1: service -> 2: articles -> 3: personnalisation)
   const [composeMobileStep, setComposeMobileStep] = useState<1|2|3>(1)
 
-  // Protection de la page
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/actu-plus')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, loading, router])
+  }, [user, subscriptionPlan, loading, subscriptionLoading, router])
 
   // Charger la liste d'articles pour sélection (via supabase-articles, tab=all)
   const fetchArticles = async (page = 1, q = '') => {
@@ -186,7 +186,11 @@ export default function ActuPlusPage() {
   }, [searchTerm, articleModalOpen])
 
   // Afficher un loader pendant la vérification (APRÈS tous les hooks)
-  if (loading || !user || subscriptionPlan?.slug !== 'pro') {
+  if (loading || subscriptionLoading || !user) {
+    return <Loading />
+  }
+
+  if (subscriptionPlan?.slug !== 'pro') {
     return <Loading />
   }
 

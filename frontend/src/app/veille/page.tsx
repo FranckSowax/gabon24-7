@@ -80,7 +80,7 @@ interface AlertStats {
 }
 
 export default function VeillePageNew() {
-  const { user: authUser, subscriptionPlan, loading: authLoading } = useAuth();
+  const { user: authUser, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth();
   const router = useRouter();
   const user = DEV_MODE ? DEV_USER : authUser;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -95,16 +95,16 @@ export default function VeillePageNew() {
     return headers
   }, [])
 
-  // Protection de la page
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!authLoading && !DEV_MODE) {
+    if (!authLoading && !subscriptionLoading && !DEV_MODE) {
       if (!authUser) {
         router.push('/auth/signin?redirect=/veille')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [authUser, subscriptionPlan, authLoading, router]);
+  }, [authUser, subscriptionPlan, authLoading, subscriptionLoading, router]);
 
   // États
   const [alerts, setAlerts] = useState<UserAlert[]>([]);
@@ -112,8 +112,8 @@ export default function VeillePageNew() {
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Loading guard for auth
-  if ((authLoading || (!authUser && !DEV_MODE) || (subscriptionPlan?.slug !== 'pro' && !DEV_MODE)) && !loading) {
+  // Loading guard for auth - Attendre que l'abonnement soit chargé
+  if ((authLoading || subscriptionLoading || (!authUser && !DEV_MODE) || (subscriptionPlan?.slug !== 'pro' && !DEV_MODE)) && !loading) {
      return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

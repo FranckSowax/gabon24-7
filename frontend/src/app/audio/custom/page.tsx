@@ -38,7 +38,7 @@ interface AudioSummary {
 }
 
 export default function AudioCustomPage() {
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth()
   const router = useRouter()
   const { addToast } = useToast()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -66,16 +66,24 @@ export default function AudioCustomPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [tick, setTick] = useState(0) // refresh timers
 
-  // Protection de la page
+  // Protection de la page - Attendre que l'abonnement soit chargé
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !subscriptionLoading) {
       if (!user) {
         router.push('/auth/signin?redirect=/audio/custom')
       } else if (subscriptionPlan?.slug !== 'pro') {
         router.push('/abonnement')
       }
     }
-  }, [user, subscriptionPlan, authLoading, router])
+  }, [user, subscriptionPlan, authLoading, subscriptionLoading, router])
+
+  if (authLoading || subscriptionLoading || !user) {
+    return <Loading />
+  }
+
+  if (subscriptionPlan?.slug !== 'pro') {
+    return <Loading />
+  }
 
   const remainingHours = (createdAt: string, t: number) => {
     void t

@@ -75,6 +75,7 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>
   subscription: UserSubscription | null
   subscriptionPlan: SubscriptionPlan | null
+  subscriptionLoading: boolean // true tant que l'abonnement n'est pas chargé
   refreshSubscription: () => Promise<void>
 }
 
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false)
   const [subscription, setSubscription] = useState<UserSubscription | null>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan | null>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true) // true jusqu'à ce que l'abonnement soit chargé
 
   // Plan par défaut (fallback rapide)
   const DEFAULT_PLAN: SubscriptionPlan = {
@@ -107,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Fonction OPTIMISÉE pour charger l'abonnement utilisateur (non-bloquante)
   const loadUserSubscription = async (userId: string) => {
+    setSubscriptionLoading(true)
     try {
       // Timeout court : 3 secondes max
       const userSub = await withTimeout(
@@ -114,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         3000,
         null
       )
-      
+
       if (userSub) {
         setSubscription(userSub)
         setSubscriptionPlan(userSub.plan || DEFAULT_PLAN)
@@ -128,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('⚠️ Erreur abonnement (fallback plan par défaut):', error)
       setSubscription(null)
       setSubscriptionPlan(DEFAULT_PLAN)
+    } finally {
+      setSubscriptionLoading(false)
     }
   }
 
@@ -181,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               loadUserSubscription(cachedUser.id).catch(console.warn)
             } else {
               console.log('👤 Non connecté')
+              setSubscriptionLoading(false) // Pas d'utilisateur = pas de chargement d'abonnement
             }
             setLoading(false)
             setInitialized(true)
@@ -193,6 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('💾 Utilisateur en cache (après erreur)')
             setUser(cachedUser)
             loadUserSubscription(cachedUser.id).catch(console.warn)
+          } else {
+            setSubscriptionLoading(false) // Pas d'utilisateur = pas de chargement d'abonnement
           }
           setLoading(false)
           setInitialized(true)
@@ -202,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.warn('⚠️ Init auth (fallback mode):', error)
         setSubscriptionPlan(DEFAULT_PLAN)
+        setSubscriptionLoading(false)
         setInitialized(true)
         setLoading(false)
       }
@@ -222,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setSubscription(null)
           setSubscriptionPlan(DEFAULT_PLAN)
+          setSubscriptionLoading(false) // Pas d'utilisateur = pas de chargement
         }
       })
       authSubscription = subscription
@@ -251,6 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     subscription,
     subscriptionPlan,
+    subscriptionLoading,
     signOut,
     refreshSubscription
   }
