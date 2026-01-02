@@ -79,7 +79,7 @@ const DEFAULT_FEATURES: Omit<PricingItem, 'id' | 'created_at' | 'updated_at'>[] 
   
   // Veille
   { feature_key: 'veille_report', feature_name: 'Rapport de Veille', feature_description: 'Rapport complet de veille sectorielle', credits_cost: 20, ai_model: 'gpt-4-turbo-preview', estimated_api_cost_usd: 0.06, category: 'veille', is_active: true },
-  { feature_key: 'custom_alert', feature_name: 'Alerte Personnalisée', feature_description: 'Création d\'une alerte de veille personnalisée', credits_cost: 3, ai_model: null, estimated_api_cost_usd: 0, category: 'veille', is_active: true },
+  { feature_key: 'custom_alert', feature_name: 'Alerte Personnalisée', feature_description: 'Débit de 5 crédits pour chaque alerte trouvée', credits_cost: 5, ai_model: null, estimated_api_cost_usd: 0, category: 'veille', is_active: true },
   { feature_key: 'opportunity_analysis', feature_name: 'Analyse d\'Opportunité', feature_description: 'Analyse d\'une opportunité détectée', credits_cost: 15, ai_model: 'llama-3.1-70b', estimated_api_cost_usd: 0.013, category: 'veille', is_active: true },
   
   // Chat / Assistant

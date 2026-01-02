@@ -36,7 +36,7 @@ const DEFAULT_PRICING = {
 
   // Veille & Alertes
   veille_report: { credits: 20, model: 'gpt-4-turbo', category: 'veille' },
-  custom_alert: { credits: 3, model: null, category: 'veille' },
+  custom_alert: { credits: 5, model: null, category: 'veille' },
   opportunity_analysis: { credits: 15, model: 'gemini-2.0-flash', category: 'veille' },
 
   // Chat & Assistant

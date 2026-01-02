@@ -78,7 +78,7 @@ ON CONFLICT (feature_key) DO UPDATE SET
 -- Veille & Alertes
 INSERT INTO pricing_config (feature_key, feature_name, feature_description, credits_cost, ai_model, estimated_api_cost_usd, category) VALUES
 ('veille_report', 'Rapport de Veille', 'Rapport complet de veille sectorielle', 20, 'gpt-4-turbo', 0.06, 'veille'),
-('custom_alert', 'Alerte Personnalisée', 'Création d''une alerte de veille personnalisée', 3, NULL, 0, 'veille'),
+('custom_alert', 'Alerte Personnalisée', 'Débit de 5 crédits pour chaque alerte trouvée', 5, NULL, 0, 'veille'),
 ('opportunity_analysis', 'Analyse d''Opportunité', 'Analyse d''une opportunité détectée', 15, 'gemini-2.0-flash', 0.001, 'veille')
 ON CONFLICT (feature_key) DO UPDATE SET
     credits_cost = EXCLUDED.credits_cost,
