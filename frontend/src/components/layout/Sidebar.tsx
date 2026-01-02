@@ -3,7 +3,7 @@
 import React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useModal } from '@/contexts/ModalContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Lock } from 'lucide-react'
 
 interface SidebarProps {
@@ -16,13 +16,54 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   const { user, subscriptionPlan, signOut, loading } = useAuth()
   const { openSubscriptionModal } = useModal()
   const router = useRouter()
+  const pathname = usePathname()
   const [isClient, setIsClient] = React.useState(false)
   const [showCredit, setShowCredit] = React.useState(false)
   const [isSigningOut, setIsSigningOut] = React.useState(false)
-  
+  const [touchStart, setTouchStart] = React.useState<number | null>(null)
+  const sidebarRef = React.useRef<HTMLElement>(null)
+
   React.useEffect(() => {
     setIsClient(true);
-    // Sidebar state change detection (console cleaned)
+  }, []);
+
+  // Fermer automatiquement la sidebar lors d'un changement de route
+  React.useEffect(() => {
+    if (isMobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gestion du swipe pour fermer (glisser vers la gauche)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+
+    // Si on glisse vers la gauche de plus de 50px, fermer la sidebar
+    if (diff > 50 && onMobileClose) {
+      onMobileClose();
+    }
+
+    setTouchStart(null);
+  };
+
+  // Bloquer le scroll du body quand la sidebar est ouverte sur mobile
+  React.useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isMobileOpen]);
   
   // Données utilisateur par défaut si non connecté
@@ -124,6 +165,9 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
       
       {/* Sidebar */}
       <aside
+        ref={sidebarRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={`
           fixed top-0 left-0
           w-64 bg-white border-r border-gray-200 h-screen
