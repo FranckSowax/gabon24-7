@@ -23,7 +23,7 @@ const DEFAULT_PRICING = {
   action_plan: { credits: 25, model: 'gemini-2.0-flash', category: 'business' },
   skill_test: { credits: 30, model: 'gemini-2.0-flash', category: 'business' },
   custom_training: { credits: 50, model: 'gemini-2.0-flash', category: 'business' },
-  business_plan: { credits: 100, model: 'gpt-4-turbo', category: 'business' },
+  business_plan: { credits: 150, model: 'gpt-4-turbo', category: 'business' },
   motivation_letter: { credits: 20, model: 'gemini-2.0-flash', category: 'business' },
   sponsored_article: { credits: 50, model: 'gemini-2.0-flash', category: 'business' },
   generate_document: { credits: 15, model: 'gemini-2.0-flash', category: 'business' },

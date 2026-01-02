@@ -1,14 +1,15 @@
 /**
  * ♊ SERVICE GEMINI ROBUSTE (Wrapper)
- * 
+ *
  * Architecture:
  * 1. Primary: Google Gemini via SDK @google/generative-ai (JSON Mode strict)
- * 2. Fallback: OpenAI GPT-4o via SDK openai
- * 
+ * 2. Fallback: OpenAI GPT-4o-mini via SDK openai (économique)
+ *
  * Features:
  * - Retry Pattern (Exponential Backoff)
  * - JSON Sanitization
  * - Strict Types
+ * - Automatic fallback on quota exceeded (429/503)
  */
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -19,14 +20,17 @@ class GeminiService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
     this.openaiApiKey = process.env.OPENAI_API_KEY;
-    
+
     // Configuration des modèles
     // On utilise gemini-flash-latest (stable v1.5) pour éviter les erreurs 403 sur les v2.x
     this.models = {
       text: 'gemini-flash-latest',          // Modèle principal
-      textFallback: 'gemini-1.5-flash',     // Fallback
+      textFallback: 'gemini-1.5-flash',     // Fallback interne Gemini
       image: 'gemini-flash-latest'          // Modèle Image
     };
+
+    // Modèle OpenAI de fallback (GPT-4o-mini = économique, GPT-4o = puissant)
+    this.openaiModel = process.env.OPENAI_FALLBACK_MODEL || 'gpt-4o-mini';
 
     // Initialisation des IDs de modèles
     this.primaryModelId = process.env.GEMINI_MODEL_NAME || this.models.text;
@@ -37,9 +41,9 @@ class GeminiService {
     } else {
       console.log('✅ Service Gemini initialisé avec modèle:', this.primaryModelId);
     }
-    
+
     if (this.openaiApiKey) {
-      console.log('✅ OpenAI GPT-4o disponible comme fallback');
+      console.log(`✅ OpenAI ${this.openaiModel} disponible comme fallback`);
     }
 
     // Initialisation Google
@@ -50,7 +54,7 @@ class GeminiService {
     // Initialisation OpenAI (Fallback ultime)
     if (this.openaiApiKey) {
       this.openai = new OpenAI({ apiKey: this.openaiApiKey });
-      console.log('✅ Fallback OpenAI GPT-4o prêt');
+      console.log(`✅ Fallback OpenAI ${this.openaiModel} prêt`);
     }
   }
 
@@ -165,9 +169,9 @@ class GeminiService {
         }
       }
 
-      // 2. Fallback Ultime: OpenAI GPT-4o
+      // 2. Fallback Ultime: OpenAI GPT-4o-mini (économique)
       if (this.openai) {
-        console.log("🔄 Basculement vers OpenAI GPT-4o...");
+        console.log(`🔄 Basculement vers OpenAI ${this.openaiModel}...`);
         return await this.generateWithOpenAI(prompt, systemPrompt, true);
       }
 
@@ -223,7 +227,7 @@ class GeminiService {
     }
 
     if (this.openai) {
-       console.log("🔄 Basculement Stream vers OpenAI GPT-4o...");
+       console.log(`🔄 Basculement Stream vers OpenAI ${this.openaiModel}...`);
        return await this.streamWithOpenAI(prompt, systemPrompt);
     }
 
@@ -241,7 +245,7 @@ class GeminiService {
     messages.push({ role: "user", content: prompt });
 
     const stream = await this.openai.chat.completions.create({
-      model: "gpt-4o",
+      model: this.openaiModel,
       messages: messages,
       stream: true,
       temperature: 0.7,
@@ -313,7 +317,7 @@ class GeminiService {
     messages.push({ role: "user", content: prompt });
 
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o",
+      model: this.openaiModel,
       messages: messages,
       response_format: jsonMode ? { type: "json_object" } : { type: "text" },
       temperature: 0.7,

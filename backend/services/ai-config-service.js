@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   action_plan: { model: 'gpt-4-turbo-preview', credits: 25 },
   skill_test: { model: 'gemini-3-pro', credits: 30 },
   custom_training: { model: 'gemini-3-pro', credits: 50 },
-  business_plan: { model: 'gemini-3-pro', credits: 100 },
+  business_plan: { model: 'gemini-3-pro', credits: 150 },
   motivation_letter: { model: 'gemini-3-pro', credits: 20 },
   sponsored_article: { model: 'gemini-3-pro', credits: 50 },
   

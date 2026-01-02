@@ -48,7 +48,7 @@ INSERT INTO pricing_config (feature_key, feature_name, feature_description, cred
 ('action_plan', 'Plan d''Action', 'Génération d''un plan d''action détaillé', 25, 'gemini-2.0-flash', 0.001, 'business'),
 ('skill_test', 'Test de Compétences', 'Évaluation des compétences pour un projet', 30, 'gemini-2.0-flash', 0.001, 'business'),
 ('custom_training', 'Formation Personnalisée', 'Génération d''un parcours de formation sur mesure', 50, 'gemini-2.0-flash', 0.002, 'business'),
-('business_plan', 'Business Plan Complet', 'Génération d''un business plan professionnel', 100, 'gpt-4-turbo', 0.15, 'business'),
+('business_plan', 'Business Plan Complet', 'Génération d''un business plan professionnel', 150, 'gpt-4-turbo', 0.15, 'business'),
 ('motivation_letter', 'Lettre de Motivation', 'Génération d''une lettre de motivation/candidature', 20, 'gemini-2.0-flash', 0.001, 'business'),
 ('sponsored_article', 'Article Sponsorisé', 'Génération d''un article sponsorisé professionnel', 50, 'gemini-2.0-flash', 0.002, 'business'),
 ('generate_article', 'Génération Article IA', 'Génération complète d''un article par IA', 50, 'gemini-2.0-flash', 0.002, 'business'),
