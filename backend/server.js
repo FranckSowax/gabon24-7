@@ -4762,6 +4762,10 @@ app.use('/api/admin-notifications', adminNotificationsRouter);
 const tldrRouter = require('./routes/tldr');
 app.use('/api/tldr', tldrRouter);
 
+// Routes pour les tarifs dynamiques
+const pricingRouter = require('./routes/pricing');
+app.use('/api/pricing', pricingRouter);
+
 // ============================================
 // 🎵 TIKTOK TRENDING - ENDPOINT
 // ============================================

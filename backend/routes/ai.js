@@ -6,8 +6,8 @@ const geminiService = require('../services/gemini-service');
 const { requireAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
 const supabaseService = require('../supabase-config');
-
-const DOCUMENT_CREDIT_COST = 5; // Coût en crédits pour générer un document
+const { processAIRequest, deductCredits } = require('../middleware/ai-validation');
+const pricingService = require('../services/pricing-service');
 
 // ==================== SCHÉMAS DE VALIDATION ====================
 
@@ -67,15 +67,14 @@ const generateDocumentSchema = z.object({
 // ==================== ROUTES ====================
 
 // POST /api/ai/generate-article - Générer un article sponsorisé
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + CRÉDITS
 router.post('/generate-article', requireAuth, validateBody(generateArticleSchema), async (req, res) => {
-  try {
-    // Vérifier que l'API OpenAI est configurée
+  const userId = req.user?.id || req.body.userId;
+
+  const result = await processAIRequest('generate-article', userId, async () => {
+    // Vérifier que l'API est configurée
     if (!aiService.isConfigured()) {
-      return res.status(503).json({ 
-        error: 'Service IA non configuré',
-        message: 'La clé API OpenAI n\'est pas configurée'
-      });
+      throw new Error('Service IA non configuré');
     }
 
     const {
@@ -89,11 +88,9 @@ router.post('/generate-article', requireAuth, validateBody(generateArticleSchema
       callToAction
     } = req.body;
 
-    // Données déjà validées par Zod
     console.log(`🤖 Demande génération article: ${companyName}`);
 
-    // Générer l'article
-    const result = await aiService.generateSponsoredArticle({
+    return await aiService.generateSponsoredArticle({
       title,
       subtitle,
       category,
@@ -103,146 +100,138 @@ router.post('/generate-article', requireAuth, validateBody(generateArticleSchema
       keyMessage,
       callToAction
     });
+  });
 
-    res.json({
-      success: true,
-      content: result.content,
-      wordCount: result.wordCount,
-      metadata: {
-        model: result.model,
-        usage: result.usage
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur génération article:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de la génération',
-      message: error.message
-    });
+  if (!result.success) {
+    const statusCode = result.requiresLogin ? 401 : result.requiresTopUp ? 402 : 500;
+    return res.status(statusCode).json(result);
   }
+
+  res.json({
+    success: true,
+    content: result.data.content,
+    wordCount: result.data.wordCount,
+    metadata: {
+      model: result.data.model,
+      usage: result.data.usage
+    },
+    creditsDeducted: result.creditsDeducted,
+    remainingCredits: result.remainingCredits
+  });
 });
 
 // POST /api/ai/generate-description - Générer une description de bannière
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + CRÉDITS
 router.post('/generate-description', requireAuth, validateBody(generateDescriptionSchema), async (req, res) => {
-  try {
+  const userId = req.user?.id || req.body.userId;
+
+  const result = await processAIRequest('generate-description', userId, async () => {
     if (!aiService.isConfigured()) {
-      return res.status(503).json({
-        error: 'Service IA non configuré'
-      });
+      throw new Error('Service IA non configuré');
     }
 
     const { companyName, productService, targetAudience } = req.body;
-
-    const description = await aiService.generateBannerDescription({
+    return await aiService.generateBannerDescription({
       companyName,
       productService,
       targetAudience
     });
+  });
 
-    res.json({
-      success: true,
-      description: description
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur génération description:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de la génération',
-      message: error.message
-    });
+  if (!result.success) {
+    const statusCode = result.requiresLogin ? 401 : result.requiresTopUp ? 402 : 500;
+    return res.status(statusCode).json(result);
   }
+
+  res.json({
+    success: true,
+    description: result.data,
+    creditsDeducted: result.creditsDeducted
+  });
 });
 
 // POST /api/ai/generate-titles - Générer des suggestions de titres
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + CRÉDITS
 router.post('/generate-titles', requireAuth, validateBody(generateTitlesSchema), async (req, res) => {
-  try {
+  const userId = req.user?.id || req.body.userId;
+
+  const result = await processAIRequest('generate-titles', userId, async () => {
     if (!aiService.isConfigured()) {
-      return res.status(503).json({
-        error: 'Service IA non configuré'
-      });
+      throw new Error('Service IA non configuré');
     }
 
     const { companyName, productService, category } = req.body;
-
-    const titles = await aiService.generateTitleSuggestions({
+    return await aiService.generateTitleSuggestions({
       companyName,
       productService,
       category
     });
+  });
 
-    res.json({
-      success: true,
-      titles: titles,
-      count: titles.length
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur génération titres:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de la génération',
-      message: error.message
-    });
+  if (!result.success) {
+    const statusCode = result.requiresLogin ? 401 : result.requiresTopUp ? 402 : 500;
+    return res.status(statusCode).json(result);
   }
+
+  res.json({
+    success: true,
+    titles: result.data,
+    count: result.data.length,
+    creditsDeducted: result.creditsDeducted
+  });
 });
 
 // POST /api/ai/improve-text - Améliorer un texte
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + CRÉDITS
 router.post('/improve-text', requireAuth, validateBody(improveTextSchema), async (req, res) => {
-  try {
+  const userId = req.user?.id || req.body.userId;
+
+  const result = await processAIRequest('improve-text', userId, async () => {
     if (!aiService.isConfigured()) {
-      return res.status(503).json({
-        error: 'Service IA non configuré'
-      });
+      throw new Error('Service IA non configuré');
     }
 
     const { text, context } = req.body;
+    return await aiService.improveText(text, context);
+  });
 
-    const improvedText = await aiService.improveText(text, context);
-
-    res.json({
-      success: true,
-      original: text,
-      improved: improvedText
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur amélioration texte:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de l\'amélioration',
-      message: error.message
-    });
+  if (!result.success) {
+    const statusCode = result.requiresLogin ? 401 : result.requiresTopUp ? 402 : 500;
+    return res.status(statusCode).json(result);
   }
+
+  res.json({
+    success: true,
+    original: req.body.text,
+    improved: result.data,
+    creditsDeducted: result.creditsDeducted
+  });
 });
 
 // POST /api/ai/analyze-sentiment - Analyser le sentiment d'un texte
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// 🔒 SÉCURISÉ: Authentification + validation des inputs + CRÉDITS
 router.post('/analyze-sentiment', requireAuth, validateBody(analyzeTextSchema), async (req, res) => {
-  try {
+  const userId = req.user?.id || req.body.userId;
+
+  const result = await processAIRequest('analyze-text', userId, async () => {
     if (!aiService.isConfigured()) {
-      return res.status(503).json({
-        error: 'Service IA non configuré'
-      });
+      throw new Error('Service IA non configuré');
     }
 
     const { text } = req.body;
+    return await aiService.analyzeSentiment(text);
+  });
 
-    const analysis = await aiService.analyzeSentiment(text);
-
-    res.json({
-      success: true,
-      analysis: analysis
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur analyse sentiment:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de l\'analyse',
-      message: error.message
-    });
+  if (!result.success) {
+    const statusCode = result.requiresLogin ? 401 : result.requiresTopUp ? 402 : 500;
+    return res.status(statusCode).json(result);
   }
+
+  res.json({
+    success: true,
+    analysis: result.data,
+    creditsDeducted: result.creditsDeducted
+  });
 });
 
 // POST /api/ai/regenerate-document - Régénérer un document
