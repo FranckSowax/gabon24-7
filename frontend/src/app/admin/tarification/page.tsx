@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   Coins, Save, RefreshCw, Edit2, X, Check, AlertCircle,
   Sparkles, FileText, Target, GraduationCap, Briefcase,
   Bell, Mic, Search, TrendingUp, Zap, DollarSign, Info,
   Brain, Bot, Calculator
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
 interface PricingItem {
   id: string
@@ -32,25 +34,26 @@ interface AIModelCost {
 
 // Coûts réels des API IA utilisées dans l'application (en USD)
 const AI_MODEL_COSTS: AIModelCost[] = [
-  // === OpenAI (API principale) ===
-  { model: 'gpt-4-turbo-preview', input_cost_per_1k: 0.01, output_cost_per_1k: 0.03, avg_tokens_per_request: 2000 },
+  // === Google Gemini (modèle principal de l'app) ===
+  { model: 'gemini-2.0-flash', input_cost_per_1k: 0.0001, output_cost_per_1k: 0.0004, avg_tokens_per_request: 2000 },
+  { model: 'gemini-1.5-flash', input_cost_per_1k: 0.000075, output_cost_per_1k: 0.0003, avg_tokens_per_request: 2000 },
+  { model: 'gemini-1.5-pro', input_cost_per_1k: 0.00125, output_cost_per_1k: 0.005, avg_tokens_per_request: 2000 },
+
+  // === OpenAI (API secondaire) ===
+  { model: 'gpt-4-turbo', input_cost_per_1k: 0.01, output_cost_per_1k: 0.03, avg_tokens_per_request: 2000 },
   { model: 'gpt-4o', input_cost_per_1k: 0.005, output_cost_per_1k: 0.015, avg_tokens_per_request: 2000 },
   { model: 'gpt-4o-mini', input_cost_per_1k: 0.00015, output_cost_per_1k: 0.0006, avg_tokens_per_request: 1500 },
   { model: 'gpt-3.5-turbo', input_cost_per_1k: 0.0005, output_cost_per_1k: 0.0015, avg_tokens_per_request: 1000 },
-  
+
   // === OpenAI Audio ===
   { model: 'tts-1', input_cost_per_1k: 0.015, output_cost_per_1k: 0, avg_tokens_per_request: 0 }, // TTS: $15/1M chars
   { model: 'tts-1-hd', input_cost_per_1k: 0.030, output_cost_per_1k: 0, avg_tokens_per_request: 0 },
   { model: 'whisper-1', input_cost_per_1k: 0.006, output_cost_per_1k: 0, avg_tokens_per_request: 0 }, // $0.006/minute
-  
-  // === Google Gemini ===
-  { model: 'gemini-3-pro', input_cost_per_1k: 0.00025, output_cost_per_1k: 0.0005, avg_tokens_per_request: 2000 },
-  
+
   // === Replicate - Meta Llama 3.1 ===
   { model: 'llama-3.1-8b', input_cost_per_1k: 0.00005, output_cost_per_1k: 0.00005, avg_tokens_per_request: 1500 },
   { model: 'llama-3.1-70b', input_cost_per_1k: 0.00065, output_cost_per_1k: 0.00065, avg_tokens_per_request: 2000 },
-  { model: 'llama-3.1-405b', input_cost_per_1k: 0.003, output_cost_per_1k: 0.003, avg_tokens_per_request: 2500 },
-  
+
   // === Replicate - Mistral (excellent pour le français) ===
   { model: 'mistral-7b', input_cost_per_1k: 0.00005, output_cost_per_1k: 0.00005, avg_tokens_per_request: 1000 },
   { model: 'mixtral-8x7b', input_cost_per_1k: 0.0003, output_cost_per_1k: 0.0003, avg_tokens_per_request: 1500 },
@@ -197,27 +200,41 @@ export default function TarificationPage() {
   const saveEditing = async (item: PricingItem) => {
     try {
       setSaving(true)
-      
-      const { error } = await supabase
-        .from('pricing_config')
-        .update({
+
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Non authentifié')
+      }
+
+      // Utiliser l'API backend pour la mise à jour (contourne RLS)
+      const response = await fetch(`${API_URL}/api/pricing/${item.feature_key}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
           credits_cost: editValues.credits_cost,
           ai_model: editValues.ai_model,
           estimated_api_cost_usd: editValues.estimated_api_cost_usd,
-          is_active: editValues.is_active,
-          updated_at: new Date().toISOString()
+          is_active: editValues.is_active
         })
-        .eq('id', item.id)
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour')
+      }
 
       setMessage({ type: 'success', text: `Tarif "${item.feature_name}" mis à jour!` })
       setEditingId(null)
       setEditValues({})
       loadPricing()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur sauvegarde:', error)
-      setMessage({ type: 'error', text: 'Erreur lors de la sauvegarde' })
+      setMessage({ type: 'error', text: error.message || 'Erreur lors de la sauvegarde' })
     } finally {
       setSaving(false)
     }
@@ -226,21 +243,33 @@ export default function TarificationPage() {
   const saveCreditValue = async () => {
     try {
       setSaving(true)
-      
-      const { error } = await supabase
-        .from('app_settings')
-        .upsert({
-          key: 'credit_value_fcfa',
-          value: creditValue.toString(),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' })
 
-      if (error) throw error
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Non authentifié')
+      }
+
+      // Utiliser l'API backend pour la mise à jour (contourne RLS)
+      const response = await fetch(`${API_URL}/api/pricing/settings/credit-value`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ value: creditValue })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour')
+      }
 
       setMessage({ type: 'success', text: 'Valeur du crédit mise à jour!' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur sauvegarde valeur crédit:', error)
-      setMessage({ type: 'error', text: 'Erreur lors de la sauvegarde' })
+      setMessage({ type: 'error', text: error.message || 'Erreur lors de la sauvegarde' })
     } finally {
       setSaving(false)
     }
