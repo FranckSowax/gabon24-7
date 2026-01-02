@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/layout/Header'
@@ -8,9 +8,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import { CheckCircle, Gift, Sparkles, ArrowRight, CreditCard, Crown, Loader2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
-export const dynamic = 'force-dynamic'
-
-export default function PaiementSuccesPage() {
+function SuccesContent() {
   const { user, refreshSubscription } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -79,7 +77,7 @@ export default function PaiementSuccesPage() {
     }, 250)
 
     return () => clearInterval(interval)
-  }, [refreshSubscription])
+  }, [refreshSubscription, router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
@@ -240,5 +238,24 @@ export default function PaiementSuccesPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto" />
+        <p className="mt-4 text-gray-600">Chargement...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaiementSuccesPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SuccesContent />
+    </Suspense>
   )
 }

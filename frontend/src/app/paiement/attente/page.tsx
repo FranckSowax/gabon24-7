@@ -1,19 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { Loader2, Phone, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-backend-production.up.railway.app'
 
 type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 
-export default function AttentePaiementPage() {
+function AttenteContent() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -213,5 +211,24 @@ export default function AttentePaiementPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
+        <p className="mt-4 text-gray-600">Chargement...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function AttentePaiementPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AttenteContent />
+    </Suspense>
   )
 }

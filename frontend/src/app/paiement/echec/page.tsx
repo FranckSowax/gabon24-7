@@ -1,14 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import { XCircle, RefreshCw, ArrowLeft, HelpCircle, Phone, MessageCircle } from 'lucide-react'
+import { XCircle, RefreshCw, ArrowLeft, HelpCircle, Phone, MessageCircle, Loader2 } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
-export default function PaiementEchecPage() {
+function EchecContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reference = searchParams?.get('reference') || null
@@ -179,5 +177,24 @@ export default function PaiementEchecPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-red-500 mx-auto" />
+        <p className="mt-4 text-gray-600">Chargement...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaiementEchecPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <EchecContent />
+    </Suspense>
   )
 }

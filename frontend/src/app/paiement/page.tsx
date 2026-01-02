@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import { Phone, CreditCard, Shield, Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react'
-
-export const dynamic = 'force-dynamic'
+import { Phone, CreditCard, Shield, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 
 // Types de paiement supportés
 type PaymentType = 'credits' | 'subscription' | 'quiz'
@@ -27,7 +25,7 @@ interface PaymentConfig {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-backend-production.up.railway.app'
 
-export default function PaiementPage() {
+function PaiementContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -342,5 +340,24 @@ export default function PaiementPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
+        <p className="mt-4 text-gray-600">Chargement...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaiementPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PaiementContent />
+    </Suspense>
   )
 }
