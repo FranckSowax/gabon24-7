@@ -21,19 +21,31 @@ interface UserProfile {
   credits_balance?: number
 }
 
-// Packages cohérents avec abonnements: Premium=300cr/5000F, Pro=1000cr/10000F
-// Ratio achat ponctuel: ~20 FCFA/crédit (légèrement plus cher que abonnement)
-const CREDIT_PACKAGES = [
-  { fcfa: 1000, credits: 50, popular: false, label: 'Découverte' },
-  { fcfa: 5000, credits: 300, bonus: 50, popular: true, label: 'Standard' },
-  { fcfa: 10000, credits: 650, bonus: 150, popular: false, label: 'Premium' },
-  { fcfa: 25000, credits: 1750, bonus: 500, popular: false, label: 'Business' },
+// Interface pour les packages de crédits depuis la DB
+interface CreditPackage {
+  id: string
+  name: string
+  slug: string
+  credits: number
+  bonus_credits: number
+  price_xaf: number
+  is_popular: boolean
+  is_active: boolean
+}
+
+// Packages par défaut (utilisés si la DB n'est pas disponible)
+const DEFAULT_CREDIT_PACKAGES = [
+  { id: 'default-1', name: 'Découverte', slug: 'discovery', credits: 50, bonus_credits: 0, price_xaf: 1000, is_popular: false, is_active: true },
+  { id: 'default-2', name: 'Standard', slug: 'standard', credits: 300, bonus_credits: 50, price_xaf: 5000, is_popular: true, is_active: true },
+  { id: 'default-3', name: 'Premium', slug: 'premium', credits: 650, bonus_credits: 150, price_xaf: 10000, is_popular: false, is_active: true },
+  { id: 'default-4', name: 'Business', slug: 'business', credits: 1750, bonus_credits: 500, price_xaf: 25000, is_popular: false, is_active: true },
 ]
 
 // Abonnements avec crédits mensuels inclus
 const SUBSCRIPTION_PLANS = [
   {
     id: 'free',
+    slug: 'free',
     name: 'Freemium',
     price: 0,
     credits: 0,
@@ -42,6 +54,7 @@ const SUBSCRIPTION_PLANS = [
   },
   {
     id: 'premium',
+    slug: 'discovery',
     name: 'Premium',
     price: 5000,
     credits: 300,
@@ -51,6 +64,7 @@ const SUBSCRIPTION_PLANS = [
   },
   {
     id: 'pro',
+    slug: 'pro',
     name: 'Professionnel',
     price: 10000,
     credits: 1000,
@@ -64,11 +78,12 @@ export default function MonProfilPage() {
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'credits' | 'history' | 'projets' | 'settings'>('profile')
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({})
+  const [creditPackages, setCreditPackages] = useState<CreditPackage[]>(DEFAULT_CREDIT_PACKAGES)
   
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,8 +94,26 @@ export default function MonProfilPage() {
   useEffect(() => {
     if (user) {
       loadUserProfile()
+      loadCreditPackages()
     }
   }, [user])
+
+  // Charger les packages de crédits depuis la base de données
+  const loadCreditPackages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('credit_packages')
+        .select('*')
+        .eq('is_active', true)
+        .order('price_xaf', { ascending: true })
+
+      if (data && data.length > 0) {
+        setCreditPackages(data)
+      }
+    } catch (error) {
+      console.error('Erreur chargement packages:', error)
+    }
+  }
 
   const loadUserProfile = async () => {
     if (!user) return
@@ -139,12 +172,32 @@ export default function MonProfilPage() {
     }
   }
 
-  const handleCreditPurchase = (pkg: typeof CREDIT_PACKAGES[0]) => {
-    alert(`Achat de ${pkg.credits} crédits pour ${pkg.fcfa} FCFA\nIntégration paiement à venir`)
+  // Rediriger vers la page de paiement pour achat de crédits
+  const handleCreditPurchase = (pkg: CreditPackage) => {
+    const params = new URLSearchParams({
+      type: 'credits',
+      amount: pkg.price_xaf.toString(),
+      packageId: pkg.id,
+      credits: pkg.credits.toString(),
+      bonus: (pkg.bonus_credits || 0).toString(),
+      description: `${pkg.name} - ${pkg.credits + (pkg.bonus_credits || 0)} crédits`
+    })
+    router.push(`/paiement?${params.toString()}`)
   }
 
+  // Rediriger vers la page de paiement pour abonnement
   const handleSubscriptionUpgrade = (plan: typeof SUBSCRIPTION_PLANS[0]) => {
-    alert(`Upgrade vers ${plan.name} à ${plan.price} FCFA/mois\nIntégration paiement à venir`)
+    if (plan.price === 0) return // Ne pas permettre de "payer" pour freemium
+
+    const params = new URLSearchParams({
+      type: 'subscription',
+      amount: plan.price.toString(),
+      planSlug: plan.slug,
+      planName: plan.name,
+      credits: plan.credits.toString(),
+      description: `Abonnement ${plan.name} - ${plan.credits} crédits/mois`
+    })
+    router.push(`/paiement?${params.toString()}`)
   }
 
   if (authLoading) {
@@ -401,34 +454,34 @@ export default function MonProfilPage() {
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {CREDIT_PACKAGES.map((pkg, index) => (
+                    {creditPackages.map((pkg) => (
                       <div
-                        key={index}
+                        key={pkg.id}
                         className={`relative rounded-xl border-2 p-6 ${
-                          pkg.popular ? 'border-green-500 shadow-lg bg-green-50' : 'border-gray-200 bg-white'
+                          pkg.is_popular ? 'border-green-500 shadow-lg bg-green-50' : 'border-gray-200 bg-white'
                         }`}
                       >
-                        {pkg.popular && (
+                        {pkg.is_popular && (
                           <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                             MEILLEUR
                           </div>
                         )}
-                        
+
                         <div className="text-center mb-4">
                           <p className="text-3xl font-bold text-gray-900">{pkg.credits}</p>
                           <p className="text-sm text-gray-600">crédits</p>
-                          {pkg.bonus && <p className="text-xs text-green-600 font-medium mt-1">+{pkg.bonus} bonus 🎁</p>}
+                          {pkg.bonus_credits > 0 && <p className="text-xs text-green-600 font-medium mt-1">+{pkg.bonus_credits} bonus 🎁</p>}
                         </div>
-                        
+
                         <div className="text-center mb-4">
-                          <p className="text-2xl font-bold text-orange-600">{pkg.fcfa}</p>
+                          <p className="text-2xl font-bold text-orange-600">{pkg.price_xaf.toLocaleString('fr-FR')}</p>
                           <p className="text-xs text-gray-600">FCFA</p>
                         </div>
-                        
+
                         <button
                           onClick={() => handleCreditPurchase(pkg)}
                           className={`w-full py-2 rounded-lg font-medium ${
-                            pkg.popular ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-900 text-white hover:bg-gray-800'
+                            pkg.is_popular ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-900 text-white hover:bg-gray-800'
                           }`}
                         >
                           Acheter

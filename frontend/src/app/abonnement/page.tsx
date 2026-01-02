@@ -107,14 +107,45 @@ export default function PricingPage() {
 
   const handleSelectPlan = async (planSlug: string) => {
     setSelectedPlan(planSlug);
-    
+
+    // Trouver le plan sélectionné
+    const plan = PLANS.find(p => p.slug === planSlug);
+    if (!plan) return;
+
     // Vérifier si l'utilisateur est connecté
     const { data: { session } } = await supabase.auth.getSession();
-    
+
+    // Plan gratuit - inscription simple
+    if (plan.price === 0) {
+      if (!session) {
+        router.push('/auth/signup');
+      } else {
+        router.push('/mon-profil');
+      }
+      return;
+    }
+
+    // Plans payants
     if (!session) {
       router.push(`/auth/signup?plan=${planSlug}&billing=${billingPeriod}`);
     } else {
-      router.push(`/checkout?plan=${planSlug}&billing=${billingPeriod}`);
+      // Calculer le prix selon la période
+      const price = billingPeriod === 'yearly'
+        ? Math.round(plan.price * 12 * 0.8) // -20% pour annuel
+        : plan.price;
+      const duration = billingPeriod === 'yearly' ? 12 : 1;
+
+      // Rediriger vers la page de paiement
+      const params = new URLSearchParams({
+        type: 'subscription',
+        amount: price.toString(),
+        planSlug: plan.slug,
+        planName: plan.name,
+        credits: plan.credits.toString(),
+        duration: duration.toString(),
+        description: `Abonnement ${plan.name} - ${plan.credits} crédits/mois${billingPeriod === 'yearly' ? ' (annuel)' : ''}`
+      });
+      router.push(`/paiement?${params.toString()}`);
     }
   };
 
