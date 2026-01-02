@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import { CheckCircle, Gift, Sparkles, ArrowRight, CreditCard, Crown } from 'lucide-react'
+import { CheckCircle, Gift, Sparkles, ArrowRight, CreditCard, Crown, Loader2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 export const dynamic = 'force-dynamic'
@@ -24,9 +24,22 @@ export default function PaiementSuccesPage() {
     const type = localStorage.getItem('pvit_payment_type')
     setPaymentType(type)
 
-    // Nettoyer le localStorage
-    localStorage.removeItem('pvit_payment_reference')
-    localStorage.removeItem('pvit_payment_type')
+    // Pour les paiements quiz, rediriger vers la page du jeu après 3 secondes
+    if (type === 'quiz') {
+      const gameSessionId = localStorage.getItem('game_session_id')
+      if (gameSessionId) {
+        setTimeout(() => {
+          // Nettoyer le type de paiement mais garder les infos du jeu pour l'inscription
+          localStorage.removeItem('pvit_payment_reference')
+          localStorage.removeItem('pvit_payment_type')
+          router.push(`/jeu/${gameSessionId}?registered=true`)
+        }, 3000)
+      }
+    } else {
+      // Nettoyer le localStorage pour les autres types
+      localStorage.removeItem('pvit_payment_reference')
+      localStorage.removeItem('pvit_payment_type')
+    }
 
     // Rafraîchir les données utilisateur (abonnement, crédits)
     if (refreshSubscription) {
@@ -135,6 +148,10 @@ export default function PaiementSuccesPage() {
                     <p className="text-gray-600">
                       Vous êtes inscrit au quiz. Préparez-vous à tester vos connaissances
                       et à gagner des prix !
+                    </p>
+                    <p className="text-sm text-orange-600 mt-3 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Redirection vers le jeu...
                     </p>
                   </div>
                 )}

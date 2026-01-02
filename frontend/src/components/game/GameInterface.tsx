@@ -692,7 +692,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
   useEffect(() => {
     // Ne pas réinitialiser si on est déjà dans une phase de jeu avancée
     if (gamePhase !== 'loading' && gamePhase !== 'home') return
-    
+
     if (initialSessionId) {
       // Chercher dans les sessions locales d'abord (pour training)
       const localSession = sessions.find((s: GameSession) => s.id === initialSessionId)
@@ -714,6 +714,68 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
       }
     }
   }, [initialSessionId, API_URL, sessions, gamePhase])
+
+  // Effet pour gérer le retour après paiement réussi
+  useEffect(() => {
+    // Vérifier si on revient d'un paiement quiz réussi
+    const urlParams = new URLSearchParams(window.location.search)
+    const isRegistered = urlParams.get('registered') === 'true'
+    const paymentType = localStorage.getItem('pvit_payment_type')
+
+    if (isRegistered && paymentType === 'quiz') {
+      // Récupérer les infos stockées avant le paiement
+      const storedSessionId = localStorage.getItem('game_session_id')
+      const storedPlayerName = localStorage.getItem('game_player_name')
+      const storedPhoneNumber = localStorage.getItem('game_phone_number')
+
+      if (storedSessionId && storedPlayerName && storedPhoneNumber) {
+        console.log('🎮 Retour après paiement quiz réussi')
+
+        // Restaurer les infos du joueur
+        setPlayerName(storedPlayerName)
+        setPhoneNumber(storedPhoneNumber)
+
+        // Nettoyer le localStorage
+        localStorage.removeItem('game_session_id')
+        localStorage.removeItem('game_player_name')
+        localStorage.removeItem('game_phone_number')
+        localStorage.removeItem('game_session_name')
+        localStorage.removeItem('pvit_payment_type')
+        localStorage.removeItem('pvit_payment_reference')
+
+        // Enregistrer l'inscription en base (le paiement a déjà été validé)
+        fetch(`${API_URL}/api/game/sessions/${storedSessionId}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            whatsapp_number: storedPhoneNumber,
+            player_name: storedPlayerName,
+            payment_status: 'paid',
+            amount_paid: selectedSession?.entryFee || 0
+          })
+        }).then(() => {
+          console.log('✅ Inscription enregistrée après paiement')
+        }).catch(err => {
+          console.error('Erreur enregistrement post-paiement:', err)
+        })
+
+        // Rejoindre la session via Socket si connecté
+        if (socket && socket.connected) {
+          socket.emit('join-session', {
+            sessionId: storedSessionId,
+            odId: socket.id,
+            odName: storedPlayerName
+          })
+        }
+
+        // Passer directement en salle d'attente
+        setGamePhase('waiting-for-session')
+
+        // Nettoyer l'URL
+        window.history.replaceState({}, '', `/jeu/${storedSessionId}`)
+      }
+    }
+  }, [API_URL, socket, selectedSession])
 
   // Configuration du Pacte par session
   const PACT_THRESHOLDS: Record<string, { minPlayers: number; minPot: number }> = {
@@ -1120,61 +1182,32 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
         return
     }
     
-    // MODE PAYANT - Simuler le paiement
+    // MODE PAYANT - Rediriger vers la page de paiement PVIT
     try {
-      // 1. Simuler le paiement (en production: intégrer Mobile Money)
-      const paymentSuccess = await simulatePayment(selectedSession.entryFee)
-      
-      if (!paymentSuccess) {
-        alert('❌ Échec du paiement. Veuillez réessayer.')
-        setIsRegistering(false)
-        return
-      }
-      
-      // 2. Enregistrer l'inscription en base
-      await fetch(`${API_URL}/api/game/sessions/${selectedSession.id}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          whatsapp_number: phoneNumber,
-          player_name: playerName,
-          payment_status: 'paid',
-          amount_paid: selectedSession.entryFee
-        })
+      // Stocker les informations de session pour après le paiement
+      localStorage.setItem('game_session_id', selectedSession.id)
+      localStorage.setItem('game_player_name', playerName)
+      localStorage.setItem('game_phone_number', phoneNumber)
+      localStorage.setItem('game_session_name', selectedSession.name)
+
+      // Construire l'URL de paiement avec les paramètres du quiz
+      const paymentParams = new URLSearchParams({
+        type: 'quiz',
+        amount: selectedSession.entryFee.toString(),
+        quizId: selectedSession.id,
+        description: `Inscription Quiz - ${selectedSession.name}`,
+        // Paramètres supplémentaires pour le retour
+        returnUrl: `/jeu/${selectedSession.id}?registered=true`
       })
-      
-      // 3. Rejoindre la session via Socket
-      if (socket && socket.connected) {
-        console.log('🔌 Emission join-session socket')
-        socket.emit('join-session', {
-          sessionId: selectedSession.id,
-          odId: socket.id,
-          odName: playerName
-        })
-      }
-      
-      // 4. Passer en salle d'attente avec countdown vers l'heure de session
-      setGamePhase('waiting-for-session')
-      setIsRegistering(false)
-      
+
+      // Rediriger vers la page de paiement
+      router.push(`/paiement?${paymentParams.toString()}`)
+
     } catch (error) {
       console.error('Erreur inscription:', error)
       alert('❌ Erreur lors de l\'inscription. Veuillez réessayer.')
       setIsRegistering(false)
     }
-  }
-  
-  // Simuler un paiement (en production: intégrer Airtel Money, Moov Money, etc.)
-  const simulatePayment = async (amount: number): Promise<boolean> => {
-    return new Promise((resolve) => {
-      // Simuler un délai de traitement
-      setTimeout(() => {
-        // En production, ici on appellerait l'API de paiement
-        // Pour l'instant, on simule un succès
-        console.log(`💳 Paiement simulé: ${amount} FCFA`)
-        resolve(true)
-      }, 2000)
-    })
   }
 
   const resetGame = () => {
