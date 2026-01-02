@@ -57,7 +57,7 @@ export const getSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
       slug: 'premium',
       price_monthly: 3000,
       price_yearly: 30000,
-      features: ['Tout du plan Freemium', '200 crédits / mois', 'Accès chaîne WhatsApp', 'Business Plan IA'],
+      features: ['Tout du plan Freemium', '300 crédits / mois', 'Accès chaîne WhatsApp', 'Business Plan IA'],
       limitations: {
         gov_sources: -1,
         search_days: -1,
@@ -73,7 +73,7 @@ export const getSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
       slug: 'pro',
       price_monthly: 12000,
       price_yearly: 120000,
-      features: ['Tout du plan Premium', '600 crédits / mois', 'Déblocage Outils', 'Alertes WhatsApp'],
+      features: ['Tout du plan Premium', '1 000 crédits / mois', 'Déblocage Outils', 'Alertes WhatsApp'],
       limitations: {
         gov_sources: -1,
         search_days: -1,
