@@ -21,34 +21,40 @@ interface UserProfile {
   credits_balance?: number
 }
 
+// Packages cohérents avec abonnements: Premium=300cr/5000F, Pro=1000cr/10000F
+// Ratio achat ponctuel: ~20 FCFA/crédit (légèrement plus cher que abonnement)
 const CREDIT_PACKAGES = [
-  { fcfa: 1000, credits: 50, popular: false },
-  { fcfa: 5000, credits: 300, popular: true, bonus: 50 },
-  { fcfa: 10000, credits: 650, popular: false, bonus: 150 },
-  { fcfa: 25000, credits: 1750, popular: false, bonus: 500 },
+  { fcfa: 1000, credits: 50, popular: false, label: 'Découverte' },
+  { fcfa: 5000, credits: 300, bonus: 50, popular: true, label: 'Standard' },
+  { fcfa: 10000, credits: 650, bonus: 150, popular: false, label: 'Premium' },
+  { fcfa: 25000, credits: 1750, bonus: 500, popular: false, label: 'Business' },
 ]
 
+// Abonnements avec crédits mensuels inclus
 const SUBSCRIPTION_PLANS = [
   {
     id: 'free',
     name: 'Freemium',
     price: 0,
-    features: ['15 articles par jour', 'Accès limité', 'Support communautaire'],
+    credits: 0,
+    features: ['5 articles par jour', 'Accès limité', 'Support communautaire'],
     color: 'gray'
   },
   {
     id: 'premium',
     name: 'Premium',
-    price: 2000,
-    features: ['Articles illimités', 'Accès complet', 'Support prioritaire', 'Sans publicité'],
+    price: 5000,
+    credits: 300,
+    features: ['300 crédits/mois', 'Articles illimités', 'Accès chaîne WhatsApp', 'Business Plan IA'],
     color: 'yellow',
     popular: true
   },
   {
     id: 'pro',
     name: 'Professionnel',
-    price: 5000,
-    features: ['Tout Premium', 'API Access', 'Équipes (10 comptes)', 'Analytics avancés'],
+    price: 10000,
+    credits: 1000,
+    features: ['1000 crédits/mois', 'Tout Premium', 'Veille & Audio', 'Publicités & Sondages', 'Support prioritaire'],
     color: 'purple'
   }
 ]

@@ -3870,6 +3870,12 @@ app.use('/api/admin/campaigns', adminCampaignsRoutes);
 
 console.log('✅ Routes campagnes publicitaires chargées');
 
+// Routes Admin Subscriptions (Gestion des abonnements et crédits)
+const adminSubscriptionsRoutes = require('./routes/admin-subscriptions');
+app.use('/api/admin/subscriptions', adminSubscriptionsRoutes);
+
+console.log('🎫 Routes admin abonnements chargées');
+
 // Routes Game (Jeu Battle Royale "Il n'en restera qu'1")
 const gameRoutes = require('./routes/game');
 app.use('/api/game', gameRoutes);
