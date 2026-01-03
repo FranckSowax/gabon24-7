@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Check, X, Zap, Crown, Gift, ArrowRight, Shield, Clock, Star, 
+import {
+  Check, X, Zap, Crown, Gift, ArrowRight, Shield, Clock, Star,
   BookOpen, Headphones, Bot, Briefcase, GraduationCap, TrendingUp,
-  LayoutDashboard, FileText, Newspaper, Layers
+  LayoutDashboard, FileText, Newspaper, Layers, Coins, ShoppingCart
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 // Configuration des forfaits basée sur les fonctionnalités réelles
 const PLANS = [
@@ -294,6 +295,66 @@ export default function PricingPage() {
         </div>
       </div>
 
+      {/* Section Achat Crédits à la Carte - Pour Freemium */}
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+              <Coins className="w-4 h-4" />
+              Nouveau : Achat à la carte
+            </div>
+
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Pas prêt pour l'abonnement ?
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              Restez en <strong>Freemium</strong> et achetez des crédits à l'unité pour tester nos outils IA.
+              Idéal pour une première utilisation ou un besoin ponctuel.
+            </p>
+
+            <div className="grid sm:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100">
+                <div className="text-2xl font-bold text-gray-900">50</div>
+                <div className="text-sm text-gray-500 mb-2">crédits</div>
+                <div className="text-orange-600 font-bold">1 000 FCFA</div>
+                <div className="text-xs text-gray-400">≈ 1,5 €</div>
+              </div>
+              <div className="bg-white rounded-xl p-5 shadow-sm border-2 border-orange-400 relative">
+                <span className="absolute -top-2 right-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">Populaire</span>
+                <div className="text-2xl font-bold text-gray-900">150</div>
+                <div className="text-sm text-gray-500 mb-2">crédits</div>
+                <div className="text-orange-600 font-bold">2 500 FCFA</div>
+                <div className="text-xs text-gray-400">≈ 3,8 € <span className="text-green-600">(−17%)</span></div>
+              </div>
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100">
+                <div className="text-2xl font-bold text-gray-900">400</div>
+                <div className="text-sm text-gray-500 mb-2">crédits</div>
+                <div className="text-orange-600 font-bold">5 000 FCFA</div>
+                <div className="text-xs text-gray-400">≈ 7,6 € <span className="text-green-600">(−38%)</span></div>
+              </div>
+            </div>
+
+            <Link
+              href="/credits"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              Acheter des crédits
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <p className="text-sm text-gray-500 mt-4">
+              Paiement sécurisé via Mobile Money (Airtel, Moov)
+            </p>
+          </motion.div>
+        </div>
+      </div>
+
       {/* What are credits section */}
       <div className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -352,6 +413,10 @@ export default function PricingPage() {
             {
               q: "Puis-je annuler à tout moment ?",
               a: "Absolument. Il n'y a aucun engagement de durée (sauf si vous choisissez le paiement annuel pour bénéficier de la réduction). Vous pouvez annuler en un clic depuis votre espace."
+            },
+            {
+              q: "Puis-je acheter des crédits sans abonnement ?",
+              a: "Oui ! En tant qu'utilisateur Freemium, vous pouvez acheter des packs de crédits à la carte pour utiliser ponctuellement nos outils IA. C'est idéal pour tester avant de s'abonner ou pour un besoin unique."
             }
           ].map((faq, idx) => (
             <div key={idx} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
