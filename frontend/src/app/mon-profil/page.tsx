@@ -327,14 +327,29 @@ export default function MonProfilPage() {
   }
 
   // Obtenir le vrai prix affiché selon le cycle de facturation
-  const getDisplayPrice = (): { price: number; period: string; isYearly: boolean } => {
+  const getDisplayPrice = (): {
+    price: number;
+    period: string;
+    isYearly: boolean;
+    monthlyEquivalent?: number;
+    discount?: number;
+  } => {
     if (!subscriptionPlan || subscriptionPlan.price_monthly === 0) {
       return { price: 0, period: 'mois', isYearly: false }
     }
 
     const isYearly = subscription?.billing_cycle === 'yearly'
     if (isYearly && subscriptionPlan.price_yearly) {
-      return { price: subscriptionPlan.price_yearly, period: 'an', isYearly: true }
+      const monthlyEquivalent = Math.round(subscriptionPlan.price_yearly / 12)
+      const normalYearlyPrice = subscriptionPlan.price_monthly * 12
+      const discount = Math.round(((normalYearlyPrice - subscriptionPlan.price_yearly) / normalYearlyPrice) * 100)
+      return {
+        price: subscriptionPlan.price_yearly,
+        period: 'an',
+        isYearly: true,
+        monthlyEquivalent,
+        discount
+      }
     }
     return { price: subscriptionPlan.price_monthly, period: 'mois', isYearly: false }
   }
@@ -611,19 +626,29 @@ export default function MonProfilPage() {
                                 <p className="text-orange-100 text-sm font-medium mb-1">Abonnement actuel</p>
                                 <h2 className="text-3xl font-bold">{subscriptionPlan?.name || 'Freemium'}</h2>
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  <p className="text-orange-100">
-                                    {displayPrice.price > 0 ? (
-                                      <>
-                                        <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/{displayPrice.period}
-                                      </>
+                                  {displayPrice.price > 0 ? (
+                                    displayPrice.isYearly ? (
+                                      <div className="space-y-1">
+                                        <p className="text-orange-100">
+                                          <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/an
+                                          <span className="ml-2 text-xs">({displayPrice.monthlyEquivalent?.toLocaleString('fr-FR')} FCFA/mois)</span>
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                          <span className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                                            -{displayPrice.discount}% économisé
+                                          </span>
+                                          <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
+                                            Abonnement annuel
+                                          </span>
+                                        </div>
+                                      </div>
                                     ) : (
-                                      'Gratuit'
-                                    )}
-                                  </p>
-                                  {displayPrice.isYearly && (
-                                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
-                                      Abonnement annuel
-                                    </span>
+                                      <p className="text-orange-100">
+                                        <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/mois
+                                      </p>
+                                    )
+                                  ) : (
+                                    <p className="text-orange-100">Gratuit</p>
                                   )}
                                 </div>
                               </div>
