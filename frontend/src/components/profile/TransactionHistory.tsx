@@ -35,7 +35,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
   const loadTransactions = async () => {
     try {
       const { data, error } = await supabase
-        .from('transactions')
+        .from('credit_transactions')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -64,11 +64,10 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
 
     try {
       const { data, error } = await supabase
-        .from('transactions')
-        .select('type, amount, credits')
+        .from('credit_transactions')
+        .select('type, amount, credits:amount')
         .eq('user_id', userId)
         .gte('created_at', firstDayOfMonth)
-        .eq('status', 'completed')
 
       if (data) {
         const stats = data.reduce((acc: { creditsUsed: number, creditsPurchased: number, totalSpent: number }, t: any) => {

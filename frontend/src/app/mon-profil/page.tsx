@@ -81,14 +81,14 @@ const SUBSCRIPTION_PLANS = [
 
 // Tab configuration
 const TABS = [
-  { id: 'profile', label: 'Profil', icon: User },
-  { id: 'subscription', label: 'Abonnement', icon: CreditCard },
-  { id: 'credits', label: 'Crédits', icon: Coins },
-  { id: 'projets', label: 'Mes Projets', icon: FolderOpen },
-  { id: 'history', label: 'Historique', icon: History },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'appearance', label: 'Apparence', icon: Palette },
-  { id: 'security', label: 'Sécurité', icon: Shield },
+  { id: 'profile', label: 'Profil', icon: User, disabled: false },
+  { id: 'subscription', label: 'Abonnement', icon: CreditCard, disabled: false },
+  { id: 'credits', label: 'Crédits', icon: Coins, disabled: false },
+  { id: 'projets', label: 'Mes Projets', icon: FolderOpen, disabled: false },
+  { id: 'history', label: 'Historique', icon: History, disabled: false },
+  { id: 'notifications', label: 'Notifications', icon: Bell, disabled: true, comingSoon: true },
+  { id: 'appearance', label: 'Apparence', icon: Palette, disabled: false },
+  { id: 'security', label: 'Sécurité', icon: Shield, disabled: false },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -119,6 +119,11 @@ export default function MonProfilPage() {
     theme: 'light',
     language: 'fr'
   })
+
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -230,6 +235,69 @@ export default function MonProfilPage() {
     router.push(`/paiement?${params.toString()}`)
   }
 
+  // Apply theme to document
+  const applyTheme = (theme: string) => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    } else {
+      // System preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      if (prefersDark) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+      localStorage.setItem('theme', 'system')
+    }
+  }
+
+  // Load saved theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'light'
+    setAppearance(prev => ({ ...prev, theme: savedTheme }))
+    applyTheme(savedTheme)
+  }, [])
+
+  // Handle theme change
+  const handleThemeChange = (newTheme: string) => {
+    setAppearance({ ...appearance, theme: newTheme })
+    applyTheme(newTheme)
+  }
+
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'SUPPRIMER') return
+    if (!user) return
+
+    setDeleting(true)
+    try {
+      // Soft delete - mark user as deleted instead of hard delete
+      const { error } = await supabase
+        .from('users')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          email: `deleted_${user.id}@deleted.gabon247.com`
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      // Sign out the user
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Erreur suppression compte:', error)
+      alert('Erreur lors de la suppression du compte. Veuillez réessayer.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -284,17 +352,25 @@ export default function MonProfilPage() {
                       <button
                         key={tab.id}
                         onClick={() => {
-                          setActiveTab(tab.id)
-                          setMobileTabsOpen(false)
+                          if (!tab.disabled) {
+                            setActiveTab(tab.id)
+                            setMobileTabsOpen(false)
+                          }
                         }}
+                        disabled={tab.disabled}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                          activeTab === tab.id
+                          tab.disabled
+                            ? 'text-gray-400 cursor-not-allowed opacity-50'
+                            : activeTab === tab.id
                             ? 'bg-orange-50 text-orange-600'
                             : 'text-gray-600 hover:bg-gray-50'
                         }`}
                       >
                         <tab.icon className="w-5 h-5" />
                         <span className="font-medium">{tab.label}</span>
+                        {'comingSoon' in tab && tab.comingSoon && (
+                          <span className="ml-auto text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Bientôt</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -312,15 +388,21 @@ export default function MonProfilPage() {
                     {TABS.map(tab => (
                       <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => !tab.disabled && setActiveTab(tab.id)}
+                        disabled={tab.disabled}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                          activeTab === tab.id
+                          tab.disabled
+                            ? 'text-gray-400 cursor-not-allowed opacity-50'
+                            : activeTab === tab.id
                             ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                         }`}
                       >
-                        <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-white' : ''}`} />
+                        <tab.icon className={`w-5 h-5 ${activeTab === tab.id && !tab.disabled ? 'text-white' : ''}`} />
                         <span className="font-medium">{tab.label}</span>
+                        {'comingSoon' in tab && tab.comingSoon && (
+                          <span className="ml-auto text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Bientôt</span>
+                        )}
                       </button>
                     ))}
                   </nav>
@@ -793,15 +875,15 @@ export default function MonProfilPage() {
                               ].map((theme) => (
                                 <button
                                   key={theme.value}
-                                  onClick={() => setAppearance({ ...appearance, theme: theme.value })}
+                                  onClick={() => handleThemeChange(theme.value)}
                                   className={`p-4 rounded-xl border-2 transition-all ${
                                     appearance.theme === theme.value
-                                      ? 'border-orange-500 bg-orange-50'
-                                      : 'border-gray-200 hover:border-gray-300'
+                                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                                      : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
                                   }`}
                                 >
                                   <span className="text-2xl mb-2 block">{theme.icon}</span>
-                                  <span className="text-sm font-medium text-gray-900">{theme.label}</span>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{theme.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -892,9 +974,61 @@ export default function MonProfilPage() {
                           <p className="text-gray-600 text-sm mb-4">
                             Ces actions sont irréversibles. Procédez avec précaution.
                           </p>
-                          <button className="px-6 py-2.5 border-2 border-red-500 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all">
-                            Supprimer mon compte
-                          </button>
+
+                          {!showDeleteConfirm ? (
+                            <button
+                              onClick={() => setShowDeleteConfirm(true)}
+                              className="px-6 py-2.5 border-2 border-red-500 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all"
+                            >
+                              Supprimer mon compte
+                            </button>
+                          ) : (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Shield className="w-5 h-5 text-red-600" />
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-red-700">Êtes-vous sûr ?</h4>
+                                  <p className="text-sm text-red-600 mt-1">
+                                    Cette action est irréversible. Toutes vos données, crédits et abonnements seront perdus.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-red-700 mb-2">
+                                  Tapez <strong>SUPPRIMER</strong> pour confirmer
+                                </label>
+                                <input
+                                  type="text"
+                                  value={deleteConfirmText}
+                                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                  placeholder="SUPPRIMER"
+                                  className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                />
+                              </div>
+
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => {
+                                    setShowDeleteConfirm(false)
+                                    setDeleteConfirmText('')
+                                  }}
+                                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
+                                >
+                                  Annuler
+                                </button>
+                                <button
+                                  onClick={handleDeleteAccount}
+                                  disabled={deleteConfirmText !== 'SUPPRIMER' || deleting}
+                                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                  {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
