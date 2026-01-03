@@ -10,16 +10,38 @@ const { requireAuth } = require('../middleware/auth');
 /**
  * GET /api/saved-projects
  * Récupère tous les projets de l'utilisateur connecté
+ * Query params:
+ *  - full=true : retourne tous les champs (pour affichage détaillé)
+ *  - include_shared=true : inclut les projets partagés en une seule requête
  */
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id; // Extrait du JWT
+    const userId = req.user.id;
+    const { full, include_shared } = req.query;
 
-    console.log('📂 Récupération des projets pour userId:', userId);
+    // Champs minimaux pour l'affichage des cartes (performance)
+    const cardFields = `
+      id,
+      proposition_titre,
+      proposition_description,
+      proposition_score_faisabilite,
+      secteur_selectionne,
+      budget_selectionne,
+      article_image_url,
+      article_title,
+      created_at,
+      progress_percentage,
+      current_phase,
+      plan_action_steps
+    `;
 
-    const { data, error } = await supabaseService.supabase
+    // Champs complets si demandé
+    const selectFields = full === 'true' ? '*' : cardFields;
+
+    // Récupérer les projets personnels
+    const { data: personalProjects, error } = await supabaseService.supabase
       .from('saved_projects')
-      .select('*')
+      .select(selectFields)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -31,11 +53,46 @@ router.get('/', requireAuth, async (req, res) => {
       });
     }
 
-    console.log(`✅ ${data?.length || 0} projets trouvés`);
+    let allProjects = personalProjects || [];
+
+    // Inclure les projets partagés si demandé
+    if (include_shared === 'true') {
+      try {
+        const { data: sharedProjects } = await supabaseService.supabase
+          .from('project_collaborators')
+          .select(`
+            role,
+            permissions,
+            joined_at,
+            saved_projects!inner (${selectFields})
+          `)
+          .eq('user_id', userId)
+          .eq('status', 'accepted');
+
+        if (sharedProjects && sharedProjects.length > 0) {
+          const existingIds = new Set(allProjects.map(p => p.id));
+          const formattedShared = sharedProjects
+            .filter(collab => collab.saved_projects && !existingIds.has(collab.saved_projects.id))
+            .map(collab => ({
+              ...collab.saved_projects,
+              is_shared: true,
+              collaboration: {
+                role: collab.role,
+                permissions: collab.permissions,
+                joined_at: collab.joined_at
+              }
+            }));
+          allProjects = [...allProjects, ...formattedShared];
+        }
+      } catch (sharedError) {
+        console.warn('⚠️ Erreur projets partagés:', sharedError.message);
+      }
+    }
 
     res.json({
       success: true,
-      projects: data || []
+      projects: allProjects,
+      count: allProjects.length
     });
 
   } catch (error) {

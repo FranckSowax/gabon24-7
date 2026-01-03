@@ -1,7 +1,20 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Cache global pour les projets (évite les re-fetch inutiles)
+const projectsCache: {
+  data: SavedProject[] | null;
+  timestamp: number;
+  userId: string | null;
+} = {
+  data: null,
+  timestamp: 0,
+  userId: null
+};
+
+const CACHE_DURATION = 30000; // 30 secondes
 
 // Helper pour obtenir les headers avec token d'authentification
 const getAuthHeaders = async (): Promise<HeadersInit> => {
@@ -74,49 +87,65 @@ export function useSavedProjects(userId?: string) {
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<SavedProject | null>(null);
   const [stats, setStats] = useState<ProjectStats | null>(null);
+  const fetchInProgressRef = useRef(false);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (forceRefresh = false) => {
     if (!userId) {
       setLoading(false);
       return;
     }
 
+    // Éviter les requêtes simultanées
+    if (fetchInProgressRef.current) {
+      return;
+    }
+
+    // Vérifier le cache (sauf si forceRefresh)
+    const now = Date.now();
+    if (
+      !forceRefresh &&
+      projectsCache.data &&
+      projectsCache.userId === userId &&
+      now - projectsCache.timestamp < CACHE_DURATION
+    ) {
+      setProjects(projectsCache.data);
+      setLoading(false);
+      return;
+    }
+
+    fetchInProgressRef.current = true;
+
     try {
-      // Récupérer les projets personnels avec authentification JWT
+      // Une seule requête qui inclut les projets partagés
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/saved-projects`, { headers });
+      const response = await fetch(
+        `${API_URL}/api/saved-projects?include_shared=true`,
+        { headers }
+      );
       const data = await response.json();
-      let allProjects: SavedProject[] = [];
 
       if (data.success && Array.isArray(data.projects)) {
-        allProjects = data.projects;
-      }
+        // Mettre en cache
+        projectsCache.data = data.projects;
+        projectsCache.timestamp = Date.now();
+        projectsCache.userId = userId;
 
-      // Récupérer aussi les projets partagés avec l'utilisateur
-      try {
-        const sharedResponse = await fetch(`${API_URL}/api/project-collaboration/shared-with-me/${userId}`, { headers });
-        const sharedData = await sharedResponse.json();
-        if (sharedData.success && Array.isArray(sharedData.projects)) {
-          // Ajouter les projets partagés (éviter les doublons)
-          const existingIds = new Set(allProjects.map(p => p.id));
-          const newSharedProjects = sharedData.projects.filter((p: SavedProject) => !existingIds.has(p.id));
-          allProjects = [...allProjects, ...newSharedProjects];
-        }
-      } catch (sharedError) {
-        console.error('Error fetching shared projects:', sharedError);
+        setProjects(data.projects);
+      } else {
+        setProjects([]);
       }
-
-      setProjects(allProjects);
     } catch (error) {
       console.error('Error fetching projects:', error);
       setProjects([]);
     } finally {
       setLoading(false);
+      fetchInProgressRef.current = false;
     }
   }, [userId]);
 
   const fetchStats = useCallback(async () => {
     if (!userId) return;
+    // Stats en background, pas bloquant
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/api/saved-projects/stats`, { headers });
@@ -126,6 +155,12 @@ export function useSavedProjects(userId?: string) {
       console.error('Error fetching stats:', error);
     }
   }, [userId]);
+
+  // Invalider le cache (appelé après création/suppression)
+  const invalidateCache = useCallback(() => {
+    projectsCache.data = null;
+    projectsCache.timestamp = 0;
+  }, []);
 
   const deleteProject = async (projectId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce projet ?')) return;
@@ -137,6 +172,8 @@ export function useSavedProjects(userId?: string) {
         headers
       });
 
+      // Invalider le cache et mettre à jour l'état local
+      invalidateCache();
       setProjects(projects.filter(p => p.id !== projectId));
 
       if (selectedProject?.id === projectId) {
@@ -194,6 +231,7 @@ export function useSavedProjects(userId?: string) {
 
   useEffect(() => {
     fetchProjects();
+    // Stats en parallèle, non bloquant
     fetchStats();
   }, [fetchProjects, fetchStats]);
 
@@ -202,10 +240,11 @@ export function useSavedProjects(userId?: string) {
     loading,
     selectedProject,
     stats,
-    setSelectedProject, // Si besoin de setter manuel
+    setSelectedProject,
     selectProject,
     deleteProject,
     updateProjectStepStatus,
-    refreshProjects: fetchProjects
+    refreshProjects: () => fetchProjects(true), // Force refresh
+    invalidateCache
   };
 }
