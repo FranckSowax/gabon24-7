@@ -266,17 +266,17 @@ export default function ReadingHistory() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-      
+
       <div className="flex">
-        <Sidebar 
+        {/* Sidebar gauche - fixe sur desktop */}
+        <Sidebar
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
-        
-        {/* Central Content Area */}
-        <div className="flex-1 lg:ml-0 lg:mr-80 min-w-0">
-          <main className="w-full py-8">
-            <div className="w-full px-0 lg:px-2">
+
+        {/* Central Content Area - avec marges pour les sidebars */}
+        <main className="flex-1 min-w-0 w-full lg:ml-64 xl:mr-80 py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto lg:max-w-none">
               {/* Top Banner with Profile Widget */}
               <div className="group relative overflow-hidden bg-gradient-to-br from-green-500 via-teal-500 to-blue-600 text-white rounded-2xl mb-8 shadow-2xl border border-green-300/30">
                 {/* Background Image */}
@@ -629,25 +629,24 @@ export default function ReadingHistory() {
               )}
           </div>
         </main>
-        
-        {/* Right Sidebar - Fixed Position */}
-        <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
+
+        {/* Right Sidebar - Fixed Position sur xl+ seulement */}
+        <aside className="hidden xl:block fixed right-0 top-0 w-80 h-screen bg-white border-l border-gray-200 p-4 pt-20 space-y-4 overflow-y-auto z-30">
           {/* Widget YouTube */}
           <YouTubeWidget />
-          
+
           <UpcomingEvents />
-          
+
           {/* Widget Tendances */}
           <TrendingWidget articles={[]} />
-          
+
           {/* Widget Sondage d'hier */}
           <YesterdayPollWidget />
-          
+
           {/* Widget Stats */}
           <StatsWidget articles={[]} loading={false} />
         </aside>
       </div>
-    </div>
     </div>
   )
 }
