@@ -5042,7 +5042,7 @@ app.get('/api/tiktok/trending', async (req, res) => {
 
     console.log(`✅ ${parsedVideos.length} vidéos TikTok Gabon récupérées`);
 
-    const response = {
+    const tiktokResponse = {
       success: true,
       videos: parsedVideos,
       count: parsedVideos.length
@@ -5050,10 +5050,10 @@ app.get('/api/tiktok/trending', async (req, res) => {
 
     // Mettre en cache Redis - 1 heure
     if (redisCache.isAvailable()) {
-      await redisCache.set(cacheKey, response, 3600);
+      await redisCache.set(cacheKey, tiktokResponse, 3600);
     }
 
-    res.json(response);
+    res.json(tiktokResponse);
 
   } catch (error) {
     console.error('❌ Erreur TikTok API:', error.message);
