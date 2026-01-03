@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { 
+import {
   FileText, Rss, Users, TrendingUp, Activity, RefreshCw,
   BarChart3, ArrowUpRight, Calendar, Gamepad2, Trophy,
   Eye, MousePointer, Cpu, Coins, MessageSquare, Vote,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
+import { supabase } from '@/lib/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -129,28 +130,32 @@ export default function AdminDashboard() {
   const [lastUpdate, setLastUpdate] = useState<string>('')
   const [mounted, setMounted] = useState(false)
 
-  // Éviter l'erreur d'hydratation
-  useEffect(() => {
-    setMounted(true)
-    setLastUpdate(new Date().toLocaleString('fr-FR'))
+  // Helper pour récupérer le token d'authentification
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {}
   }, [])
 
-  useEffect(() => {
-    fetchAnalytics()
-  }, [selectedPeriod])
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true)
     try {
+      const headers = await getAuthHeaders()
+
       // Récupérer toutes les stats en parallèle
       const [
         statsRes,
         gameRes,
-        aiRes
+        aiRes,
+        pollsRes,
+        projectsRes
       ] = await Promise.all([
-        axios.get(`${API_URL}/api/admin/stats`).catch(() => ({ data: {} })),
-        axios.get(`${API_URL}/api/game/dashboard/stats`).catch(() => ({ data: { stats: {} } })),
-        axios.get(`${API_URL}/api/ai/admin/status`).catch(() => ({ data: { quota: {} } }))
+        axios.get(`${API_URL}/api/admin/stats`, { headers }).catch(() => ({ data: {} })),
+        axios.get(`${API_URL}/api/game/dashboard/stats`, { headers }).catch(() => ({ data: { stats: {} } })),
+        axios.get(`${API_URL}/api/ai/admin/status`, { headers }).catch(() => ({ data: { quota: {} } })),
+        axios.get(`${API_URL}/api/polls/global-stats`).catch(() => ({ data: { stats: {} } })),
+        axios.get(`${API_URL}/api/saved-projects/global-stats`).catch(() => ({ data: { stats: {} } }))
       ])
 
       // Construire l'objet analytics avec les données réelles + estimations
@@ -170,7 +175,7 @@ export default function AdminDashboard() {
           total: statsRes.data?.totalUsers || 6,
           active: Math.floor((statsRes.data?.totalUsers || 6) * 0.7),
           premium: Math.floor((statsRes.data?.totalUsers || 6) * 0.15),
-          newThisWeek: Math.floor(Math.random() * 10) + 1
+          newThisWeek: statsRes.data?.newUsersThisWeek || 2
         },
         aiUsage: {
           totalRequests: aiRes.data?.quota?.requestsToday || 0,
@@ -200,13 +205,13 @@ export default function AdminDashboard() {
           revenue: 125000
         },
         polls: {
-          total: 12,
-          responses: 4,
-          activePolls: 3
+          total: pollsRes.data?.stats?.totalPolls || 0,
+          responses: pollsRes.data?.stats?.totalResponses || 0,
+          activePolls: pollsRes.data?.stats?.activePolls || 0
         },
         projects: {
-          total: 24,
-          thisMonth: 8
+          total: projectsRes.data?.stats?.totalProjects || 0,
+          thisMonth: projectsRes.data?.stats?.projectsThisMonth || 0
         },
         game: {
           sessions: gameRes.data?.stats?.totalSessions || 0,
@@ -220,7 +225,18 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [getAuthHeaders])
+
+  // Éviter l'erreur d'hydratation
+  useEffect(() => {
+    setMounted(true)
+    setLastUpdate(new Date().toLocaleString('fr-FR'))
+  }, [])
+
+  // Charger les analytics au montage et lors du changement de période
+  useEffect(() => {
+    fetchAnalytics()
+  }, [fetchAnalytics, selectedPeriod])
 
   if (loading) {
     return (

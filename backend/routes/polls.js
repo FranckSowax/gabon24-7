@@ -205,6 +205,61 @@ router.post('/generate-from-audio', async (req, res) => {
   }
 });
 
+// GET /api/polls/global-stats - Statistiques globales des sondages (admin)
+router.get('/global-stats', async (req, res) => {
+  try {
+    // Cache Redis - 10 minutes
+    const cacheKey = 'polls:global-stats';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
+    console.log('📊 Récupération des stats globales des sondages...');
+
+    // Total sondages
+    const { count: totalPolls } = await supabase
+      .from('polls')
+      .select('*', { count: 'exact', head: true });
+
+    // Sondages actifs
+    const { count: activePolls } = await supabase
+      .from('polls')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+
+    // Total réponses
+    const { count: totalResponses } = await supabase
+      .from('poll_votes')
+      .select('*', { count: 'exact', head: true });
+
+    const response = {
+      success: true,
+      stats: {
+        totalPolls: totalPolls || 0,
+        activePolls: activePolls || 0,
+        totalResponses: totalResponses || 0
+      }
+    };
+
+    // Mettre en cache Redis - 10 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 600);
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Erreur stats globales sondages:', error);
+    res.json({
+      success: true,
+      stats: { totalPolls: 0, activePolls: 0, totalResponses: 0 }
+    });
+  }
+});
+
 // POST /api/polls/generate-ai - Générer questions de sondage avec IA
 router.post('/generate-ai', async (req, res) => {
   try {

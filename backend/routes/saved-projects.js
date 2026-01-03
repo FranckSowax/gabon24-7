@@ -141,6 +141,63 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/saved-projects/global-stats
+ * Statistiques globales des projets (admin dashboard)
+ */
+router.get('/global-stats', async (req, res) => {
+  try {
+    const cacheKey = 'projects:global-stats';
+
+    // Vérifier le cache Redis
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
+    console.log('📊 Récupération stats globales des projets...');
+
+    // Total projets
+    const { count: totalProjects } = await supabaseService.supabase
+      .from('saved_projects')
+      .select('*', { count: 'exact', head: true });
+
+    // Projets ce mois
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count: projectsThisMonth } = await supabaseService.supabase
+      .from('saved_projects')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', startOfMonth.toISOString());
+
+    const response = {
+      success: true,
+      stats: {
+        totalProjects: totalProjects || 0,
+        projectsThisMonth: projectsThisMonth || 0
+      }
+    };
+
+    // Mettre en cache Redis - 10 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 600);
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Erreur stats globales projets:', error);
+    res.json({
+      success: true,
+      stats: { totalProjects: 0, projectsThisMonth: 0 }
+    });
+  }
+});
+
+/**
  * GET /api/saved-projects/stats
  * Récupère les statistiques des projets de l'utilisateur connecté
  * Query params:
