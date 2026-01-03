@@ -6,6 +6,21 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const redisCache = require('../services/redis-cache.service');
+
+// Constantes de cache
+const CACHE_TTL = {
+  PROJECTS_LIST: 60,      // 1 minute pour la liste
+  PROJECT_DETAIL: 120,    // 2 minutes pour le détail
+  STATS: 300              // 5 minutes pour les stats
+};
+
+// Helpers pour les clés de cache
+const getCacheKey = {
+  projectsList: (userId) => `projects:list:${userId}`,
+  projectDetail: (userId, projectId) => `projects:detail:${userId}:${projectId}`,
+  projectStats: (userId) => `projects:stats:${userId}`
+};
 
 /**
  * GET /api/saved-projects
@@ -13,11 +28,24 @@ const { requireAuth } = require('../middleware/auth');
  * Query params:
  *  - full=true : retourne tous les champs (pour affichage détaillé)
  *  - include_shared=true : inclut les projets partagés en une seule requête
+ *  - nocache=true : ignore le cache Redis
  */
 router.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { full, include_shared } = req.query;
+    const { full, include_shared, nocache } = req.query;
+
+    // Clé de cache unique par utilisateur et options
+    const cacheKey = getCacheKey.projectsList(userId) + (full === 'true' ? ':full' : '') + (include_shared === 'true' ? ':shared' : '');
+
+    // Vérifier le cache Redis (sauf si nocache)
+    if (nocache !== 'true' && redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
 
     // Champs minimaux pour l'affichage des cartes (performance)
     const cardFields = `
@@ -89,11 +117,19 @@ router.get('/', requireAuth, async (req, res) => {
       }
     }
 
-    res.json({
+    const response = {
       success: true,
       projects: allProjects,
-      count: allProjects.length
-    });
+      count: allProjects.length,
+      cached: false
+    };
+
+    // Mettre en cache Redis
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, { ...response, cached: true }, CACHE_TTL.PROJECTS_LIST);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur serveur récupération projets:', error);
@@ -107,10 +143,23 @@ router.get('/', requireAuth, async (req, res) => {
 /**
  * GET /api/saved-projects/stats
  * Récupère les statistiques des projets de l'utilisateur connecté
+ * Query params:
+ *  - nocache=true : ignore le cache Redis
  */
 router.get('/stats', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id; // Extrait du JWT
+    const userId = req.user.id;
+    const { nocache } = req.query;
+    const cacheKey = getCacheKey.projectStats(userId);
+
+    // Vérifier le cache Redis (sauf si nocache)
+    if (nocache !== 'true' && redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT stats: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
 
     console.log('📊 Récupération stats pour userId:', userId);
 
@@ -147,18 +196,23 @@ router.get('/stats', requireAuth, async (req, res) => {
 
       // Grouper par secteur
       if (project.secteur_selectionne) {
-        stats.projects_by_sector[project.secteur_selectionne] = 
+        stats.projects_by_sector[project.secteur_selectionne] =
           (stats.projects_by_sector[project.secteur_selectionne] || 0) + 1;
       }
 
       // Grouper par budget
       if (project.budget_selectionne) {
-        stats.projects_by_budget[project.budget_selectionne] = 
+        stats.projects_by_budget[project.budget_selectionne] =
           (stats.projects_by_budget[project.budget_selectionne] || 0) + 1;
       }
     });
 
     console.log('✅ Stats calculées:', stats);
+
+    // Mettre en cache Redis (TTL plus long pour les stats)
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, stats, CACHE_TTL.STATS);
+    }
 
     res.json(stats);
 
@@ -371,6 +425,12 @@ router.post('/', requireAuth, async (req, res) => {
 
     console.log('✅ Projet sauvegardé, ID:', data[0]?.id);
 
+    // Invalider le cache Redis pour cet utilisateur
+    if (redisCache.isAvailable()) {
+      await redisCache.delPattern(`projects:*:${userId}*`);
+      console.log('🗑️ Cache invalidé pour userId:', userId);
+    }
+
     res.json({
       success: true,
       message: 'Projet sauvegardé avec succès',
@@ -414,6 +474,13 @@ router.delete('/:projectId', requireAuth, async (req, res) => {
     }
 
     console.log('✅ Projet supprimé');
+
+    // Invalider le cache Redis pour cet utilisateur
+    if (redisCache.isAvailable()) {
+      await redisCache.delPattern(`projects:*:${userId}*`);
+      await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+      console.log('🗑️ Cache invalidé après suppression');
+    }
 
     res.json({
       success: true,
@@ -481,6 +548,13 @@ router.post('/:projectId/action-plan', requireAuth, async (req, res) => {
 
     console.log('✅ Plan d\'action sauvegardé');
 
+    // Invalider le cache Redis pour cet utilisateur
+    if (redisCache.isAvailable()) {
+      await redisCache.delPattern(`projects:*:${userId}*`);
+      await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+      console.log('🗑️ Cache invalidé après plan d\'action');
+    }
+
     // 🔔 NOTIFICATION EN TEMPS RÉEL
     try {
       const notificationHelper = require('../utils/notificationHelper');
@@ -546,6 +620,13 @@ router.patch('/:projectId/update-steps', requireAuth, async (req, res) => {
         success: false,
         error: 'Erreur lors de la mise à jour'
       });
+    }
+
+    // Invalider le cache Redis pour cet utilisateur
+    if (redisCache.isAvailable()) {
+      await redisCache.delPattern(`projects:list:${userId}*`);
+      await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+      console.log('🗑️ Cache invalidé après mise à jour steps');
     }
 
     res.json({

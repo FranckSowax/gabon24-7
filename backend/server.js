@@ -9,6 +9,7 @@ const fs = require('fs');
 const supabaseService = require('./supabase-config');
 const { formatTimeAgo, formatFullDate, getTimeRangeTimestamps } = require('./time-utils');
 const cron = require('node-cron');
+const redisCache = require('./services/redis-cache.service');
 
 /**
  * 📰 MAPPING COMPLET DES SOURCES MÉDIAS
@@ -264,12 +265,13 @@ app.get('/', (req, res) => {
 
 // Route de santé
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     status: 'OK',
     service: 'Gabon Insight API',
-    version: '2.0.0-ai', 
+    version: '2.0.0-ai',
     timestamp: new Date().toISOString(),
-    deployment_id: 'deploy-check-12345' // Unique ID to check deployment
+    deployment_id: 'deploy-check-12345',
+    redis: redisCache.isAvailable() ? 'connected' : 'disconnected'
   });
 });
 
@@ -4671,12 +4673,23 @@ if (!process.env.RAPIDAPI_KEY && !process.env.RAPIDAPI_FOOTBALL_KEY) {
   console.log('✅ RAPIDAPI_KEY détectée.');
 }
 
+// Initialiser Redis avant de démarrer le serveur
+redisCache.connect().then(() => {
+  console.log('✅ Service Redis initialisé');
+}).catch(err => {
+  console.warn('⚠️ Redis non disponible, cache désactivé:', err.message);
+});
+
+// Exporter redisCache pour utilisation dans les routes
+app.set('redisCache', redisCache);
+
 server.listen(PORT, () => {
   console.log(`🚀 Serveur Gabon Insight démarré sur le port ${PORT}`);
   console.log(`📡 API accessible sur: http://localhost:${PORT}`);
   console.log(`🎮 WebSocket Game: ws://localhost:${PORT}`);
   console.log(`🏠 Page d'accueil: http://localhost:${PORT}`);
   console.log(`📊 Santé du service: http://localhost:${PORT}/health`);
+  console.log(`💾 Redis: ${redisCache.isAvailable() ? '✅ Connecté' : '⚠️ Non disponible'}`);
   console.log(`📰 Articles récents: http://localhost:${PORT}/api/homepage/articles`);
   console.log(`📚 Articles archivés: http://localhost:${PORT}/api/archives/articles`);
   console.log(`📈 Tendances: http://localhost:${PORT}/api/stats/trending/daily/views`);
