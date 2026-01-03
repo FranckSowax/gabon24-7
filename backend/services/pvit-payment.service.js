@@ -270,36 +270,37 @@ class PvitPaymentService {
   }
 
   /**
-   * Initialise un paiement pour inscription Quiz
+   * Initialise un paiement pour inscription Quiz/Jeu
    */
   async initiateQuizPayment({ userId, quizId, phone }) {
     try {
-      // Récupérer le quiz
-      const { data: quiz, error: quizError } = await this.supabase
-        .from('quizzes')
+      // Récupérer la session de jeu (game_sessions)
+      const { data: gameSession, error: sessionError } = await this.supabase
+        .from('game_sessions')
         .select('*')
         .eq('id', quizId)
         .single();
 
-      if (quizError || !quiz) {
-        return { success: false, error: 'Quiz non trouvé' };
+      if (sessionError || !gameSession) {
+        console.error('❌ Session de jeu non trouvée:', quizId, sessionError);
+        return { success: false, error: 'Session de jeu non trouvée' };
       }
 
-      if (!quiz.entry_fee || quiz.entry_fee <= 0) {
-        return { success: false, error: 'Ce quiz est gratuit' };
+      if (!gameSession.entry_fee || gameSession.entry_fee <= 0) {
+        return { success: false, error: 'Cette session est gratuite' };
       }
 
       const reference = this.generateReference('QUZ');
 
       return await this.initiatePayment({
         userId,
-        amount: quiz.entry_fee,
+        amount: gameSession.entry_fee,
         phone,
         reference,
         type: 'quiz',
-        quizId: quiz.id,
-        quizName: quiz.title,
-        description: `Inscription Quiz - ${quiz.title}`
+        quizId: gameSession.id,
+        quizName: gameSession.name,
+        description: `Inscription Quiz - ${gameSession.name}`
       });
 
     } catch (err) {

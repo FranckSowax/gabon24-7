@@ -133,7 +133,7 @@ const subscriptionPaymentSchema = z.object({
 });
 
 const quizPaymentSchema = z.object({
-  quizId: z.string().uuid('Quiz ID invalide'),
+  quizId: z.string().min(1, 'Quiz ID requis'),
   phone: phoneSchema
 });
 
