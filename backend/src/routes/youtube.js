@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const { DOMParser } = require('@xmldom/xmldom');
 const supabaseService = require('../../supabase-config');
+const redisCache = require('../../services/redis-cache.service');
 
 const router = express.Router();
 
@@ -43,10 +44,21 @@ function getTargetJournalTime() {
 // Endpoint pour récupérer le flux YouTube RSS - journal selon l'heure
 router.get('/youtube', async (req, res) => {
   try {
+    const targetJournal = getTargetJournalTime();
+
+    // Cache Redis - 30 minutes pour YouTube
+    const cacheKey = `youtube:journal:${targetJournal.targetHour}`;
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     // URL du flux RSS spécifié par l'utilisateur (RSS.app)
     const RSS_URL = 'https://rss.app/feeds/8Zm0ezBRaaD2NiOF.xml';
-    
-    const targetJournal = getTargetJournalTime();
+
     console.log(`📺 Récupération du flux RSS - Cible: ${targetJournal.label}`);
 
     // Récupération directe sans proxy (Node.js n'a pas de restrictions CORS)
@@ -215,6 +227,11 @@ router.get('/youtube', async (req, res) => {
         }
       }
       
+      // Mettre en cache Redis - 30 minutes
+      if (redisCache.isAvailable()) {
+        await redisCache.set(cacheKey, latestJournals, 1800);
+      }
+
       // Retourner le tableau des vidéos
       res.json(latestJournals);
       return;

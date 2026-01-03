@@ -7,10 +7,21 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { supabase } = supabaseService;
+const redisCache = require('../services/redis-cache.service');
 
 // GET /api/polls - Récupérer les sondages actifs
 router.get('/', async (req, res) => {
   try {
+    // Cache Redis - 10 minutes pour polls
+    const cacheKey = 'polls:active';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des sondages...');
     const { data: polls, error } = await supabase
       .from('polls')
@@ -21,11 +32,18 @@ router.get('/', async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
+    const response = {
       success: true,
       polls: polls || [],
       count: polls?.length || 0
-    });
+    };
+
+    // Mettre en cache Redis - 10 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 600);
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('❌ Erreur récupération sondages:', error);
     res.json({ success: false, polls: [], error: error.message });
@@ -60,6 +78,17 @@ router.post('/questions', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const questionId = req.query.question_id;
+
+    // Cache Redis - 5 minutes pour stats
+    const cacheKey = `polls:stats:${questionId}`;
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log(`📊 Récupération des stats pour la question: ${questionId}`);
 
     const { data: stats, error } = await supabase
@@ -69,10 +98,17 @@ router.get('/stats', async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
+    const response = {
       success: true,
       stats: stats || []
-    });
+    };
+
+    // Mettre en cache Redis - 5 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 300);
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('❌ Erreur récupération stats:', error);
     res.json({ success: false, stats: [], error: error.message });
@@ -120,6 +156,12 @@ router.post('/vote', async (req, res) => {
       .select('id');
 
     if (error) throw error;
+
+    // Invalider le cache des stats pour cette question
+    if (redisCache.isAvailable()) {
+      await redisCache.del(`polls:stats:${questionId}`);
+      console.log('🗑️ Cache stats invalidé après vote');
+    }
 
     res.json({ success: true, vote: data[0] });
   } catch (error) {

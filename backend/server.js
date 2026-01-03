@@ -924,6 +924,17 @@ app.get("/api/articles/trending", async (req, res) => {
 
     const period = req.query.period === "week" ? "week" : "day";
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+
+    // Cache Redis - 5 minutes pour trending
+    const cacheKey = `articles:trending:${period}:${limit}`;
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     const now = new Date();
     const start = new Date(now);
     if (period === "day") start.setDate(now.getDate() - 1);
@@ -993,7 +1004,15 @@ app.get("/api/articles/trending", async (req, res) => {
     }));
 
     console.log(`✅ ${transformed.length} articles tendance (${period})`);
-    res.json({ success: true, articles: transformed, period });
+
+    const response = { success: true, articles: transformed, period };
+
+    // Mettre en cache Redis - 5 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 300);
+    }
+
+    res.json(response);
   } catch (err) {
     console.error("❌ Erreur articles tendance:", err);
     res.json({ success: false, articles: [], error: err.message });
@@ -1698,15 +1717,25 @@ app.get('/api/articles/all', async (req, res) => {
 
 // Route pour récupérer les articles de la page d'accueil
 app.get('/api/homepage/articles', async (req, res) => {
-  console.log('🏠 Récupération des articles AUJOURD\'HUI (0-36h)...');
-  
   try {
+    // Cache Redis - 3 minutes pour homepage
+    const cacheKey = 'articles:homepage';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
+    console.log('🏠 Récupération des articles AUJOURD\'HUI (0-36h)...');
+
     // Calculer les timestamps pour 0-36h
     const now = new Date();
     const thirtySixHoursAgo = new Date(now.getTime() - 36 * 60 * 60 * 1000);
-    
+
     console.log(`📅 Période: ${thirtySixHoursAgo.toISOString()} → ${now.toISOString()}`);
-    
+
     // Récupérer les articles des dernières 36h avec jointure RSS feeds
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
@@ -1783,15 +1812,22 @@ app.get('/api/homepage/articles', async (req, res) => {
       });
     }
     
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       total: transformedArticles.length
-    });
-    
+    };
+
+    // Mettre en cache Redis - 3 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 180);
+    }
+
+    res.json(response);
+
   } catch (error) {
     console.error('❌ Erreur récupération articles:', error);
-    
+
     res.json({
       success: false,
       error: error.message,
@@ -2301,6 +2337,16 @@ app.delete('/api/articles/test-feed', async (req, res) => {
 // Endpoint pour les articles les plus vus du jour
 app.get('/api/stats/trending/daily/views', async (req, res) => {
   try {
+    // Cache Redis - 15 minutes pour stats trending
+    const cacheKey = 'stats:trending:daily:views';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus vus du jour...');
 
     // Récupérer tous les articles récents (dernières 24h) pour les tendances
@@ -2340,13 +2386,20 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances vues (daily) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'daily',
       metric: 'views',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 15 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 900);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances vues quotidiennes:', error);
@@ -2361,6 +2414,16 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
 // Endpoint pour les articles les plus vus de la semaine
 app.get('/api/stats/trending/weekly/views', async (req, res) => {
   try {
+    // Cache Redis - 30 minutes pour weekly
+    const cacheKey = 'stats:trending:weekly:views';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus vus de la semaine...');
 
     const now = new Date();
@@ -2399,13 +2462,20 @@ app.get('/api/stats/trending/weekly/views', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances vues (weekly) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'weekly',
       metric: 'views',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 30 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 1800);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances vues semaine:', error);
@@ -2420,6 +2490,16 @@ app.get('/api/stats/trending/weekly/views', async (req, res) => {
 // Endpoint pour les articles les plus vus du mois
 app.get('/api/stats/trending/monthly/views', async (req, res) => {
   try {
+    // Cache Redis - 1 heure pour monthly
+    const cacheKey = 'stats:trending:monthly:views';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus vus du mois...');
 
     const now = new Date();
@@ -2458,13 +2538,20 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances vues (monthly) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'monthly',
       metric: 'views',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 1 heure
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 3600);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances vues mensuelles:', error);
@@ -2479,6 +2566,16 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
 // Endpoint pour les articles les plus partagés du jour
 app.get('/api/stats/trending/daily/shares', async (req, res) => {
   try {
+    // Cache Redis - 15 minutes
+    const cacheKey = 'stats:trending:daily:shares';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus partagés du jour...');
 
     const now = new Date();
@@ -2518,13 +2615,20 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances partages (daily) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'daily',
       metric: 'shares',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 15 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 900);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances partages quotidiens:', error);
@@ -2539,6 +2643,16 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
 // Endpoint pour les articles les plus partagés de la semaine
 app.get('/api/stats/trending/weekly/shares', async (req, res) => {
   try {
+    // Cache Redis - 30 minutes
+    const cacheKey = 'stats:trending:weekly:shares';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus partagés de la semaine...');
 
     const now = new Date();
@@ -2578,13 +2692,20 @@ app.get('/api/stats/trending/weekly/shares', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances partages (weekly) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'weekly',
       metric: 'shares',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 30 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 1800);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances partages semaine:', error);
@@ -2599,6 +2720,16 @@ app.get('/api/stats/trending/weekly/shares', async (req, res) => {
 // Endpoint pour les articles les plus partagés du mois
 app.get('/api/stats/trending/monthly/shares', async (req, res) => {
   try {
+    // Cache Redis - 1 heure
+    const cacheKey = 'stats:trending:monthly:shares';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📊 Récupération des articles les plus partagés du mois...');
 
     const now = new Date();
@@ -2638,13 +2769,20 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
 
     console.log(`✅ ${transformedArticles.length} articles tendances partages (monthly) récupérés`);
 
-    res.json({
+    const response = {
       success: true,
       articles: transformedArticles,
       period: 'monthly',
       metric: 'shares',
       count: transformedArticles.length
-    });
+    };
+
+    // Mettre en cache Redis - 1 heure
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 3600);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur endpoint tendances partages mensuels:', error);
@@ -2759,10 +2897,20 @@ app.get('/api/articles/check-updates', async (req, res) => {
 // Route pour récupérer les événements à venir
 app.get('/api/events', async (req, res) => {
   try {
+    // Cache Redis - 1 heure pour events
+    const cacheKey = 'events:list';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('🎉 Récupération des événements à venir...');
-    
+
     const now = new Date();
-    
+
     // Récupérer les 5 événements les plus récents
     const { data: events, error } = await supabaseService.supabase
       .from('events')
@@ -2799,12 +2947,20 @@ app.get('/api/events', async (req, res) => {
     }));
 
     console.log(`✅ ${transformedEvents.length} événements récupérés`);
-    res.json({
+
+    const response = {
       success: true,
       events: transformedEvents,
       total: transformedEvents.length
-    });
-    
+    };
+
+    // Mettre en cache Redis - 1 heure
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 3600);
+    }
+
+    res.json(response);
+
   } catch (error) {
     console.error('❌ Erreur lors de la récupération des événements:', error.message);
     res.status(500).json({
@@ -2844,10 +3000,20 @@ app.post('/api/events/sync', async (req, res) => {
 // Route pour récupérer les slides actifs
 app.get('/api/slides', async (req, res) => {
   try {
+    // Cache Redis - 30 minutes pour slides
+    const cacheKey = 'slides:active';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('📢 Récupération des slides publicitaires actifs...');
-    
+
     const now = new Date();
-    
+
     // Récupérer les slides actifs et approuvés avec leurs campagnes
     const { data: slides, error } = await supabaseService.supabase
       .from('promotional_slides')
@@ -2888,17 +3054,24 @@ app.get('/api/slides', async (req, res) => {
     }));
 
     console.log(`✅ ${transformedSlides.length} slides publicitaires trouvés`);
-    
-    res.json({ 
-      success: true, 
+
+    const response = {
+      success: true,
       slides: transformedSlides,
       total: transformedSlides.length
-    });
+    };
+
+    // Mettre en cache Redis - 30 minutes
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 1800);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur récupération slides:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message,
       slides: [],
       total: 0
@@ -4794,6 +4967,16 @@ app.use('/api/pricing', pricingRouter);
  */
 app.get('/api/tiktok/trending', async (req, res) => {
   try {
+    // Cache Redis - 1 heure pour TikTok (API externe coûteuse)
+    const cacheKey = 'tiktok:trending:gabon';
+    if (redisCache.isAvailable()) {
+      const cached = await redisCache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+    }
+
     console.log('🎵 Récupération TikTok trending Gabon...');
 
     const apiKey = process.env.RAPIDAPI_KEY;
@@ -4859,11 +5042,18 @@ app.get('/api/tiktok/trending', async (req, res) => {
 
     console.log(`✅ ${parsedVideos.length} vidéos TikTok Gabon récupérées`);
 
-    res.json({
+    const response = {
       success: true,
       videos: parsedVideos,
       count: parsedVideos.length
-    });
+    };
+
+    // Mettre en cache Redis - 1 heure
+    if (redisCache.isAvailable()) {
+      await redisCache.set(cacheKey, response, 3600);
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Erreur TikTok API:', error.message);
