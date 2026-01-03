@@ -61,6 +61,9 @@ export function useGameSocket(options: UseGameSocketOptions = {}) {
   const [maxTime, setMaxTime] = useState(25);
   const [waitingCountdown, setWaitingCountdown] = useState(120);
   const [participantCount, setParticipantCount] = useState(0);
+  const [alivePlayers, setAlivePlayers] = useState(0);
+  const [eliminatedPlayers, setEliminatedPlayers] = useState(0);
+  const [isAlive, setIsAlive] = useState(true);
   
   const askedQuestionIdsRef = useRef<Set<string>>(new Set());
 
@@ -142,11 +145,32 @@ export function useGameSocket(options: UseGameSocketOptions = {}) {
 
     newSocket.on('answer-confirmed', (data: any) => {
       console.log('✅ Réponse confirmée:', data);
+      if (data.isAlive === false) {
+        setIsAlive(false);
+        setGamePhase('eliminated');
+      }
       onAnswerConfirmed?.(data);
     });
 
+    // Stats mises à jour (nombre d'éliminés, joueurs restants)
+    newSocket.on('stats-update', (data: any) => {
+      console.log('📊 Stats:', data);
+      setParticipantCount(data.totalParticipants);
+      setAlivePlayers(data.alivePlayers);
+      setEliminatedPlayers(data.eliminatedPlayers);
+    });
+
+    // Un joueur a été éliminé
+    newSocket.on('player-eliminated', (data: any) => {
+      console.log('💀 Joueur éliminé:', data.odName);
+      setAlivePlayers(data.alivePlayers);
+      setEliminatedPlayers(data.eliminatedPlayers);
+    });
+
     newSocket.on('game-end', () => {
-      setGamePhase('winner');
+      if (isAlive) {
+        setGamePhase('winner');
+      }
       onGameEnd?.();
     });
 
@@ -203,6 +227,9 @@ export function useGameSocket(options: UseGameSocketOptions = {}) {
     waitingCountdown,
     setWaitingCountdown,
     participantCount,
+    alivePlayers,
+    eliminatedPlayers,
+    isAlive,
     submitAnswer,
     joinSession,
     votePact,

@@ -393,22 +393,61 @@ class GameSocketService {
     if (!session || session.phase !== 'question') return;
 
     const participant = session.participants.get(socket.id);
-    if (!participant) return;
+    if (!participant || !participant.isAlive) return; // Ignorer si déjà éliminé
 
     const isCorrect = answerIndex === session.currentQuestion.correct_answer_index;
-    
+
     if (isCorrect) {
       participant.score += 100;
     } else {
       participant.isAlive = false;
+
+      // Calculer et broadcast les stats d'élimination
+      const stats = this.getSessionStats(session);
+      this.io.to(sessionId).emit('player-eliminated', {
+        odId: socket.id,
+        odName: participant.odName,
+        ...stats,
+        serverTime: Date.now()
+      });
     }
 
     // Confirmer la réponse au joueur
     socket.emit('answer-confirmed', {
       answerIndex,
       isCorrect,
-      score: participant.score
+      score: participant.score,
+      isAlive: participant.isAlive
     });
+
+    // Broadcast la mise à jour des stats à tous
+    const stats = this.getSessionStats(session);
+    this.io.to(sessionId).emit('stats-update', stats);
+  }
+
+  /**
+   * Obtenir les statistiques d'une session
+   */
+  getSessionStats(session) {
+    let alive = 0;
+    let eliminated = 0;
+    let totalScore = 0;
+
+    session.participants.forEach(p => {
+      if (p.isAlive) {
+        alive++;
+        totalScore += p.score;
+      } else {
+        eliminated++;
+      }
+    });
+
+    return {
+      totalParticipants: session.participants.size,
+      alivePlayers: alive,
+      eliminatedPlayers: eliminated,
+      averageScore: alive > 0 ? Math.round(totalScore / alive) : 0
+    };
   }
 
   /**
