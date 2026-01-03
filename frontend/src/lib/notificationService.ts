@@ -196,45 +196,65 @@ class NotificationService {
 
   /**
    * S'abonner aux notifications en temps réel
+   * Note: Realtime doit être activé sur Supabase pour fonctionner
    */
   subscribeToNotifications(userId: string, callback: (notification: Notification) => void) {
     this.listeners.add(callback)
 
     if (!this.channel) {
-      this.channel = supabase
-        .channel('notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${userId}`
-          },
-          (payload: any) => {
-            const notification = payload.new as Notification
-            this.listeners.forEach(listener => listener(notification))
-          }
-        )
-        .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Realtime notifications connected')
-          }
-          if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Realtime notifications connection error')
-          }
-          if (status === 'TIMED_OUT') {
-            console.warn('⚠️ Realtime notifications connection timed out')
-          }
-        })
+      try {
+        this.channel = supabase
+          .channel(`notifications-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${userId}`
+            },
+            (payload: any) => {
+              const notification = payload.new as Notification
+              this.listeners.forEach(listener => listener(notification))
+            }
+          )
+          .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Realtime notifications connected')
+            }
+            if (status === 'CHANNEL_ERROR') {
+              // Silently handle - Realtime may not be enabled on Supabase project
+              // This is non-critical, notifications will still work via polling
+              console.debug('Realtime notifications unavailable - using polling fallback')
+              this.cleanupChannel()
+            }
+            if (status === 'TIMED_OUT') {
+              console.debug('Realtime connection timed out - using polling fallback')
+              this.cleanupChannel()
+            }
+          })
+      } catch (error) {
+        // Silently fail - realtime is optional
+        console.debug('Realtime setup failed:', error)
+      }
     }
 
     return () => {
       this.listeners.delete(callback)
-      if (this.listeners.size === 0 && this.channel) {
-        this.channel.unsubscribe()
-        this.channel = null
+      if (this.listeners.size === 0) {
+        this.cleanupChannel()
       }
+    }
+  }
+
+  private cleanupChannel() {
+    if (this.channel) {
+      try {
+        this.channel.unsubscribe()
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      this.channel = null
     }
   }
 
