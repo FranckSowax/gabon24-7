@@ -158,24 +158,30 @@ export default function AdminDashboard() {
         axios.get(`${API_URL}/api/saved-projects/global-stats`).catch(() => ({ data: { stats: {} } }))
       ])
 
-      // Construire l'objet analytics avec les données réelles + estimations
+      // Log pour debug
+      console.log('📊 Stats Response:', statsRes.data)
+
+      const totalArticles = statsRes.data?.totalArticles || 0
+      const totalUsers = statsRes.data?.totalUsers || 0
+
+      // Construire l'objet analytics avec les données réelles
       setAnalytics({
         articles: {
-          total: statsRes.data?.totalArticles || 20898,
-          today: statsRes.data?.todayArticles || 45,
-          thisWeek: Math.floor((statsRes.data?.totalArticles || 20898) * 0.02),
-          thisMonth: Math.floor((statsRes.data?.totalArticles || 20898) * 0.08)
+          total: totalArticles,
+          today: statsRes.data?.todayArticles || 0,
+          thisWeek: Math.floor(totalArticles * 0.02),
+          thisMonth: Math.floor(totalArticles * 0.08)
         },
         rssFeeds: {
           total: 51,
-          active: statsRes.data?.activeFeeds || 48,
+          active: statsRes.data?.activeFeeds || 0,
           errors: 3
         },
         users: {
-          total: statsRes.data?.totalUsers || 6,
-          active: Math.floor((statsRes.data?.totalUsers || 6) * 0.7),
-          premium: Math.floor((statsRes.data?.totalUsers || 6) * 0.15),
-          newThisWeek: statsRes.data?.newUsersThisWeek || 2
+          total: totalUsers,
+          active: Math.floor(totalUsers * 0.7),
+          premium: Math.floor(totalUsers * 0.15),
+          newThisWeek: statsRes.data?.newUsersThisWeek || 0
         },
         aiUsage: {
           totalRequests: aiRes.data?.quota?.requestsToday || 0,
