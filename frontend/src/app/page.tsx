@@ -1474,7 +1474,8 @@ export default function HomePage() {
                             imageUrl: favorite.article_image_url || '',
                             summary: '',
                             category: 'general',
-                            viewCount: '0'
+                            viewCount: '0',
+                            created_at: favorite.created_at
                           }}
                           variant="list"
                           onClick={() => handleArticleClick({
