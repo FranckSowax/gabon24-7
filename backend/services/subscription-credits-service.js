@@ -13,12 +13,15 @@
 const { supabase } = require('../config/supabase');
 
 // Configuration des crédits par plan
+// Tous les types d'abonnement reconnus par l'application
 const PLAN_CREDITS = {
   'free': 0,
   'freemium': 0,
-  'premium': 300,
-  'discovery': 300,
-  'pro': 1000
+  'premium': 300,      // Legacy - même crédits que discovery
+  'discovery': 300,    // Plan Premium
+  'pro': 1000,         // Plan Professionnel
+  'enterprise': 2000,  // Plan Entreprise (admin)
+  'journalist': 500    // Legacy - journalistes
 };
 
 class SubscriptionCreditsService {
