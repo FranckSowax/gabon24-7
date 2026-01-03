@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Check, X, Zap, Crown, Gift, ArrowRight, Shield, Clock, Star,
-  BookOpen, Headphones, Bot, Briefcase, GraduationCap, TrendingUp,
-  LayoutDashboard, FileText, Newspaper, Layers, Coins, ShoppingCart
+  Check, X, Zap, Crown, ArrowRight, Shield, Star,
+  BookOpen, Coins, ShoppingCart
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -86,19 +85,6 @@ const PLANS = [
     cta: 'Devenir Pro (12 000 FCFA)',
     highlight: false
   }
-];
-
-/**
- * CRÉDITS BASÉS SUR COÛTS IA RÉELS (Déc 2024)
- * Modèles: Gemini 2.0 Flash, GPT-4o-mini, OpenAI TTS-1
- * 1 crédit = 10 FCFA | 1 USD = 600 FCFA | Marge x40-80
- */
-const CREDIT_EXAMPLES = [
-  { action: 'Résumé Audio', cost: 5, icon: Headphones, desc: '~800 tokens + TTS 30s' },
-  { action: 'Fiche Actu+', cost: 6, icon: Newspaper, desc: '~5000 tokens GPT-4o-mini' },
-  { action: 'Rapport Veille', cost: 5, icon: TrendingUp, desc: '~3500 tokens analyse' },
-  { action: 'Business Plan', cost: 15, icon: Briefcase, desc: '~10500 tokens Gemini' },
-  { action: 'Formation IA', cost: 10, icon: GraduationCap, desc: '~6000 tokens' },
 ];
 
 export default function PricingPage() {
@@ -352,40 +338,6 @@ export default function PricingPage() {
               Paiement sécurisé via Mobile Money (Airtel, Moov)
             </p>
           </motion.div>
-        </div>
-      </div>
-
-      {/* What are credits section */}
-      <div className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              La puissance de vos Crédits
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Utilisez vos crédits à la demande pour activer les outils dont vous avez besoin. Vos crédits non utilisés sont reportés au mois suivant.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-5 gap-6">
-            {CREDIT_EXAMPLES.map((item, idx) => (
-              <motion.div 
-                key={idx}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="bg-gray-50 rounded-2xl p-6 text-center hover:bg-white hover:shadow-xl transition-all duration-300 border border-gray-100 group"
-              >
-                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto mb-4 text-orange-500 group-hover:scale-110 transition-transform duration-300">
-                  <item.icon className="w-6 h-6" />
-                </div>
-                <h3 className="font-bold text-gray-900 mb-1">{item.action}</h3>
-                <div className="text-orange-600 font-bold text-sm mb-2">{item.cost} Crédits</div>
-                <p className="text-xs text-gray-500">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </div>
 
