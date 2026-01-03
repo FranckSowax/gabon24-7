@@ -275,14 +275,58 @@ class PvitPaymentService {
   async initiateQuizPayment({ userId, quizId, phone }) {
     try {
       // Récupérer la session de jeu (game_sessions)
-      const { data: gameSession, error: sessionError } = await this.supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('id', quizId)
-        .single();
+      // Essayer plusieurs critères : id (UUID), session_type, ou name
+      let gameSession = null;
+      let sessionError = null;
 
-      if (sessionError || !gameSession) {
-        console.error('❌ Session de jeu non trouvée:', quizId, sessionError);
+      // 1. Essayer par ID direct (si c'est un UUID)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(quizId)) {
+        const { data, error } = await this.supabase
+          .from('game_sessions')
+          .select('*')
+          .eq('id', quizId)
+          .single();
+        gameSession = data;
+        sessionError = error;
+      }
+
+      // 2. Si pas trouvé, essayer par session_type (ex: 'midi-express')
+      if (!gameSession) {
+        const { data, error } = await this.supabase
+          .from('game_sessions')
+          .select('*')
+          .eq('session_type', quizId)
+          .eq('status', 'waiting')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (data) {
+          gameSession = data;
+          sessionError = null;
+        }
+      }
+
+      // 3. Si toujours pas trouvé, essayer par name (recherche insensible à la casse)
+      if (!gameSession) {
+        const { data, error } = await this.supabase
+          .from('game_sessions')
+          .select('*')
+          .ilike('name', `%${quizId}%`)
+          .eq('status', 'waiting')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (data) {
+          gameSession = data;
+          sessionError = null;
+        }
+      }
+
+      if (!gameSession) {
+        console.error('❌ Session de jeu non trouvée:', quizId);
         return { success: false, error: 'Session de jeu non trouvée' };
       }
 
