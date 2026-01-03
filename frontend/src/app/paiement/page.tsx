@@ -114,16 +114,26 @@ function PaiementContent() {
 
   const detectOperator = (phoneNumber: string) => {
     const digits = phoneNumber.replace(/\D/g, '')
-    if (digits.startsWith('074') || digits.startsWith('077') || digits.startsWith('07')) {
+    // Format international sans 0: 74, 77 = Airtel | 62, 66 = Moov
+    // Format local avec 0: 074, 077 = Airtel | 062, 066 = Moov
+    if (digits.startsWith('74') || digits.startsWith('77') || digits.startsWith('074') || digits.startsWith('077')) {
       setSelectedOperator('airtel')
-    } else if (digits.startsWith('062') || digits.startsWith('066') || digits.startsWith('06')) {
+    } else if (digits.startsWith('62') || digits.startsWith('66') || digits.startsWith('062') || digits.startsWith('066')) {
       setSelectedOperator('moov')
+    } else {
+      setSelectedOperator(null)
     }
   }
 
   const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    // Format: XX XX XX XX
+    let digits = value.replace(/\D/g, '')
+
+    // Si l'utilisateur entre un 0 au début, on l'enlève (format international)
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1)
+    }
+
+    // Format: XX XX XX XX (8 chiffres sans le 0)
     if (digits.length <= 2) return digits
     if (digits.length <= 4) return `${digits.slice(0, 2)} ${digits.slice(2)}`
     if (digits.length <= 6) return `${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`
@@ -131,17 +141,36 @@ function PaiementContent() {
   }
 
   const handlePhoneChange = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 8)
+    let digits = value.replace(/\D/g, '')
+
+    // Si l'utilisateur entre un 0 au début, on l'enlève automatiquement
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1)
+    }
+
+    // Limiter à 8 chiffres (format international sans indicatif)
+    digits = digits.slice(0, 8)
     setPhone(digits)
     detectOperator(digits)
   }
 
   const validatePhone = (phoneNumber: string) => {
-    const digits = phoneNumber.replace(/\D/g, '')
-    if (digits.length < 8 || digits.length > 9) {
+    let digits = phoneNumber.replace(/\D/g, '')
+
+    // Enlever le 0 initial si présent
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1)
+    }
+
+    // Format international: 8 chiffres exactement
+    if (digits.length !== 8) {
       return false
     }
-    const validPrefixes = ['074', '077', '062', '066', '06', '07']
+
+    // Préfixes valides sans le 0 initial:
+    // Airtel: 74, 77
+    // Moov: 62, 66
+    const validPrefixes = ['74', '77', '62', '66']
     return validPrefixes.some(prefix => digits.startsWith(prefix))
   }
 
@@ -366,7 +395,7 @@ function PaiementContent() {
                         <span className={`font-medium ${selectedOperator === 'airtel' ? 'text-red-400' : 'text-gray-400'}`}>
                           Airtel Money
                         </span>
-                        <span className="text-xs text-gray-500">074, 077</span>
+                        <span className="text-xs text-gray-500">74, 77</span>
                       </div>
                       {selectedOperator === 'airtel' && (
                         <CheckCircle2 className="w-5 h-5 text-red-500 absolute top-2 right-2" />
@@ -389,7 +418,7 @@ function PaiementContent() {
                         <span className={`font-medium ${selectedOperator === 'moov' ? 'text-blue-400' : 'text-gray-400'}`}>
                           Moov Money
                         </span>
-                        <span className="text-xs text-gray-500">062, 066</span>
+                        <span className="text-xs text-gray-500">62, 66</span>
                       </div>
                     </button>
                   </div>
@@ -414,7 +443,7 @@ function PaiementContent() {
                         type="tel"
                         value={formatPhone(phone)}
                         onChange={(e) => handlePhoneChange(e.target.value)}
-                        placeholder="07 XX XX XX"
+                        placeholder="77 XX XX XX"
                         className="w-full pl-28 pr-4 py-4 bg-gray-700/50 border border-gray-600 rounded-xl text-white text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         required
                       />
