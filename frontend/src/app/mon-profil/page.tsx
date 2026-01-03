@@ -12,7 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, CreditCard, Coins, FolderOpen, History, Settings,
   ChevronLeft, Camera, Mail, Phone, FileText, Globe, Lock,
-  Bell, Palette, Shield, LogOut, Check, Crown, Zap, Sparkles
+  Bell, Palette, Shield, LogOut, Check, Crown, Zap, Sparkles,
+  Calendar, Clock
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -94,7 +95,7 @@ const TABS = [
 type TabId = typeof TABS[number]['id']
 
 export default function MonProfilPage() {
-  const { user, subscriptionPlan, loading: authLoading } = useAuth()
+  const { user, subscription, subscriptionPlan, loading: authLoading } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('profile')
@@ -314,6 +315,32 @@ export default function MonProfilPage() {
   const currentPlan = subscriptionPlan?.slug || 'free'
   const creditsBalance = profile?.credits_balance || 0
   const currentTabData = TABS.find(t => t.id === activeTab)
+
+  // Calculer les jours restants avant expiration
+  const getDaysRemaining = (): number => {
+    if (!subscription?.current_period_end) return 0
+    const endDate = new Date(subscription.current_period_end)
+    const now = new Date()
+    const diffTime = endDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return Math.max(0, diffDays)
+  }
+
+  // Obtenir le vrai prix affiché selon le cycle de facturation
+  const getDisplayPrice = (): { price: number; period: string; isYearly: boolean } => {
+    if (!subscriptionPlan || subscriptionPlan.price_monthly === 0) {
+      return { price: 0, period: 'mois', isYearly: false }
+    }
+
+    const isYearly = subscription?.billing_cycle === 'yearly'
+    if (isYearly && subscriptionPlan.price_yearly) {
+      return { price: subscriptionPlan.price_yearly, period: 'an', isYearly: true }
+    }
+    return { price: subscriptionPlan.price_monthly, period: 'mois', isYearly: false }
+  }
+
+  const daysRemaining = getDaysRemaining()
+  const displayPrice = getDisplayPrice()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -578,18 +605,69 @@ export default function MonProfilPage() {
                       <div className="space-y-6">
                         {/* Current Plan Banner */}
                         <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl shadow-orange-500/20">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <p className="text-orange-100 text-sm font-medium mb-1">Abonnement actuel</p>
-                              <h2 className="text-3xl font-bold">{subscriptionPlan?.name || 'Freemium'}</h2>
-                              <p className="text-orange-100 mt-2">
-                                {subscriptionPlan?.price_monthly || 0} FCFA/mois
-                              </p>
+                          <div className="flex flex-col gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                              <div>
+                                <p className="text-orange-100 text-sm font-medium mb-1">Abonnement actuel</p>
+                                <h2 className="text-3xl font-bold">{subscriptionPlan?.name || 'Freemium'}</h2>
+                                <div className="flex flex-wrap items-center gap-3 mt-2">
+                                  <p className="text-orange-100">
+                                    {displayPrice.price > 0 ? (
+                                      <>
+                                        <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/{displayPrice.period}
+                                      </>
+                                    ) : (
+                                      'Gratuit'
+                                    )}
+                                  </p>
+                                  {displayPrice.isYearly && (
+                                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
+                                      Abonnement annuel
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
+                                <Sparkles className="w-5 h-5" />
+                                <span className="font-medium">{creditsBalance} crédits</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-                              <Sparkles className="w-5 h-5" />
-                              <span className="font-medium">{creditsBalance} crédits</span>
-                            </div>
+
+                            {/* Jours restants - affiché seulement pour les abonnés payants */}
+                            {subscription && displayPrice.price > 0 && (
+                              <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/20">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-orange-200" />
+                                  <span className="text-sm text-orange-100">
+                                    Prochain renouvellement : <span className="text-white font-medium">
+                                      {new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-orange-200" />
+                                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                                    daysRemaining <= 7
+                                      ? 'bg-red-500 text-white'
+                                      : daysRemaining <= 14
+                                      ? 'bg-yellow-500 text-yellow-900'
+                                      : 'bg-white/20 text-white'
+                                  }`}>
+                                    {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                {displayPrice.isYearly && (
+                                  <div className="flex items-center gap-2 text-xs text-orange-100">
+                                    <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                                    Crédits renouvelés chaque mois
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
