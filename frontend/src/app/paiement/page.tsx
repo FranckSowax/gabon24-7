@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import {
@@ -188,7 +189,19 @@ function PaiementContent() {
     setError(null)
 
     try {
-      const token = localStorage.getItem('supabase_token') || localStorage.getItem('sb-access-token')
+      // Récupérer un token frais depuis Supabase (évite les tokens expirés)
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError || !sessionData.session) {
+        // Si pas de session, rediriger vers la connexion
+        setError('Votre session a expiré. Veuillez vous reconnecter.')
+        setTimeout(() => {
+          router.push('/auth/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search))
+        }, 2000)
+        return
+      }
+
+      const token = sessionData.session.access_token
 
       let endpoint = ''
       let body: any = { phone: phone.replace(/\D/g, '') }
