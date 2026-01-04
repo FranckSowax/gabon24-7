@@ -39,11 +39,13 @@ class PvitPaymentService {
 
   /**
    * Génère une référence unique pour le paiement
+   * PVIT: max 20 caractères, alphanumeric only (pas de tirets)
    */
   generateReference(type = 'PAY') {
     const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `G247-${type}-${timestamp}-${random}`;
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    // Format: G247PAYXXXXXXXXXX (max 20 chars, alphanumeric)
+    return `G247${type}${timestamp}${random}`.substring(0, 20);
   }
 
   // =====================================================
@@ -488,8 +490,9 @@ class PvitPaymentService {
       const payload = {
         // Champs obligatoires selon l'erreur CONSTRAINT_VIOLATION
         merchant_operation_account_code: PVIT_CONFIG.operationAccountCode,
-        reference: reference,
-        transaction_type: 'PAYMENT', // Type de transaction (PAYMENT, WITHDRAWAL, etc.)
+        reference: reference, // Max 20 chars, alphanumeric only
+        transaction_type: 'PAYMENT', // Type de transaction
+        service: 'MOBILE_MONEY', // Service de paiement (MOBILE_MONEY, CARD, etc.)
         amount: amount,
         currency: 'XAF',
         customer_msisdn: phone,
@@ -497,10 +500,10 @@ class PvitPaymentService {
         callback_url_code: PVIT_CONFIG.callbackUrlCode,
         success_redirection_url_code: PVIT_CONFIG.successRedirectionCode,
         failed_redirection_url_code: PVIT_CONFIG.failedRedirectionCode,
-        owner_charge: true // Le marchand supporte les frais (false = client)
+        owner_charge: 'MERCHANT' // MERCHANT = marchand paie les frais, CUSTOMER = client paie
       };
 
-      console.log('📤 Appel PVIT RESTLINK:', { reference, amount, phone, payload: JSON.stringify(payload) });
+      console.log('📤 Appel PVIT RESTLINK:', { reference, amount, phone });
 
       const response = await axios.post(
         `${PVIT_CONFIG.baseUrl}${PVIT_ENDPOINTS.restlink}`,
