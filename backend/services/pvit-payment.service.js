@@ -496,6 +496,7 @@ class PvitPaymentService {
         amount: amount,
         currency: 'XAF',
         customer_msisdn: phone,
+        customer_account_number: phone, // Numéro Mobile Money du client
         description: description || 'Achat Gabon24-7',
         callback_url_code: PVIT_CONFIG.callbackUrlCode,
         success_redirection_url_code: PVIT_CONFIG.successRedirectionCode,
