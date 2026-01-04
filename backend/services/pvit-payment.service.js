@@ -512,7 +512,7 @@ class PvitPaymentService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${secretKey}`
+            'X-Secret': secretKey // PVIT requiert X-Secret au lieu de Authorization Bearer
           },
           timeout: 60000
         }
