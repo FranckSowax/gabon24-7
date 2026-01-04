@@ -114,11 +114,11 @@ export default function UsersAdminPage() {
         .select('*', { count: 'exact', head: true })
         .eq('journalist_verified', true)
 
-      // Total credits
+      // Total credits (depuis user_credits qui est la source principale)
       const { data: creditsData } = await supabase
-        .from('users')
-        .select('credits_balance')
-      const totalCredits = creditsData?.reduce((sum: number, u: { credits_balance: number | null }) => sum + (u.credits_balance || 0), 0) || 0
+        .from('user_credits')
+        .select('balance')
+      const totalCredits = creditsData?.reduce((sum: number, u: { balance: number | null }) => sum + (u.balance || 0), 0) || 0
 
       // New users this week
       const weekAgo = new Date()
@@ -195,57 +195,69 @@ export default function UsersAdminPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      
+
       let query = supabase
         .from('users')
         .select('*', { count: 'exact' })
-      
+
       if (searchTerm) {
         query = query.or(`email.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
       }
-      
+
       if (filterSubscription !== 'all') {
         query = query.eq('subscription_type', filterSubscription)
       }
-      
+
       if (filterStatus === 'active') {
         query = query.eq('is_active', true)
       } else if (filterStatus === 'inactive') {
         query = query.eq('is_active', false)
       }
-      
+
       if (filterJournalist === 'verified') {
         query = query.eq('journalist_verified', true)
       } else if (filterJournalist === 'not_verified') {
         query = query.eq('journalist_verified', false)
       }
-      
+
       query = query.order(sortBy, { ascending: false })
-      
+
       const from = (currentPage - 1) * pageSize
       const to = from + pageSize - 1
       query = query.range(from, to)
-      
+
       const { data, error, count } = await query
-      
+
       if (error) {
         console.error('Erreur:', error)
         return
       }
-      
-      // Récupérer le nombre de projets pour chaque utilisateur
-      const usersWithProjects = await Promise.all(
+
+      // Récupérer le nombre de projets et crédits réels pour chaque utilisateur
+      const usersWithExtras = await Promise.all(
         (data || []).map(async (user: User) => {
+          // Projets
           const { count: projectsCount } = await supabase
             .from('saved_projects')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
-          
-          return { ...user, projects_count: projectsCount || 0 }
+
+          // Crédits depuis user_credits (source principale)
+          const { data: creditsData } = await supabase
+            .from('user_credits')
+            .select('balance')
+            .eq('user_id', user.id)
+            .single()
+
+          return {
+            ...user,
+            projects_count: projectsCount || 0,
+            credits_balance: creditsData?.balance ?? user.credits_balance ?? 0
+          }
         })
       )
-      
-      setUsers(usersWithProjects)
+
+      setUsers(usersWithExtras)
       setTotalCount(count || 0)
     } catch (error) {
       console.error('Erreur:', error)
@@ -300,29 +312,68 @@ export default function UsersAdminPage() {
   }
 
   const handleAdjustCredits = async (userId: string, amount: number) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
     try {
-      // Récupérer le solde actuel
-      const { data: user, error: fetchError } = await supabase
-        .from('users')
-        .select('credits_balance')
-        .eq('id', userId)
-        .single()
-      
-      if (fetchError || !user) return
-      
-      const newBalance = Math.max(0, (user.credits_balance || 0) + amount)
-      
-      const { error } = await supabase
-        .from('users')
-        .update({ credits_balance: newBalance })
-        .eq('id', userId)
-      
-      if (!error) {
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        alert('Erreur: Non authentifié. Veuillez vous reconnecter.')
+        return
+      }
+
+      if (amount > 0) {
+        // Ajouter des crédits via le nouvel endpoint universel
+        const response = await fetch(`${API_URL}/api/admin/subscriptions/adjust-credits`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            amount: amount,
+            reason: 'admin_bonus'
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          alert(`Erreur: ${result.error || 'Impossible d\'ajouter les crédits'}`)
+          return
+        }
+
         fetchUsers()
-        alert(`Crédits ajustés: ${amount > 0 ? '+' : ''}${amount}`)
+        alert(`✅ ${amount} crédits ajoutés avec succès (solde: ${result.new_balance})`)
+      } else {
+        // Retirer des crédits - utiliser le nouvel endpoint backend
+        const response = await fetch(`${API_URL}/api/admin/subscriptions/adjust-credits`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            amount: amount, // Négatif pour retirer
+            reason: 'admin_deduction'
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          alert(`Erreur: ${result.error || 'Impossible de retirer les crédits'}`)
+          return
+        }
+
+        fetchUsers()
+        alert(`✅ ${Math.abs(amount)} crédits retirés avec succès (solde: ${result.new_balance})`)
       }
     } catch (error) {
-      console.error('Erreur:', error)
+      console.error('Erreur ajustement crédits:', error)
+      alert('Erreur lors de l\'ajustement des crédits. Vérifiez la console.')
     }
   }
 
@@ -344,13 +395,32 @@ export default function UsersAdminPage() {
   }
 
   const getSubscriptionBadge = (type: string) => {
-    const badges = {
+    const badges: Record<string, string> = {
       free: 'bg-gray-100 text-gray-700',
+      freemium: 'bg-gray-100 text-gray-700',
+      discovery: 'bg-yellow-100 text-yellow-700',
       premium: 'bg-yellow-100 text-yellow-700',
+      pro: 'bg-purple-100 text-purple-700',
+      professionnel: 'bg-purple-100 text-purple-700',
       journalist: 'bg-blue-100 text-blue-700',
       enterprise: 'bg-purple-100 text-purple-700'
     }
-    return badges[type as keyof typeof badges] || 'bg-gray-100 text-gray-700'
+    return badges[type?.toLowerCase()] || 'bg-gray-100 text-gray-700'
+  }
+
+  // Formater le nom d'affichage de l'abonnement
+  const getSubscriptionLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      free: 'Freemium',
+      freemium: 'Freemium',
+      discovery: 'Premium',
+      premium: 'Premium',
+      pro: 'Professionnel',
+      professionnel: 'Professionnel',
+      journalist: 'Journaliste',
+      enterprise: 'Enterprise'
+    }
+    return labels[type?.toLowerCase()] || type || 'Freemium'
   }
 
   const totalPages = Math.ceil(totalCount / pageSize)
@@ -439,12 +509,15 @@ export default function UsersAdminPage() {
           </div>
           <p className="text-2xl font-bold text-orange-600">{stats?.totalCredits?.toLocaleString() || 0}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100" title="Total de tous les projets créés sur la plateforme">
           <div className="flex items-center gap-2 mb-2">
             <Briefcase className="w-5 h-5 text-indigo-500" />
-            <span className="text-sm text-gray-500">Projets</span>
+            <span className="text-sm text-gray-500">Projets (total)</span>
           </div>
           <p className="text-2xl font-bold text-indigo-600">{stats?.totalProjects || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Page: {users.reduce((sum, u) => sum + (u.projects_count || 0), 0)}
+          </p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2">
@@ -594,7 +667,7 @@ export default function UsersAdminPage() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex flex-col gap-1 items-center">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getSubscriptionBadge(user.subscription_type)}`}>
-                            {user.subscription_type}
+                            {getSubscriptionLabel(user.subscription_type)}
                           </span>
                           {user.journalist_verified && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs flex items-center gap-1">
@@ -686,10 +759,9 @@ export default function UsersAdminPage() {
                             className="px-2 py-1 text-xs border border-gray-300 rounded"
                             title="Changer abonnement"
                           >
-                            <option value="free">Free</option>
-                            <option value="premium">Premium</option>
-                            <option value="journalist">Journalist</option>
-                            <option value="enterprise">Enterprise</option>
+                            <option value="free">Freemium</option>
+                            <option value="discovery">Premium</option>
+                            <option value="pro">Professionnel</option>
                           </select>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
@@ -761,7 +833,7 @@ export default function UsersAdminPage() {
               {/* Badges */}
               <div className="flex flex-wrap gap-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSubscriptionBadge(selectedUser.subscription_type)}`}>
-                  {selectedUser.subscription_type}
+                  {getSubscriptionLabel(selectedUser.subscription_type)}
                 </span>
                 {selectedUser.journalist_verified && (
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-1">

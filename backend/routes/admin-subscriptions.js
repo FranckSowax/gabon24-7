@@ -204,7 +204,7 @@ router.post('/grant-credits', requireAdmin, async (req, res) => {
     });
 
     if (rpcError) {
-      // Fallback direct
+      // Fallback direct sur user_credits
       const { data: existing } = await supabase
         .from('user_credits')
         .select('balance')
@@ -214,7 +214,7 @@ router.post('/grant-credits', requireAdmin, async (req, res) => {
       if (existing) {
         await supabase
           .from('user_credits')
-          .update({ balance: existing.balance + amount })
+          .update({ balance: existing.balance + amount, updated_at: new Date().toISOString() })
           .eq('user_id', userId);
       } else {
         await supabase
@@ -222,6 +222,19 @@ router.post('/grant-credits', requireAdmin, async (req, res) => {
           .insert({ user_id: userId, balance: amount });
       }
     }
+
+    // Synchroniser aussi users.credits_balance pour cohérence avec le frontend
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('credits_balance')
+      .eq('id', userId)
+      .single();
+
+    const newBalance = (currentUser?.credits_balance || 0) + amount;
+    await supabase
+      .from('users')
+      .update({ credits_balance: newBalance })
+      .eq('id', userId);
 
     // Log transaction
     await supabase
@@ -388,6 +401,95 @@ router.get('/plans', requireAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur récupération plans:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/admin/subscriptions/adjust-credits
+ * Ajuste les crédits d'un utilisateur (ajout ou retrait)
+ */
+router.post('/adjust-credits', requireAdmin, async (req, res) => {
+  try {
+    const { user_id, amount, reason = 'admin_adjustment' } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id requis'
+      });
+    }
+
+    if (amount === undefined || amount === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Montant invalide (ne peut pas être 0)'
+      });
+    }
+
+    // Récupérer le solde actuel depuis users
+    const { data: currentUser, error: fetchError } = await supabase
+      .from('users')
+      .select('credits_balance')
+      .eq('id', user_id)
+      .single();
+
+    if (fetchError) {
+      return res.status(404).json({
+        success: false,
+        error: 'Utilisateur non trouvé'
+      });
+    }
+
+    const currentBalance = currentUser?.credits_balance || 0;
+    const newBalance = Math.max(0, currentBalance + amount);
+
+    // Mettre à jour users.credits_balance
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ credits_balance: newBalance })
+      .eq('id', user_id);
+
+    if (updateError) {
+      console.error('Erreur mise à jour users:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la mise à jour des crédits'
+      });
+    }
+
+    // Aussi mettre à jour user_credits pour cohérence
+    await supabase
+      .from('user_credits')
+      .upsert({
+        user_id: user_id,
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    // Enregistrer la transaction
+    await supabase
+      .from('credit_transactions')
+      .insert({
+        user_id: user_id,
+        amount: amount,
+        type: amount > 0 ? 'admin_credit' : 'admin_debit',
+        description: `Ajustement admin: ${amount > 0 ? '+' : ''}${amount} crédits (${reason})`,
+        metadata: { reason, previous_balance: currentBalance, new_balance: newBalance }
+      });
+
+    console.log(`✅ Admin: Crédits ajustés pour ${user_id}: ${currentBalance} -> ${newBalance} (${amount > 0 ? '+' : ''}${amount})`);
+
+    res.json({
+      success: true,
+      message: `Crédits ajustés avec succès`,
+      previous_balance: currentBalance,
+      new_balance: newBalance,
+      adjustment: amount
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur ajustement crédits:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
