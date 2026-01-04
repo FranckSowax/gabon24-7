@@ -161,7 +161,20 @@ router.post('/credits', requireAuth, async (req, res) => {
     });
 
     if (!result.success) {
-      return res.status(400).json(result);
+      // Log détaillé pour debug
+      console.error('❌ Échec paiement crédits:', {
+        userId,
+        packageId,
+        phone,
+        error: result.error,
+        pvit_response: result.pvit_response
+      });
+
+      return res.status(result.http_code || 400).json({
+        success: false,
+        error: result.error || 'Erreur lors du paiement',
+        details: result.pvit_response
+      });
     }
 
     res.json({

@@ -517,11 +517,35 @@ class PvitPaymentService {
       };
 
     } catch (err) {
-      console.error('❌ Erreur appel PVIT:', err.response?.data || err.message);
+      // Log complet de l'erreur PVIT pour debug
+      console.error('❌ Erreur appel PVIT:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+
+      // Extraire le message d'erreur de la réponse PVIT
+      const pvitError = err.response?.data;
+      let errorMessage = err.message;
+
+      if (pvitError) {
+        if (typeof pvitError === 'string') {
+          errorMessage = pvitError;
+        } else if (pvitError.message) {
+          errorMessage = pvitError.message;
+        } else if (pvitError.error) {
+          errorMessage = pvitError.error;
+        } else if (pvitError.detail) {
+          errorMessage = pvitError.detail;
+        }
+      }
+
       return {
         success: false,
-        error: err.response?.data?.message || err.message,
-        http_code: err.response?.status
+        error: errorMessage,
+        http_code: err.response?.status,
+        pvit_response: pvitError
       };
     }
   }
