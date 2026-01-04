@@ -480,22 +480,27 @@ class PvitPaymentService {
 
   /**
    * Appelle l'API PVIT RESTLINK directement
+   * Documentation PVIT mise à jour - Nouveaux noms de champs requis
    */
   async callPvitRestLink({ amount, phone, reference, description, secretKey }) {
     try {
+      // Format PVIT API v2 - Noms de champs mis à jour
       const payload = {
-        amount,
+        // Champs obligatoires selon l'erreur CONSTRAINT_VIOLATION
+        merchant_operation_account_code: PVIT_CONFIG.operationAccountCode,
+        reference: reference,
+        transaction_type: 'PAYMENT', // Type de transaction (PAYMENT, WITHDRAWAL, etc.)
+        amount: amount,
         currency: 'XAF',
-        merchantReference: reference,
-        customerMsisdn: phone,
+        customer_msisdn: phone,
         description: description || 'Achat Gabon24-7',
-        operationAccountCode: PVIT_CONFIG.operationAccountCode,
-        callbackUrlCode: PVIT_CONFIG.callbackUrlCode,
-        successRedirectionCode: PVIT_CONFIG.successRedirectionCode,
-        failedRedirectionCode: PVIT_CONFIG.failedRedirectionCode
+        callback_url_code: PVIT_CONFIG.callbackUrlCode,
+        success_redirection_url_code: PVIT_CONFIG.successRedirectionCode,
+        failed_redirection_url_code: PVIT_CONFIG.failedRedirectionCode,
+        owner_charge: true // Le marchand supporte les frais (false = client)
       };
 
-      console.log('📤 Appel PVIT RESTLINK:', { reference, amount, phone });
+      console.log('📤 Appel PVIT RESTLINK:', { reference, amount, phone, payload: JSON.stringify(payload) });
 
       const response = await axios.post(
         `${PVIT_CONFIG.baseUrl}${PVIT_ENDPOINTS.restlink}`,
