@@ -247,6 +247,25 @@ router.post('/grant-credits', requireAdmin, async (req, res) => {
         metadata: { granted_by: 'admin', reason }
       });
 
+    // Envoyer une notification à l'utilisateur
+    await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type: 'credit_bonus',
+        category: 'system',
+        title: `+${amount} crédits bonus`,
+        message: `Félicitations ! Vous avez reçu ${amount} crédits bonus de la part de l'équipe Gabon24-7. Nouveau solde: ${newBalance} crédits.`,
+        priority: 'normal',
+        metadata: {
+          amount: amount,
+          new_balance: newBalance,
+          reason: reason
+        },
+        action_url: '/mon-profil?tab=credits',
+        action_label: 'Voir mes crédits'
+      });
+
     console.log(`✅ Admin: ${amount} crédits attribués à ${userId}`);
 
     res.json({
@@ -476,6 +495,34 @@ router.post('/adjust-credits', requireAdmin, async (req, res) => {
         type: amount > 0 ? 'admin_credit' : 'admin_debit',
         description: `Ajustement admin: ${amount > 0 ? '+' : ''}${amount} crédits (${reason})`,
         metadata: { reason, previous_balance: currentBalance, new_balance: newBalance }
+      });
+
+    // Envoyer une notification à l'utilisateur
+    const notificationTitle = amount > 0
+      ? `+${amount} crédits ajoutés à votre compte`
+      : `${Math.abs(amount)} crédits retirés de votre compte`;
+
+    const notificationMessage = amount > 0
+      ? `Bonne nouvelle ! L'équipe Gabon24-7 vous a crédité de ${amount} crédits. Votre nouveau solde est de ${newBalance} crédits.`
+      : `${Math.abs(amount)} crédits ont été retirés de votre compte. Votre nouveau solde est de ${newBalance} crédits.`;
+
+    await supabase
+      .from('notifications')
+      .insert({
+        user_id: user_id,
+        type: 'credit_adjustment',
+        category: 'system',
+        title: notificationTitle,
+        message: notificationMessage,
+        priority: amount > 0 ? 'normal' : 'high',
+        metadata: {
+          amount: amount,
+          previous_balance: currentBalance,
+          new_balance: newBalance,
+          reason: reason
+        },
+        action_url: '/mon-profil?tab=credits',
+        action_label: 'Voir mes crédits'
       });
 
     console.log(`✅ Admin: Crédits ajustés pour ${user_id}: ${currentBalance} -> ${newBalance} (${amount > 0 ? '+' : ''}${amount})`);
