@@ -492,7 +492,7 @@ class PvitPaymentService {
         merchant_operation_account_code: PVIT_CONFIG.operationAccountCode,
         reference: reference, // Max 20 chars, alphanumeric only
         transaction_type: 'PAYMENT', // Type de transaction
-        service: 'MOBILE_MONEY', // Service de paiement (MOBILE_MONEY, CARD, etc.)
+        service: 'RESTLINK', // Valeurs possibles: RESTFUL, RESTLINK, WEB, VISA_MASTERCARD
         amount: amount,
         currency: 'XAF',
         customer_msisdn: phone,
