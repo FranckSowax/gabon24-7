@@ -550,9 +550,18 @@ class PvitPaymentService {
         }
       }
 
+      // Message d'erreur user-friendly selon le code HTTP
+      let userMessage = errorMessage;
+      if (err.response?.status === 403) {
+        userMessage = 'Service de paiement temporairement indisponible. Veuillez réessayer plus tard ou contacter le support.';
+        console.error('🔑 Erreur authentification PVIT - Clé secrète invalide ou expirée');
+      } else if (err.response?.status === 422) {
+        userMessage = 'Erreur de validation du paiement. Vérifiez vos informations.';
+      }
+
       return {
         success: false,
-        error: errorMessage,
+        error: userMessage,
         http_code: err.response?.status,
         pvit_response: pvitError
       };
