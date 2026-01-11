@@ -60,13 +60,9 @@ export default function Turnstile({
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile) return
 
-    // Nettoyer le widget existant
+    // Ne pas re-render si le widget existe déjà
     if (widgetIdRef.current) {
-      try {
-        window.turnstile.remove(widgetIdRef.current)
-      } catch (e) {
-        // Ignorer les erreurs de nettoyage
-      }
+      return
     }
 
     try {
@@ -91,8 +87,8 @@ export default function Turnstile({
         language: 'fr',
         appearance: 'always',
         retry: 'auto',
-        'retry-interval': 5000,
-        'refresh-expired': 'auto',
+        'retry-interval': 8000,
+        'refresh-expired': 'manual', // Éviter le refresh auto qui cause le clignotement
         action
       })
       setIsLoading(false)

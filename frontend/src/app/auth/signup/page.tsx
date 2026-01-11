@@ -117,30 +117,29 @@ function SignUpContent() {
       }
 
       if (authData.user) {
-        // 2. Créer le profil utilisateur
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: data.email,
-            full_name: data.fullName,
-            phone: `${data.countryCode}${data.whatsapp}`,
-            whatsapp_number: `${data.countryCode}${data.whatsapp}`,
-            subscription_type: selectedPlan === 'free' ? 'free' : selectedPlan,
-            subscription_status: 'active',
-            subscription_start_date: new Date().toISOString(),
-            preferred_language: 'fr',
-            notification_preferences: {
-              sms: false,
-              email: true,
-              whatsapp: true
-            },
-            is_active: true,
-            journalist_verified: false
+        // 2. Créer le profil utilisateur via l'API backend (bypass RLS)
+        try {
+          const profileResponse = await fetch(`${API_URL}/api/auth/create-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: authData.user.id,
+              email: data.email,
+              fullName: data.fullName,
+              phone: `${data.countryCode}${data.whatsapp}`,
+              whatsappNumber: `${data.countryCode}${data.whatsapp}`,
+              subscriptionType: selectedPlan === 'free' ? 'free' : selectedPlan
+            })
           });
 
-        if (profileError) {
+          const profileResult = await profileResponse.json();
+          if (!profileResult.success) {
+            console.error('Profile creation error:', profileResult.error);
+            // Continue anyway - profile can be created on first login
+          }
+        } catch (profileError) {
           console.error('Profile creation error:', profileError);
+          // Continue anyway - profile can be created on first login
         }
 
         // 3. Créer l'abonnement selon le plan

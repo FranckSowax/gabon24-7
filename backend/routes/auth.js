@@ -8,6 +8,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { supabase } = require('../config/supabase');
 
 // Clé secrète Turnstile (à configurer dans les variables d'environnement)
 const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA'; // Test key
@@ -112,6 +113,105 @@ router.post('/verify-turnstile', authRateLimit, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la vérification'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/create-profile
+ * Crée le profil utilisateur après inscription Supabase Auth
+ * Utilise service_role pour bypass RLS
+ */
+router.post('/create-profile', authRateLimit, async (req, res) => {
+  try {
+    const { userId, email, fullName, phone, whatsappNumber, subscriptionType } = req.body;
+
+    if (!userId || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId et email sont requis'
+      });
+    }
+
+    // Vérifier si l'utilisateur existe déjà
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (existingUser) {
+      // L'utilisateur existe déjà, mettre à jour
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          full_name: fullName,
+          phone: phone,
+          whatsapp_number: whatsappNumber,
+          subscription_type: subscriptionType || 'free',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('❌ Erreur mise à jour profil:', updateError);
+        return res.status(500).json({
+          success: false,
+          error: 'Erreur lors de la mise à jour du profil'
+        });
+      }
+
+      return res.json({ success: true, message: 'Profil mis à jour' });
+    }
+
+    // Créer le nouvel utilisateur
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        email: email,
+        full_name: fullName,
+        phone: phone,
+        whatsapp_number: whatsappNumber,
+        subscription_type: subscriptionType || 'free',
+        subscription_status: 'active',
+        subscription_start_date: new Date().toISOString(),
+        preferred_language: 'fr',
+        notification_preferences: {
+          sms: false,
+          email: true,
+          whatsapp: true
+        },
+        is_active: true,
+        journalist_verified: false,
+        credits_balance: 0
+      });
+
+    if (insertError) {
+      console.error('❌ Erreur création profil:', insertError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database error saving new user'
+      });
+    }
+
+    // Créer aussi l'entrée user_credits
+    await supabase
+      .from('user_credits')
+      .upsert({
+        user_id: userId,
+        balance: 0,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    console.log(`✅ Profil créé pour: ${email}`);
+    return res.json({ success: true, message: 'Profil créé avec succès' });
+
+  } catch (error) {
+    console.error('❌ Erreur create-profile:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
