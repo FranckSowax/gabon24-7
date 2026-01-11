@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
-import Image from 'next/image'
 
 interface AvatarUploadProps {
   userId: string
@@ -93,40 +91,38 @@ export default function AvatarUpload({ userId, currentAvatar, onUploadSuccess }:
     try {
       // Redimensionner l'image
       const resizedBlob = await resizeImage(selectedFile, 400, 400)
-      
-      // Créer un nom de fichier unique
-      const fileExt = selectedFile.name.split('.').pop()
-      const fileName = `${userId}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
 
-      // Upload vers Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, resizedBlob, {
-          cacheControl: '3600',
-          upsert: true
+      // Convertir le blob en base64
+      const reader = new FileReader()
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(resizedBlob)
+      })
+      const imageData = await base64Promise
+
+      // Upload via l'API backend (bypass RLS)
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const response = await fetch(`${API_URL}/api/auth/upload-avatar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          imageData,
+          fileName: selectedFile.name
         })
+      })
 
-      if (error) {
-        throw error
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur upload')
       }
 
-      // Obtenir l'URL publique
-      const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
-        .getPublicUrl(filePath)
-
-      // Mettre à jour le profil utilisateur
-      await supabase
-        .from('users')
-        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
-        .eq('id', userId)
-
-      onUploadSuccess(publicUrl)
+      onUploadSuccess(result.url)
       setShowPreview(false)
       setPreview(null)
       setSelectedFile(null)
-      
+
       alert('Photo de profil mise à jour avec succès !')
     } catch (error) {
       console.error('Erreur upload:', error)

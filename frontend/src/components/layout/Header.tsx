@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export default function Header({ onMobileMenuToggle }: HeaderProps) {
   return (
-    <header className="bg-white/95 backdrop-blur border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white/95 backdrop-blur border-b border-gray-200 sticky top-0 z-50 h-16">
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between py-1.5 sm:py-2">
           {/* Left: Mobile menu button */}

@@ -361,13 +361,13 @@ export default function MonProfilPage() {
     <div className="min-h-screen bg-gray-50">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
-      <div className="flex min-h-screen">
+      <div className="flex">
         <Sidebar
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="flex-1 lg:ml-64">
+        <main className="flex-1 lg:ml-64 min-h-[calc(100vh-4rem)]">
           {/* Mobile Header */}
           <div className="lg:hidden sticky top-16 z-40 bg-white border-b border-gray-200 px-4 py-3">
             <button

@@ -217,6 +217,90 @@ router.post('/create-profile', authRateLimit, async (req, res) => {
 });
 
 /**
+ * POST /api/auth/upload-avatar
+ * Upload d'avatar utilisateur via le backend (bypass RLS)
+ */
+router.post('/upload-avatar', async (req, res) => {
+  try {
+    const { userId, imageData, fileName } = req.body;
+
+    if (!userId || !imageData) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId et imageData sont requis'
+      });
+    }
+
+    // Décoder l'image base64
+    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    // Vérifier la taille (max 5MB)
+    if (imageBuffer.length > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: 'Image trop grande (max 5MB)'
+      });
+    }
+
+    // Créer le chemin du fichier
+    const fileExt = fileName?.split('.').pop() || 'jpg';
+    const uniqueFileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${uniqueFileName}`;
+
+    // Upload vers Supabase Storage avec service_role
+    const { data, error: uploadError } = await supabase.storage
+      .from('profiles')
+      .upload(filePath, imageBuffer, {
+        contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('❌ Erreur upload avatar:', uploadError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de l\'upload de l\'image'
+      });
+    }
+
+    // Obtenir l'URL publique
+    const { data: { publicUrl } } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filePath);
+
+    // Mettre à jour le profil utilisateur
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        avatar_url: publicUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour avatar_url:', updateError);
+      // Continuer quand même - l'image est uploadée
+    }
+
+    console.log(`✅ Avatar uploadé pour user: ${userId}`);
+    return res.json({
+      success: true,
+      url: publicUrl,
+      message: 'Avatar uploadé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur upload-avatar:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * GET /api/auth/security-status
  * Retourne le statut de sécurité (pour debug/monitoring)
  */

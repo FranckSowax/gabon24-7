@@ -168,10 +168,11 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={`
-          fixed top-0 left-0
-          w-64 bg-white border-r border-gray-200 h-screen
+          fixed left-0
+          w-64 bg-white border-r border-gray-200
           transition-all duration-300 ease-in-out lg:translate-x-0 lg:block
           overflow-y-auto
+          top-0 h-screen lg:top-16 lg:h-[calc(100vh-4rem)]
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
         style={{

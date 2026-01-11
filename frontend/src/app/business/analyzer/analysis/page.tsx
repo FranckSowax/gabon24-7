@@ -86,15 +86,30 @@ function AnalysisContent() {
         })
 
         if (!analysisResponse.ok) {
-          const errorText = await analysisResponse.text()
-          console.error('❌ Erreur API analyse:', analysisResponse.status, errorText)
-          
+          let errorData
+          try {
+            errorData = await analysisResponse.json()
+          } catch {
+            errorData = { error: await analysisResponse.text() }
+          }
+          console.error('❌ Erreur API analyse:', analysisResponse.status, errorData)
+
           // Si 401, rediriger vers la connexion
           if (analysisResponse.status === 401) {
             throw new Error('Veuillez vous connecter pour analyser cet article')
           }
-          
-          throw new Error(`Erreur lors de l'analyse: ${analysisResponse.status}`)
+
+          // Si 402, crédits insuffisants - rediriger vers achat
+          if (analysisResponse.status === 402 || errorData.needsTopUp) {
+            throw new Error('CREDITS_INSUFFISANTS')
+          }
+
+          // Si 503, service temporairement indisponible
+          if (analysisResponse.status === 503 || errorData.isServiceIssue) {
+            throw new Error('Service IA temporairement indisponible. Veuillez réessayer plus tard.')
+          }
+
+          throw new Error(errorData.error || `Erreur lors de l'analyse: ${analysisResponse.status}`)
         }
 
         const analysisData = await analysisResponse.json()
@@ -131,16 +146,45 @@ function AnalysisContent() {
   }, [articleId, router, user])
 
   if (error) {
+    const isCreditsError = error === 'CREDITS_INSUFFISANTS'
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/business/analyzer')}
-            className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-xl"
-          >
-            Retour
-          </button>
+        <div className="text-center max-w-md">
+          {isCreditsError ? (
+            <>
+              <div className="text-6xl mb-4">💳</div>
+              <h2 className="text-xl font-bold text-white mb-2">Crédits insuffisants</h2>
+              <p className="text-gray-300 mb-6">
+                Vous n&apos;avez pas assez de crédits pour analyser cet article.
+                Rechargez votre compte pour continuer.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => router.push('/mon-profil?tab=credits')}
+                  className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-xl hover:bg-yellow-300 transition-colors"
+                >
+                  Acheter des crédits
+                </button>
+                <button
+                  onClick={() => router.push('/business/analyzer')}
+                  className="px-6 py-3 bg-white/10 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
+                >
+                  Retour
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-red-400 mb-4">{error}</p>
+              <button
+                onClick={() => router.push('/business/analyzer')}
+                className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-xl"
+              >
+                Retour
+              </button>
+            </>
+          )}
         </div>
       </div>
     )
