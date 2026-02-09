@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/callback/
+Disallow: /.netlify/
+
+Sitemap: https://gabon-insight.netlify.app/sitemap.xml

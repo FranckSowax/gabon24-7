@@ -2,6 +2,7 @@
 
 // Widget Trafic en temps réel - Modernisé (Dec 2025)
 import { useState, useEffect } from 'react'
+import DOMPurify from 'dompurify'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 import { ChevronDown, ChevronLeft, ChevronRight, MapPin, Navigation, Clock, Sun, Moon, Car } from 'lucide-react'
 
@@ -251,8 +252,8 @@ export default function RoutesMapWidget() {
             {selectedRoute.html_content || (selectedRoute.embed_url && selectedRoute.embed_url.trim().startsWith('<iframe')) ? (
               <div 
                 className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: selectedRoute.html_content || selectedRoute.embed_url 
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(selectedRoute.html_content || selectedRoute.embed_url, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allowfullscreen', 'frameborder', 'src'] })
                 }}
               />
             ) : selectedRoute.embed_url ? (

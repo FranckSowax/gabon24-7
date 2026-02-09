@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Head from 'next/head'
 import { ArrowLeft, Share2, Bookmark, Clock, Eye, Calendar } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { supabase } from '@/lib/supabase'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import { articleTrackingService } from '@/lib/article-tracking'
@@ -187,8 +189,28 @@ export function ArticlePageClient() {
     )
   }
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title,
+    description: article.summary,
+    datePublished: article.publishedAt,
+    author: { '@type': 'Organization', name: article.source },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Gabon Insight',
+      logo: { '@type': 'ImageObject', url: `${typeof window !== 'undefined' ? window.location.origin : ''}/LOGO GABON INSIGHT ORANGE psd.png` }
+    },
+    ...(article.imageUrl ? { image: article.imageUrl } : {}),
+    mainEntityOfPage: typeof window !== 'undefined' ? window.location.href : '',
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Header mobile/desktop */}
       <div className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
@@ -294,8 +316,8 @@ export function ArticlePageClient() {
             <div className="prose prose-sm sm:prose-base lg:prose-lg max-w-none">
               <div 
                 className="text-gray-800 leading-relaxed whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ 
-                  __html: article.content.replace(/\n/g, '<br>') 
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(article.content.replace(/\n/g, '<br>'))
                 }}
               />
             </div>

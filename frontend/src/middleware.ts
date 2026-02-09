@@ -2,15 +2,33 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  // Simplifier le middleware pour éviter les problèmes Edge Runtime
-  // La vérification d'authentification sera gérée côté client
-  
   const res = NextResponse.next();
-  
-  // Ajouter des headers de sécurité
+
+  // Security headers
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  res.headers.set('X-XSS-Protection', '1; mode=block');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.railway.app wss://*.railway.app https://challenges.cloudflare.com https://www.google-analytics.com",
+      "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://accounts.google.com https://www.youtube.com",
+      "media-src 'self' https://*.railway.app blob: data:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join('; ')
+  );
 
   return res;
 }

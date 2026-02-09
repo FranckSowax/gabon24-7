@@ -135,7 +135,13 @@ async function getLiveFixtures(req, res) {
     });
 
     if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
+      const statusCode = response.status;
+      console.warn(`⚠️ API Football HTTP ${statusCode} - retour données vides`);
+      // Retourner données vides au lieu de crasher en 500
+      const emptyResponse = { success: true, response: [], message: `API Football indisponible (HTTP ${statusCode})` };
+      // Mettre en cache court pour éviter de spammer l'API en erreur
+      fixturesCache = { data: emptyResponse, timestamp: now, expiry: 5 * 60 * 1000 };
+      return res.json(emptyResponse);
     }
 
     const data = await response.json();

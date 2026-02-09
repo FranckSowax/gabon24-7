@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DOMPurify from 'dompurify'
 import { Plus, Edit, Trash2, Eye, MapPin, Save, X, GripVertical } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -633,7 +634,7 @@ export default function RoutesAdminPage() {
                 {previewRoute?.html_content ? (
                   <div 
                     className="w-full h-full"
-                    dangerouslySetInnerHTML={{ __html: previewRoute.html_content }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewRoute.html_content, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allowfullscreen', 'frameborder', 'src'] }) }}
                   />
                 ) : (
                   <iframe

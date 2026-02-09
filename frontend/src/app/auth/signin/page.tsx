@@ -28,6 +28,15 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label = 'Opérati
   }
 }
 
+function isSafeRedirect(url: string): boolean {
+  if (!url || url === '/') return true;
+  // Only allow relative paths starting with /
+  if (!url.startsWith('/')) return false;
+  // Block protocol-relative URLs (//evil.com)
+  if (url.startsWith('//')) return false;
+  return true;
+}
+
 const signInSchema = z.object({
   email: z.string().email('Email invalide'),
   password: z.string().min(1, 'Le mot de passe est requis'),
@@ -100,7 +109,8 @@ function SignInContent() {
       }
 
       if (authData.user) {
-        const redirectTo = searchParams?.get('redirectTo') || '/';
+        const rawRedirect = searchParams?.get('redirectTo') || '/';
+        const redirectTo = isSafeRedirect(rawRedirect) ? rawRedirect : '/';
         router.push(redirectTo);
       }
     } catch (error: any) {
@@ -128,9 +138,9 @@ function SignInContent() {
   };
 
   const handleGoogleSignIn = async () => {
-    const redirectTo = searchParams?.get('redirectTo') || '/';
+    const rawRedirect = searchParams?.get('redirectTo') || '/';
+    const redirectTo = isSafeRedirect(rawRedirect) ? rawRedirect : '/';
     try {
-      // Persist as fallback in case query gets lost
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('postLoginRedirect', redirectTo) } catch {}
       }

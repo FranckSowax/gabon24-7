@@ -16,7 +16,6 @@ interface ClientRow {
 export default function AdminClientsPage() {
   const { user } = useAuth()
 
-  const [adminSecret, setAdminSecret] = useState<string>('')
   const [clients, setClients] = useState<ClientRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,14 +23,6 @@ export default function AdminClientsPage() {
   const [perPage, setPerPage] = useState(20)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    // try reading dev secret from localStorage
-    if (typeof window !== 'undefined') {
-      const s = localStorage.getItem('admin_secret')
-      if (s) setAdminSecret(s)
-    }
-  }, [])
 
   const authHeaders = async () => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -41,7 +32,6 @@ export default function AdminClientsPage() {
       const token = data.session?.access_token
       if (token) headers['Authorization'] = `Bearer ${token}`
     } catch {}
-    if (adminSecret) headers['x-admin-secret'] = adminSecret
     return headers
   }
 
@@ -121,15 +111,6 @@ export default function AdminClientsPage() {
               <button onClick={() => fetchClients(page)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white hover:bg-gray-50">
                 <RefreshCw className="w-4 h-4"/> Rafraîchir
               </button>
-            </div>
-
-            {/* Admin Secret helper */}
-            <div className="mb-4 p-3 rounded-xl border bg-gray-50">
-              <p className="text-sm text-gray-600 mb-2">Option dev: si votre email n'est pas dans ADMIN_EMAILS/ADMIN_DOMAIN, saisissez le <strong>Admin Secret</strong> (Netlify env ADMIN_SECRET). Il sera stocké en localStorage.</p>
-              <div className="flex gap-2">
-                <input value={adminSecret} onChange={(e) => setAdminSecret(e.target.value)} placeholder="Admin secret" className="flex-1 border rounded-lg px-3 py-2" />
-                <button onClick={() => { localStorage.setItem('admin_secret', adminSecret); alert('Secret enregistré'); }} className="px-4 py-2 rounded-lg bg-gray-900 text-white">Enregistrer</button>
-              </div>
             </div>
 
             <div className="flex items-center justify-between mb-3">

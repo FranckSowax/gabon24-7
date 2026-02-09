@@ -91,6 +91,7 @@ export default function HomePage() {
   const [savedArticles, setSavedArticles] = useState<string[]>([])
   const [favoriteArticles, setFavoriteArticles] = useState<string[]>([])
   const [favorites, setFavorites] = useState<Favorite[]>([])
+  const favoritesLoadedForUser = useRef<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
@@ -886,22 +887,26 @@ export default function HomePage() {
     handleTabChange(tab)
   }
 
-  // Charger les favoris de l'utilisateur
-  const loadFavorites = async () => {
+  // Charger les favoris de l'utilisateur (avec protection contre les appels multiples)
+  const loadFavorites = async (force = false) => {
     if (!user) {
-      console.log('⏭️ loadFavorites: pas d\'utilisateur')
       return
     }
-    
+
+    // Éviter les chargements redondants pour le même utilisateur
+    if (!force && favoritesLoadedForUser.current === user.id) {
+      return
+    }
+
     console.log('📥 Chargement des favoris pour:', user.id)
+    favoritesLoadedForUser.current = user.id
     try {
       const { favorites: userFavorites } = await getFavorites()
-      console.log('✅ Favoris chargés:', userFavorites.length, userFavorites)
       setFavorites(userFavorites)
       setFavoriteArticles(userFavorites.map(fav => fav.article_id))
-      console.log('✅ favoriteArticles mis à jour:', userFavorites.map(fav => fav.article_id))
     } catch (error) {
       console.error('❌ Erreur chargement favoris:', error)
+      favoritesLoadedForUser.current = null // Permettre un retry en cas d'erreur
     }
   }
 
@@ -912,6 +917,7 @@ export default function HomePage() {
     } else {
       setFavorites([])
       setFavoriteArticles([])
+      favoritesLoadedForUser.current = null
     }
   }, [user])
 

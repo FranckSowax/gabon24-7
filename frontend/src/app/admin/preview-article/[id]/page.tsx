@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import DOMPurify from 'dompurify'
 import { supabase } from '@/lib/supabase'
 import { ArrowLeft, CheckCircle, XCircle, TrendingUp, Eye, Share2 } from 'lucide-react'
 
@@ -237,14 +238,16 @@ export default function PreviewArticlePage() {
           <div 
             className="text-gray-800 text-base sm:text-lg leading-relaxed space-y-6 font-serif"
             style={{ lineHeight: '1.8' }}
-            dangerouslySetInnerHTML={{ 
-              __html: article.content
-                .replace(/Paragraphe \d+ – /g, '') // Supprimer "Paragraphe X –"
-                .replace(/###\s+(.*)/g, '<h3 class="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-5 font-sans">$1</h3>')
-                .replace(/##\s+(.*)/g, '<h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mt-12 mb-6 font-sans">$2</h2>')
-                .replace(/\n\n/g, '</p><p class="mb-6 text-gray-800">')
-                .replace(/^(.+)/, '<p class="mb-6 text-gray-800">$1') // Wrap premier paragraphe
-                + '</p>' // Fermer dernier paragraphe
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(
+                article.content
+                  .replace(/Paragraphe \d+ – /g, '')
+                  .replace(/###\s+(.*)/g, '<h3 class="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-5 font-sans">$1</h3>')
+                  .replace(/##\s+(.*)/g, '<h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mt-12 mb-6 font-sans">$2</h2>')
+                  .replace(/\n\n/g, '</p><p class="mb-6 text-gray-800">')
+                  .replace(/^(.+)/, '<p class="mb-6 text-gray-800">$1')
+                  + '</p>'
+              )
             }}
           />
         </div>

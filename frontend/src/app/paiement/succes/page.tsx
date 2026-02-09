@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { CheckCircle, Gift, Sparkles, ArrowRight, CreditCard, Crown, Loader2 } from 'lucide-react'
-import confetti from 'canvas-confetti'
 
 function SuccesContent() {
   const { user, refreshSubscription } = useAuth()
@@ -44,39 +43,42 @@ function SuccesContent() {
       refreshSubscription()
     }
 
-    // Animation de confettis
-    const duration = 3 * 1000
-    const animationEnd = Date.now() + duration
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+    // Animation de confettis (chargé dynamiquement)
+    let interval: NodeJS.Timeout
+    import('canvas-confetti').then(({ default: confetti }) => {
+      const duration = 3 * 1000
+      const animationEnd = Date.now() + duration
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
 
-    function randomInRange(min: number, max: number) {
-      return Math.random() * (max - min) + min
-    }
-
-    const interval: NodeJS.Timeout = setInterval(function() {
-      const timeLeft = animationEnd - Date.now()
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval)
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min
       }
 
-      const particleCount = 50 * (timeLeft / duration)
+      interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now()
 
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#f97316', '#ef4444', '#22c55e', '#eab308']
-      })
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#f97316', '#ef4444', '#22c55e', '#eab308']
-      })
-    }, 250)
+        if (timeLeft <= 0) {
+          return clearInterval(interval)
+        }
 
-    return () => clearInterval(interval)
+        const particleCount = 50 * (timeLeft / duration)
+
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+          colors: ['#f97316', '#ef4444', '#22c55e', '#eab308']
+        })
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+          colors: ['#f97316', '#ef4444', '#22c55e', '#eab308']
+        })
+      }, 250)
+    })
+
+    return () => { if (interval) clearInterval(interval) }
   }, [refreshSubscription, router])
 
   return (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DOMPurify from 'dompurify'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 import axios from 'axios'
 
@@ -233,7 +234,7 @@ export default function PromotionalSlider() {
           {currentSlide.slideType === 'html' && currentSlide.htmlContent ? (
             <div 
               className="w-full h-full rounded-lg overflow-hidden"
-              dangerouslySetInnerHTML={{ __html: currentSlide.htmlContent }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentSlide.htmlContent) }}
             />
           ) : currentSlide.image_url ? (
             <div className="w-full h-full">

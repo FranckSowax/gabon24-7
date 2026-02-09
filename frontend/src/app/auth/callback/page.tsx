@@ -7,6 +7,13 @@ import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { subscriptionHelpers } from '@/lib/supabase-subscription';
 
+function isSafeRedirect(url: string): boolean {
+  if (!url || url === '/') return true;
+  if (!url.startsWith('/')) return false;
+  if (url.startsWith('//')) return false;
+  return true;
+}
+
 function AuthCallbackContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
@@ -74,7 +81,9 @@ function AuthCallbackContent() {
             try { target = localStorage.getItem('postLoginRedirect') || '/' } catch {}
           }
           try { localStorage.removeItem('postLoginRedirect') } catch {}
-          window.location.replace(target)
+          // Validate redirect to prevent open redirect attacks
+          const safeTarget = isSafeRedirect(target) ? target : '/'
+          window.location.replace(safeTarget)
         } else {
           router.replace('/')
         }
