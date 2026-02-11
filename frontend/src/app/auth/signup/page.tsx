@@ -179,8 +179,8 @@ function SignUpContent() {
           }
         }
 
-        // 4. Rediriger vers la page de confirmation
-        router.push('/auth/confirm?email=' + encodeURIComponent(data.email));
+        // 4. Connexion directe — pas de vérification email
+        router.push('/');
       }
     } catch (error: any) {
       console.error('Sign up error:', error);
