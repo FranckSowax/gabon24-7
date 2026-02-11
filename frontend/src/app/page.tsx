@@ -787,7 +787,7 @@ export default function HomePage() {
         if (status === 'SUBSCRIBED') {
           console.log('✅ Connecté au canal Realtime views_live')
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erreur canal Realtime:', err)
+          console.warn('⚠️ Canal Realtime views_live indisponible (non-bloquant)')
         } else if (status === 'TIMED_OUT') {
           console.warn('⚠️ Timeout connexion Realtime - tentative de reconnexion automatique...')
         } else if (status === 'CLOSED') {
