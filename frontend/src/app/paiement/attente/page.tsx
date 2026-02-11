@@ -7,7 +7,7 @@ import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { Loader2, Phone, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-backend-production.up.railway.app'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
 type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 

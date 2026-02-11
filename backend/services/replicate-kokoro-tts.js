@@ -8,11 +8,17 @@ const OpenAI = require('openai');
 const fs = require('fs');
 const path = require('path');
 
-// Initialisation du client OpenAI
-// Note: Assurez-vous que OPENAI_API_KEY est défini dans .env
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialisation lazy du client OpenAI (évite crash au démarrage si clé manquante)
+let _openai = null;
+function getOpenAI() {
+  if (!_openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY manquant — service TTS désactivé');
+    }
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 /**
  * Générer audio avec OpenAI TTS
@@ -52,7 +58,7 @@ async function generateAudio(text, language = 'fr', pace = 'normal') {
     const truncatedText = text.length > maxChars ? text.substring(0, maxChars) : text;
 
     // Appeler l'API OpenAI
-    const mp3 = await openai.audio.speech.create({
+    const mp3 = await getOpenAI().audio.speech.create({
       model: "tts-1", // ou "tts-1-hd" pour meilleure qualité (mais plus lent)
       voice: voice,
       input: truncatedText,
@@ -84,7 +90,7 @@ async function testConnection() {
     }
 
     // Test simple de listing des modèles (pour vérifier la clé)
-    await openai.models.list();
+    await getOpenAI().models.list();
     console.log('✅ Connexion OpenAI OK');
     return true;
 

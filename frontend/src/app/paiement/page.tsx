@@ -36,7 +36,7 @@ interface PaymentConfig {
   duration?: number
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-backend-production.up.railway.app'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
 function PaiementContent() {
   const { user, loading: authLoading } = useAuth()
