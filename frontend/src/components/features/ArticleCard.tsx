@@ -180,19 +180,15 @@ export function ArticleCard({
   // 2. Ou si l'image existante est un placeholder Facebook
   const preferFacebookResolver = isFacebookPost && (isDefaultFbPlaceholder || !imageSrcRaw)
 
-  // Construire l'URL de l'image avec proxy approprié
+  // Construire l'URL de l'image — proxy uniquement pour Facebook (CORS bloquant)
   let proxiedImageSrc: string | undefined
 
   if (preferFacebookResolver) {
-    // Utiliser le resolver Facebook pour obtenir la vraie image og:image
     proxiedImageSrc = `${API_BASE}/api/image-proxy/facebook-image?url=${encodeURIComponent(article.url || '')}`
   } else if (isFacebookCdnImage && imageSrcRaw) {
-    // Image Facebook CDN: utiliser le proxy avec User-Agent Facebook
     proxiedImageSrc = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(imageSrcRaw)}`
-  } else if (imageSrcRaw && shouldProxyImage(imageSrcRaw)) {
-    // Image externe standard: utiliser le proxy normal
-    proxiedImageSrc = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(imageSrcRaw)}&title=${encodeURIComponent(article.title || article.source || '')}`
   } else {
+    // Charger directement sans proxy — évite les timeouts Railway
     proxiedImageSrc = imageSrcRaw
   }
   const debug = false

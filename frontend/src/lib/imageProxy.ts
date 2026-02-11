@@ -27,7 +27,9 @@ export const getProxiedImage = (url?: string, title?: string, apiBase?: string):
   if (!url) return undefined
   const API_BASE = apiBase || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
   const clean = (extractFromNetlifyProxy(url) ?? url) as string
-  return shouldProxyImage(clean, API_BASE)
+  // Only proxy Facebook CDN images (CORS-blocked) — load everything else directly
+  const isFacebookCdn = clean.includes('fbcdn.net') || clean.includes('fbsbx.com') || clean.includes('facebook.com')
+  return isFacebookCdn
     ? `${API_BASE}/api/image-proxy?url=${encodeURIComponent(clean)}&title=${encodeURIComponent(title ?? '')}`
     : clean
 }

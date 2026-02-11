@@ -137,7 +137,7 @@ export function WeatherWidget() {
     
     try {
       // Récupérer les données depuis l'API backend
-      const response = await axios.get(`${API_URL}/api/weather/${selectedCity}`, { timeout: 5000 });
+      const response = await axios.get(`${API_URL}/api/weather/${selectedCity}`, { timeout: 10000 });
       
       if (response.data.success && response.data.data) {
         const data = response.data.data;
@@ -182,9 +182,7 @@ export function WeatherWidget() {
         setWeatherData(processedData);
       }
     } catch (error) {
-      console.log(`Utilisation des données météo par défaut pour ${selectedCity}`);
-      console.error('Erreur météo:', error);
-      // Les données par défaut sont déjà définies au début de la fonction
+      // Fallback silencieux sur les données par défaut (déjà définies en début de fonction)
     } finally {
       setLoading(false);
     }
