@@ -21,7 +21,7 @@ export async function middleware(req: NextRequest) {
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.railway.app wss://*.railway.app https://challenges.cloudflare.com https://www.google-analytics.com",
       "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://accounts.google.com https://www.youtube.com",
-      "media-src 'self' https://*.railway.app blob: data:",
+      "media-src 'self' https://*.supabase.co https://*.railway.app blob: data:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

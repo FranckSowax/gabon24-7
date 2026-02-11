@@ -344,7 +344,11 @@ async function getFixturesByDate(req, res) {
     });
 
     if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
+      const statusCode = response.status;
+      console.warn(`⚠️ API Football fixtures/date HTTP ${statusCode} - retour données vides`);
+      const emptyResponse = { success: true, response: [], message: `API Football indisponible (HTTP ${statusCode})` };
+      fixturesByDateCache[cacheKey] = { data: emptyResponse, timestamp: now };
+      return res.json(emptyResponse);
     }
 
     const data = await response.json();
