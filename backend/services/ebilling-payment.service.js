@@ -17,11 +17,9 @@
  * 4. Frontend poll le statut via backend
  * 5. Backend vérifie le statut auprès de E-Billing
  * 6. Quand complété, backend exécute l'action (crédits, abo, quiz)
- *
- * Utilise Prisma ORM pour les requêtes vers Supabase PostgreSQL.
  */
 
-const { prisma } = require('../lib/prisma');
+const { supabase } = require('../config/supabase');
 const axios = require('axios');
 
 // Configuration E-Billing
@@ -39,6 +37,10 @@ function getBasicAuth() {
 }
 
 class EBillingPaymentService {
+  constructor() {
+    this.supabase = supabase;
+  }
+
   /**
    * Génère une référence unique pour le paiement
    * Format: GI + type (3 chars) + timestamp base36 + random (max 20 chars)
@@ -53,11 +55,6 @@ class EBillingPaymentService {
   // CRÉATION DE FACTURES E-BILLING
   // =====================================================
 
-  /**
-   * Crée une facture E-Billing via l'API
-   * @param {Object} params - Paramètres de la facture
-   * @returns {Object} - { success, bill_id, payment_url, ... }
-   */
   async createInvoice({ amount, description, reference, payerName, payerEmail, payerPhone }) {
     try {
       const callbackUrl = `${process.env.RAILWAY_PUBLIC_URL || process.env.API_URL || 'https://gabon24-7-production.up.railway.app'}/api/payments/ebilling/callback`;
@@ -95,15 +92,9 @@ class EBillingPaymentService {
       }
 
       const paymentUrl = `${EBILLING_CONFIG.portalUrl}/?invoice=${billId}`;
-
       console.log(`✅ Facture E-Billing créée: bill_id=${billId}`);
 
-      return {
-        success: true,
-        bill_id: billId,
-        payment_url: paymentUrl,
-        data: data,
-      };
+      return { success: true, bill_id: billId, payment_url: paymentUrl, data };
 
     } catch (err) {
       console.error('❌ Erreur création facture E-Billing:', {
@@ -121,56 +112,28 @@ class EBillingPaymentService {
         errorMessage = err.response.data.message;
       }
 
-      return {
-        success: false,
-        error: errorMessage,
-        http_code: err.response?.status,
-      };
+      return { success: false, error: errorMessage, http_code: err.response?.status };
     }
   }
 
-  /**
-   * Vérifie le statut d'une facture E-Billing auprès de l'API
-   */
   async checkInvoiceStatus(billId) {
     try {
       const response = await axios.get(
         `${EBILLING_CONFIG.apiUrl}/${billId}`,
-        {
-          headers: {
-            'Authorization': getBasicAuth(),
-          },
-          timeout: 15000,
-        }
+        { headers: { 'Authorization': getBasicAuth() }, timeout: 15000 }
       );
 
       const data = response.data;
       const eBill = data.e_bill || data;
-
-      // Mapper le statut E-Billing vers un statut interne
       const status = (eBill.status || eBill.e_bill_status || '').toLowerCase();
       const statusMap = {
-        'paid': 'completed',
-        'completed': 'completed',
-        'success': 'completed',
-        'pending': 'pending',
-        'waiting': 'pending',
-        'created': 'pending',
-        'failed': 'failed',
-        'expired': 'failed',
-        'cancelled': 'cancelled',
-        'canceled': 'cancelled',
+        'paid': 'completed', 'completed': 'completed', 'success': 'completed',
+        'pending': 'pending', 'waiting': 'pending', 'created': 'pending',
+        'failed': 'failed', 'expired': 'failed',
+        'cancelled': 'cancelled', 'canceled': 'cancelled',
       };
 
-      const internalStatus = statusMap[status] || 'pending';
-
-      return {
-        success: true,
-        bill_id: billId,
-        status: internalStatus,
-        raw_status: status,
-        data: eBill,
-      };
+      return { success: true, bill_id: billId, status: statusMap[status] || 'pending', raw_status: status, data: eBill };
 
     } catch (err) {
       console.error('❌ Erreur vérification statut E-Billing:', err.message);
@@ -182,16 +145,16 @@ class EBillingPaymentService {
   // INITIATION DES PAIEMENTS
   // =====================================================
 
-  /**
-   * Initialise un paiement pour achat de crédits
-   */
   async initiateCreditPurchase({ userId, packageId, userEmail, userName }) {
     try {
-      const pkg = await prisma.creditPackage.findFirst({
-        where: { id: packageId, isActive: true },
-      });
+      const { data: pkg, error: pkgError } = await this.supabase
+        .from('credit_packages')
+        .select('*')
+        .eq('id', packageId)
+        .eq('is_active', true)
+        .single();
 
-      if (!pkg) {
+      if (pkgError || !pkg) {
         return { success: false, error: 'Package de crédits non trouvé' };
       }
 
@@ -199,13 +162,13 @@ class EBillingPaymentService {
 
       return await this.initiatePayment({
         userId,
-        amount: pkg.priceXaf,
+        amount: pkg.price_xaf,
         reference,
         type: 'credits',
         packageId: pkg.id,
         credits: pkg.credits,
-        bonusCredits: pkg.bonusCredits,
-        description: `Gabon Insight - ${pkg.name} (${pkg.credits + (pkg.bonusCredits || 0)} crédits)`,
+        bonusCredits: pkg.bonus_credits,
+        description: `Gabon Insight - ${pkg.name} (${pkg.credits + (pkg.bonus_credits || 0)} crédits)`,
         userEmail,
         userName,
       });
@@ -216,22 +179,21 @@ class EBillingPaymentService {
     }
   }
 
-  /**
-   * Initialise un paiement pour abonnement
-   */
   async initiateSubscriptionPayment({ userId, planSlug, duration = 1, userEmail, userName }) {
     try {
-      const plan = await prisma.subscriptionPlan.findUnique({
-        where: { slug: planSlug },
-      });
+      const { data: plan, error: planError } = await this.supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', planSlug)
+        .single();
 
-      if (!plan) {
+      if (planError || !plan) {
         return { success: false, error: 'Plan d\'abonnement non trouvé' };
       }
 
-      const amount = duration === 12 && plan.priceYearly
-        ? plan.priceYearly
-        : plan.priceMonthly * duration;
+      const amount = duration === 12 && plan.price_yearly
+        ? plan.price_yearly
+        : plan.price_monthly * duration;
 
       const reference = this.generateReference('SUB');
 
@@ -254,53 +216,41 @@ class EBillingPaymentService {
     }
   }
 
-  /**
-   * Initialise un paiement pour inscription Quiz/Jeu
-   */
   async initiateQuizPayment({ userId, quizId, userEmail, userName }) {
     try {
       let gameSession = null;
 
-      // 1. Essayer par ID direct (UUID)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(quizId)) {
-        gameSession = await prisma.gameSession.findUnique({
-          where: { id: quizId },
-        });
-      }
-
-      // 2. Essayer par session_type
-      if (!gameSession) {
-        gameSession = await prisma.gameSession.findFirst({
-          where: { sessionType: quizId, status: 'waiting' },
-          orderBy: { createdAt: 'desc' },
-        });
-      }
-
-      // 3. Essayer par name (recherche insensible à la casse)
-      if (!gameSession) {
-        gameSession = await prisma.gameSession.findFirst({
-          where: {
-            name: { contains: quizId, mode: 'insensitive' },
-            status: 'waiting',
-          },
-          orderBy: { createdAt: 'desc' },
-        });
+        const { data } = await this.supabase
+          .from('game_sessions').select('*').eq('id', quizId).single();
+        gameSession = data;
       }
 
       if (!gameSession) {
-        return { success: false, error: 'Session de jeu non trouvée' };
+        const { data } = await this.supabase
+          .from('game_sessions').select('*')
+          .eq('session_type', quizId).eq('status', 'waiting')
+          .order('created_at', { ascending: false }).limit(1).single();
+        if (data) gameSession = data;
       }
 
-      if (!gameSession.entryFee || gameSession.entryFee <= 0) {
-        return { success: false, error: 'Cette session est gratuite' };
+      if (!gameSession) {
+        const { data } = await this.supabase
+          .from('game_sessions').select('*')
+          .ilike('name', `%${quizId}%`).eq('status', 'waiting')
+          .order('created_at', { ascending: false }).limit(1).single();
+        if (data) gameSession = data;
       }
+
+      if (!gameSession) return { success: false, error: 'Session de jeu non trouvée' };
+      if (!gameSession.entry_fee || gameSession.entry_fee <= 0) return { success: false, error: 'Cette session est gratuite' };
 
       const reference = this.generateReference('QUZ');
 
       return await this.initiatePayment({
         userId,
-        amount: gameSession.entryFee,
+        amount: gameSession.entry_fee,
         reference,
         type: 'quiz',
         quizId: gameSession.id,
@@ -316,9 +266,6 @@ class EBillingPaymentService {
     }
   }
 
-  /**
-   * Initialise un paiement pour campagne publicitaire
-   */
   async initiateCampaignPayment({ userId, campaignIds, amount, userEmail, userName }) {
     try {
       const reference = this.generateReference('CMP');
@@ -340,78 +287,61 @@ class EBillingPaymentService {
     }
   }
 
-  /**
-   * Méthode centrale d'initiation de paiement
-   */
   async initiatePayment(params) {
     const {
-      userId,
-      amount,
-      reference,
-      type,
-      description,
-      packageId,
-      credits,
-      bonusCredits,
-      planSlug,
-      planName,
-      planDuration,
-      quizId,
-      quizName,
-      campaignIds,
-      userEmail,
-      userName,
+      userId, amount, reference, type, description,
+      packageId, credits, bonusCredits,
+      planSlug, planName, planDuration,
+      quizId, quizName, campaignIds,
+      userEmail, userName,
     } = params;
 
     try {
       if (!userId || !amount || !reference || !type) {
         return { success: false, error: 'Paramètres manquants' };
       }
-
       if (amount < 100) {
         return { success: false, error: 'Montant minimum: 100 XAF' };
       }
 
       // 1. Créer la facture E-Billing
       const invoiceResult = await this.createInvoice({
-        amount,
-        description,
-        reference,
-        payerName: userName,
-        payerEmail: userEmail,
+        amount, description, reference, payerName: userName, payerEmail: userEmail,
       });
 
-      if (!invoiceResult.success) {
-        return invoiceResult;
-      }
+      if (!invoiceResult.success) return invoiceResult;
 
-      // 2. Enregistrer le paiement en base via Prisma
-      const payment = await prisma.ebillingPayment.create({
-        data: {
-          userId,
+      // 2. Enregistrer le paiement en base
+      const { data: payment, error: insertError } = await this.supabase
+        .from('ebilling_payments')
+        .insert({
+          user_id: userId,
           reference,
-          billId: invoiceResult.bill_id,
+          bill_id: invoiceResult.bill_id,
           amount,
           description,
           status: 'pending',
-          paymentType: type,
-          packageId: packageId || null,
-          creditsToAdd: credits || 0,
-          bonusCredits: bonusCredits || 0,
-          planSlug: planSlug || null,
-          planDuration: planDuration || null,
-          quizId: quizId || null,
-          campaignIds: campaignIds || [],
-          ebillingResponse: invoiceResult.data,
+          payment_type: type,
+          package_id: packageId || null,
+          credits_to_add: credits || 0,
+          bonus_credits: bonusCredits || 0,
+          plan_slug: planSlug || null,
+          plan_duration: planDuration || null,
+          quiz_id: quizId || null,
+          campaign_ids: campaignIds || null,
+          ebilling_response: invoiceResult.data,
           metadata: {
-            type,
-            plan_name: planName,
-            quiz_name: quizName,
-            user_email: userEmail,
-            user_name: userName,
+            type, plan_name: planName, quiz_name: quizName,
+            user_email: userEmail, user_name: userName,
           },
-        },
-      });
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('❌ Erreur enregistrement paiement:', insertError);
+        return { success: false, error: 'Erreur lors de l\'enregistrement du paiement' };
+      }
 
       console.log(`✅ Paiement E-Billing initié: ${reference} (${type}) - bill_id=${invoiceResult.bill_id}`);
 
@@ -420,8 +350,7 @@ class EBillingPaymentService {
         reference,
         bill_id: invoiceResult.bill_id,
         payment_url: invoiceResult.payment_url,
-        amount,
-        type,
+        amount, type,
         status: 'pending',
         message: 'Facture créée. Vous allez être redirigé vers le portail de paiement.',
       };
@@ -436,54 +365,45 @@ class EBillingPaymentService {
   // VÉRIFICATION DE STATUT & CALLBACKS
   // =====================================================
 
-  /**
-   * Vérifie le statut d'un paiement (appelé par le polling frontend)
-   */
   async checkPaymentStatus(reference) {
     try {
-      // Récupérer le paiement en base (reference est unique)
-      const payment = await prisma.ebillingPayment.findUnique({
-        where: { reference },
-      });
+      const { data: payment, error } = await this.supabase
+        .from('ebilling_payments')
+        .select('*')
+        .eq('reference', reference)
+        .single();
 
-      if (!payment) {
-        return { success: false, error: 'Paiement non trouvé' };
-      }
+      if (error || !payment) return { success: false, error: 'Paiement non trouvé' };
 
-      // Si déjà complété ou échoué, retourner directement
-      if (payment.status === 'completed' || payment.status === 'failed' || payment.status === 'cancelled') {
+      if (['completed', 'failed', 'cancelled'].includes(payment.status)) {
         return {
           success: true,
           payment: {
-            reference: payment.reference,
-            status: payment.status,
-            amount: payment.amount,
-            type: payment.paymentType,
-            completed_at: payment.completedAt,
+            reference: payment.reference, status: payment.status,
+            amount: payment.amount, type: payment.payment_type,
+            completed_at: payment.completed_at,
           },
         };
       }
 
-      // Sinon, vérifier auprès de E-Billing
-      if (payment.billId) {
-        const statusResult = await this.checkInvoiceStatus(payment.billId);
+      if (payment.bill_id) {
+        const statusResult = await this.checkInvoiceStatus(payment.bill_id);
 
         if (statusResult.success && statusResult.status !== 'pending') {
           const updateData = {
             status: statusResult.status,
-            ebillingStatusData: statusResult.data,
+            ebilling_status_data: statusResult.data,
+            updated_at: new Date().toISOString(),
           };
-
           if (statusResult.status === 'completed') {
-            updateData.completedAt = new Date();
+            updateData.completed_at = new Date().toISOString();
           }
 
-          await prisma.ebillingPayment.update({
-            where: { reference },
-            data: updateData,
-          });
+          await this.supabase
+            .from('ebilling_payments')
+            .update(updateData)
+            .eq('reference', reference);
 
-          // Si paiement réussi, exécuter l'action
           if (statusResult.status === 'completed') {
             await this.processCompletedPayment(payment);
           }
@@ -491,25 +411,17 @@ class EBillingPaymentService {
           return {
             success: true,
             payment: {
-              reference: payment.reference,
-              status: statusResult.status,
-              amount: payment.amount,
-              type: payment.paymentType,
+              reference: payment.reference, status: statusResult.status,
+              amount: payment.amount, type: payment.payment_type,
               completed_at: statusResult.status === 'completed' ? new Date().toISOString() : null,
             },
           };
         }
       }
 
-      // Toujours en attente
       return {
         success: true,
-        payment: {
-          reference: payment.reference,
-          status: 'pending',
-          amount: payment.amount,
-          type: payment.paymentType,
-        },
+        payment: { reference: payment.reference, status: 'pending', amount: payment.amount, type: payment.payment_type },
       };
 
     } catch (err) {
@@ -518,9 +430,6 @@ class EBillingPaymentService {
     }
   }
 
-  /**
-   * Traite un callback E-Billing (webhook)
-   */
   async processCallback(callbackData) {
     try {
       const billId = callbackData.bill_id || callbackData.e_bill_id || callbackData.id;
@@ -529,83 +438,46 @@ class EBillingPaymentService {
 
       console.log('📥 Callback E-Billing reçu:', { billId, externalRef, status });
 
-      // Log du callback
-      await prisma.ebillingCallbackLog.create({
-        data: {
-          billId: billId || null,
-          reference: externalRef || null,
-          status: status || null,
-          rawData: callbackData,
-          processed: false,
-        },
+      await this.supabase.from('ebilling_callback_logs').insert({
+        bill_id: billId, reference: externalRef, status, raw_data: callbackData, processed: false,
       });
 
-      // Trouver le paiement
       let payment = null;
-
       if (externalRef) {
-        payment = await prisma.ebillingPayment.findUnique({
-          where: { reference: externalRef },
-        });
+        const { data } = await this.supabase.from('ebilling_payments').select('*').eq('reference', externalRef).single();
+        payment = data;
       }
-
       if (!payment && billId) {
-        payment = await prisma.ebillingPayment.findFirst({
-          where: { billId },
-        });
+        const { data } = await this.supabase.from('ebilling_payments').select('*').eq('bill_id', billId).single();
+        payment = data;
       }
 
       if (!payment) {
         console.warn('⚠️ Paiement non trouvé pour callback:', { billId, externalRef });
         return { success: true, message: 'Paiement non trouvé mais callback enregistré' };
       }
-
-      // Ne pas retraiter un paiement complété
       if (payment.status === 'completed') {
         return { success: true, message: 'Paiement déjà traité' };
       }
 
-      // Mapper le statut
       const statusMap = {
-        'paid': 'completed',
-        'completed': 'completed',
-        'success': 'completed',
-        'failed': 'failed',
-        'expired': 'failed',
-        'cancelled': 'cancelled',
-        'canceled': 'cancelled',
+        'paid': 'completed', 'completed': 'completed', 'success': 'completed',
+        'failed': 'failed', 'expired': 'failed',
+        'cancelled': 'cancelled', 'canceled': 'cancelled',
       };
       const internalStatus = statusMap[status] || 'pending';
 
-      // Mettre à jour
-      const updateData = {
-        status: internalStatus,
-        callbackData: callbackData,
-      };
-      if (internalStatus === 'completed') {
-        updateData.completedAt = new Date();
-      }
+      const updateData = { status: internalStatus, callback_data: callbackData, updated_at: new Date().toISOString() };
+      if (internalStatus === 'completed') updateData.completed_at = new Date().toISOString();
 
-      await prisma.ebillingPayment.update({
-        where: { id: payment.id },
-        data: updateData,
-      });
+      await this.supabase.from('ebilling_payments').update(updateData).eq('id', payment.id);
 
-      // Exécuter l'action si complété
-      if (internalStatus === 'completed') {
-        await this.processCompletedPayment(payment);
-      }
+      if (internalStatus === 'completed') await this.processCompletedPayment(payment);
 
-      // Marquer les callbacks comme traités
-      await prisma.ebillingCallbackLog.updateMany({
-        where: {
-          billId: billId || undefined,
-          reference: externalRef || undefined,
-        },
-        data: { processed: true },
-      });
+      await this.supabase.from('ebilling_callback_logs')
+        .update({ processed: true }).eq('bill_id', billId).eq('reference', externalRef);
 
-      return { success: true, status: internalStatus, type: payment.paymentType };
+      return { success: true, status: internalStatus, type: payment.payment_type };
 
     } catch (err) {
       console.error('❌ Erreur traitement callback E-Billing:', err);
@@ -617,188 +489,110 @@ class EBillingPaymentService {
   // TRAITEMENT POST-PAIEMENT
   // =====================================================
 
-  /**
-   * Traite un paiement complété selon son type
-   */
   async processCompletedPayment(payment) {
-    const { paymentType, userId } = payment;
-    console.log(`✅ Traitement paiement complété: ${paymentType} pour ${userId}`);
+    const { payment_type, user_id } = payment;
+    console.log(`✅ Traitement paiement complété: ${payment_type} pour ${user_id}`);
 
-    switch (paymentType) {
-      case 'credits':
-        await this.processCreditsPayment(payment);
-        break;
-      case 'subscription':
-        await this.processSubscriptionPayment(payment);
-        break;
-      case 'quiz':
-        await this.processQuizPayment(payment);
-        break;
-      case 'campaign':
-        await this.processCampaignPayment(payment);
-        break;
-      default:
-        console.warn(`⚠️ Type de paiement inconnu: ${paymentType}`);
+    switch (payment_type) {
+      case 'credits': await this.processCreditsPayment(payment); break;
+      case 'subscription': await this.processSubscriptionPayment(payment); break;
+      case 'quiz': await this.processQuizPayment(payment); break;
+      case 'campaign': await this.processCampaignPayment(payment); break;
+      default: console.warn(`⚠️ Type de paiement inconnu: ${payment_type}`);
     }
   }
 
-  /**
-   * Traite un paiement de crédits via la fonction PostgreSQL add_credits
-   */
   async processCreditsPayment(payment) {
-    const creditsToAdd = payment.creditsToAdd || 0;
-    const bonusCredits = payment.bonusCredits || 0;
+    const creditsToAdd = payment.credits_to_add || 0;
+    const bonusCredits = payment.bonus_credits || 0;
 
     if (creditsToAdd > 0) {
-      try {
-        await prisma.$queryRaw`
-          SELECT add_credits(
-            ${payment.userId}::uuid,
-            ${creditsToAdd}::int,
-            ${bonusCredits}::int,
-            ${payment.packageId}::uuid,
-            ${parseInt(payment.amount)}::int,
-            ${'ebilling'}::text,
-            ${payment.billId || payment.reference}::text,
-            ${`Achat E-Billing - ${payment.reference}`}::text
-          )
-        `;
-        console.log(`✅ ${creditsToAdd + bonusCredits} crédits ajoutés à ${payment.userId}`);
-      } catch (err) {
-        console.error('❌ Erreur ajout crédits:', err);
-      }
+      const { error } = await this.supabase.rpc('add_credits', {
+        p_user_id: payment.user_id,
+        p_credits: creditsToAdd,
+        p_bonus_credits: bonusCredits,
+        p_package_id: payment.package_id,
+        p_price_paid_xaf: parseInt(payment.amount),
+        p_payment_method: 'ebilling',
+        p_payment_reference: payment.bill_id || payment.reference,
+        p_description: `Achat E-Billing - ${payment.reference}`,
+      });
+
+      if (error) console.error('❌ Erreur ajout crédits:', error);
+      else console.log(`✅ ${creditsToAdd + bonusCredits} crédits ajoutés à ${payment.user_id}`);
     }
   }
 
-  /**
-   * Traite un paiement d'abonnement
-   */
   async processSubscriptionPayment(payment) {
-    const planSlug = payment.planSlug;
-    const planDuration = payment.planDuration || 1;
+    const planSlug = payment.plan_slug;
+    const planDuration = payment.plan_duration || 1;
 
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { slug: planSlug },
-    });
+    const { data: plan, error: planError } = await this.supabase
+      .from('subscription_plans').select('*').eq('slug', planSlug).single();
 
-    if (!plan) {
-      console.error('❌ Plan non trouvé:', planSlug);
-      return;
-    }
+    if (planError || !plan) { console.error('❌ Plan non trouvé:', planSlug); return; }
 
-    // Désactiver les anciens abonnements
-    await prisma.subscription.updateMany({
-      where: {
-        userId: payment.userId,
-        status: 'active',
-      },
-      data: { status: 'expired' },
-    });
+    await this.supabase.from('subscriptions')
+      .update({ status: 'expired', updated_at: new Date().toISOString() })
+      .eq('user_id', payment.user_id).eq('status', 'active');
 
-    // Calculer les dates
     const now = new Date();
     const endDate = new Date(now);
     endDate.setMonth(endDate.getMonth() + planDuration);
 
-    // Créer le nouvel abonnement
-    try {
-      await prisma.subscription.create({
-        data: {
-          userId: payment.userId,
-          planId: plan.id,
-          status: 'active',
-          paymentMethod: 'ebilling',
-          currentPeriodStart: now,
-          currentPeriodEnd: endDate,
-          metadata: {
-            ebilling_reference: payment.billId,
-            payment_amount: payment.amount,
-            duration_months: planDuration,
-          },
-        },
-      });
-    } catch (err) {
-      console.error('❌ Erreur création abonnement:', err);
-      return;
-    }
+    const { error: subError } = await this.supabase.from('subscriptions').insert({
+      user_id: payment.user_id,
+      plan_id: plan.id,
+      status: 'active',
+      payment_method: 'ebilling',
+      current_period_start: now.toISOString(),
+      current_period_end: endDate.toISOString(),
+      metadata: { ebilling_reference: payment.bill_id, payment_amount: payment.amount, duration_months: planDuration },
+    });
 
-    // Attribuer les crédits mensuels via la fonction PostgreSQL
-    const monthlyCredits = plan.monthlyCredits || 0;
+    if (subError) { console.error('❌ Erreur création abonnement:', subError); return; }
+
+    const monthlyCredits = plan.monthly_credits || 0;
     if (monthlyCredits > 0) {
-      try {
-        await prisma.$queryRaw`
-          SELECT add_user_credits(
-            ${payment.userId}::uuid,
-            ${monthlyCredits}::int,
-            ${'subscription_activation'}::text,
-            ${`Crédits mensuels - Abonnement ${plan.name}`}::text
-          )
-        `;
-        console.log(`✅ ${monthlyCredits} crédits mensuels attribués`);
-      } catch (err) {
-        console.error('❌ Erreur ajout crédits mensuels:', err);
-      }
+      await this.supabase.rpc('add_user_credits', {
+        p_user_id: payment.user_id,
+        p_amount: monthlyCredits,
+        p_reason: 'subscription_activation',
+        p_description: `Crédits mensuels - Abonnement ${plan.name}`,
+      });
+      console.log(`✅ ${monthlyCredits} crédits mensuels attribués`);
     }
 
     console.log(`✅ Abonnement ${plan.name} activé jusqu'au ${endDate.toLocaleDateString('fr-FR')}`);
   }
 
-  /**
-   * Traite un paiement d'inscription Quiz
-   */
   async processQuizPayment(payment) {
-    const quizId = payment.quizId;
-    if (!quizId) {
-      console.error('❌ Quiz ID manquant');
-      return;
-    }
+    const quizId = payment.quiz_id;
+    if (!quizId) { console.error('❌ Quiz ID manquant'); return; }
 
-    try {
-      await prisma.quizParticipant.create({
-        data: {
-          quizId,
-          userId: payment.userId,
-          paymentReference: payment.billId || payment.reference,
-          paymentAmount: payment.amount,
-          status: 'registered',
-          registeredAt: new Date(),
-        },
-      });
-      console.log(`✅ Utilisateur inscrit au quiz ${quizId}`);
-    } catch (err) {
-      // Code 23505 = unique constraint violation (déjà inscrit)
-      if (err.code === 'P2002') {
-        console.log(`ℹ️ Utilisateur déjà inscrit au quiz ${quizId}`);
-      } else {
-        console.error('❌ Erreur inscription quiz:', err);
-      }
-    }
+    const { error } = await this.supabase.from('quiz_participants').insert({
+      quiz_id: quizId,
+      user_id: payment.user_id,
+      payment_reference: payment.bill_id || payment.reference,
+      payment_amount: payment.amount,
+      status: 'registered',
+      registered_at: new Date().toISOString(),
+    });
+
+    if (error && error.code !== '23505') console.error('❌ Erreur inscription quiz:', error);
+    else console.log(`✅ Utilisateur inscrit au quiz ${quizId}`);
   }
 
-  /**
-   * Traite un paiement de campagne publicitaire
-   */
   async processCampaignPayment(payment) {
-    const campaignIds = payment.campaignIds;
-    if (!campaignIds || !Array.isArray(campaignIds)) {
-      console.error('❌ Campaign IDs manquants');
-      return;
-    }
+    const campaignIds = payment.campaign_ids;
+    if (!campaignIds || !Array.isArray(campaignIds)) { console.error('❌ Campaign IDs manquants'); return; }
 
     for (const campaignId of campaignIds) {
-      try {
-        await prisma.campaign.update({
-          where: { id: campaignId },
-          data: {
-            paymentStatus: 'completed',
-            status: 'pending',
-          },
-        });
-      } catch (err) {
-        console.error(`❌ Erreur mise à jour campagne ${campaignId}:`, err);
-      }
+      const { error } = await this.supabase.from('campaigns')
+        .update({ payment_status: 'completed', status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', campaignId);
+      if (error) console.error(`❌ Erreur mise à jour campagne ${campaignId}:`, error);
     }
-
     console.log(`✅ ${campaignIds.length} campagne(s) payée(s)`);
   }
 
@@ -806,18 +600,16 @@ class EBillingPaymentService {
   // UTILITAIRES
   // =====================================================
 
-  /**
-   * Récupère l'historique des paiements d'un utilisateur
-   */
   async getUserPaymentHistory(userId, limit = 20) {
     try {
-      const payments = await prisma.ebillingPayment.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      });
+      const { data, error } = await this.supabase
+        .from('ebilling_payments').select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-      return { success: true, payments };
+      if (error) throw error;
+      return { success: true, payments: data || [] };
     } catch (err) {
       console.error('❌ Erreur historique paiements:', err);
       return { success: false, error: err.message };

@@ -29,9 +29,6 @@ RUN npm install --production
 # Copier le code source (sauf ce qui est dans .dockerignore)
 COPY . .
 
-# Générer le client Prisma (après copie du schema)
-RUN npx prisma generate
-
 # Exposer le port
 EXPOSE 3001
 
