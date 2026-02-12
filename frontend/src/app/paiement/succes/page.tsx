@@ -18,7 +18,7 @@ function SuccesContent() {
 
   useEffect(() => {
     // Récupérer le type de paiement depuis le localStorage
-    const type = localStorage.getItem('pvit_payment_type')
+    const type = localStorage.getItem('ebilling_payment_type')
     setPaymentType(type)
 
     // Pour les paiements quiz, rediriger vers la page du jeu après 3 secondes
@@ -26,16 +26,16 @@ function SuccesContent() {
       const gameSessionId = localStorage.getItem('game_session_id')
       if (gameSessionId) {
         setTimeout(() => {
-          // Nettoyer le type de paiement mais garder les infos du jeu pour l'inscription
-          localStorage.removeItem('pvit_payment_reference')
-          localStorage.removeItem('pvit_payment_type')
+          localStorage.removeItem('ebilling_payment_reference')
+          localStorage.removeItem('ebilling_payment_type')
+          localStorage.removeItem('ebilling_payment_url')
           router.push(`/jeu/${gameSessionId}?registered=true`)
         }, 3000)
       }
     } else {
-      // Nettoyer le localStorage pour les autres types
-      localStorage.removeItem('pvit_payment_reference')
-      localStorage.removeItem('pvit_payment_type')
+      localStorage.removeItem('ebilling_payment_reference')
+      localStorage.removeItem('ebilling_payment_type')
+      localStorage.removeItem('ebilling_payment_url')
     }
 
     // Rafraîchir les données utilisateur (abonnement, crédits)

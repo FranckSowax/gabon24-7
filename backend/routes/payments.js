@@ -1,145 +1,52 @@
 /**
- * 💳 ROUTES DE PAIEMENT
+ * ROUTES DE PAIEMENT - E-Billing (DriveBy Africa)
  *
- * Endpoints pour tous les paiements:
- * - POST /api/payments/credits - Achat de crédits via PVIT
- * - POST /api/payments/subscription - Abonnement via PVIT
- * - POST /api/payments/quiz - Inscription quiz via PVIT
- * - POST /api/payments/initiate - Paiement générique
- * - GET /api/payments/status/:reference - Statut d'un paiement
- * - GET /api/payments/history - Historique des paiements
+ * Endpoints pour tous les paiements via E-Billing:
+ * - POST /api/payments/credits      - Achat de crédits
+ * - POST /api/payments/subscription  - Abonnement
+ * - POST /api/payments/quiz          - Inscription quiz
+ * - POST /api/payments/campaign      - Campagnes publicitaires
+ * - GET  /api/payments/status/:ref   - Statut d'un paiement (polling)
+ * - GET  /api/payments/history       - Historique des paiements
+ * - POST /api/payments/ebilling/callback - Webhook E-Billing
+ * - GET  /api/payments/health        - Santé du service
  */
 
 const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
-const paymentService = require('../services/payment.service');
-const pvitPaymentService = require('../services/pvit-payment.service');
+const ebillingService = require('../services/ebilling-payment.service');
 const { requireAuth } = require('../middleware/auth');
-const { validateBody } = require('../middleware/validation');
-
-// Schéma de validation pour l'initiation de paiement
-const initiatePaymentSchema = z.object({
-  userId: z.string().uuid('userId invalide'),
-  amount: z.number()
-    .positive('Le montant doit être positif')
-    .min(100, 'Montant minimum: 100 FCFA')
-    .max(10000000, 'Montant maximum: 10,000,000 FCFA'),
-  method: z.enum(['stripe', 'mypvit', 'airtel', 'moov', 'card'], {
-    errorMap: () => ({ message: 'Méthode de paiement non supportée' })
-  }),
-  description: z.string().max(500).optional(),
-  metadata: z.record(z.any()).optional(),
-  providerData: z.record(z.any()).optional(),
-});
 
 // ============================================
-// 1. POST /api/payments/initiate - Initier un paiement générique
-// 🔒 SÉCURISÉ: Authentification + validation des inputs
+// SCHÉMAS DE VALIDATION
 // ============================================
-router.post('/initiate', requireAuth, validateBody(initiatePaymentSchema), async (req, res) => {
-  try {
-    const {
-      userId,
-      amount,
-      method,
-      description,
-      metadata,
-      providerData
-    } = req.body;
-
-    // Vérifier que l'utilisateur initie un paiement pour lui-même
-    if (userId !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Vous ne pouvez initier un paiement que pour vous-même'
-      });
-    }
-
-    const result = await paymentService.initiatePayment({
-      userId,
-      amount,
-      method,
-      description,
-      metadata,
-      provider_data: providerData
-    });
-
-    res.json({
-      success: true,
-      transaction: result,
-      message: result.instructions || 'Paiement initié'
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur initiation paiement:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// 2. POST /api/payments/webhook - Webhook global
-// ============================================
-router.post('/webhook', async (req, res) => {
-  try {
-    const { transactionId, status, externalReference } = req.body;
-    console.log('📩 Webhook Paiement reçu:', req.body);
-
-    await paymentService.updateTransactionStatus(
-      transactionId, 
-      status === 'SUCCESS' ? 'completed' : 'failed',
-      req.body
-    );
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('❌ Erreur webhook:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================
-// 3. GET /api/payments/status/:transactionId
-// ============================================
-router.get('/status/:transactionId', async (req, res) => {
-  try {
-    const { transactionId } = req.params;
-    const status = await paymentService.checkStatus(transactionId);
-    res.json({ success: true, status });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// 4. ROUTES PVIT - Paiements Mobile Money
-// ============================================
-
-// Schémas de validation PVIT
-const phoneSchema = z.string()
-  .min(8, 'Numéro trop court')
-  .max(15, 'Numéro trop long')
-  .regex(/^[0-9+]+$/, 'Format invalide');
 
 const creditPurchaseSchema = z.object({
   packageId: z.string().uuid('Package ID invalide'),
-  phone: phoneSchema
 });
 
 const subscriptionPaymentSchema = z.object({
   planSlug: z.enum(['premium', 'discovery', 'pro'], { message: 'Plan invalide' }),
-  phone: phoneSchema,
-  duration: z.number().int().min(1).max(12).optional().default(1)
+  duration: z.number().int().min(1).max(12).optional().default(1),
 });
 
 const quizPaymentSchema = z.object({
   quizId: z.string().min(1, 'Quiz ID requis'),
-  phone: phoneSchema
 });
+
+const campaignPaymentSchema = z.object({
+  campaignIds: z.array(z.string().uuid()).min(1, 'Au moins une campagne requise'),
+  amount: z.number().positive().min(100, 'Montant minimum: 100 FCFA'),
+});
+
+// ============================================
+// PAIEMENTS PAR TYPE
+// ============================================
 
 /**
  * POST /api/payments/credits
- * Initie un paiement PVIT pour achat de crédits
+ * Initie un paiement E-Billing pour achat de crédits
  */
 router.post('/credits', requireAuth, async (req, res) => {
   try {
@@ -147,40 +54,31 @@ router.post('/credits', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message
+        error: validation.error.errors[0].message,
       });
     }
 
-    const { packageId, phone } = validation.data;
+    const { packageId } = validation.data;
     const userId = req.user.id;
 
-    const result = await pvitPaymentService.initiateCreditPurchase({
+    const result = await ebillingService.initiateCreditPurchase({
       userId,
       packageId,
-      phone
+      userEmail: req.user.email,
+      userName: req.user.user_metadata?.full_name || req.user.email,
     });
 
     if (!result.success) {
-      // Log détaillé pour debug
-      console.error('❌ Échec paiement crédits:', {
-        userId,
-        packageId,
-        phone,
-        error: result.error,
-        pvit_response: result.pvit_response
-      });
-
       return res.status(result.http_code || 400).json({
         success: false,
         error: result.error || 'Erreur lors du paiement',
-        details: result.pvit_response
       });
     }
 
     res.json({
       success: true,
-      message: 'Paiement initié. Vérifiez votre téléphone.',
-      data: result
+      message: 'Facture créée. Redirection vers le portail de paiement.',
+      data: result,
     });
 
   } catch (error) {
@@ -191,7 +89,7 @@ router.post('/credits', requireAuth, async (req, res) => {
 
 /**
  * POST /api/payments/subscription
- * Initie un paiement PVIT pour abonnement
+ * Initie un paiement E-Billing pour abonnement
  */
 router.post('/subscription', requireAuth, async (req, res) => {
   try {
@@ -199,18 +97,19 @@ router.post('/subscription', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message
+        error: validation.error.errors[0].message,
       });
     }
 
-    const { planSlug, phone, duration } = validation.data;
+    const { planSlug, duration } = validation.data;
     const userId = req.user.id;
 
-    const result = await pvitPaymentService.initiateSubscriptionPayment({
+    const result = await ebillingService.initiateSubscriptionPayment({
       userId,
       planSlug,
-      phone,
-      duration
+      duration,
+      userEmail: req.user.email,
+      userName: req.user.user_metadata?.full_name || req.user.email,
     });
 
     if (!result.success) {
@@ -219,8 +118,8 @@ router.post('/subscription', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Paiement initié. Vérifiez votre téléphone.',
-      data: result
+      message: 'Facture créée. Redirection vers le portail de paiement.',
+      data: result,
     });
 
   } catch (error) {
@@ -231,7 +130,7 @@ router.post('/subscription', requireAuth, async (req, res) => {
 
 /**
  * POST /api/payments/quiz
- * Initie un paiement PVIT pour inscription quiz
+ * Initie un paiement E-Billing pour inscription quiz
  */
 router.post('/quiz', requireAuth, async (req, res) => {
   try {
@@ -239,17 +138,18 @@ router.post('/quiz', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message
+        error: validation.error.errors[0].message,
       });
     }
 
-    const { quizId, phone } = validation.data;
+    const { quizId } = validation.data;
     const userId = req.user.id;
 
-    const result = await pvitPaymentService.initiateQuizPayment({
+    const result = await ebillingService.initiateQuizPayment({
       userId,
       quizId,
-      phone
+      userEmail: req.user.email,
+      userName: req.user.user_metadata?.full_name || req.user.email,
     });
 
     if (!result.success) {
@@ -258,8 +158,8 @@ router.post('/quiz', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Paiement initié. Vérifiez votre téléphone.',
-      data: result
+      message: 'Facture créée. Redirection vers le portail de paiement.',
+      data: result,
     });
 
   } catch (error) {
@@ -269,21 +169,67 @@ router.post('/quiz', requireAuth, async (req, res) => {
 });
 
 /**
- * GET /api/payments/pvit-status/:reference
- * Vérifie le statut d'un paiement PVIT
+ * POST /api/payments/campaign
+ * Initie un paiement E-Billing pour campagne publicitaire
  */
-router.get('/pvit-status/:reference', requireAuth, async (req, res) => {
+router.post('/campaign', requireAuth, async (req, res) => {
+  try {
+    const validation = campaignPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: validation.error.errors[0].message,
+      });
+    }
+
+    const { campaignIds, amount } = validation.data;
+    const userId = req.user.id;
+
+    const result = await ebillingService.initiateCampaignPayment({
+      userId,
+      campaignIds,
+      amount,
+      userEmail: req.user.email,
+      userName: req.user.user_metadata?.full_name || req.user.email,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.json({
+      success: true,
+      message: 'Facture créée. Redirection vers le portail de paiement.',
+      data: result,
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur paiement campagne:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// STATUT & HISTORIQUE
+// ============================================
+
+/**
+ * GET /api/payments/status/:reference
+ * Vérifie le statut d'un paiement (polling frontend)
+ * Vérifie aussi auprès de E-Billing si le paiement est toujours pending
+ */
+router.get('/status/:reference', requireAuth, async (req, res) => {
   try {
     const { reference } = req.params;
 
     if (!reference) {
       return res.status(400).json({
         success: false,
-        error: 'Référence requise'
+        error: 'Référence requise',
       });
     }
 
-    const result = await pvitPaymentService.checkPaymentStatus(reference);
+    const result = await ebillingService.checkPaymentStatus(reference);
     res.json(result);
 
   } catch (error) {
@@ -301,7 +247,7 @@ router.get('/history', requireAuth, async (req, res) => {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 20;
 
-    const result = await pvitPaymentService.getUserPaymentHistory(userId, limit);
+    const result = await ebillingService.getUserPaymentHistory(userId, limit);
     res.json(result);
 
   } catch (error) {
@@ -311,140 +257,49 @@ router.get('/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// 5. WEBHOOKS PVIT - Endpoints appelés par PVIT directement
+// WEBHOOKS E-BILLING
 // ============================================
 
 /**
- * POST /api/payments/pvit/callback
- * Callback principal PVIT - Appelé par PVIT après chaque transaction
- * URL à configurer dans le dashboard PVIT comme "Callback URL"
+ * POST /api/payments/ebilling/callback
+ * Callback E-Billing - Appelé par E-Billing après paiement
  */
-router.post('/pvit/callback', async (req, res) => {
+router.post('/ebilling/callback', async (req, res) => {
   try {
-    console.log('📥 Callback PVIT reçu:', JSON.stringify(req.body, null, 2));
+    console.log('📥 Callback E-Billing reçu:', JSON.stringify(req.body, null, 2));
 
-    // PVIT peut envoyer les données dans différents formats
-    const callbackData = {
-      merchantReference: req.body.merchantReference || req.body.merchant_reference || req.body.reference,
-      merchantReferenceId: req.body.merchantReferenceId || req.body.merchant_reference_id,
-      operationStatus: req.body.operationStatus || req.body.status || req.body.operation_status,
-      amount: req.body.amount,
-      currency: req.body.currency || 'XAF',
-      customerMsisdn: req.body.customerMsisdn || req.body.phone,
-      ...req.body
-    };
+    const result = await ebillingService.processCallback(req.body);
 
-    const result = await pvitPaymentService.processCallback(callbackData);
-
-    // PVIT attend une réponse SUCCESS pour confirmer la réception
     res.json({
-      responseCode: 'SUCCESS',
-      message: 'Callback traité avec succès',
-      ...result
+      status: 'OK',
+      message: 'Callback traité',
+      ...result,
     });
 
   } catch (error) {
-    console.error('❌ Erreur callback PVIT:', error);
-    // Même en cas d'erreur, renvoyer un format que PVIT comprend
+    console.error('❌ Erreur callback E-Billing:', error);
     res.status(500).json({
-      responseCode: 'ERROR',
-      message: error.message
+      status: 'ERROR',
+      message: error.message,
     });
   }
 });
 
-/**
- * POST /api/payments/pvit/reception-secret
- * Réception des nouvelles clés secrètes PVIT
- * URL à configurer dans le dashboard PVIT comme "Reception URL"
- */
-router.post('/pvit/reception-secret', async (req, res) => {
-  try {
-    console.log('🔑 Réception clé secrète PVIT:', {
-      account: req.body.operation_account_code || req.body.operationAccountCode,
-      hasKey: !!(req.body.secret_key || req.body.secretKey)
-    });
-
-    // PVIT peut envoyer les données dans différents formats
-    const keyData = {
-      operation_account_code: req.body.operation_account_code || req.body.operationAccountCode,
-      secret_key: req.body.secret_key || req.body.secretKey,
-      expires_in: req.body.expires_in || req.body.expiresIn || 86400
-    };
-
-    if (!keyData.operation_account_code || !keyData.secret_key) {
-      return res.status(400).json({
-        responseCode: 'ERROR',
-        message: 'Données de clé manquantes'
-      });
-    }
-
-    const result = await pvitPaymentService.receiveSecretKey(keyData);
-
-    if (result.success) {
-      res.json({
-        responseCode: 'SUCCESS',
-        message: 'Clé enregistrée avec succès',
-        expires_at: result.expires_at
-      });
-    } else {
-      throw new Error(result.error || 'Erreur inconnue');
-    }
-
-  } catch (error) {
-    console.error('❌ Erreur réception clé PVIT:', error);
-    res.status(400).json({
-      responseCode: 'ERROR',
-      message: error.message
-    });
-  }
-});
+// ============================================
+// SANTÉ DU SERVICE
+// ============================================
 
 /**
- * POST /api/payments/webhook/pvit
- * Alias pour compatibilité (ancien endpoint)
+ * GET /api/payments/health
+ * Endpoint de vérification de santé
  */
-router.post('/webhook/pvit', async (req, res) => {
-  try {
-    console.log('📥 Webhook PVIT (legacy) reçu:', req.body);
-
-    // Rediriger vers le nouveau handler
-    const callbackData = {
-      merchantReference: req.body.reference || req.body.merchantReference,
-      merchantReferenceId: req.body.merchant_reference_id || req.body.merchantReferenceId,
-      operationStatus: req.body.status || req.body.operationStatus,
-      amount: req.body.amount,
-      ...req.body
-    };
-
-    const result = await pvitPaymentService.processCallback(callbackData);
-    res.json({ success: true, result });
-
-  } catch (error) {
-    console.error('❌ Erreur webhook PVIT:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/payments/pvit/health
- * Endpoint de vérification de santé pour PVIT
- */
-router.get('/pvit/health', async (req, res) => {
-  try {
-    const hasValidKey = await pvitPaymentService.getValidPvitKey();
-    res.json({
-      status: 'ok',
-      service: 'pvit-payments',
-      hasValidKey: !!hasValidKey,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: error.message
-    });
-  }
+router.get('/health', async (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'ebilling-payments',
+    provider: 'DriveBy Africa E-Billing',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 module.exports = router;

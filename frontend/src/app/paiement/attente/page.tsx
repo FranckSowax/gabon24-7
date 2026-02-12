@@ -1,11 +1,12 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
-import { Loader2, Phone, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Clock, RefreshCw, ExternalLink } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
@@ -22,7 +23,44 @@ function AttenteContent() {
   const [checkCount, setCheckCount] = useState(0)
   const [isChecking, setIsChecking] = useState(false)
 
-  const maxChecks = 30 // 5 minutes max (10s interval)
+  const maxChecks = 60 // 10 minutes max (10s interval)
+
+  const checkStatus = useCallback(async () => {
+    if (!reference || checkCount >= maxChecks) return
+
+    setIsChecking(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
+      const response = await fetch(`${API_URL}/api/payments/status/${reference}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.payment) {
+        setStatus(data.payment.status)
+
+        if (data.payment.status === 'completed') {
+          setTimeout(() => {
+            router.push(`/paiement/succes?reference=${reference}`)
+          }, 1500)
+        } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
+          setTimeout(() => {
+            router.push(`/paiement/echec?reference=${reference}&reason=${data.payment.status}`)
+          }, 1500)
+        }
+      }
+    } catch (error) {
+      console.warn('Erreur vérification statut:', error)
+    } finally {
+      setIsChecking(false)
+      setCheckCount(prev => prev + 1)
+    }
+  }, [reference, checkCount, maxChecks, router])
 
   useEffect(() => {
     if (!reference) {
@@ -30,57 +68,19 @@ function AttenteContent() {
       return
     }
 
-    // Vérifier le statut périodiquement
-    const checkStatus = async () => {
-      if (checkCount >= maxChecks) return
-
-      setIsChecking(true)
-      try {
-        const token = localStorage.getItem('supabase_token')
-        const response = await fetch(`${API_URL}/api/payments/pvit-status/${reference}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-        const data = await response.json()
-
-        if (data.success && data.payment) {
-          setStatus(data.payment.status)
-
-          if (data.payment.status === 'completed') {
-            // Rediriger vers la page de succès
-            setTimeout(() => {
-              router.push(`/paiement/succes?reference=${reference}`)
-            }, 1500)
-          } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
-            // Rediriger vers la page d'échec
-            setTimeout(() => {
-              router.push(`/paiement/echec?reference=${reference}&reason=${data.payment.status}`)
-            }, 1500)
-          }
-        }
-      } catch (error) {
-        console.error('Erreur vérification statut:', error)
-      } finally {
-        setIsChecking(false)
-        setCheckCount(prev => prev + 1)
-      }
-    }
-
     // Vérifier immédiatement puis toutes les 10 secondes
     checkStatus()
     const interval = setInterval(checkStatus, 10000)
 
     return () => clearInterval(interval)
-  }, [reference, checkCount, router])
+  }, [reference, checkStatus, router])
 
-  const handleManualCheck = async () => {
-    setCheckCount(0) // Reset le compteur pour permettre plus de vérifications
+  const handleManualCheck = () => {
+    setCheckCount(0)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
       <div className="flex min-h-screen w-full">
@@ -91,13 +91,13 @@ function AttenteContent() {
 
         <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8">
           <div className="max-w-lg mx-auto mt-12">
-            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="bg-gray-800/50 backdrop-blur-xl rounded-3xl border border-gray-700/50 shadow-2xl p-8 text-center">
               {/* Icône animée */}
               <div className="mb-8">
                 {status === 'pending' && (
-                  <div className="relative">
-                    <div className="w-24 h-24 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
-                      <Phone className="w-12 h-12 text-orange-500" />
+                  <div className="relative inline-block">
+                    <div className="w-24 h-24 mx-auto bg-orange-500/20 rounded-full flex items-center justify-center">
+                      <Clock className="w-12 h-12 text-orange-400" />
                     </div>
                     <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center animate-bounce">
                       <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -106,14 +106,14 @@ function AttenteContent() {
                 )}
 
                 {status === 'completed' && (
-                  <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-12 h-12 text-green-500" />
+                  <div className="w-24 h-24 mx-auto bg-green-500/20 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-12 h-12 text-green-400" />
                   </div>
                 )}
 
                 {(status === 'failed' || status === 'cancelled') && (
-                  <div className="w-24 h-24 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                    <XCircle className="w-12 h-12 text-red-500" />
+                  <div className="w-24 h-24 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
+                    <XCircle className="w-12 h-12 text-red-400" />
                   </div>
                 )}
               </div>
@@ -121,23 +121,40 @@ function AttenteContent() {
               {/* Titre et message */}
               {status === 'pending' && (
                 <>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                    Vérifiez votre téléphone
+                  <h1 className="text-2xl font-bold text-white mb-4">
+                    En attente de paiement
                   </h1>
-                  <p className="text-gray-600 mb-6">
-                    Une demande de paiement a été envoyée sur votre téléphone.
+                  <p className="text-gray-400 mb-6">
+                    Complétez votre paiement sur le portail E-Billing.
                     <br />
-                    <strong>Composez votre code PIN</strong> pour confirmer.
+                    <strong className="text-gray-300">Cette page se mettra à jour automatiquement.</strong>
                   </p>
 
+                  {/* Lien vers le portail */}
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-500 mb-2">Le portail de paiement ne s&apos;est pas ouvert ?</p>
+                    <button
+                      onClick={() => {
+                        const paymentUrl = localStorage.getItem('ebilling_payment_url')
+                        if (paymentUrl) {
+                          window.open(paymentUrl, '_blank')
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition-colors text-sm"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Ouvrir le portail de paiement
+                    </button>
+                  </div>
+
                   {/* Animation d'attente */}
-                  <div className="flex items-center justify-center gap-2 text-orange-600 mb-6">
-                    <Clock className="w-5 h-5" />
-                    <span className="text-sm">En attente de confirmation...</span>
+                  <div className="flex items-center justify-center gap-2 text-orange-400 mb-6">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm">Vérification en cours...</span>
                   </div>
 
                   {/* Indicateur de progression */}
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+                  <div className="w-full bg-gray-700 rounded-full h-2 mb-6">
                     <div
                       className="bg-orange-500 h-2 rounded-full transition-all duration-1000"
                       style={{ width: `${Math.min((checkCount / maxChecks) * 100, 100)}%` }}
@@ -145,17 +162,17 @@ function AttenteContent() {
                   </div>
 
                   {/* Instructions */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                    <p className="text-sm text-gray-600">
-                      <strong>Référence:</strong> {reference}
+                  <div className="bg-gray-700/30 rounded-xl p-4 mb-6 text-left">
+                    <p className="text-sm text-gray-400">
+                      <strong className="text-gray-300">Référence:</strong> {reference}
                     </p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Si vous ne recevez pas de notification, vérifiez:
+                    <p className="text-sm text-gray-500 mt-3">
+                      Si le paiement n&apos;aboutit pas:
                     </p>
-                    <ul className="text-sm text-gray-500 list-disc list-inside mt-1">
-                      <li>Que votre numéro est correct</li>
-                      <li>Que vous avez suffisamment de solde</li>
-                      <li>Que votre réseau fonctionne</li>
+                    <ul className="text-sm text-gray-500 list-disc list-inside mt-1 space-y-1">
+                      <li>Vérifiez que vous avez bien complété le paiement sur le portail</li>
+                      <li>Assurez-vous d&apos;avoir un solde suffisant</li>
+                      <li>Essayez un autre moyen de paiement</li>
                     </ul>
                   </div>
 
@@ -164,14 +181,14 @@ function AttenteContent() {
                     <button
                       onClick={handleManualCheck}
                       disabled={isChecking}
-                      className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                       Vérifier le statut
                     </button>
                     <button
                       onClick={() => router.push('/mon-profil')}
-                      className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300"
+                      className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-colors"
                     >
                       Annuler
                     </button>
@@ -181,29 +198,29 @@ function AttenteContent() {
 
               {status === 'completed' && (
                 <>
-                  <h1 className="text-2xl font-bold text-green-600 mb-4">
+                  <h1 className="text-2xl font-bold text-green-400 mb-4">
                     Paiement réussi !
                   </h1>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-400 mb-6">
                     Votre paiement a été confirmé. Redirection en cours...
                   </p>
-                  <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
+                  <Loader2 className="w-8 h-8 animate-spin text-green-400 mx-auto" />
                 </>
               )}
 
               {(status === 'failed' || status === 'cancelled') && (
                 <>
-                  <h1 className="text-2xl font-bold text-red-600 mb-4">
+                  <h1 className="text-2xl font-bold text-red-400 mb-4">
                     {status === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué'}
                   </h1>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-400 mb-6">
                     {status === 'cancelled'
-                      ? 'Vous avez annulé le paiement.'
+                      ? 'Le paiement a été annulé.'
                       : 'Le paiement n\'a pas pu être traité.'}
                     <br />
                     Redirection en cours...
                   </p>
-                  <Loader2 className="w-8 h-8 animate-spin text-red-500 mx-auto" />
+                  <Loader2 className="w-8 h-8 animate-spin text-red-400 mx-auto" />
                 </>
               )}
             </div>
@@ -216,10 +233,10 @@ function AttenteContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
       <div className="text-center">
         <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
-        <p className="mt-4 text-gray-600">Chargement...</p>
+        <p className="mt-4 text-gray-400">Chargement...</p>
       </div>
     </div>
   )

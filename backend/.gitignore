@@ -38,3 +38,5 @@ coverage/
 
 # Progress tracking
 enrichment-progress.json
+
+/src/generated/prisma

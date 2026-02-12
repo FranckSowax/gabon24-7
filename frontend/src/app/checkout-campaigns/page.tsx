@@ -85,35 +85,19 @@ export default function CheckoutCampaignsPage() {
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'demo',
-      name: '🎯 Paiement Demo (Test)',
+      name: 'Paiement Demo (Test)',
       icon: <Check className="w-6 h-6" />,
       description: 'Validation instantanée pour tests',
       available: true,
-      instructions: '✅ Votre campagne sera créée et validée instantanément (mode démo)'
+      instructions: 'Votre campagne sera créée et validée instantanément (mode démo)'
     },
     {
-      id: 'mobile_money',
-      name: 'Mobile Money',
-      icon: <Smartphone className="w-6 h-6" />,
-      description: 'Airtel Money, Moov Money, MTN',
-      available: true,
-      instructions: 'Vous recevrez une notification push pour valider le paiement'
-    },
-    {
-      id: 'card',
-      name: 'Carte de Crédit',
+      id: 'ebilling',
+      name: 'Paiement en ligne',
       icon: <CreditCard className="w-6 h-6" />,
-      description: 'Visa, Mastercard',
+      description: 'Airtel Money, Moov Money, Visa, Mastercard',
       available: true,
-      instructions: 'Paiement sécurisé via notre partenaire de paiement'
-    },
-    {
-      id: 'cash',
-      name: 'Cash sur Place',
-      icon: <Banknote className="w-6 h-6" />,
-      description: 'Payer en espèces à nos bureaux',
-      available: true,
-      instructions: 'Vos campagnes seront activées après réception du paiement'
+      instructions: 'Vous serez redirigé vers le portail de paiement sécurisé'
     }
   ]
 
@@ -132,10 +116,6 @@ export default function CheckoutCampaignsPage() {
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Le numéro de téléphone est requis'
-    }
-
-    if (selectedPaymentMethod === 'mobile_money' && !formData.mobileNumber.trim()) {
-      newErrors.mobileNumber = 'Le numéro Mobile Money est requis'
     }
 
     setErrors(newErrors)
@@ -299,8 +279,8 @@ export default function CheckoutCampaignsPage() {
         return
       }
 
-      // MODE NORMAL: Via API Railway
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      // MODE NORMAL: Via E-Billing (DriveBy Africa)
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
       // Créer les campagnes avec status 'unpaid'
       const campaignPromises = cart.map(async (item) => {
@@ -313,10 +293,9 @@ export default function CheckoutCampaignsPage() {
           duration_days: item.duration_days,
           start_date: item.start_date,
           end_date: endDate,
-          status: 'unpaid', // Status initial
+          status: 'unpaid',
           ...item.details,
-          // Info paiement
-          payment_method: selectedPaymentMethod,
+          payment_method: 'ebilling',
           payment_status: 'pending',
           user_email: formData.email,
           user_phone: formData.phone,
@@ -338,25 +317,20 @@ export default function CheckoutCampaignsPage() {
 
       const createdCampaigns = await Promise.all(campaignPromises)
 
-      // Initier le paiement via le backend (Integration MyPvit)
-      const paymentResponse = await fetch(`${API_URL}/api/payments/initiate`, {
+      // Récupérer le token d'authentification
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
+      // Initier le paiement via E-Billing
+      const paymentResponse = await fetch(`${API_URL}/api/payments/campaign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          userId: user?.id,
+          campaignIds: createdCampaigns.map(c => c.campaign?.id || c.id).filter(Boolean),
           amount: total,
-          method: selectedPaymentMethod,
-          description: `Paiement ${createdCampaigns.length} campagne(s)`,
-          metadata: {
-            campaignIds: createdCampaigns.map(c => c.campaign.id),
-            email: formData.email,
-            customerName: formData.fullName
-          },
-          providerData: {
-            phoneNumber: formData.mobileNumber,
-            operator: formData.mobileOperator,
-            pickupLocation: formData.pickupLocation // Pour Cash
-          }
         })
       })
 
@@ -366,17 +340,21 @@ export default function CheckoutCampaignsPage() {
         throw new Error(paymentResult.error || 'Erreur initiation paiement')
       }
 
+      // Sauvegarder les infos de paiement
+      localStorage.setItem('ebilling_payment_reference', paymentResult.data.reference)
+      localStorage.setItem('ebilling_payment_type', 'campaign')
+      if (paymentResult.data.payment_url) {
+        localStorage.setItem('ebilling_payment_url', paymentResult.data.payment_url)
+      }
+
       // Vider le panier
       clearCart()
 
-      // Rediriger selon méthode de paiement
-      if (paymentResult.transaction?.redirectUrl) {
-        // Redirection (ex: Stripe)
-        window.location.href = paymentResult.transaction.redirectUrl
-      } else {
-        // Succès / Instructions (ex: Mobile Money USSD Push)
-        router.push(`/checkout/success?method=${selectedPaymentMethod}&payment_id=${paymentResult.transaction?.transactionId}&message=${encodeURIComponent(paymentResult.message || '')}`)
+      // Ouvrir le portail de paiement et rediriger vers la page d'attente
+      if (paymentResult.data.payment_url) {
+        window.open(paymentResult.data.payment_url, '_blank')
       }
+      router.push(`/paiement/attente?reference=${paymentResult.data.reference}`)
 
     } catch (error: any) {
       console.error('Erreur paiement:', error)
@@ -547,79 +525,13 @@ export default function CheckoutCampaignsPage() {
                   ))}
                 </div>
 
-                {/* Champs spécifiques Mobile Money */}
-                {selectedPaymentMethod === 'mobile_money' && (
+                {/* Info E-Billing */}
+                {selectedPaymentMethod === 'ebilling' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 mb-4">Détails Mobile Money</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Opérateur
-                        </label>
-                        <select
-                          value={formData.mobileOperator}
-                          onChange={(e) => setFormData(prev => ({ ...prev, mobileOperator: e.target.value }))}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        >
-                          <option value="airtel">Airtel Money</option>
-                          <option value="moov">Moov Money</option>
-                          <option value="mtn">MTN Mobile Money</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Numéro Mobile Money *
-                        </label>
-                        <input
-                          type="tel"
-                          value={formData.mobileNumber}
-                          onChange={(e) => setFormData(prev => ({ ...prev, mobileNumber: e.target.value }))}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 ${
-                            errors.mobileNumber ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="+241 XX XX XX XX"
-                        />
-                        {errors.mobileNumber && <p className="mt-1 text-sm text-red-600">{errors.mobileNumber}</p>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Champs spécifiques Cash */}
-                {selectedPaymentMethod === 'cash' && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-yellow-900 mb-4">💵 Paiement en espèces</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Bureau de paiement
-                        </label>
-                        <select
-                          value={formData.pickupLocation}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pickupLocation: e.target.value }))}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        >
-                          <option value="libreville">Libreville - Centre-ville</option>
-                          <option value="port-gentil">Port-Gentil</option>
-                          <option value="franceville">Franceville</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Notes (optionnel)
-                        </label>
-                        <textarea
-                          value={formData.pickupNotes}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pickupNotes: e.target.value }))}
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                          placeholder="Informations complémentaires..."
-                        />
-                      </div>
-                      <p className="text-sm text-yellow-700">
-                        📍 Nos bureaux sont ouverts du lundi au vendredi de 9h à 17h
-                      </p>
-                    </div>
+                    <p className="text-sm text-blue-700">
+                      Vous serez redirigé vers le portail de paiement sécurisé E-Billing
+                      pour choisir votre méthode de paiement (Airtel Money, Moov Money, Visa, Mastercard).
+                    </p>
                   </div>
                 )}
               </div>

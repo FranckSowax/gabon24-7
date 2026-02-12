@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { X, Wallet, Check, Loader2, Sparkles, Star, Package } from 'lucide-react'
+import { X, Wallet, Loader2, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import CreditPackages from './CreditPackages'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
 interface CreditPackage {
   id: string
@@ -29,11 +29,10 @@ interface TopUpModalProps {
 
 export default function TopUpModal({ open, onClose, onPurchased }: TopUpModalProps) {
   const { user } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [selected, setSelected] = useState<string | null>(null)
-  const [purchasing, setPurchasing] = useState(false)
-  const [purchaseDone, setPurchaseDone] = useState<{ tx: string; balance: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,34 +59,22 @@ export default function TopUpModal({ open, onClose, onPurchased }: TopUpModalPro
 
   const selectedPkg = useMemo(() => packages.find(p => p.id === selected) || null, [packages, selected])
 
-  const handlePurchase = async () => {
+  const handlePurchase = () => {
     if (!user?.id || !selectedPkg) return
-    setPurchasing(true)
-    setError(null)
-    try {
-      const res = await fetch(`${API_URL}/api/credits-premium/purchase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          packageId: selectedPkg.id,
-          paymentMethod: 'demo',
-          paymentReference: `DEMO-${Date.now()}`
-        })
-      })
-      const data = await res.json()
-      
-      if (data.success) {
-        setPurchaseDone({ tx: data.transaction_id, balance: data.total_balance })
-        onPurchased?.(data.total_balance)
-      } else {
-        throw new Error(data.error || 'Achat échoué')
-      }
-    } catch (e: any) {
-      setError(e?.message || 'Achat impossible')
-    } finally {
-      setPurchasing(false)
-    }
+
+    // Fermer le modal et rediriger vers la page de paiement E-Billing
+    onClose()
+
+    const params = new URLSearchParams({
+      type: 'credits',
+      packageId: selectedPkg.id,
+      amount: selectedPkg.price_xaf.toString(),
+      credits: selectedPkg.credits.toString(),
+      bonus: (selectedPkg.bonus_credits || 0).toString(),
+      description: `${selectedPkg.name} - ${selectedPkg.credits + (selectedPkg.bonus_credits || 0)} crédits`,
+    })
+
+    router.push(`/paiement?${params.toString()}`)
   }
 
   if (!open) return null
@@ -112,46 +99,38 @@ export default function TopUpModal({ open, onClose, onPurchased }: TopUpModalPro
           <div className="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
         )}
 
-        {purchaseDone ? (
-          <div className="text-center py-8">
-            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 text-green-700 flex items-center justify-center mb-3">
-              <Check className="w-8 h-8" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {loading ? (
+            <div className="col-span-2 flex items-center justify-center py-10 text-gray-500">
+              <Loader2 className="w-5 h-5 mr-2 animate-spin"/> Chargement des forfaits...
             </div>
-            <p className="text-gray-900 font-semibold">Achat confirmé</p>
-            <p className="text-gray-600 text-sm">Solde actuel: {purchaseDone.balance} crédits</p>
-            <button onClick={onClose} className="mt-5 inline-flex items-center px-5 py-2 rounded-xl bg-gray-900 hover:bg-black text-white font-semibold">Fermer</button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {loading ? (
-                <div className="col-span-2 flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin"/> Chargement des forfaits...
+          ) : (
+            packages.map((p) => (
+              <label key={p.id} className={`border rounded-xl p-4 cursor-pointer hover:shadow transition-all ${selected === p.id ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200'}`}>
+                <input type="radio" name="credit_pkg" className="hidden" checked={selected === p.id} onChange={() => setSelected(p.id)} />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-base sm:text-lg font-bold text-gray-900">{p.name}</div>
+                    <div className="text-gray-600 text-sm mt-1">{p.credits} crédits {p.bonus_credits ? `+ ${p.bonus_credits} bonus` : ''}</div>
+                  </div>
+                  <div className="text-orange-700 font-semibold">{p.price_xaf.toLocaleString()} XAF</div>
                 </div>
-              ) : (
-                packages.map((p) => (
-                  <label key={p.id} className={`border rounded-xl p-4 cursor-pointer hover:shadow ${selected === p.id ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200'}`}>
-                    <input type="radio" name="credit_pkg" className="hidden" checked={selected === p.id} onChange={() => setSelected(p.id)} />
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-base sm:text-lg font-bold text-gray-900">{p.name}</div>
-                        <div className="text-gray-600 text-sm mt-1">{p.credits} crédits {p.bonus_credits ? `+ ${p.bonus_credits} bonus` : ''}</div>
-                      </div>
-                      <div className="text-orange-700 font-semibold">{p.price_xaf.toLocaleString()} XAF</div>
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
+              </label>
+            ))
+          )}
+        </div>
 
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button disabled={!selected || purchasing} onClick={handlePurchase} className={`px-5 py-2 rounded-lg text-white font-semibold ${!selected || purchasing ? 'bg-gray-300' : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'}`}>
-                {purchasing ? 'Achat...' : 'Payer et créditer'}
-              </button>
-            </div>
-          </>
-        )}
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Annuler</button>
+          <button
+            disabled={!selected}
+            onClick={handlePurchase}
+            className={`px-5 py-2 rounded-lg text-white font-semibold flex items-center gap-2 ${!selected ? 'bg-gray-300' : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'}`}
+          >
+            Payer
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   )

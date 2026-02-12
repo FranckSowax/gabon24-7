@@ -720,7 +720,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
     // Vérifier si on revient d'un paiement quiz réussi
     const urlParams = new URLSearchParams(window.location.search)
     const isRegistered = urlParams.get('registered') === 'true'
-    const paymentType = localStorage.getItem('pvit_payment_type')
+    const paymentType = localStorage.getItem('ebilling_payment_type')
 
     if (isRegistered && paymentType === 'quiz') {
       // Récupérer les infos stockées avant le paiement
@@ -740,8 +740,9 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
         localStorage.removeItem('game_player_name')
         localStorage.removeItem('game_phone_number')
         localStorage.removeItem('game_session_name')
-        localStorage.removeItem('pvit_payment_type')
-        localStorage.removeItem('pvit_payment_reference')
+        localStorage.removeItem('ebilling_payment_type')
+        localStorage.removeItem('ebilling_payment_reference')
+        localStorage.removeItem('ebilling_payment_url')
 
         // Enregistrer l'inscription en base (le paiement a déjà été validé)
         fetch(`${API_URL}/api/game/sessions/${storedSessionId}/register`, {
@@ -1182,7 +1183,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
         return
     }
     
-    // MODE PAYANT - Rediriger vers la page de paiement PVIT
+    // MODE PAYANT - Rediriger vers la page de paiement E-Billing
     try {
       // Stocker les informations de session pour après le paiement
       localStorage.setItem('game_session_id', selectedSession.id)
