@@ -383,24 +383,6 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
                 {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-orange-500" />}
               </a>
               <a
-                href="/actu-plus"
-                onClick={(e) => handleToolClick(e, '/actu-plus')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
-              >
-                <span>📰</span>
-                <span className="flex-1">Actu+</span>
-                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
-              </a>
-              <a
-                href="/audio/daily"
-                onClick={(e) => handleToolClick(e, '/audio/daily')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
-              >
-                <span>🎧</span>
-                <span className="flex-1">Résumés audio</span>
-                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
-              </a>
-              <a
                 href="/archives-generales"
                 onClick={(e) => handleToolClick(e, '/archives-generales')}
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
