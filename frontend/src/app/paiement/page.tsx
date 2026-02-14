@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -16,10 +16,14 @@ import {
   Zap,
   Lock,
   Wallet,
-  ExternalLink
+  ExternalLink,
+  X,
+  Clock,
+  RefreshCw
 } from 'lucide-react'
 
 type PaymentType = 'credits' | 'subscription' | 'quiz'
+type ModalPaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 
 interface PaymentConfig {
   type: PaymentType
@@ -46,6 +50,13 @@ function PaiementContent() {
   const [error, setError] = useState<string | null>(null)
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+
+  // Modal E-Billing
+  const [showPortalModal, setShowPortalModal] = useState(false)
+  const [portalUrl, setPortalUrl] = useState<string | null>(null)
+  const [paymentReference, setPaymentReference] = useState<string | null>(null)
+  const [modalStatus, setModalStatus] = useState<ModalPaymentStatus>('pending')
+  const [pollCount, setPollCount] = useState(0)
 
   // Récupérer les paramètres de paiement depuis l'URL
   useEffect(() => {
@@ -96,6 +107,62 @@ function PaiementContent() {
       router.push('/auth/signup?redirect=/paiement?' + (searchParams?.toString() || ''))
     }
   }, [user, authLoading, router, searchParams])
+
+  // Polling du statut de paiement quand le modal est ouvert
+  useEffect(() => {
+    if (!showPortalModal || !paymentReference || modalStatus !== 'pending') return
+
+    const maxPolls = 60 // 10 minutes max (10s interval)
+
+    const checkStatus = async () => {
+      if (pollCount >= maxPolls) return
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData?.session?.access_token
+
+        const response = await fetch(`${API_URL}/api/payments/status/${paymentReference}`, {
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
+        })
+
+        const data = await response.json()
+
+        if (data.success && data.payment) {
+          if (data.payment.status === 'completed') {
+            setModalStatus('completed')
+            setTimeout(() => {
+              setShowPortalModal(false)
+              router.push(`/paiement/succes?reference=${paymentReference}`)
+            }, 1500)
+          } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
+            setModalStatus(data.payment.status)
+            setTimeout(() => {
+              setShowPortalModal(false)
+              router.push(`/paiement/echec?reference=${paymentReference}&reason=${data.payment.status}`)
+            }, 1500)
+          }
+        }
+      } catch (err) {
+        console.warn('Erreur vérification statut:', err)
+      } finally {
+        setPollCount(prev => prev + 1)
+      }
+    }
+
+    checkStatus()
+    const interval = setInterval(checkStatus, 10000)
+    return () => clearInterval(interval)
+  }, [showPortalModal, paymentReference, modalStatus, pollCount, router])
+
+  const handleCloseModal = () => {
+    setShowPortalModal(false)
+    // Naviguer vers la page d'attente en cas de fermeture manuelle
+    if (paymentReference && modalStatus === 'pending') {
+      router.push(`/paiement/attente?reference=${paymentReference}`)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!user || !paymentConfig) return
@@ -151,18 +218,21 @@ function PaiementContent() {
         throw new Error(data.error || 'Erreur lors de l\'initiation du paiement')
       }
 
-      // Sauvegarder les infos pour les pages suivantes
+      // Sauvegarder les infos pour les pages suivantes (fallback)
       localStorage.setItem('ebilling_payment_reference', data.data.reference)
       localStorage.setItem('ebilling_payment_type', paymentConfig.type)
       if (data.data.payment_url) {
         localStorage.setItem('ebilling_payment_url', data.data.payment_url)
       }
 
-      // Rediriger vers le portail E-Billing
+      // Ouvrir le portail E-Billing dans un modal iframe
+      setPaymentReference(data.data.reference)
+      setPollCount(0)
+      setModalStatus('pending')
+
       if (data.data.payment_url) {
-        // Ouvrir le portail dans un nouvel onglet et naviguer vers la page d'attente
-        window.open(data.data.payment_url, '_blank')
-        router.push(`/paiement/attente?reference=${data.data.reference}`)
+        setPortalUrl(data.data.payment_url)
+        setShowPortalModal(true)
       } else {
         // Fallback: aller directement à la page d'attente
         router.push(`/paiement/attente?reference=${data.data.reference}`)
@@ -393,6 +463,105 @@ function PaiementContent() {
           </div>
         </main>
       </div>
+
+      {/* Modal E-Billing Portal */}
+      {showPortalModal && portalUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleCloseModal} />
+
+          {/* Modal */}
+          <div className="relative w-full h-full max-w-3xl max-h-[90vh] m-4 flex flex-col">
+            {/* Header du modal */}
+            <div className="bg-gray-800 border border-gray-700 rounded-t-2xl px-4 py-3 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {modalStatus === 'pending' && (
+                    <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
+                  )}
+                  {modalStatus === 'completed' && (
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  )}
+                  {(modalStatus === 'failed' || modalStatus === 'cancelled') && (
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className="text-sm font-medium text-white">
+                    {modalStatus === 'pending' && 'Paiement sécurisé E-Billing'}
+                    {modalStatus === 'completed' && 'Paiement confirmé !'}
+                    {modalStatus === 'failed' && 'Paiement échoué'}
+                    {modalStatus === 'cancelled' && 'Paiement annulé'}
+                  </span>
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400">
+                  <Lock className="w-3 h-3" />
+                  <span>Connexion sécurisée</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Ouvrir dans un nouvel onglet */}
+                <button
+                  onClick={() => window.open(portalUrl, '_blank')}
+                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Ouvrir dans un nouvel onglet"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+                {/* Fermer */}
+                <button
+                  onClick={handleCloseModal}
+                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Fermer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Iframe du portail */}
+            <div className="flex-1 bg-white rounded-b-2xl overflow-hidden relative">
+              {modalStatus === 'completed' ? (
+                <div className="flex flex-col items-center justify-center h-full bg-gray-900">
+                  <CheckCircle2 className="w-16 h-16 text-green-400 mb-4" />
+                  <h2 className="text-xl font-bold text-white mb-2">Paiement confirmé !</h2>
+                  <p className="text-gray-400">Redirection en cours...</p>
+                  <Loader2 className="w-6 h-6 animate-spin text-green-400 mt-4" />
+                </div>
+              ) : modalStatus === 'failed' || modalStatus === 'cancelled' ? (
+                <div className="flex flex-col items-center justify-center h-full bg-gray-900">
+                  <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
+                  <h2 className="text-xl font-bold text-white mb-2">
+                    {modalStatus === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué'}
+                  </h2>
+                  <p className="text-gray-400">Redirection en cours...</p>
+                  <Loader2 className="w-6 h-6 animate-spin text-red-400 mt-4" />
+                </div>
+              ) : (
+                <iframe
+                  src={portalUrl}
+                  className="w-full h-full border-0"
+                  title="Portail de paiement E-Billing"
+                  allow="payment"
+                />
+              )}
+            </div>
+
+            {/* Barre de statut en bas */}
+            {modalStatus === 'pending' && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-sm border-t border-gray-700 rounded-b-2xl px-4 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>En attente de confirmation...</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-orange-400">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Vérification auto</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
