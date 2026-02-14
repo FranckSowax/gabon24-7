@@ -24,15 +24,15 @@ const axios = require('axios');
 
 // Configuration E-Billing
 if (process.env.NODE_ENV === 'production') {
-  if (!process.env.EBILLING_API_URL || !process.env.EBILLING_USERNAME || !process.env.EBILLING_API_KEY) {
-    console.error('⚠️ Missing required E-Billing env vars: EBILLING_API_URL, EBILLING_USERNAME, EBILLING_API_KEY — payment routes will fail');
+  if (!process.env.EBILLING_API_URL || !(process.env.EBILLING_USERNAME || process.env.EBILLING_USER) || !process.env.EBILLING_API_KEY) {
+    console.error('⚠️ Missing required E-Billing env vars: EBILLING_API_URL, EBILLING_USERNAME/EBILLING_USER, EBILLING_API_KEY — payment routes will fail');
   }
 }
 
 const EBILLING_CONFIG = {
   apiUrl: process.env.EBILLING_API_URL || 'https://stg.billing-easy.com/api/v1/merchant/e_bills',
   portalUrl: process.env.EBILLING_PORTAL_URL || 'https://staging.billing-easy.net',
-  username: process.env.EBILLING_USERNAME,
+  username: process.env.EBILLING_USERNAME || process.env.EBILLING_USER,
   apiKey: process.env.EBILLING_API_KEY,
 };
 
