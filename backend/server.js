@@ -353,7 +353,7 @@ app.use('/api/admin', uploadsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/slides', slidesRoutes);
 
-// Routes Paiements (MyPvit, Stripe, etc.)
+// Routes Paiements (E-Billing)
 const paymentsRoutes = require('./routes/payments');
 app.use('/api/payments', paymentsRoutes);
 

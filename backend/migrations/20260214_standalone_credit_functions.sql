@@ -2,7 +2,7 @@
 -- Migration: Standalone credit functions
 -- Date: 2026-02-14
 -- Description: Creates add_credits and consume_credits RPC functions
---              as standalone (previously embedded in PVIT migration)
+--              as standalone functions for the credit system
 -- ============================================
 
 -- Function: add_credits
@@ -35,7 +35,6 @@ BEGIN
         VALUES (p_user_id, 0, 0, 0)
         RETURNING * INTO v_user_credits;
     END IF;
-
     -- Calculer les nouveaux soldes
     v_new_balance := COALESCE(v_user_credits.balance, 0) + p_credits;
     v_new_bonus_balance := COALESCE(v_user_credits.bonus_balance, 0) + p_bonus_credits;

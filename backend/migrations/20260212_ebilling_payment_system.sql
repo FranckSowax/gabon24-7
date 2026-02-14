@@ -1,6 +1,6 @@
 -- =====================================================
 -- Migration: E-Billing Payment System (DriveBy Africa)
--- Remplace le système PVIT par E-Billing (billing-easy.com)
+-- Système de paiement E-Billing (billing-easy.com)
 -- Date: 2026-02-12
 -- =====================================================
 

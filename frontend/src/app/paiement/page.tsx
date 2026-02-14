@@ -16,9 +16,7 @@ import {
   Zap,
   Lock,
   Wallet,
-  ExternalLink,
-  Smartphone,
-  Globe
+  ExternalLink
 } from 'lucide-react'
 
 type PaymentType = 'credits' | 'subscription' | 'quiz'
@@ -313,76 +311,33 @@ function PaiementContent() {
                   </div>
                 )}
 
-                {/* Moyens de paiement disponibles */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
-                    Moyens de paiement acceptés
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl border border-gray-600/50 bg-gray-700/20 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                        <Smartphone className="w-5 h-5 text-red-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-300">Airtel Money</p>
-                        <p className="text-xs text-gray-500">Mobile Money</p>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-xl border border-gray-600/50 bg-gray-700/20 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                        <Smartphone className="w-5 h-5 text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-300">Moov Money</p>
-                        <p className="text-xs text-gray-500">Mobile Money</p>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-xl border border-gray-600/50 bg-gray-700/20 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 text-yellow-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-300">Visa</p>
-                        <p className="text-xs text-gray-500">Carte bancaire</p>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-xl border border-gray-600/50 bg-gray-700/20 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 text-orange-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-300">Mastercard</p>
-                        <p className="text-xs text-gray-500">Carte bancaire</p>
-                      </div>
-                    </div>
+                {/* Redirection portail */}
+                <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ExternalLink className="w-5 h-5 text-orange-400" />
+                    <h4 className="font-medium text-orange-300">Paiement sur portail sécurisé</h4>
                   </div>
+                  <p className="text-sm text-gray-400">
+                    Vous serez redirigé vers le portail sécurisé E-Billing pour finaliser votre paiement.
+                    Vous pourrez y choisir votre moyen de paiement : Mobile Money (Airtel, Moov) ou Carte bancaire (Visa, Mastercard).
+                  </p>
                 </div>
 
                 {/* Instructions */}
-                <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Globe className="w-5 h-5 text-orange-400" />
-                    <h4 className="font-medium text-orange-300">Comment ça marche ?</h4>
-                  </div>
-                  <ol className="text-sm text-gray-400 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">1</span>
-                      <span>Cliquez sur &quot;Payer maintenant&quot;</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">2</span>
-                      <span>Le portail de paiement s&apos;ouvre dans un nouvel onglet</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">3</span>
-                      <span>Choisissez votre moyen de paiement et validez</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">4</span>
-                      <span>Revenez sur cette page, votre paiement sera confirmé automatiquement</span>
-                    </li>
-                  </ol>
-                </div>
+                <ol className="text-sm text-gray-400 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">1</span>
+                    <span>Cliquez sur &quot;Payer&quot; ci-dessous</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">2</span>
+                    <span>Choisissez votre moyen de paiement sur le portail E-Billing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-orange-500/20 rounded-full flex items-center justify-center text-xs text-orange-400 flex-shrink-0">3</span>
+                    <span>Votre paiement sera confirmé automatiquement</span>
+                  </li>
+                </ol>
 
                 {/* Erreur */}
                 {error && (

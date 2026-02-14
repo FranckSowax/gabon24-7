@@ -3,12 +3,11 @@ const axios = require('axios');
 
 /**
  * Service de gestion des paiements
- * Gère les interactions avec les fournisseurs de paiement (Mobile Money, Carte, etc.)
+ * Gère les interactions avec les fournisseurs de paiement (E-Billing, Stripe, etc.)
  */
 class PaymentService {
   constructor() {
     this.providers = {
-      'mobile_money': new MobileMoneyProvider(),
       'card': new CardProvider(),
       'cash': new CashProvider(),
       'demo': new DemoProvider()
@@ -197,76 +196,6 @@ class DemoProvider extends BaseProvider {
 
   async checkStatus(ref) {
     return { status: 'completed', raw_response: {} };
-  }
-}
-
-/**
- * Fournisseur Mobile Money (MyPvit)
- */
-class MobileMoneyProvider extends BaseProvider {
-  constructor() { super('MobileMoney'); }
-
-  async initiate({ transactionId, amount, user, provider_data }) {
-    console.log(`📲 Envoi demande paiement Mobile Money vers ${user.phone} (${amount} XAF)`);
-    
-    const MYPVIT_API_URL = process.env.MYPVIT_API_URL || 'https://api.mypvit.com/v1';
-    const MYPVIT_API_KEY = process.env.MYPVIT_API_KEY;
-
-    // Mode simulation si pas de clé API
-    if (!MYPVIT_API_KEY) {
-      console.warn('⚠️ Pas de clé API MyPvit configurée, mode simulation');
-      return {
-        status: 'pending', 
-        externalId: `SIM-${Date.now()}`,
-        instructions: `Mode Simulation: Validez le paiement de ${amount} XAF sur le simulateur.`,
-        raw_response: { simulation: true, note: 'Configure MYPVIT_API_KEY for real payments' }
-      };
-    }
-
-    try {
-      const payload = {
-        tel_marchand: process.env.MYPVIT_MERCHANT_PHONE,
-        montant: amount,
-        ref: transactionId,
-        tel_client: user.phone || provider_data.phoneNumber,
-        operateur: provider_data.operator,
-        action: "1"
-      };
-
-      const response = await axios.post(`${MYPVIT_API_URL}/paiement`, payload, {
-        headers: { 'Authorization': `Bearer ${MYPVIT_API_KEY}` }
-      });
-      
-      return {
-        status: 'pending',
-        externalId: response.data.ref_transaction || `MP-${Date.now()}`,
-        instructions: 'Veuillez valider le paiement sur votre téléphone (USSD Push envoyé).',
-        raw_response: response.data
-      };
-
-    } catch (error) {
-      console.error('❌ Erreur MyPvit:', error.response?.data || error.message);
-      throw new Error('Echec communication MyPvit: ' + (error.response?.data?.message || error.message));
-    }
-  }
-
-  async checkStatus(externalReference) {
-    const MYPVIT_API_KEY = process.env.MYPVIT_API_KEY;
-    if (!MYPVIT_API_KEY) return { status: 'pending', raw_response: { simulation: true } };
-
-    try {
-      const response = await axios.get(`${process.env.MYPVIT_API_URL}/statut/${externalReference}`, {
-        headers: { 'Authorization': `Bearer ${MYPVIT_API_KEY}` }
-      });
-
-      let status = 'pending';
-      if (response.data.statut === 'success') status = 'completed';
-      if (response.data.statut === 'failed') status = 'failed';
-
-      return { status, raw_response: response.data };
-    } catch (error) {
-      return { status: 'pending', raw_response: { error: error.message } };
-    }
   }
 }
 

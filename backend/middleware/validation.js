@@ -33,7 +33,7 @@ const paymentSchema = z.object({
     .positive('Le montant doit être positif')
     .min(100, 'Montant minimum: 100 FCFA')
     .max(10000000, 'Montant maximum: 10,000,000 FCFA'),
-  method: z.enum(['stripe', 'mypvit', 'airtel', 'moov', 'card']),
+  method: z.enum(['stripe', 'ebilling', 'airtel', 'moov', 'card']),
   currency: z.enum(['XAF', 'EUR', 'USD']).optional().default('XAF'),
   description: z.string().max(500).optional(),
   metadata: z.record(z.any()).optional(),
