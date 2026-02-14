@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface AdPackage {
   id: string
   name: string
@@ -41,7 +43,7 @@ export default function CampaignPurchase({ onSuccess, onCancel }: CampaignPurcha
 
   const fetchPackages = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/ad-packages')
+      const response = await axios.get(`${API_URL}/api/ad-packages`)
       if (response.data.success) {
         setPackages(response.data.packages.filter((pkg: AdPackage) => pkg.is_active))
       }
@@ -93,7 +95,7 @@ export default function CampaignPurchase({ onSuccess, onCancel }: CampaignPurcha
         ...formData
       }
 
-      const response = await axios.post('http://localhost:3001/api/campaigns', campaignData)
+      const response = await axios.post(`${API_URL}/api/campaigns`, campaignData)
       
       if (response.data.success) {
         alert('Campagne créée avec succès ! Elle sera examinée par notre équipe.')

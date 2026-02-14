@@ -23,11 +23,17 @@ const { supabase } = require('../config/supabase');
 const axios = require('axios');
 
 // Configuration E-Billing
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.EBILLING_API_URL || !process.env.EBILLING_USERNAME || !process.env.EBILLING_API_KEY) {
+    throw new Error('Missing required E-Billing env vars: EBILLING_API_URL, EBILLING_USERNAME, EBILLING_API_KEY');
+  }
+}
+
 const EBILLING_CONFIG = {
   apiUrl: process.env.EBILLING_API_URL || 'https://stg.billing-easy.com/api/v1/merchant/e_bills',
   portalUrl: process.env.EBILLING_PORTAL_URL || 'https://staging.billing-easy.net',
-  username: process.env.EBILLING_USERNAME || 'Sowax',
-  apiKey: process.env.EBILLING_API_KEY || 'ca492d78-cbeb-4513-9525-c23b8f0ce0c1',
+  username: process.env.EBILLING_USERNAME,
+  apiKey: process.env.EBILLING_API_KEY,
 };
 
 // Générer le header Basic Auth

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Image from 'next/image'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface Campaign {
   id: string
   company_name: string
@@ -57,7 +59,7 @@ export default function PublicitePage() {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/admin/campaigns')
+      const response = await axios.get(`${API_URL}/api/admin/campaigns`)
       setCampaigns(response.data.campaigns)
     } catch (error) {
       console.error('Erreur:', error)
@@ -90,7 +92,7 @@ export default function PublicitePage() {
     }
     
     try {
-      await axios.delete(`http://localhost:3001/api/admin/slides/${slideId}`)
+      await axios.delete(`${API_URL}/api/admin/slides/${slideId}`)
       fetchCampaigns()
       alert('Slide supprimé avec succès')
     } catch (error) {
@@ -113,7 +115,7 @@ export default function PublicitePage() {
 
   const handleApproveCampaign = async (campaignId: string) => {
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/approve`)
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/approve`)
       fetchCampaigns()
       alert('Campagne approuvée avec succès')
     } catch (error) {
@@ -125,7 +127,7 @@ export default function PublicitePage() {
   const handleRejectCampaign = async (campaignId: string) => {
     const reason = prompt('Raison du rejet (optionnel):')
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/reject`, {
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/reject`, {
         admin_notes: reason
       })
       fetchCampaigns()
@@ -138,7 +140,7 @@ export default function PublicitePage() {
 
   const handleActivateCampaign = async (campaignId: string) => {
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/activate`)
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/activate`)
       fetchCampaigns()
       alert('Campagne activée avec succès')
     } catch (error) {
@@ -152,7 +154,7 @@ export default function PublicitePage() {
     if (!duration) return
     
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/renew`, {
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/renew`, {
         duration_days: parseInt(duration)
       })
       fetchCampaigns()
@@ -168,7 +170,7 @@ export default function PublicitePage() {
     if (!extension) return
     
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/extend`, {
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/extend`, {
         extension_days: parseInt(extension)
       })
       fetchCampaigns()
@@ -181,7 +183,7 @@ export default function PublicitePage() {
 
   const handleReactivateCampaign = async (campaignId: string) => {
     try {
-      await axios.post(`http://localhost:3001/api/admin/campaigns/${campaignId}/reactivate`)
+      await axios.post(`${API_URL}/api/admin/campaigns/${campaignId}/reactivate`)
       fetchCampaigns()
       alert('Campagne réactivée avec succès')
     } catch (error) {
@@ -193,7 +195,7 @@ export default function PublicitePage() {
   const handleSaveCampaign = async (campaignData: any) => {
     try {
       if (selectedCampaign) {
-        await axios.put(`http://localhost:3001/api/admin/campaigns/${selectedCampaign.id}`, campaignData)
+        await axios.put(`${API_URL}/api/admin/campaigns/${selectedCampaign.id}`, campaignData)
         fetchCampaigns()
         setShowCampaignModal(false)
       }
@@ -205,7 +207,7 @@ export default function PublicitePage() {
   const handleSaveSlide = async (slideData: any) => {
     try {
       if (editMode) {
-        await axios.put(`http://localhost:3001/api/admin/slides/${selectedSlide.id}`, slideData)
+        await axios.put(`${API_URL}/api/admin/slides/${selectedSlide.id}`, slideData)
       }
       fetchCampaigns()
       setShowModal(false)
@@ -656,7 +658,7 @@ function SlideModal({ slide, editMode, onClose, onSave }: any) {
     formDataUpload.append('image', file)
 
     try {
-      const response = await axios.post('http://localhost:3001/api/admin/upload-image', formDataUpload, {
+      const response = await axios.post(`${API_URL}/api/admin/upload-image`, formDataUpload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       

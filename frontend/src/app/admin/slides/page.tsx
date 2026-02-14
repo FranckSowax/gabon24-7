@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface Campaign {
   id: string
   company_name: string
@@ -31,7 +33,7 @@ export default function AdminSlidesPage() {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/admin/campaigns')
+      const response = await axios.get(`${API_URL}/api/admin/campaigns`)
       if (response.data.success) {
         setCampaigns(response.data.campaigns)
       }
@@ -44,7 +46,7 @@ export default function AdminSlidesPage() {
 
   const handleApproval = async (campaignId: string, approved: boolean) => {
     try {
-      await axios.put(`http://localhost:3001/api/admin/campaigns/${campaignId}/approve`, { approved })
+      await axios.put(`${API_URL}/api/admin/campaigns/${campaignId}/approve`, { approved })
       fetchCampaigns()
       alert(`Campagne ${approved ? 'approuvée' : 'rejetée'}`)
     } catch (error) {

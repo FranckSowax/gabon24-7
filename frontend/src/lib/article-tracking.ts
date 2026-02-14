@@ -133,7 +133,7 @@ export const articleTrackingService = {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return []
 
-      const response = await axios.get(`http://localhost:3001/api/article-views/history/${user.id}?limit=${limit}&offset=${offset}`)
+      const response = await axios.get(`${API_URL}/api/article-views/history/${user.id}?limit=${limit}&offset=${offset}`)
       return response.data.history || []
     } catch (error) {
       console.error('❌ Erreur récupération historique articles:', error)

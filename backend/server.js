@@ -635,78 +635,8 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Route d'authentification simple
-app.post('/api/auth/login', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Authentification en cours de développement',
-    data: {
-      user: { 
-        id: 'test-user', 
-        phone_number: '+241000000', 
-        subscription_tier: 'free',
-        subscription_status: 'active'
-      },
-      access_token: 'test_token_' + Date.now()
-    }
-  });
-});
-
-// 📘 Route proxy spéciale pour articles Facebook avec CORS
-app.get('/api/facebook-proxy', async (req, res) => {
-  const { url } = req.query;
-  
-  if (!url) {
-    return res.status(400).json({ error: 'URL manquante' });
-  }
-  
-  try {
-    console.log(`📘 Facebook article proxy: ${url}`);
-    
-    const axios = require('axios');
-    const response = await axios({
-      method: 'get',
-      url: url,
-      timeout: 30000,
-      maxRedirects: 5,
-      headers: {
-        'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://www.facebook.com/',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'cross-site',
-        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"'
-      }
-    });
-    
-    // Headers CORS complets
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
-    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-    res.setHeader('Content-Type', response.headers['content-type'] || 'text/html');
-    res.setHeader('X-Proxy-Source', 'facebook-special');
-    
-    res.send(response.data);
-    console.log(`✅ Facebook article proxied`);
-    
-  } catch (error) {
-    console.error(`❌ Facebook proxy failed: ${error.message}`);
-    res.status(500).json({ 
-      error: 'Erreur proxy Facebook',
-      message: error.message 
-    });
-  }
-});
+// REMOVED: fake /api/auth/login endpoint (security risk - returned tokens for any credentials)
+// REMOVED: /api/facebook-proxy endpoint (SSRF risk - allowed arbitrary URL fetching)
 
 // Route pour les flux RSS
 app.get('/api/rss', (req, res) => {

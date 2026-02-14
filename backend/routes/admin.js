@@ -104,7 +104,7 @@ router.get('/campaigns', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/campaigns - Créer campagne
-router.post('/campaigns', async (req, res) => {
+router.post('/campaigns', requireAdmin, async (req, res) => {
   try {
     const { name, budget, start_date, end_date, status } = req.body;
 
@@ -135,7 +135,7 @@ router.post('/campaigns', async (req, res) => {
 });
 
 // GET /api/admin/clients - Liste clients
-router.get('/clients', async (req, res) => {
+router.get('/clients', requireAdmin, async (req, res) => {
   try {
     const { data: clients } = await supabaseService.supabase
       .from('ad_clients')
@@ -153,7 +153,7 @@ router.get('/clients', async (req, res) => {
 });
 
 // POST /api/admin/clients - Créer client
-router.post('/clients', async (req, res) => {
+router.post('/clients', requireAdmin, async (req, res) => {
   try {
     const { name, email, company, phone, status } = req.body;
 
@@ -191,7 +191,7 @@ router.post('/clients', async (req, res) => {
 });
 
 // PUT /api/admin/clients/:id - Mettre à jour client
-router.put('/clients/:id', async (req, res) => {
+router.put('/clients/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -218,7 +218,7 @@ router.put('/clients/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/clients/:id - Supprimer client
-router.delete('/clients/:id', async (req, res) => {
+router.delete('/clients/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -242,7 +242,7 @@ router.delete('/clients/:id', async (req, res) => {
 });
 
 // GET /api/admin/slides - Liste slides publicitaires
-router.get('/slides', async (req, res) => {
+router.get('/slides', requireAdmin, async (req, res) => {
   try {
     const { data: slides } = await supabaseService.supabase
       .from('ad_slides')
@@ -260,7 +260,7 @@ router.get('/slides', async (req, res) => {
 });
 
 // POST /api/admin/slides - Créer slide
-router.post('/slides', async (req, res) => {
+router.post('/slides', requireAdmin, async (req, res) => {
   try {
     const { title, image_url, link_url, is_active, order_index } = req.body;
 
@@ -291,7 +291,7 @@ router.post('/slides', async (req, res) => {
 });
 
 // PUT /api/admin/slides/:id - Mettre à jour slide
-router.put('/slides/:id', async (req, res) => {
+router.put('/slides/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -318,7 +318,7 @@ router.put('/slides/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/slides/:id - Supprimer slide
-router.delete('/slides/:id', async (req, res) => {
+router.delete('/slides/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -342,7 +342,7 @@ router.delete('/slides/:id', async (req, res) => {
 });
 
 // GET /api/admin/routes - Liste routes personnalisées
-router.get('/routes', async (req, res) => {
+router.get('/routes', requireAdmin, async (req, res) => {
   try {
     const { data: routes } = await supabaseService.supabase
       .from('custom_routes')
@@ -360,7 +360,7 @@ router.get('/routes', async (req, res) => {
 });
 
 // POST /api/admin/routes - Créer route
-router.post('/routes', async (req, res) => {
+router.post('/routes', requireAdmin, async (req, res) => {
   try {
     const { path, redirect_to, is_active } = req.body;
 
@@ -396,7 +396,7 @@ router.post('/routes', async (req, res) => {
 });
 
 // PUT /api/admin/routes/:id - Mettre à jour route
-router.put('/routes/:id', async (req, res) => {
+router.put('/routes/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -423,7 +423,7 @@ router.put('/routes/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/routes/:id - Supprimer route
-router.delete('/routes/:id', async (req, res) => {
+router.delete('/routes/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

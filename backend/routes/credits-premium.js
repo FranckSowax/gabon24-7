@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const paymentService = require('../services/payment.service');
 const supabaseService = require('../supabase-config');
+const { requireAuth } = require('../middleware/auth');
 
 // ============================================
 // 1. GET /api/credits-premium/packages - Liste des packages
@@ -26,7 +27,7 @@ router.get('/packages', async (req, res) => {
 // ============================================
 // 2. POST /api/credits-premium/purchase - Acheter un package (avec PaymentService)
 // ============================================
-router.post('/purchase', async (req, res) => {
+router.post('/purchase', requireAuth, async (req, res) => {
   try {
     const { userId, packageId, paymentMethod = 'demo', phoneNumber, mobileOperator } = req.body;
 
@@ -98,7 +99,7 @@ router.post('/webhook/mobile-money', async (req, res) => {
 // ============================================
 // 4. GET /api/credits-premium/balance/:userId
 // ============================================
-router.get('/balance/:userId', async (req, res) => {
+router.get('/balance/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { data: userCredits } = await supabaseService.supabase
@@ -124,7 +125,7 @@ router.get('/balance/:userId', async (req, res) => {
 // ============================================
 // 5. POST /api/credits-premium/consume - Consommer des crédits
 // ============================================
-router.post('/consume', async (req, res) => {
+router.post('/consume', requireAuth, async (req, res) => {
   try {
     const { userId, serviceName, amount, description } = req.body;
 
