@@ -25,7 +25,7 @@ const axios = require('axios');
 // Configuration E-Billing
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.EBILLING_API_URL || !process.env.EBILLING_USERNAME || !process.env.EBILLING_API_KEY) {
-    throw new Error('Missing required E-Billing env vars: EBILLING_API_URL, EBILLING_USERNAME, EBILLING_API_KEY');
+    console.error('⚠️ Missing required E-Billing env vars: EBILLING_API_URL, EBILLING_USERNAME, EBILLING_API_KEY — payment routes will fail');
   }
 }
 
