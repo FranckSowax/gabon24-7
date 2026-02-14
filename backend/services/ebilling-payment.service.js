@@ -67,12 +67,14 @@ class EBillingPaymentService {
 
       const payload = {
         amount: parseInt(amount),
-        payer_msisdn: payerPhone || '',
-        payer_email: payerEmail || '',
+        payer_msisdn: payerPhone || '24100000000',
+        payer_email: payerEmail || 'client@gaboninsight.com',
         payer_name: payerName || 'Client Gabon Insight',
-        short_description: description || 'Paiement Gabon Insight',
+        short_description: (description || 'Paiement Gabon Insight').substring(0, 100),
         external_reference: reference,
         callback_url: callbackUrl,
+        expiry_period: 60,
+        currency: 'XAF',
       };
 
       console.log('📤 Création facture E-Billing:', { reference, amount, description });
