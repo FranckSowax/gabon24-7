@@ -13,13 +13,11 @@ const getSupabaseClient = () => {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      // During Next.js prerendering (SSG), env vars may be absent — skip initialization
-      if (typeof window === 'undefined') {
-        return null as any
-      }
-      throw new Error(
+      // Env vars are baked in at build time by Next.js — if missing, Supabase is unavailable
+      console.error(
         'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — set in deployment dashboard'
       )
+      return null as any
     }
 
     supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
