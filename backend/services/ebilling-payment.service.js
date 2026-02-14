@@ -77,7 +77,7 @@ class EBillingPaymentService {
         currency: 'XAF',
       };
 
-      console.log('📤 Création facture E-Billing:', { reference, amount, description });
+      console.log('📤 Création facture E-Billing:', { reference, amount, description, apiUrl: EBILLING_CONFIG.apiUrl, username: EBILLING_CONFIG.username, payload });
 
       const response = await axios.post(
         EBILLING_CONFIG.apiUrl,
@@ -85,6 +85,7 @@ class EBillingPaymentService {
         {
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Authorization': getBasicAuth(),
           },
           timeout: 30000,
@@ -128,7 +129,7 @@ class EBillingPaymentService {
     try {
       const response = await axios.get(
         `${EBILLING_CONFIG.apiUrl}/${billId}`,
-        { headers: { 'Authorization': getBasicAuth() }, timeout: 15000 }
+        { headers: { 'Accept': 'application/json', 'Authorization': getBasicAuth() }, timeout: 15000 }
       );
 
       const data = response.data;
