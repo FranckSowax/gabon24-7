@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -238,13 +238,12 @@ function PaiementContent() {
         localStorage.setItem('ebilling_payment_url', data.data.payment_url)
       }
 
-      // Ouvrir le portail E-Billing en popup + afficher le modal d'attente
+      // Afficher le modal d'attente avec lien vers le portail E-Billing
       setPaymentReference(data.data.reference)
       setModalStatus('pending')
 
       if (data.data.payment_url) {
         setPortalUrl(data.data.payment_url)
-        window.open(data.data.payment_url, '_blank', 'noopener,noreferrer')
         setShowWaitingModal(true)
       } else {
         // Fallback: aller directement à la page d'attente
@@ -519,9 +518,9 @@ function PaiementContent() {
               {/* Titre */}
               {modalStatus === 'pending' && (
                 <>
-                  <h2 className="text-xl font-bold text-white mb-2">En attente de paiement</h2>
+                  <h2 className="text-xl font-bold text-white mb-2">Finalisez votre paiement</h2>
                   <p className="text-gray-400 text-sm mb-6">
-                    Complétez votre paiement sur le portail E-Billing qui s&apos;est ouvert.
+                    Ouvrez le portail E-Billing ci-dessous pour compléter votre paiement.
                     <br />
                     <strong className="text-gray-300">Cette page se mettra à jour automatiquement.</strong>
                   </p>
@@ -547,13 +546,13 @@ function PaiementContent() {
               {/* Actions (pending only) */}
               {modalStatus === 'pending' && (
                 <div className="space-y-3">
-                  {/* Rouvrir le portail */}
+                  {/* Ouvrir le portail */}
                   <button
                     onClick={handleOpenPortal}
-                    className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/25"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Rouvrir le portail de paiement
+                    <ExternalLink className="w-5 h-5" />
+                    Ouvrir le portail de paiement
                   </button>
 
                   {/* Annuler */}
@@ -565,10 +564,13 @@ function PaiementContent() {
                   </button>
 
                   {/* Vérification auto */}
-                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500 pt-2">
+                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500 pt-3">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Vérification automatique toutes les 10s</span>
+                    <span>Vérification automatique en cours</span>
                   </div>
+                  <p className="text-xs text-gray-600 pt-1">
+                    Revenez ici après avoir payé, la page se met à jour toute seule.
+                  </p>
 
                   {/* Référence */}
                   {paymentReference && (
