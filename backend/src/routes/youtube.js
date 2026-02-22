@@ -56,77 +56,77 @@ router.get('/youtube', async (req, res) => {
       }
     }
 
-    // URL du flux RSS spécifié par l'utilisateur (RSS.app)
-    const RSS_URL = 'https://rss.app/feeds/8Zm0ezBRaaD2NiOF.xml';
+    // URL du flux YouTube natif (Atom) - Gabon 24
+    const YOUTUBE_FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id=UC7E__Dp9FSIgt6iMa5_uvlw';
 
-    console.log(`📺 Récupération du flux RSS - Cible: ${targetJournal.label}`);
+    console.log(`📺 Récupération du flux YouTube Atom - Cible: ${targetJournal.label}`);
 
-    // Récupération directe sans proxy (Node.js n'a pas de restrictions CORS)
-    const response = await axios.get(RSS_URL, {
+    const response = await axios.get(YOUTUBE_FEED_URL, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (compatible; Gabon247/1.0)'
       }
     });
-    
+
     if (!response.data) {
-      throw new Error('Pas de données reçues du flux RSS');
+      throw new Error('Pas de données reçues du flux YouTube');
     }
-    
-    // Parser le XML
+
+    // Parser le XML Atom
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    
-    // Extraire les items
-    const items = xmlDoc.getElementsByTagName('item');
+
+    // Extraire les entries (format Atom YouTube)
+    const entries = xmlDoc.getElementsByTagName('entry');
     const videos = [];
-    
-    // Mots-clés pour identifier les journaux TV (au cas où, mais le flux semble dédié)
+
+    // Mots-clés pour identifier les journaux TV
     const journalKeywords = [
-      'journal', 'jt', 'actualité', 'actualités', 'info', 'infos', 
+      'journal', 'jt', 'actualité', 'actualités', 'info', 'infos',
       'télé', 'tv', 'édition', 'flash', 'bulletin', 'nouvelles', '20h', '13h', '19h'
     ];
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      const titleNode = item.getElementsByTagName('title')[0];
-      const linkNode = item.getElementsByTagName('link')[0];
-      const pubDateNode = item.getElementsByTagName('pubDate')[0];
-      const enclosureNode = item.getElementsByTagName('enclosure')[0];
-      const descriptionNode = item.getElementsByTagName('description')[0];
-      const mediaContentNode = item.getElementsByTagName('media:content')[0];
-      const mediaThumbnailNode = item.getElementsByTagName('media:thumbnail')[0];
-      
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+
+      const titleNode = entry.getElementsByTagName('title')[0];
+      const videoIdNode = entry.getElementsByTagName('yt:videoId')[0];
+      const publishedNode = entry.getElementsByTagName('published')[0];
+      const mediaGroupNode = entry.getElementsByTagName('media:group')[0];
+
       const title = titleNode?.textContent || '';
-      const link = linkNode?.textContent || '';
-      const pubDate = pubDateNode?.textContent || '';
-      const description = descriptionNode?.textContent || '';
-      
-      // Essayer plusieurs sources pour la miniature
-      let thumbnail = enclosureNode?.getAttribute('url') || 
-                      mediaThumbnailNode?.getAttribute('url') || 
-                      mediaContentNode?.getAttribute('url') || 
-                      '';
-      
-      // Extraire l'ID YouTube de l'URL
-      const videoId = link.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1] || '';
-      
-      // Si pas de miniature trouvée mais qu'on a un ID YouTube, on la construit
+      const videoId = videoIdNode?.textContent || '';
+      const published = publishedNode?.textContent || '';
+
+      // Description depuis media:group > media:description
+      let description = '';
+      if (mediaGroupNode) {
+        const descNode = mediaGroupNode.getElementsByTagName('media:description')[0];
+        description = descNode?.textContent || '';
+      }
+
+      // Miniature depuis media:group > media:thumbnail ou construite depuis videoId
+      let thumbnail = '';
+      if (mediaGroupNode) {
+        const thumbNode = mediaGroupNode.getElementsByTagName('media:thumbnail')[0];
+        thumbnail = thumbNode?.getAttribute('url') || '';
+      }
       if (!thumbnail && videoId) {
         thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       }
-      
-      if (videoId) {
-        // On prend tout ce qui vient de ce flux car l'utilisateur a spécifié ce flux précis
-        // Mais on garde une priorité aux titres contenant des mots clés si besoin de trier
+
+      // Filtrer: ne garder que les vidéos de journal TV
+      const titleLower = title.toLowerCase();
+      const isJournal = journalKeywords.some(kw => titleLower.includes(kw));
+
+      if (videoId && isJournal) {
         videos.push({
           id: videoId,
-          title: title.replace(/^\[CDATA\[|\]\]$/g, '').trim(),
+          title: title.trim(),
           thumbnail: thumbnail,
-          url: link,
-          publishedAt: pubDate,
-          description: description.replace(/^\[CDATA\[|\]\]$/g, '').trim()
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+          publishedAt: published,
+          description: description.trim()
         });
       }
     }
