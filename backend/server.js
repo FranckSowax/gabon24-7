@@ -166,9 +166,6 @@ const formatViewCount = (count) => {
   return `${(count / 1000000).toFixed(1)}M vues`;
 };
 
-// Middleware de sécurité
-app.use(helmet());
-
 // Configuration CORS
 const allowedOrigins = [
   'http://localhost:3000',
@@ -180,18 +177,29 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Autoriser les requêtes sans origin (comme les apps mobiles ou curl)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('netlify.app')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+// CORS doit être AVANT helmet pour que les preflight OPTIONS fonctionnent
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Middleware de sécurité (après CORS)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 // Parsing du body
