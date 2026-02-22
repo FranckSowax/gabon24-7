@@ -13,7 +13,7 @@ const { requireAuth } = require('../middleware/auth');
 const pricingService = require('../services/pricing-service');
 
 // POST /api/audio/generate-summary - Générer résumé audio (daily ou custom)
-router.post('/generate-summary', async (req, res) => {
+router.post('/generate-summary', requireAuth, async (req, res) => {
   try {
     const {
       action,
@@ -288,7 +288,7 @@ async function processAudioSummary(summaryId, articles, language, pace, sendWhat
 }
 
 // GET /api/audio/settings/:userId - Récupérer paramètres audio
-router.get('/settings/:userId', async (req, res) => {
+router.get('/settings/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -356,7 +356,7 @@ router.put('/settings', requireAuth, async (req, res) => {
 });
 
 // GET /api/audio/history/:userId - Récupérer historique des résumés audio
-router.get('/history/:userId', async (req, res) => {
+router.get('/history/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
 

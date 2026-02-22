@@ -13,6 +13,13 @@ import { ExternalLink, Headphones, Music, Newspaper, PlayCircle, Sparkles } from
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  return headers
+}
+
 interface ArticleLite {
   id: string
   title: string
@@ -165,7 +172,8 @@ export default function AudioCustomPage() {
     if (!user?.id) return
     try {
       setHistoryLoading(true)
-      const resp = await fetch(`${API_URL}/api/audio/history/${user.id}`)
+      const headers = await getAuthHeaders()
+      const resp = await fetch(`${API_URL}/api/audio/history/${user.id}`, { headers })
       const data = await resp.json()
       if (data?.success) {
         const onlyCustom = (data.summaries || []).filter((s: AudioSummary) => s.summary_type === 'custom')
@@ -246,9 +254,10 @@ export default function AudioCustomPage() {
     if (!activeSummaryId || !user?.id) return
     setCancelling(true)
     try {
+      const headers = await getAuthHeaders()
       const resp = await fetch(`${API_URL}/api/audio/cancel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ summaryId: activeSummaryId, userId: user.id })
       })
       const json = await resp.json()
@@ -292,9 +301,10 @@ export default function AudioCustomPage() {
     setStatusMsg('Génération du résumé audio personnalisé…')
     try {
       const languages = [language, ...(['fr','en','zh'] as const).filter(l => l !== language)]
+      const hdrs = await getAuthHeaders()
       const resp = await fetchWithTimeout(`${API_URL}/api/audio/generate-summary`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: hdrs,
         body: JSON.stringify({ action: 'custom', userId: user.id, articleIds: selectedArticles.map(a => a.id), optimize: true, sendWhatsApp: true, language, languages, pace })
       }, 90000)
       const json = await resp.json()

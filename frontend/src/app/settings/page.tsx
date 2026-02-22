@@ -7,6 +7,14 @@ import ScrollToTop from '@/components/ui/ScrollToTop'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loading } from '@/components/ui/Loading'
 import { Check, Settings, Save } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  return headers
+}
 
 interface AudioSettings {
   daily_summary_enabled?: boolean
@@ -44,7 +52,8 @@ export default function SettingsPage() {
       if (!user?.id) return
       try {
         setLoading(true)
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/audio/settings/${user.id}`)
+        const headers = await getAuthHeaders()
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/audio/settings/${user.id}`, { headers })
         const json = await res.json()
         if (json?.success) {
           const s: AudioSettings = json.settings || {}
@@ -69,9 +78,10 @@ export default function SettingsPage() {
     try {
       setSaving(true)
       setError(null)
+      const headers = await getAuthHeaders()
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/audio/settings`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: user.id, dailyEnabled, deliveryTime, whatsappNumber, preferredVoice, pace })
       })
       const json = await res.json()

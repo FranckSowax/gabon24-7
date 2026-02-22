@@ -14,13 +14,11 @@ import ImageUploader from '@/components/ui/ImageUploader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-const getAuthHeaders = async () => {
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.access_token) return { 'Content-Type': 'application/json' }
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`
-  }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  return headers
 }
 
 interface CampaignStats {
