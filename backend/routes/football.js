@@ -1,7 +1,7 @@
 /**
- * ⚽ ROUTES FOOTBALL
+ * ROUTES FOOTBALL
  * Endpoints pour les scores de football en direct
- * API: RapidAPI Football (api-football-v1.p.rapidapi.com)
+ * API: free-api-live-football-data (RapidAPI)
  */
 
 const express = require('express');

@@ -1,549 +1,382 @@
 /**
- * 🎮 FOOTBALL CONTROLLER
- * Logique métier pour les scores de football en direct
- * Avec cache pour économiser les quotas API
+ * FOOTBALL CONTROLLER
+ * Scores de football en direct via free-api-live-football-data (RapidAPI)
+ *
+ * API: https://rapidapi.com/Creativesdev/api/free-api-live-football-data
+ * Endpoints utilisés:
+ *   - /football-current-live : matchs en direct
+ *   - /football-popular-leagues : ligues populaires
+ *
+ * Le backend transforme la réponse de la nouvelle API en format compatible
+ * avec le frontend (format API-Football v3) pour éviter de modifier le widget.
  */
 
-// Cache pour les matchs en direct (évite les appels API répétés)
+const API_HOST = 'free-api-live-football-data.p.rapidapi.com';
+const API_BASE = `https://${API_HOST}`;
+
+// Cache pour les matchs en direct (2 minutes)
 let fixturesCache = {
   data: null,
   timestamp: 0,
-  expiry: 2 * 60 * 1000 // 2 minutes de cache (les scores changent souvent)
+  expiry: 2 * 60 * 1000
 };
 
-// IDs des compétitions majeures à conserver
-const ALLOWED_LEAGUE_IDS = [
-  // France
-  61,  // Ligue 1
-  62,  // Ligue 2
-
-  // Top 5 Européens
-  39,  // Premier League (Angleterre)
-  40,  // Championship (Angleterre D2)
-  140, // La Liga (Espagne)
-  141, // La Liga 2 (Espagne D2)
-  78,  // Bundesliga (Allemagne)
-  79,  // 2. Bundesliga (Allemagne D2)
-  135, // Serie A (Italie)
-  136, // Serie B (Italie D2)
-  88,  // Eredivisie (Pays-Bas)
-  94,  // Primeira Liga (Portugal)
-
-  // Autres championnats majeurs
-  144, // Jupiler Pro League (Belgique)
-  203, // Super Lig (Turquie)
-  253, // MLS (USA)
-  262, // Liga MX (Mexique)
-  71,  // Brasileirão Série A (Brésil)
-  128, // Liga Profesional (Argentine)
-  307, // Saudi Pro League (Arabie Saoudite)
-
-  // Afrique
-  233, // Championnat du Gabon (FEGAFOOT)
-  188, // Botola Pro (Maroc)
-  200, // Premier League (Égypte)
-
-  // Compétitions internationales
-  2,   // UEFA Champions League
-  3,   // UEFA Europa League
-  848, // UEFA Europa Conference League
-  1,   // World Cup
-  4,   // Euro Championship
-  6,   // Africa Cup of Nations
-  9,   // Copa America
-  10,  // Friendlies (International)
-  17,  // African Cup of Nations Qualifiers
-  29,  // World Cup Qualifiers - Africa
-  32,  // World Cup Qualifiers - Europe
-
-  // Coupes nationales
-  45,  // FA Cup (Angleterre)
-  48,  // League Cup (Angleterre)
-  66,  // Coupe de France
-  81,  // DFB Pokal (Allemagne)
-  137, // Coppa Italia
-  143  // Copa del Rey (Espagne)
-];
-
 /**
- * Filtre les matchs pour ne garder que les compétitions majeures
+ * Headers pour l'API RapidAPI
  */
-function filterMatches(matches) {
-  if (!matches || !Array.isArray(matches)) return [];
-  
-  return matches.filter(match => {
-    const leagueId = match.league?.id;
-    const country = match.league?.country;
-
-    // 1. Compétitions majeures par ID
-    if (ALLOWED_LEAGUE_IDS.includes(leagueId)) return true;
-
-    // 2. Sélections nationales
-    if (country === 'World' || 
-        match.teams?.home?.national === true || 
-        match.teams?.away?.national === true) {
-      return true;
-    }
-
-    return false;
-  });
-}
-
-/**
- * Récupère les matchs en direct via API-Football
- * Avec cache de 2 minutes pour économiser les quotas
- */
-async function getLiveFixtures(req, res) {
-  try {
-    // Vérifier le cache d'abord
-    const now = Date.now();
-    if (fixturesCache.data && (now - fixturesCache.timestamp) < fixturesCache.expiry) {
-      console.log(`📋 Cache hit Football - ${Math.round((fixturesCache.expiry - (now - fixturesCache.timestamp)) / 1000)}s restantes`);
-      return res.json(fixturesCache.data);
-    }
-
-    console.log(`⚽ [LIVE] Récupération matchs en direct...`);
-
-    // Clé API RapidAPI uniquement (FOOTBALL_API_KEY est pour l'API directe, pas RapidAPI)
-    const apiKey = process.env.RAPIDAPI_KEY;
-    
-    if (!apiKey) {
-      console.warn('⚠️ Aucune clé API Football trouvée (FOOTBALL_API_KEY, RAPIDAPI_KEY)');
-      // Retourner des données vides plutôt qu'une erreur
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré - aucun match disponible'
-      });
-    }
-
-    // Toujours utiliser RapidAPI (clé fournie est une clé RapidAPI)
-    const apiHost = 'api-football-v1.p.rapidapi.com';
-    const apiUrl = `https://${apiHost}/v3/fixtures?live=all`;
-    const headers = {
-      'x-rapidapi-host': apiHost,
-      'x-rapidapi-key': apiKey
-    };
-    // Log clé pour debug (premiers et derniers caractères seulement)
-    const keyPreview = apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 6)}` : 'UNDEFINED';
-    console.log(`🔑 Utilisation RapidAPI (clé: ${keyPreview}, longueur: ${apiKey?.length || 0})`);
-
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: headers,
-      timeout: 10000
-    });
-
-    if (!response.ok) {
-      const statusCode = response.status;
-      console.warn(`⚠️ API Football HTTP ${statusCode} - retour données vides`);
-      // Retourner données vides au lieu de crasher en 500
-      const emptyResponse = { success: true, response: [], message: `API Football indisponible (HTTP ${statusCode})` };
-      // Mettre en cache court pour éviter de spammer l'API en erreur
-      fixturesCache = { data: emptyResponse, timestamp: now, expiry: 5 * 60 * 1000 };
-      return res.json(emptyResponse);
-    }
-
-    const data = await response.json();
-
-    // Log pour debug - combien de matchs avant filtre
-    const totalBeforeFilter = data.response?.length || 0;
-    console.log(`📊 Matchs reçus de l'API: ${totalBeforeFilter}`);
-
-    // Filtrer les matchs (seulement si on en a beaucoup, sinon afficher tout)
-    if (data.response && data.response.length > 0) {
-      // Si on a plus de 20 matchs, filtrer pour ne garder que les ligues majeures
-      // Sinon, afficher tous les matchs disponibles
-      if (data.response.length > 20) {
-        const beforeFilter = data.response.length;
-        data.response = filterMatches(data.response);
-        console.log(`🔍 Après filtre: ${data.response.length}/${beforeFilter} matchs`);
-      } else {
-        console.log(`✅ Affichage de tous les ${data.response.length} matchs (< 20)`);
-      }
-
-      // Si le filtre a tout exclu et qu'on avait des matchs, afficher sans filtre
-      if (data.response.length === 0 && totalBeforeFilter > 0) {
-        console.log(`⚠️ Filtre trop restrictif, récupération des données brutes`);
-        // Refaire la requête pour avoir les données non filtrées
-        const refetch = await fetch(apiUrl, { method: 'GET', headers: headers });
-        const rawData = await refetch.json();
-        data.response = rawData.response || [];
-      }
-    }
-
-    // Mettre en cache
-    fixturesCache = {
-      data: data,
-      timestamp: now,
-      expiry: 2 * 60 * 1000
-    };
-    
-    console.log(`✅ ${data.response?.length || 0} matchs en direct récupérés et mis en cache`);
-
-    res.json(data);
-
-  } catch (error) {
-    console.error('❌ Erreur API Football:', error.message);
-    
-    // Si le cache existe (même expiré), l'utiliser en fallback
-    if (fixturesCache.data) {
-      console.log('⚠️ Utilisation du cache expiré comme fallback');
-      return res.json(fixturesCache.data);
-    }
-    
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des scores',
-      message: error.message
-    });
-  }
-}
-
-/**
- * Cache pour les confrontations directes (h2h)
- */
-let h2hCache = {};
-const H2H_CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
-
-/**
- * Cache pour les fixtures par date
- */
-let fixturesByDateCache = {};
-const FIXTURES_DATE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Cache pour les classements
- */
-let standingsCache = {};
-const STANDINGS_CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
-
-/**
- * Helper pour construire les headers API (RapidAPI)
- */
-function getApiConfig() {
+function getHeaders() {
   const apiKey = process.env.RAPIDAPI_KEY;
-
-  if (!apiKey) {
-    return null;
-  }
-
-  // Toujours utiliser RapidAPI
+  if (!apiKey) return null;
   return {
-    baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
-    headers: {
-      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-      'x-rapidapi-key': apiKey
-    }
+    'x-rapidapi-host': API_HOST,
+    'x-rapidapi-key': apiKey
   };
 }
 
 /**
- * Récupère les confrontations directes entre deux équipes (Head-to-Head)
- * GET /api/football/h2h?team1=33&team2=34
+ * Transforme un match de la nouvelle API (FotMob-style) en format API-Football v3
+ * Le frontend attend: { fixture, league, teams, goals }
+ *
+ * La nouvelle API peut retourner plusieurs formats possibles.
+ * Cette fonction gère les cas connus et log les formats inconnus.
  */
-async function getHeadToHead(req, res) {
-  try {
-    const { team1, team2, last = 10 } = req.query;
+function transformMatch(match, index) {
+  // Format A: Objet avec home/away comme sous-objets (FotMob-style)
+  // { id, home: { name, id, score }, away: { name, id, score }, status, league/tournament, ... }
+  if (match.home && match.away) {
+    const homeScore = match.home.score ?? match.homeScore ?? match.scores?.home ?? null;
+    const awayScore = match.away.score ?? match.awayScore ?? match.scores?.away ?? null;
 
-    if (!team1 || !team2) {
-      return res.status(400).json({
-        success: false,
-        error: 'team1 et team2 sont requis'
-      });
+    // Déterminer le statut du match
+    let statusShort = 'LIVE';
+    let statusLong = 'En cours';
+    let elapsed = null;
+
+    const rawStatus = match.status || match.matchStatus || {};
+    if (typeof rawStatus === 'string') {
+      statusShort = rawStatus.toUpperCase();
+      statusLong = rawStatus;
+    } else if (typeof rawStatus === 'object') {
+      if (rawStatus.finished || rawStatus.cancelled) {
+        statusShort = 'FT';
+        statusLong = 'Terminé';
+      } else if (rawStatus.started || rawStatus.ongoing) {
+        statusShort = 'LIVE';
+        statusLong = 'En cours';
+      }
     }
 
-    const cacheKey = `${team1}-${team2}`;
-    const now = Date.now();
+    // Minutes écoulées
+    elapsed = match.time?.minutes || match.minute || match.elapsed || match.min || null;
+    if (typeof elapsed === 'string') elapsed = parseInt(elapsed, 10) || null;
 
-    // Vérifier le cache
-    if (h2hCache[cacheKey] && (now - h2hCache[cacheKey].timestamp) < H2H_CACHE_EXPIRY) {
-      console.log(`📋 Cache hit H2H: ${cacheKey}`);
-      return res.json(h2hCache[cacheKey].data);
+    // Si le match a un statut textuel plus précis
+    if (match.statusText) {
+      statusLong = match.statusText;
+      if (match.statusText.includes('HT') || match.statusText === 'Half Time') {
+        statusShort = 'HT';
+        statusLong = 'Mi-temps';
+      }
     }
 
-    console.log(`⚽ [H2H] Récupération confrontations ${team1} vs ${team2}...`);
+    // Ligue / Tournoi
+    const league = match.league || match.tournament || match.competition || {};
+    const leagueId = league.id || league.leagueId || 0;
+    const leagueName = league.name || league.leagueName || 'Compétition';
+    const leagueLogo = league.logo || (leagueId ? `https://images.fotmob.com/image_resources/logo/leaguelogo/dark/${leagueId}.png` : '');
 
-    const config = getApiConfig();
-    if (!config) {
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré'
-      });
-    }
-
-    const response = await fetch(`${config.baseUrl}/fixtures/headtohead?h2h=${team1}-${team2}&last=${last}`, {
-      method: 'GET',
-      headers: config.headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Mettre en cache
-    h2hCache[cacheKey] = {
-      data: data,
-      timestamp: now
+    return {
+      fixture: {
+        id: match.id || match.matchId || index,
+        date: match.date || match.utcTime || match.startTime || new Date().toISOString(),
+        status: {
+          short: statusShort,
+          long: statusLong,
+          elapsed: elapsed
+        },
+        venue: {
+          name: match.venue?.name || match.stadium || null
+        }
+      },
+      league: {
+        id: leagueId,
+        name: leagueName,
+        logo: leagueLogo,
+        round: league.round || league.roundName || null
+      },
+      teams: {
+        home: {
+          id: match.home.id || match.home.teamId || 0,
+          name: match.home.name || match.home.teamName || 'Domicile',
+          logo: match.home.logo || match.home.crest || '',
+          winner: homeScore !== null && awayScore !== null ? homeScore > awayScore : null
+        },
+        away: {
+          id: match.away.id || match.away.teamId || 0,
+          name: match.away.name || match.away.teamName || 'Extérieur',
+          logo: match.away.logo || match.away.crest || '',
+          winner: homeScore !== null && awayScore !== null ? awayScore > homeScore : null
+        }
+      },
+      goals: {
+        home: homeScore,
+        away: awayScore
+      }
     };
-
-    console.log(`✅ ${data.response?.length || 0} confrontations récupérées`);
-    res.json(data);
-
-  } catch (error) {
-    console.error('❌ Erreur H2H:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des confrontations',
-      message: error.message
-    });
   }
+
+  // Format B: Objet plat avec homeTeam/awayTeam
+  if (match.homeTeam && match.awayTeam) {
+    const homeScore = match.homeScore ?? match.score?.home ?? null;
+    const awayScore = match.awayScore ?? match.score?.away ?? null;
+
+    return {
+      fixture: {
+        id: match.id || index,
+        date: match.date || match.utcTime || new Date().toISOString(),
+        status: {
+          short: match.status === 'FINISHED' ? 'FT' : 'LIVE',
+          long: match.status === 'FINISHED' ? 'Terminé' : 'En cours',
+          elapsed: match.minute || null
+        },
+        venue: { name: match.venue || null }
+      },
+      league: {
+        id: match.competition?.id || 0,
+        name: match.competition?.name || 'Compétition',
+        logo: match.competition?.logo || '',
+        round: match.matchday ? `Journée ${match.matchday}` : null
+      },
+      teams: {
+        home: {
+          id: match.homeTeam.id || 0,
+          name: match.homeTeam.name || match.homeTeam.shortName || 'Domicile',
+          logo: match.homeTeam.crest || match.homeTeam.logo || '',
+          winner: homeScore !== null && awayScore !== null ? homeScore > awayScore : null
+        },
+        away: {
+          id: match.awayTeam.id || 0,
+          name: match.awayTeam.name || match.awayTeam.shortName || 'Extérieur',
+          logo: match.awayTeam.crest || match.awayTeam.logo || '',
+          winner: homeScore !== null && awayScore !== null ? awayScore > homeScore : null
+        }
+      },
+      goals: { home: homeScore, away: awayScore }
+    };
+  }
+
+  // Format C: Déjà au format API-Football v3 (passthrough)
+  if (match.fixture && match.teams && match.goals) {
+    return match;
+  }
+
+  // Format inconnu - log pour debug et retourner un format valide
+  console.warn('⚠️ Format match inconnu, clés:', Object.keys(match));
+  return {
+    fixture: {
+      id: match.id || index,
+      date: new Date().toISOString(),
+      status: { short: 'LIVE', long: 'En cours', elapsed: null },
+      venue: { name: null }
+    },
+    league: {
+      id: 0,
+      name: 'Match en direct',
+      logo: '',
+      round: null
+    },
+    teams: {
+      home: { id: 0, name: 'Équipe A', logo: '', winner: null },
+      away: { id: 0, name: 'Équipe B', logo: '', winner: null }
+    },
+    goals: { home: null, away: null }
+  };
 }
 
 /**
- * Récupère les fixtures par date
- * GET /api/football/fixtures/date?date=2025-01-01
+ * Extrait la liste des matchs depuis la réponse de l'API
+ * L'API peut retourner différentes structures
  */
-async function getFixturesByDate(req, res) {
-  try {
-    const { date, league, season } = req.query;
+function extractMatches(apiResponse) {
+  if (!apiResponse) return [];
 
-    // Date par défaut: aujourd'hui
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    const cacheKey = `${targetDate}-${league || 'all'}-${season || 'current'}`;
+  const resp = apiResponse.response || apiResponse;
+
+  // { response: { live: [...] } }
+  if (resp.live && Array.isArray(resp.live)) return resp.live;
+
+  // { response: { matches: [...] } }
+  if (resp.matches && Array.isArray(resp.matches)) return resp.matches;
+
+  // { response: { data: [...] } }
+  if (resp.data && Array.isArray(resp.data)) return resp.data;
+
+  // { response: [...] } (tableau direct)
+  if (Array.isArray(resp)) return resp;
+
+  // { response: { leagues: [{ matches: [...] }] } } (groupé par ligue)
+  if (resp.leagues && Array.isArray(resp.leagues)) {
+    const allMatches = [];
+    for (const league of resp.leagues) {
+      const matches = league.matches || league.events || league.fixtures || [];
+      for (const match of matches) {
+        // Injecter les infos de ligue dans chaque match
+        if (!match.league && !match.tournament) {
+          match.league = {
+            id: league.id || league.leagueId,
+            name: league.name || league.leagueName,
+            logo: league.logo
+          };
+        }
+        allMatches.push(match);
+      }
+    }
+    return allMatches;
+  }
+
+  // Dernier recours: chercher un tableau dans les valeurs
+  for (const key of Object.keys(resp)) {
+    if (Array.isArray(resp[key]) && resp[key].length > 0) {
+      const first = resp[key][0];
+      if (first && (first.home || first.homeTeam || first.fixture)) {
+        return resp[key];
+      }
+    }
+  }
+
+  return [];
+}
+
+/**
+ * GET /api/football/fixtures
+ * Récupère les matchs en direct
+ */
+async function getLiveFixtures(req, res) {
+  try {
     const now = Date.now();
 
     // Vérifier le cache
-    if (fixturesByDateCache[cacheKey] && (now - fixturesByDateCache[cacheKey].timestamp) < FIXTURES_DATE_CACHE_EXPIRY) {
-      console.log(`📋 Cache hit fixtures date: ${cacheKey}`);
-      return res.json(fixturesByDateCache[cacheKey].data);
+    if (fixturesCache.data && (now - fixturesCache.timestamp) < fixturesCache.expiry) {
+      console.log(`Cache hit Football - ${Math.round((fixturesCache.expiry - (now - fixturesCache.timestamp)) / 1000)}s restantes`);
+      return res.json(fixturesCache.data);
     }
 
-    console.log(`⚽ [Fixtures] Récupération matchs du ${targetDate}...`);
-
-    const config = getApiConfig();
-    if (!config) {
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré'
-      });
+    const headers = getHeaders();
+    if (!headers) {
+      console.warn('RAPIDAPI_KEY non configuré pour le football');
+      return res.json({ success: true, response: [], message: 'Service Football non configuré' });
     }
 
-    // Construire l'URL avec les paramètres optionnels
-    let url = `${config.baseUrl}/fixtures?date=${targetDate}`;
-    if (league) url += `&league=${league}`;
-    if (season) url += `&season=${season}`;
+    console.log('[LIVE] Récupération matchs en direct via free-api-live-football-data...');
 
-    const response = await fetch(url, {
+    const response = await fetch(`${API_BASE}/football-current-live`, {
       method: 'GET',
-      headers: config.headers
+      headers: headers,
+      signal: AbortSignal.timeout(10000)
     });
 
     if (!response.ok) {
-      const statusCode = response.status;
-      console.warn(`⚠️ API Football fixtures/date HTTP ${statusCode} - retour données vides`);
-      const emptyResponse = { success: true, response: [], message: `API Football indisponible (HTTP ${statusCode})` };
-      fixturesByDateCache[cacheKey] = { data: emptyResponse, timestamp: now };
+      console.warn(`API Football HTTP ${response.status}`);
+      const emptyResponse = { success: true, response: [], message: `API indisponible (HTTP ${response.status})` };
+      fixturesCache = { data: emptyResponse, timestamp: now, expiry: 5 * 60 * 1000 };
       return res.json(emptyResponse);
     }
 
-    const data = await response.json();
+    const apiData = await response.json();
 
-    // Filtrer les matchs pour ne garder que les compétitions majeures
-    if (data.response && !league) {
-      data.response = filterMatches(data.response);
+    // Log la structure brute pour le debug initial
+    console.log(`API response status: ${apiData.status}, keys: ${Object.keys(apiData).join(', ')}`);
+    if (apiData.response) {
+      console.log(`Response keys: ${Object.keys(apiData.response).join(', ')}`);
     }
 
-    // Mettre en cache
-    fixturesByDateCache[cacheKey] = {
-      data: data,
-      timestamp: now
-    };
+    // Si l'API retourne un statut "failed" (pas de matchs en direct)
+    if (apiData.status === 'failed' || apiData.error) {
+      console.log('Pas de matchs en direct actuellement');
+      const emptyResponse = { success: true, response: [] };
+      fixturesCache = { data: emptyResponse, timestamp: now, expiry: 2 * 60 * 1000 };
+      return res.json(emptyResponse);
+    }
 
-    console.log(`✅ ${data.response?.length || 0} matchs récupérés pour ${targetDate}`);
-    res.json(data);
+    // Extraire et transformer les matchs
+    const rawMatches = extractMatches(apiData);
+    console.log(`Matchs bruts extraits: ${rawMatches.length}`);
+
+    // Log le premier match pour comprendre le format (seulement la première fois)
+    if (rawMatches.length > 0) {
+      const firstMatch = rawMatches[0];
+      console.log(`Premier match - clés: ${Object.keys(firstMatch).join(', ')}`);
+      if (firstMatch.home) console.log(`  home clés: ${Object.keys(firstMatch.home).join(', ')}`);
+      if (firstMatch.away) console.log(`  away clés: ${Object.keys(firstMatch.away).join(', ')}`);
+    }
+
+    const transformedMatches = rawMatches.map((match, i) => transformMatch(match, i));
+
+    const result = { success: true, response: transformedMatches };
+
+    // Mettre en cache
+    fixturesCache = { data: result, timestamp: now, expiry: 2 * 60 * 1000 };
+
+    console.log(`${transformedMatches.length} matchs en direct transformés et mis en cache`);
+    res.json(result);
 
   } catch (error) {
-    console.error('❌ Erreur fixtures par date:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des matchs',
-      message: error.message
-    });
+    console.error('Erreur API Football:', error.message);
+
+    // Utiliser le cache expiré comme fallback
+    if (fixturesCache.data) {
+      console.log('Utilisation du cache expiré comme fallback');
+      return res.json(fixturesCache.data);
+    }
+
+    res.json({ success: true, response: [], message: 'Service temporairement indisponible' });
   }
 }
 
 /**
- * Récupère le classement d'une ligue
- * GET /api/football/standings?league=61&season=2024
+ * GET /api/football/fixtures/date
+ * Pas de endpoint "matchs du jour" dans la free API.
+ * Retourne une réponse vide - le frontend affichera "aucun match".
+ */
+async function getFixturesByDate(req, res) {
+  // La free API n'a pas d'endpoint pour les matchs par date
+  // On réutilise les matchs live s'ils existent dans le cache
+  if (fixturesCache.data && fixturesCache.data.response?.length > 0) {
+    return res.json(fixturesCache.data);
+  }
+  res.json({ success: true, response: [], message: 'Matchs du jour non disponibles avec cette API' });
+}
+
+/**
+ * GET /api/football/h2h
+ * Non disponible avec la free API
+ */
+async function getHeadToHead(req, res) {
+  res.json({ success: true, response: [], message: 'H2H non disponible' });
+}
+
+/**
+ * GET /api/football/standings
+ * Non disponible avec la free API
  */
 async function getStandings(req, res) {
-  try {
-    const { league, season } = req.query;
-
-    if (!league) {
-      return res.status(400).json({
-        success: false,
-        error: 'league est requis'
-      });
-    }
-
-    // Saison par défaut: année actuelle ou année précédente selon le mois
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const defaultSeason = currentMonth < 7 ? currentYear - 1 : currentYear; // Avant août = saison précédente
-    const targetSeason = season || defaultSeason;
-
-    const cacheKey = `${league}-${targetSeason}`;
-    const now = Date.now();
-
-    // Vérifier le cache
-    if (standingsCache[cacheKey] && (now - standingsCache[cacheKey].timestamp) < STANDINGS_CACHE_EXPIRY) {
-      console.log(`📋 Cache hit standings: ${cacheKey}`);
-      return res.json(standingsCache[cacheKey].data);
-    }
-
-    console.log(`⚽ [Standings] Récupération classement ligue ${league} saison ${targetSeason}...`);
-
-    const config = getApiConfig();
-    if (!config) {
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré'
-      });
-    }
-
-    const response = await fetch(`${config.baseUrl}/standings?league=${league}&season=${targetSeason}`, {
-      method: 'GET',
-      headers: config.headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Mettre en cache
-    standingsCache[cacheKey] = {
-      data: data,
-      timestamp: now
-    };
-
-    console.log(`✅ Classement récupéré pour ligue ${league}`);
-    res.json(data);
-
-  } catch (error) {
-    console.error('❌ Erreur standings:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération du classement',
-      message: error.message
-    });
-  }
+  res.json({ success: true, response: [], message: 'Classements non disponibles' });
 }
 
 /**
- * Récupère les informations d'une équipe
- * GET /api/football/team?id=33
+ * GET /api/football/team
+ * Non disponible avec la free API
  */
 async function getTeam(req, res) {
-  try {
-    const { id } = req.query;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'id est requis'
-      });
-    }
-
-    console.log(`⚽ [Team] Récupération équipe ${id}...`);
-
-    const config = getApiConfig();
-    if (!config) {
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré'
-      });
-    }
-
-    const response = await fetch(`${config.baseUrl}/teams?id=${id}`, {
-      method: 'GET',
-      headers: config.headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log(`✅ Équipe ${id} récupérée`);
-    res.json(data);
-
-  } catch (error) {
-    console.error('❌ Erreur team:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération de l\'équipe',
-      message: error.message
-    });
-  }
+  res.json({ success: true, response: [], message: 'Info équipe non disponible' });
 }
 
 /**
- * Recherche d'équipes par nom
- * GET /api/football/teams/search?name=paris
+ * GET /api/football/teams/search
+ * Non disponible avec la free API
  */
 async function searchTeams(req, res) {
-  try {
-    const { name } = req.query;
-
-    if (!name || name.length < 3) {
-      return res.status(400).json({
-        success: false,
-        error: 'name doit contenir au moins 3 caractères'
-      });
-    }
-
-    console.log(`⚽ [Search] Recherche équipes "${name}"...`);
-
-    const config = getApiConfig();
-    if (!config) {
-      return res.json({
-        success: true,
-        response: [],
-        message: 'Service Football non configuré'
-      });
-    }
-
-    const response = await fetch(`${config.baseUrl}/teams?search=${encodeURIComponent(name)}`, {
-      method: 'GET',
-      headers: config.headers
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Football error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log(`✅ ${data.response?.length || 0} équipes trouvées pour "${name}"`);
-    res.json(data);
-
-  } catch (error) {
-    console.error('❌ Erreur search teams:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la recherche',
-      message: error.message
-    });
-  }
+  res.json({ success: true, response: [], message: 'Recherche non disponible' });
 }
 
 module.exports = {
@@ -552,7 +385,5 @@ module.exports = {
   getFixturesByDate,
   getStandings,
   getTeam,
-  searchTeams,
-  filterMatches,
-  ALLOWED_LEAGUE_IDS
+  searchTeams
 };
