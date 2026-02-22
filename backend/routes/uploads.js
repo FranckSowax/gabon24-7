@@ -8,9 +8,10 @@ const router = express.Router();
 const imageUploadService = require('../src/services/imageUpload.service');
 const videoUploadService = require('../src/services/videoUpload.service');
 const supabaseService = require('../supabase-config');
+const { requireAdmin } = require('../middleware/auth');
 
 // POST /api/admin/upload-image - Upload d'image vers Supabase Storage
-router.post('/upload-image', imageUploadService.upload.single('image'), async (req, res) => {
+router.post('/upload-image', requireAdmin, imageUploadService.upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -58,7 +59,7 @@ router.post('/upload-image', imageUploadService.upload.single('image'), async (r
 });
 
 // DELETE /api/admin/delete-image/:fileName - Supprimer une image
-router.delete('/delete-image/:fileName', async (req, res) => {
+router.delete('/delete-image/:fileName', requireAdmin, async (req, res) => {
   try {
     const { fileName } = req.params;
     
@@ -97,7 +98,7 @@ router.delete('/delete-image/:fileName', async (req, res) => {
 });
 
 // POST /api/admin/upload-video - Upload de vidéo vers Supabase Storage
-router.post('/upload-video', videoUploadService.upload.single('video'), async (req, res) => {
+router.post('/upload-video', requireAdmin, videoUploadService.upload.single('video'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -136,7 +137,7 @@ router.post('/upload-video', videoUploadService.upload.single('video'), async (r
 });
 
 // DELETE /api/admin/delete-video/:fileName - Supprimer une vidéo
-router.delete('/delete-video/:fileName', async (req, res) => {
+router.delete('/delete-video/:fileName', requireAdmin, async (req, res) => {
   try {
     const { fileName } = req.params;
     

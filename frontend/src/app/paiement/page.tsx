@@ -190,7 +190,7 @@ function PaiementContent() {
       if (sessionError || !sessionData.session) {
         setError('Votre session a expiré. Veuillez vous reconnecter.')
         setTimeout(() => {
-          router.push('/auth/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search))
+          router.push('/auth/signin?redirect=' + encodeURIComponent(window.location.pathname + window.location.search))
         }, 2000)
         return
       }

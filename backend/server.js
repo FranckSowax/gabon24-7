@@ -221,6 +221,8 @@ const {
   webhookLimiter
 } = require('./middleware/rate-limiter');
 
+const { requireAuth, requireAdmin } = require('./middleware/auth');
+
 // Appliquer les limiteurs par type d'endpoint
 app.use('/api/', generalLimiter);                          // Général: 1000/15min
 app.use('/api/generate', aiLimiter);                       // IA: 50/15min par user
@@ -311,7 +313,7 @@ try {
 // ========================================================================
 
 // 📊 Statistiques du cache d'enrichissement IA
-app.get('/api/admin/enrichment-stats', (req, res) => {
+app.get('/api/admin/enrichment-stats', requireAdmin, (req, res) => {
   try {
     const smartEnrichmentCache = require('./services/smart-enrichment-cache');
     const stats = smartEnrichmentCache.getStats();
@@ -1316,7 +1318,7 @@ Si AUCUN article n'atteint le seuil de pertinence de 70%, retourne:
 });
 
 // Route pour archiver un article
-app.patch('/api/articles/:id/archive', async (req, res) => {
+app.patch('/api/articles/:id/archive', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1346,7 +1348,7 @@ app.patch('/api/articles/:id/archive', async (req, res) => {
 });
 
 // Route pour supprimer un article
-app.delete('/api/articles/:id', async (req, res) => {
+app.delete('/api/articles/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1828,7 +1830,7 @@ app.post('/api/articles/:id/view', async (req, res) => {
 });
 
 // Route pour les statistiques
-app.get('/api/admin/dashboard', (req, res) => {
+app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: {
@@ -1943,7 +1945,7 @@ app.get('/api/rss/feeds', async (req, res) => {
 });
 
 // Endpoint pour récupérer tous les flux RSS
-app.get('/api/admin/rss-feeds', async (req, res) => {
+app.get('/api/admin/rss-feeds', requireAdmin, async (req, res) => {
   try {
     console.log('📡 Récupération des flux RSS...');
     
@@ -1975,7 +1977,7 @@ app.get('/api/admin/rss-feeds', async (req, res) => {
 });
 
 // Endpoint pour ajouter un nouveau flux RSS
-app.post('/api/admin/rss-feeds', async (req, res) => {
+app.post('/api/admin/rss-feeds', requireAdmin, async (req, res) => {
   try {
     const { name, url, category } = req.body;
     
@@ -2030,7 +2032,7 @@ app.post('/api/admin/rss-feeds', async (req, res) => {
 });
 
 // Route pour supprimer les anciens articles d'un flux RSS spécifique
-app.delete('/api/articles/feed/:feedId', async (req, res) => {
+app.delete('/api/articles/feed/:feedId', requireAdmin, async (req, res) => {
   try {
     const { feedId } = req.params;
     console.log(`🗑️ Suppression des anciens articles du flux: ${feedId}`);
@@ -2066,7 +2068,7 @@ app.delete('/api/articles/feed/:feedId', async (req, res) => {
 });
 
 // Endpoint pour modifier un flux RSS
-app.put('/api/admin/rss-feeds/:id', async (req, res) => {
+app.put('/api/admin/rss-feeds/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, url, category } = req.body;
@@ -2110,7 +2112,7 @@ app.put('/api/admin/rss-feeds/:id', async (req, res) => {
 });
 
 // Endpoint pour synchroniser manuellement tous les flux RSS
-app.post('/api/admin/rss-feeds/sync-all', async (req, res) => {
+app.post('/api/admin/rss-feeds/sync-all', requireAdmin, async (req, res) => {
   try {
     console.log('🔄 Déclenchement manuel de la synchronisation RSS...');
     
@@ -2139,7 +2141,7 @@ app.post('/api/admin/rss-feeds/sync-all', async (req, res) => {
 });
 
 // Endpoint pour tester un flux RSS
-app.post('/api/admin/rss-feeds/:id/test', async (req, res) => {
+app.post('/api/admin/rss-feeds/:id/test', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -2209,7 +2211,7 @@ app.post('/api/rss/process-all', async (req, res) => {
 });
 
 // Route pour supprimer les articles de test
-app.delete('/api/articles/test-feed', async (req, res) => {
+app.delete('/api/articles/test-feed', requireAdmin, async (req, res) => {
   try {
     console.log('🗑️ Suppression des articles de test "Test Feed Updated"...');
     
@@ -3243,7 +3245,7 @@ app.post('/api/campaigns', async (req, res) => {
 // ========================
 
 // GET /api/admin/campaigns - Récupérer toutes les campagnes avec leurs slides
-app.get('/api/admin/campaigns', async (req, res) => {
+app.get('/api/admin/campaigns', requireAdmin, async (req, res) => {
   try {
     console.log('📋 Admin: Récupération des campagnes...');
 
@@ -3342,7 +3344,7 @@ app.post('/api/campaigns/request', async (req, res) => {
 });
 
 // POST /api/admin/campaigns/:id/approve - Approuver une campagne
-app.post('/api/admin/campaigns/:id/approve', async (req, res) => {
+app.post('/api/admin/campaigns/:id/approve', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { admin_notes } = req.body;
@@ -3367,7 +3369,7 @@ app.post('/api/admin/campaigns/:id/approve', async (req, res) => {
 });
 
 // Rejeter une campagne
-app.post('/api/admin/campaigns/:id/reject', async (req, res) => {
+app.post('/api/admin/campaigns/:id/reject', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { admin_notes } = req.body;
@@ -3392,7 +3394,7 @@ app.post('/api/admin/campaigns/:id/reject', async (req, res) => {
 });
 
 // Activer une campagne approuvée
-app.post('/api/admin/campaigns/:id/activate', async (req, res) => {
+app.post('/api/admin/campaigns/:id/activate', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -3419,7 +3421,7 @@ app.post('/api/admin/campaigns/:id/activate', async (req, res) => {
 });
 
 // Renouveler une campagne
-app.post('/api/admin/campaigns/:id/renew', async (req, res) => {
+app.post('/api/admin/campaigns/:id/renew', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { duration_days } = req.body;
@@ -3454,7 +3456,7 @@ app.post('/api/admin/campaigns/:id/renew', async (req, res) => {
 });
 
 // Prolonger une campagne active
-app.post('/api/admin/campaigns/:id/extend', async (req, res) => {
+app.post('/api/admin/campaigns/:id/extend', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { extension_days } = req.body;
@@ -3495,7 +3497,7 @@ app.post('/api/admin/campaigns/:id/extend', async (req, res) => {
 });
 
 // Réactiver une campagne expirée
-app.post('/api/admin/campaigns/:id/reactivate', async (req, res) => {
+app.post('/api/admin/campaigns/:id/reactivate', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -3518,7 +3520,7 @@ app.post('/api/admin/campaigns/:id/reactivate', async (req, res) => {
 });
 
 // PUT /api/admin/campaigns/:id - Modifier une campagne complète
-app.put('/api/admin/campaigns/:id', async (req, res) => {
+app.put('/api/admin/campaigns/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -3571,7 +3573,7 @@ app.put('/api/admin/campaigns/:id', async (req, res) => {
 });
 
 // PUT /api/admin/slides/:id - Modifier un slide
-app.put('/api/admin/slides/:id', async (req, res) => {
+app.put('/api/admin/slides/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, image_url, link_url, cta_text, display_order, is_active } = req.body;
@@ -3612,7 +3614,7 @@ app.put('/api/admin/slides/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/slides/:id - Supprimer un slide
-app.delete('/api/admin/slides/:id', async (req, res) => {
+app.delete('/api/admin/slides/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -3733,7 +3735,7 @@ app.post('/api/slides/track-click', async (req, res) => {
 });
 
 // GET /api/admin/analytics - Statistiques globales des slides
-app.get('/api/admin/analytics', async (req, res) => {
+app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
   try {
     console.log('📈 Admin: Récupération analytics globales...');
 
@@ -4323,7 +4325,7 @@ setTimeout(async () => {
 // ============================================
 
 // POST: Streaming IA - Génération avec Server-Sent Events
-app.post('/api/ai/stream', async (req, res) => {
+app.post('/api/ai/stream', requireAuth, async (req, res) => {
   try {
     console.log('🤖 Démarrage streaming IA...');
     
@@ -4349,7 +4351,7 @@ app.post('/api/ai/stream', async (req, res) => {
 });
 
 // POST: Générer article sponsorisé avec IA
-app.post('/api/generate-sponsored-article', async (req, res) => {
+app.post('/api/generate-sponsored-article', requireAdmin, async (req, res) => {
   try {
     console.log('🤖 Demande génération article IA...');
     
@@ -4406,7 +4408,7 @@ app.post('/api/generate-sponsored-article', async (req, res) => {
 });
 
 // POST: Générer image de couverture avec Nano Banana
-app.post('/api/generate-article-image', async (req, res) => {
+app.post('/api/generate-article-image', requireAuth, async (req, res) => {
   try {
     console.log('🎨 Demande génération image IA...');
     
@@ -4463,7 +4465,7 @@ app.post('/api/generate-article-image', async (req, res) => {
 // ============================================
 
 // Générer un document cadre de projet avec IA
-app.post('/api/projects/generate-framework', async (req, res) => {
+app.post('/api/projects/generate-framework', requireAuth, async (req, res) => {
   try {
     const { userId, userEmail, formData } = req.body;
 

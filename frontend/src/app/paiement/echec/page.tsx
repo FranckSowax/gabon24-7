@@ -147,14 +147,14 @@ function EchecContent() {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <a
-                      href="tel:+24177000000"
+                      href="tel:+24174000247"
                       className="flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
                     >
                       <Phone className="w-4 h-4" />
-                      +241 77 00 00 00
+                      +241 74 00 02 47
                     </a>
                     <a
-                      href="https://wa.me/24177000000"
+                      href="https://wa.me/24174000247"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
