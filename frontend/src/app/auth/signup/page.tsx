@@ -11,8 +11,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import Turnstile from '@/components/security/Turnstile';
 
-// Clé Turnstile (à configurer dans .env.local)
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; // Test key
+// Clé Turnstile (obligatoire - configurer dans .env.local / Netlify dashboard)
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
 const signUpSchema = z.object({
   fullName: z.string().min(3, 'Le nom complet doit contenir au moins 3 caractères'),

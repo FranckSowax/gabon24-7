@@ -9,6 +9,7 @@ const supabaseService = require('../supabase-config');
 const { generateJournalisticSummary } = require('../services/gpt5-nano-analyzer');
 const { generateAudio } = require('../services/replicate-kokoro-tts');
 const { checkUserCredits, deductCredits, refundServiceCredits } = require('../middleware/ai-validation');
+const { requireAuth } = require('../middleware/auth');
 const pricingService = require('../services/pricing-service');
 
 // POST /api/audio/generate-summary - Générer résumé audio (daily ou custom)
@@ -319,7 +320,7 @@ router.get('/settings/:userId', async (req, res) => {
 });
 
 // PUT /api/audio/settings - Mettre à jour paramètres audio
-router.put('/settings', async (req, res) => {
+router.put('/settings', requireAuth, async (req, res) => {
   try {
     const {
       userId,
@@ -494,7 +495,7 @@ router.get('/latest-multilingual', async (req, res) => {
 });
 
 // POST /api/audio/generate-manual - Générer manuellement un résumé (admin)
-router.post('/generate-manual', async (req, res) => {
+router.post('/generate-manual', requireAuth, async (req, res) => {
   try {
     const { timeSlot = 'manual' } = req.body;
     
@@ -523,7 +524,7 @@ router.post('/generate-manual', async (req, res) => {
 });
 
 // POST /api/audio/generate-test-summary - Générer un résumé de test MANUEL
-router.post('/generate-test-summary', async (req, res) => {
+router.post('/generate-test-summary', requireAuth, async (req, res) => {
   try {
     const { language = 'fr' } = req.body;
     
@@ -729,7 +730,7 @@ async function processTestSummary(summaryId, articles, language) {
 }
 
 // POST /api/audio/generate-audio-for-summary - Générer audio pour résumé existant
-router.post('/generate-audio-for-summary', async (req, res) => {
+router.post('/generate-audio-for-summary', requireAuth, async (req, res) => {
   try {
     const { summaryId } = req.body;
     
@@ -832,7 +833,7 @@ async function generateAudioForExistingSummary(summaryId, summary) {
 }
 
 // POST /api/audio/cancel - Annuler une génération en cours et rembourser les crédits
-router.post('/cancel', async (req, res) => {
+router.post('/cancel', requireAuth, async (req, res) => {
   try {
     const { summaryId, userId } = req.body;
 
@@ -925,7 +926,7 @@ router.post('/cancel', async (req, res) => {
 });
 
 // POST /api/audio/generate-scheduled-summary - Générer résumé programmé (13h, 20h)
-router.post('/generate-scheduled-summary', async (req, res) => {
+router.post('/generate-scheduled-summary', requireAuth, async (req, res) => {
   try {
     const { timeSlot, language = 'fr' } = req.body;
 

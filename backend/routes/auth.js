@@ -10,8 +10,11 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 
-// Clé secrète Turnstile (à configurer dans les variables d'environnement)
-const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA'; // Test key
+// Clé secrète Turnstile (obligatoire en production)
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+if (!TURNSTILE_SECRET_KEY) {
+  console.warn('⚠️ TURNSTILE_SECRET_KEY non configurée - la vérification CAPTCHA sera désactivée');
+}
 
 // Rate limiting simple en mémoire (pour production, utiliser Redis)
 const rateLimitMap = new Map();

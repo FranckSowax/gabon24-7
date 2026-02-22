@@ -29,10 +29,14 @@ router.get('/packages', async (req, res) => {
 // ============================================
 router.post('/purchase', requireAuth, async (req, res) => {
   try {
-    const { userId, packageId, paymentMethod = 'demo', phoneNumber, mobileOperator } = req.body;
+    const { userId, packageId, paymentMethod, phoneNumber, mobileOperator } = req.body;
 
     if (!userId || !packageId) {
       return res.status(400).json({ success: false, error: 'userId et packageId requis' });
+    }
+
+    if (!paymentMethod || paymentMethod === 'demo') {
+      return res.status(400).json({ success: false, error: 'Méthode de paiement requise' });
     }
 
     // 1. Récupérer le package
