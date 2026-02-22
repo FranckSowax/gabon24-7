@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Upload, X, Eye, Monitor, Smartphone, Loader2 } from 'lucide-react'
 import axios from 'axios'
+import { supabase } from '@/lib/supabase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -81,8 +82,12 @@ export default function ImageUploader({ onImagesChange, initialImages, className
       const form = new FormData()
       form.append('image', file, file.name)
       form.append('imageType', type)
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await axios.post(`${API_URL}/api/admin/upload-image`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        }
       })
       
       if (response.data.success) {

@@ -14,6 +14,15 @@ import ImageUploader from '@/components/ui/ImageUploader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
+const getAuthHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return { 'Content-Type': 'application/json' }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`
+  }
+}
+
 interface CampaignStats {
   totalCampaigns: number
   activeCampaigns: number
@@ -443,7 +452,8 @@ export default function CampagnesValidationPage() {
     try {
       setLoading(true)
       const statusParam = filterStatus !== 'all' ? `?status=${filterStatus}` : ''
-      const response = await fetch(`${API_URL}/api/campaigns${statusParam}`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/campaigns${statusParam}`, { headers })
       const data = await response.json()
       
       if (data.success) {
@@ -461,9 +471,10 @@ export default function CampagnesValidationPage() {
 
     setActionLoading(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/campaigns/${campaignId}/validate`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: 'active' })
       })
 
@@ -494,12 +505,13 @@ export default function CampagnesValidationPage() {
 
     setActionLoading(true)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/campaigns/${campaignId}/reject`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        headers,
+        body: JSON.stringify({
           status: 'rejected',
-          rejection_reason: rejectionReason 
+          rejection_reason: rejectionReason
         })
       })
 

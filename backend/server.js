@@ -3150,7 +3150,7 @@ app.get('/api/ad-packages', async (req, res) => {
 });
 
 // Route pour créer une nouvelle campagne publicitaire
-app.post('/api/campaigns', async (req, res) => {
+app.post('/api/campaigns', requireAuth, async (req, res) => {
   try {
     console.log('📝 Création d\'une nouvelle campagne publicitaire...');
     
@@ -4943,7 +4943,7 @@ app.use((error, req, res, next) => {
 // (removed duplicate simple redirect /api/image-proxy route)
 
 // ==================== ROUTE CAMPAIGNS PUBLICITAIRES ====================
-app.post('/api/campaigns', async (req, res) => {
+app.post('/api/campaigns', requireAuth, async (req, res) => {
   try {
     console.log('📢 Création nouvelle campagne publicitaire...');
     
@@ -5342,7 +5342,7 @@ app.get('/api/campaigns/calendar/:campaign_type', async (req, res) => {
 });
 
 // PUT: Valider une campagne (admin)
-app.put('/api/campaigns/:id/validate', async (req, res) => {
+app.put('/api/campaigns/:id/validate', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`✅ Validation campagne: ${id}`);
@@ -5386,7 +5386,7 @@ app.put('/api/campaigns/:id/validate', async (req, res) => {
 });
 
 // PUT: Rejeter une campagne (admin)
-app.put('/api/campaigns/:id/reject', async (req, res) => {
+app.put('/api/campaigns/:id/reject', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { rejection_reason } = req.body;
