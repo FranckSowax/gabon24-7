@@ -1,15 +1,15 @@
 /**
- * ♊ SERVICE GEMINI ROBUSTE (Wrapper)
+ * 🤖 SERVICE IA ROBUSTE (Wrapper Unifié)
  *
  * Architecture:
- * 1. Primary: Google Gemini via SDK @google/generative-ai (JSON Mode strict)
- * 2. Fallback: OpenAI GPT-4o-mini via SDK openai (économique)
+ * 1. Primary: OpenAI GPT-4.1 mini (rapide, économique, performant)
+ * 2. Fallback: Google Gemini via SDK @google/generative-ai
  *
  * Features:
  * - Retry Pattern (Exponential Backoff)
  * - JSON Sanitization
  * - Strict Types
- * - Automatic fallback on quota exceeded (429/503)
+ * - Automatic fallback on errors (429/503)
  */
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -21,58 +21,45 @@ class GeminiService {
     this.apiKey = process.env.GEMINI_API_KEY;
     this.openaiApiKey = process.env.OPENAI_API_KEY;
 
-    // Configuration des modèles
-    // On utilise gemini-flash-latest (stable v1.5) pour éviter les erreurs 403 sur les v2.x
+    // Modèle principal: OpenAI GPT-4.1 mini
+    this.openaiModel = process.env.OPENAI_PRIMARY_MODEL || 'gpt-4.1-mini';
+
+    // Modèles Gemini (fallback)
     this.models = {
-      text: 'gemini-flash-latest',          // Modèle principal
-      textFallback: 'gemini-1.5-flash',     // Fallback interne Gemini
-      image: 'gemini-flash-latest'          // Modèle Image
+      text: 'gemini-flash-latest',
+      textFallback: 'gemini-1.5-flash',
+      image: 'gemini-flash-latest'
     };
 
-    // Modèle OpenAI de fallback (GPT-4o-mini = économique, GPT-4o = puissant)
-    this.openaiModel = process.env.OPENAI_FALLBACK_MODEL || 'gpt-4o-mini';
-
-    // Initialisation des IDs de modèles
     this.primaryModelId = process.env.GEMINI_MODEL_NAME || this.models.text;
     this.fallbackModelId = this.models.textFallback;
 
-    if (!this.apiKey) {
-      console.warn('⚠️ GEMINI_API_KEY non configuré - Service IA Google désactivé');
-    } else {
-      console.log('✅ Service Gemini initialisé avec modèle:', this.primaryModelId);
-    }
-
-    if (this.openaiApiKey) {
-      console.log(`✅ OpenAI ${this.openaiModel} disponible comme fallback`);
-    }
-
-    // Initialisation Google
-    if (this.apiKey) {
-      this.genAI = new GoogleGenerativeAI(this.apiKey);
-    }
-
-    // Initialisation OpenAI (Fallback ultime)
+    // Initialisation OpenAI (Primary)
     if (this.openaiApiKey) {
       this.openai = new OpenAI({ apiKey: this.openaiApiKey });
-      console.log(`✅ Fallback OpenAI ${this.openaiModel} prêt`);
+      console.log(`✅ OpenAI ${this.openaiModel} initialisé (modèle principal)`);
+    } else {
+      console.warn('⚠️ OPENAI_API_KEY non configuré - GPT-4.1 mini indisponible');
+    }
+
+    // Initialisation Google Gemini (Fallback)
+    if (this.apiKey) {
+      this.genAI = new GoogleGenerativeAI(this.apiKey);
+      console.log(`✅ Gemini ${this.primaryModelId} disponible comme fallback`);
+    } else {
+      console.warn('⚠️ GEMINI_API_KEY non configuré - Fallback Gemini désactivé');
     }
   }
 
   /**
    * Nettoie le JSON brut retourné par le LLM
-   * Enlève les balises markdown ```json ... ```
    */
   cleanJson(text) {
     if (!text) return "";
-    // Enlever les balises markdown code blocks
     let cleaned = text.replace(/```json/g, "").replace(/```/g, "");
-    // Enlever les espaces avant/après
     return cleaned.trim();
   }
 
-  /**
-   * Attendre x millisecondes (pour le backoff)
-   */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -82,21 +69,20 @@ class GeminiService {
    */
   async executeWithRetry(operation, maxRetries = 3) {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         lastError = error;
-        const isRetryable = error.status === 503 || error.status === 429 || error.message.includes('timeout') || error.message.includes('quota');
-        
+        const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes('timeout') || error.message?.includes('quota') || error.message?.includes('rate_limit');
+
         if (attempt < maxRetries && isRetryable) {
-          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-          console.warn(`⚠️ Tentative ${attempt}/${maxRetries} échouée. Retrying in ${delay}ms... (Erreur: ${error.message})`);
+          const delay = Math.pow(2, attempt) * 1000;
+          console.warn(`⚠️ Tentative ${attempt}/${maxRetries} échouée. Retry in ${delay}ms... (${error.message})`);
           await this.sleep(delay);
         } else {
-          // Si dernière tentative ou erreur non-retryable
-          if (!isRetryable) break; // Sortir tout de suite si c'est une erreur 400 ou autre
+          if (!isRetryable) break;
         }
       }
     }
@@ -104,26 +90,34 @@ class GeminiService {
   }
 
   /**
-   * Méthode principale générique pour obtenir du JSON
-   * @param {string} prompt - Prompt utilisateur
-   * @param {object} options - Options (systemPrompt, temperature, schema, model, etc.)
+   * Méthode principale pour obtenir du JSON
+   * Ordre: OpenAI GPT-4.1 mini → Gemini Primary → Gemini Fallback
    */
   async generateJSON(prompt, options = {}) {
-    // Gestion de la compatibilité si options est une string (ancien usage)
     if (typeof options === 'string') {
       options = { systemPrompt: options };
     }
 
-    const { systemPrompt = "", temperature = 0.7, model: modelOverride } = options;
-    const targetModel = modelOverride || this.primaryModelId;
+    const { systemPrompt = "", temperature = 0.7 } = options;
 
     try {
-      // 1. Essai avec Gemini (Primary)
+      // 1. Primary: OpenAI GPT-4.1 mini
+      if (this.openai) {
+        try {
+          return await this.executeWithRetry(async () => {
+            return await this.generateWithOpenAI(prompt, systemPrompt, true, temperature);
+          });
+        } catch (openaiError) {
+          console.error(`❌ Erreur OpenAI ${this.openaiModel}:`, openaiError.message);
+        }
+      }
+
+      // 2. Fallback: Gemini Primary
       if (this.genAI) {
         try {
           return await this.executeWithRetry(async () => {
             const model = this.genAI.getGenerativeModel({
-              model: targetModel,
+              model: this.primaryModelId,
               generationConfig: {
                 responseMimeType: "application/json",
                 temperature: temperature
@@ -135,70 +129,64 @@ class GeminiService {
             });
 
             const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            
-            return JSON.parse(this.cleanJson(text));
+            return JSON.parse(this.cleanJson(result.response.text()));
           });
         } catch (geminiError) {
-          console.error(`❌ Erreur Gemini Primary (${targetModel}):`, geminiError.message);
-          
-          // Fallback Gemini Flash si le Pro échoue (souvent quotas ou surcharge)
-          // Seulement si on n'a pas forcé un modèle spécifique qui était déjà le fallback, ou si le modèle cible était le primaire
-          const shouldUseFallback = !modelOverride || modelOverride === this.primaryModelId;
-          
-          if (shouldUseFallback && this.fallbackModelId && this.fallbackModelId !== targetModel) {
-             console.log(`🔄 Tentative Fallback Interne Gemini (${this.fallbackModelId})...`);
-             try {
-                return await this.executeWithRetry(async () => {
-                    const model = this.genAI.getGenerativeModel({
-                      model: this.fallbackModelId,
-                      generationConfig: { 
-                        responseMimeType: "application/json",
-                        temperature: temperature 
-                      },
-                      systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
-                    });
-                    const result = await model.generateContent(prompt);
-                    return JSON.parse(this.cleanJson(result.response.text()));
+          console.error(`❌ Erreur Gemini (${this.primaryModelId}):`, geminiError.message);
+
+          // 3. Fallback: Gemini Secondary
+          if (this.fallbackModelId && this.fallbackModelId !== this.primaryModelId) {
+            console.log(`🔄 Fallback Gemini (${this.fallbackModelId})...`);
+            try {
+              return await this.executeWithRetry(async () => {
+                const model = this.genAI.getGenerativeModel({
+                  model: this.fallbackModelId,
+                  generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: temperature
+                  },
+                  systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
                 });
-             } catch (flashError) {
-                 console.error(`❌ Erreur Gemini Fallback (${this.fallbackModelId}):`, flashError.message);
-             }
+                const result = await model.generateContent(prompt);
+                return JSON.parse(this.cleanJson(result.response.text()));
+              });
+            } catch (flashError) {
+              console.error(`❌ Erreur Gemini Fallback (${this.fallbackModelId}):`, flashError.message);
+            }
           }
         }
-      }
-
-      // 2. Fallback Ultime: OpenAI GPT-4o-mini (économique)
-      if (this.openai) {
-        console.log(`🔄 Basculement vers OpenAI ${this.openaiModel}...`);
-        return await this.generateWithOpenAI(prompt, systemPrompt, true);
       }
 
       throw new Error("Tous les modèles IA ont échoué.");
 
     } catch (finalError) {
       console.error("🔥 ECHEC CRITIQUE IA:", finalError);
-      throw finalError; // Propager l'erreur pour que le controller le sache
+      throw finalError;
     }
   }
 
   /**
-   * Stream text generation (Retourne un flux asynchrone)
-   * @param {string} prompt
-   * @param {object} options
+   * Stream text generation
+   * Ordre: OpenAI GPT-4.1 mini → Gemini
    */
   async streamText(prompt, options = {}) {
-    const { systemPrompt = "", temperature = 0.7, model: modelOverride } = options;
-    const targetModel = modelOverride || this.primaryModelId;
+    const { systemPrompt = "", temperature = 0.7 } = options;
 
+    // 1. Primary: OpenAI streaming
+    if (this.openai) {
+      try {
+        return await this.streamWithOpenAI(prompt, systemPrompt, temperature);
+      } catch (error) {
+        console.error(`❌ Erreur OpenAI Stream:`, error.message);
+      }
+    }
+
+    // 2. Fallback: Gemini streaming
     if (this.genAI) {
       try {
         const model = this.genAI.getGenerativeModel({
-          model: targetModel,
-          generationConfig: {
-            temperature: temperature
-          },
+          model: this.primaryModelId,
+          generationConfig: { temperature },
           systemInstruction: systemPrompt ? {
             role: "system",
             parts: [{ text: systemPrompt }]
@@ -208,36 +196,29 @@ class GeminiService {
         const result = await model.generateContentStream(prompt);
         return result.stream;
       } catch (error) {
-        console.error(`❌ Erreur Gemini Stream (${targetModel}):`, error.message);
-        
-        // Fallback Gemini Flash
-        const shouldUseFallback = !modelOverride || modelOverride === this.primaryModelId;
-        if (shouldUseFallback && this.fallbackModelId && this.fallbackModelId !== targetModel) {
-           console.log(`🔄 Fallback Stream Gemini (${this.fallbackModelId})...`);
-           const model = this.genAI.getGenerativeModel({
-              model: this.fallbackModelId,
-              generationConfig: { temperature },
-              systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
-           });
-           const result = await model.generateContentStream(prompt);
-           return result.stream;
+        console.error(`❌ Erreur Gemini Stream (${this.primaryModelId}):`, error.message);
+
+        if (this.fallbackModelId && this.fallbackModelId !== this.primaryModelId) {
+          console.log(`🔄 Fallback Stream Gemini (${this.fallbackModelId})...`);
+          const model = this.genAI.getGenerativeModel({
+            model: this.fallbackModelId,
+            generationConfig: { temperature },
+            systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
+          });
+          const result = await model.generateContentStream(prompt);
+          return result.stream;
         }
         throw error;
       }
-    }
-
-    if (this.openai) {
-       console.log(`🔄 Basculement Stream vers OpenAI ${this.openaiModel}...`);
-       return await this.streamWithOpenAI(prompt, systemPrompt);
     }
 
     throw new Error("Streaming IA indisponible");
   }
 
   /**
-   * Fallback Streaming OpenAI
+   * Streaming OpenAI
    */
-  async streamWithOpenAI(prompt, systemPrompt) {
+  async streamWithOpenAI(prompt, systemPrompt, temperature = 0.7) {
     if (!this.openai) throw new Error("OpenAI non configuré");
 
     const messages = [];
@@ -248,10 +229,10 @@ class GeminiService {
       model: this.openaiModel,
       messages: messages,
       stream: true,
-      temperature: 0.7,
+      temperature: temperature,
     });
 
-    // Adapter le stream OpenAI pour qu'il ressemble à celui de Gemini (AsyncIterable de chunks avec text())
+    // Adapter le stream OpenAI pour ressembler à Gemini (AsyncIterable avec text())
     async function* adapter() {
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || "";
@@ -266,37 +247,38 @@ class GeminiService {
 
   /**
    * Méthode pour texte simple (non JSON)
+   * Ordre: OpenAI → Gemini
    */
   async generateText(prompt, options = {}) {
-    const { systemPrompt = "", temperature = 0.7, model: modelOverride } = options;
-    const targetModel = modelOverride || this.primaryModelId;
-    
+    const { systemPrompt = "", temperature = 0.7 } = options;
+
     try {
-      if (this.genAI) {
+      // 1. Primary: OpenAI
+      if (this.openai) {
         try {
           return await this.executeWithRetry(async () => {
-            const model = this.genAI.getGenerativeModel({
-              model: targetModel,
-              generationConfig: {
-                temperature: temperature
-              },
-              systemInstruction: systemPrompt ? {
-                role: "system",
-                parts: [{ text: systemPrompt }]
-              } : undefined
-            });
-
-            const result = await model.generateContent(prompt);
-            return result.response.text();
+            return await this.generateWithOpenAI(prompt, systemPrompt, false, temperature);
           });
         } catch (error) {
-           console.error(`❌ Erreur Gemini Text (${targetModel}):`, error.message);
-           // Fallback OpenAI
+          console.error(`❌ Erreur OpenAI Text:`, error.message);
         }
       }
 
-      if (this.openai) {
-        return await this.generateWithOpenAI(prompt, systemPrompt, false);
+      // 2. Fallback: Gemini
+      if (this.genAI) {
+        return await this.executeWithRetry(async () => {
+          const model = this.genAI.getGenerativeModel({
+            model: this.primaryModelId,
+            generationConfig: { temperature },
+            systemInstruction: systemPrompt ? {
+              role: "system",
+              parts: [{ text: systemPrompt }]
+            } : undefined
+          });
+
+          const result = await model.generateContent(prompt);
+          return result.response.text();
+        });
       }
 
       throw new Error("Service IA indisponible");
@@ -307,9 +289,9 @@ class GeminiService {
   }
 
   /**
-   * Fallback OpenAI (Privé)
+   * Appel OpenAI (JSON ou texte)
    */
-  async generateWithOpenAI(prompt, systemPrompt, jsonMode = false) {
+  async generateWithOpenAI(prompt, systemPrompt, jsonMode = false, temperature = 0.7) {
     if (!this.openai) throw new Error("OpenAI non configuré");
 
     const messages = [];
@@ -320,7 +302,7 @@ class GeminiService {
       model: this.openaiModel,
       messages: messages,
       response_format: jsonMode ? { type: "json_object" } : { type: "text" },
-      temperature: 0.7,
+      temperature: temperature,
     });
 
     const content = completion.choices[0].message.content;
@@ -328,47 +310,26 @@ class GeminiService {
   }
 
   /**
-   * Génération d'images (Wrapper Gemini Image)
+   * Génération d'images (Gemini uniquement)
    */
   async generateImage(prompt, config = {}) {
-    if (!this.apiKey) throw new Error("Gemini API Key manquante");
-    
-    // Utiliser un modèle d'image spécifique si disponible, sinon celui par défaut
-    // Note: 'imagen-3.0-generate-001' est souvent le modèle pour l'image
-    const imageModel = this.models.image || 'imagen-3.0-generate-001';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:predict`; // Imagen utilise souvent :predict
-    
-    // Alternative: Si c'est un modèle Gemini multimodal qui génère des images via generateContent
-    // const url = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${this.apiKey}`;
+    if (!this.apiKey) throw new Error("Gemini API Key manquante pour la génération d'images");
 
-    // Pour l'instant, on tente le format generateContent compatible Gemini 3 (selon MD)
+    const imageModel = this.models.image || 'imagen-3.0-generate-001';
     const genContentUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${this.apiKey}`;
 
-    const {
-      aspectRatio = '16:9',
-      imageSize = '1024x1024'
-    } = config;
-
-    // Mapping aspect ratio pour Imagen/Gemini
-    // Souvent: "1:1", "16:9", "4:3", etc.
-    
     const body = {
       contents: [{
         parts: [{ text: prompt }]
       }],
-      generationConfig: {
-        // Paramètres spécifiques image (si supportés par le modèle)
-        // Note: Certains modèles utilisent 'sampleCount', 'aspectRatio' directement
-      }
+      generationConfig: {}
     };
 
     try {
       console.log(`🎨 Appel Gemini Image (${imageModel})...`);
       const response = await fetch(genContentUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
@@ -378,32 +339,23 @@ class GeminiService {
       }
 
       const data = await response.json();
-      
-      // Extraction de l'image (Base64)
+
       if (data.candidates && data.candidates[0]?.content?.parts) {
         const parts = data.candidates[0].content.parts;
         const imagePart = parts.find(p => p.inline_data || p.inlineData);
-        
+
         if (imagePart) {
           const inlineData = imagePart.inline_data || imagePart.inlineData;
           const mimeType = inlineData.mime_type || inlineData.mimeType;
           const base64Data = inlineData.data;
-          
           return `data:${mimeType};base64,${base64Data}`;
         }
       }
-      
-      // Si pas d'image inline, vérifier si c'est une URL (certains modèles)
-      // ...
 
       throw new Error("Aucune image générée dans la réponse");
 
     } catch (error) {
       console.error("❌ Erreur Gemini Image:", error.message);
-      
-      // Fallback Replicate si configuré (via appel direct ou throw pour que le caller gère)
-      // Le caller (gpt5-nano-analyzer) a déjà un fallback Replicate.
-      // On throw pour déclencher le fallback du caller.
       throw error;
     }
   }
