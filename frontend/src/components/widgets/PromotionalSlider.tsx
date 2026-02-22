@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import DOMPurify from 'dompurify'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-import axios from 'axios'
+import axios from '@/lib/axios'
 
 interface Slide {
   id: string

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-import axios from 'axios'
+import axios from '@/lib/axios'
 import { supabase } from '@/lib/supabase'
 
 interface YouTubeVideo {

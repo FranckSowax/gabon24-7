@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { X, Upload, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import axios from 'axios'
+import axios from '@/lib/axios'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 

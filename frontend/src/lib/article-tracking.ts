@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import axios from 'axios'
+import axios from '@/lib/axios'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export interface ArticleView {

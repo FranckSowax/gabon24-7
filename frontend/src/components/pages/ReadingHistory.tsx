@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 import { supabase } from '@/lib/supabase'
-import axios from 'axios'
+import axios from '@/lib/axios'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import UpcomingEvents from '@/components/widgets/UpcomingEvents'

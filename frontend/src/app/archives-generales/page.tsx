@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import axios from '@/lib/axios'
 import { ArticleCard } from '@/components/features/ArticleCard'
 import { Loading } from '@/components/ui/Loading'
 import Header from '@/components/layout/Header'

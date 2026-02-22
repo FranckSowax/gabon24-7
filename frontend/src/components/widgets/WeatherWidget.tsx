@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import { 
   Sun, Moon, Cloud, CloudRain, CloudLightning, Wind, 
   Droplets, Thermometer, MapPin, RefreshCw, ChevronRight

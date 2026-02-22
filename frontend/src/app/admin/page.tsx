@@ -10,7 +10,7 @@ import {
   Target, Award, Sparkles, Database
 } from 'lucide-react'
 import Link from 'next/link'
-import axios from 'axios'
+import axios from '@/lib/axios'
 import { supabase } from '@/lib/auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'

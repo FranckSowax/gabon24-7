@@ -7,7 +7,7 @@ import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import axios from 'axios'
+import axios from '@/lib/axios'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 

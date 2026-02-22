@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import axios from '@/lib/axios'
 import Image from 'next/image'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'

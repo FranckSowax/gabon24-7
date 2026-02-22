@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ArticleCard } from '@/components/features/ArticleCard';
 import { Loading } from '@/components/ui/Loading';
-import axios from 'axios';
+import axios from '@/lib/axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface Article {
