@@ -259,15 +259,29 @@ Réponds en JSON strict :
     });
 
     const content = response.choices[0].message.content;
-    // Nettoyer le contenu si entouré de ```json ... ```
-    const cleaned = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    console.log('🔍 Kimi opportunities raw response:', content.substring(0, 300));
+
+    // Nettoyer le contenu : supprimer les blocs markdown ```json ... ```
+    let cleaned = content
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    // Essayer d'extraire le JSON s'il est enfoui dans du texte
+    const jsonMatch = cleaned.match(/\{[\s\S]*"opportunities"[\s\S]*\}/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
+
     const result = JSON.parse(cleaned);
     if (result && result.opportunities && result.opportunities.length >= 3) {
+      console.log('✅ 3 opportunités générées avec succès');
       return result.opportunities.slice(0, 3);
     }
+    console.warn('⚠️ Réponse Kimi invalide - pas assez d\'opportunités:', result);
     return null;
   } catch (error) {
-    console.error('Erreur génération opportunités WhatsApp:', error.message);
+    console.error('❌ Erreur génération opportunités WhatsApp:', error.message);
     return null;
   }
 }
@@ -396,7 +410,7 @@ async function sendPendingArticles(limit = 5) {
       .eq('whatsapp_sent', false)
       .or('summary_ai.not.is.null,summary.not.is.null')
       .gte('created_at', since)
-      .order('published_at', { ascending: false })
+      .order('published_at', { ascending: true })
       .limit(limit);
 
     if (error) throw error;
