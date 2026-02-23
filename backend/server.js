@@ -172,7 +172,9 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3002',
   'http://localhost:8888',
-  'https://gabon24-7.netlify.app',  // ✅ Domaine Netlify correct
+  'https://gaboninsight.com',           // ✅ Domaine principal
+  'https://www.gaboninsight.com',       // ✅ Avec www
+  'https://gabon24-7.netlify.app',      // Domaine Netlify
   'https://gabon-insight.netlify.app',  // Ancien domaine (compatibilité)
   process.env.FRONTEND_URL
 ].filter(Boolean);
@@ -182,7 +184,7 @@ const corsOptions = {
     // Autoriser les requêtes sans origin (comme les apps mobiles ou curl)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('netlify.app')) {
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('netlify.app') || origin.includes('gaboninsight.com')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
