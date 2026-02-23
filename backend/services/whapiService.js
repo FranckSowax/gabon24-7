@@ -279,6 +279,8 @@ Réponds en JSON strict :
 async function sendChannelPost(channelId, article, frontendUrl) {
   const title = article.title;
   const summary = article.summary_ai || article.summary || 'Pas de résumé disponible.';
+  const source = article.source || null;
+  const author = article.author || null;
   const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
   const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
 
@@ -289,7 +291,12 @@ async function sendChannelPost(channelId, article, frontendUrl) {
     opportunitiesBlock = `\n\n💼 *Opportunités détectées :*\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
   }
 
-  const caption = `📰 *${title}*\n\n${summary}${opportunitiesBlock}\n\n\n👉🏾 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Lancer l'analyse IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
+  // Ligne source (média)
+  const sourceLine = source ? `\n📡 _${source}_` : '';
+  // Ligne auteur
+  const authorLine = author ? `\n✍🏾 ${author}` : '';
+
+  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n\n👉🏾 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Lancer l'analyse IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
 
   if (imageUrl) {
     // Envoi avec image en header
@@ -376,26 +383,63 @@ async function sendPendingArticles(limit = 5) {
   let errors = 0;
 
   try {
-    // 1. Récupérer les articles non envoyés (avec summary_ai ou summary)
+    // 1. Récupérer uniquement les articles récents non envoyés (dernières 24h)
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
-      .select('id, title, summary_ai, summary, url, image_urls')
+      .select('id, title, summary_ai, summary, source, author, url, image_urls')
       .eq('whatsapp_sent', false)
       .or('summary_ai.not.is.null,summary.not.is.null')
+      .gte('published_at', since)
       .order('published_at', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
 
     if (!articles || articles.length === 0) {
-      console.log('Aucun article en attente d\'envoi WhatsApp');
+      console.log('Aucun article récent en attente d\'envoi WhatsApp');
       return { sent: 0, errors: 0, pending: 0, message: 'Aucun article en attente' };
     }
 
-    console.log(`📱 ${articles.length} articles trouvés pour envoi WhatsApp`);
+    // 2. Détection des doublons par titre (vérifier les titres déjà envoyés)
+    const titles = articles.map(a => a.title);
+    const { data: alreadySent } = await supabaseService.supabase
+      .from('articles')
+      .select('title')
+      .eq('whatsapp_sent', true)
+      .in('title', titles);
 
-    // 2. Boucle d'envoi avec image en header
+    const sentTitles = new Set((alreadySent || []).map(a => a.title));
+    const uniqueArticles = [];
+    const skipped = [];
+
     for (const article of articles) {
+      if (sentTitles.has(article.title)) {
+        skipped.push(article);
+        // Marquer le doublon comme envoyé pour ne plus le retraiter
+        await supabaseService.supabase
+          .from('articles')
+          .update({ whatsapp_sent: true })
+          .eq('id', article.id);
+      } else {
+        uniqueArticles.push(article);
+        sentTitles.add(article.title); // éviter les doublons dans le même batch
+      }
+    }
+
+    if (skipped.length > 0) {
+      console.log(`⏭️ ${skipped.length} doublon(s) ignoré(s)`);
+    }
+
+    if (uniqueArticles.length === 0) {
+      console.log('Aucun article unique à envoyer');
+      return { sent: 0, errors: 0, skipped: skipped.length, message: 'Doublons uniquement' };
+    }
+
+    console.log(`📱 ${uniqueArticles.length} articles à envoyer sur WhatsApp`);
+
+    // 3. Boucle d'envoi
+    for (const article of uniqueArticles) {
       try {
         const result = await sendChannelPost(channelId, article, frontendUrl);
 
@@ -417,7 +461,7 @@ async function sendPendingArticles(limit = 5) {
       }
     }
 
-    return { sent, errors, total: articles.length };
+    return { sent, errors, skipped: skipped.length, total: uniqueArticles.length };
   } catch (error) {
     console.error('Erreur globale service WhatsApp:', error);
     return { sent, errors, message: error.message };
@@ -430,11 +474,13 @@ async function sendPendingArticles(limit = 5) {
 async function getPendingCount() {
   try {
     const supabaseService = require('../supabase-config');
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count, error } = await supabaseService.supabase
       .from('articles')
       .select('id', { count: 'exact', head: true })
       .eq('whatsapp_sent', false)
-      .or('summary_ai.not.is.null,summary.not.is.null');
+      .or('summary_ai.not.is.null,summary.not.is.null')
+      .gte('published_at', since);
 
     if (error) throw error;
     return { success: true, count: count || 0 };
