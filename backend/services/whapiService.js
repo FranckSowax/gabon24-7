@@ -289,7 +289,7 @@ async function sendChannelPost(channelId, article, frontendUrl) {
     opportunitiesBlock = `\n\n💼 *Opportunités détectées :*\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
   }
 
-  const caption = `📰 *${title}*\n\n${summary}${opportunitiesBlock}\n\n👉 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Lancer l'analyse IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
+  const caption = `📰 *${title}*\n\n${summary}${opportunitiesBlock}\n\n\n🤎 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Lancer l'analyse IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
 
   if (imageUrl) {
     // Envoi avec image en header
