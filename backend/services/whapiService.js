@@ -227,7 +227,7 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
  */
 async function sendChannelPost(channelId, article, frontendUrl) {
   const title = article.title;
-  const summary = article.ai_summary || 'Pas de résumé disponible.';
+  const summary = article.summary_ai || 'Pas de résumé disponible.';
   const articleUrl = article.url;
   const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
   const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
@@ -322,9 +322,9 @@ async function sendPendingArticles(limit = 5) {
     // 1. Récupérer les articles enrichis mais non envoyés
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
-      .select('id, title, ai_summary, url, image_urls')
+      .select('id, title, summary_ai, url, image_urls')
       .eq('whatsapp_sent', false)
-      .not('ai_summary', 'is', null)
+      .not('summary_ai', 'is', null)
       .order('published_at', { ascending: false })
       .limit(limit);
 
@@ -377,7 +377,7 @@ async function getPendingCount() {
       .from('articles')
       .select('id', { count: 'exact', head: true })
       .eq('whatsapp_sent', false)
-      .not('ai_summary', 'is', null);
+      .not('summary_ai', 'is', null);
 
     if (error) throw error;
     return { success: true, count: count || 0 };
