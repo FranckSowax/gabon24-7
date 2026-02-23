@@ -8,7 +8,7 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { checkOpenAIError, checkUsageThreshold } = require('../utils/quota-monitor');
 const aiValidation = require('../middleware/ai-validation');
-const geminiService = require('../services/gemini-service');
+// GPT-4.1-mini utilisé directement (voir getOpenAIClient() ci-dessous)
 
 // Helpers
 function truncate(text = '', max = 3500) {
@@ -97,69 +97,75 @@ function generateFallbackAnalysis(article = { title: '', summary: '', source: ''
   };
 }
 
-// Helper: Appel IA pour ANALYSE via Gemini 3 Pro avec JSON garanti
+// Client OpenAI GPT-4.1-mini pour les analyses IA
+let _openaiClient = null;
+function getOpenAIClient() {
+  if (!_openaiClient) {
+    const OpenAI = require('openai');
+    if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY manquant');
+    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openaiClient;
+}
+
+// Helper: Appel IA pour ANALYSE via GPT-4.1-mini avec JSON garanti
 async function callAIAnalysis(prompt, options = {}) {
   try {
-    console.log('🚀 Analyse IA via Gemini 3 Pro (Primary)...');
-    
-    // Utiliser Gemini Service
-    const structured = await geminiService.generateJSON(prompt, {
-      systemPrompt: 'Tu es un expert en analyse business au Gabon. Réponds UNIQUEMENT en JSON valide.',
-      temperature: 0.7
+    console.log('🚀 Analyse IA via GPT-4.1-mini...');
+
+    const completion = await getOpenAIClient().chat.completions.create({
+      model: 'gpt-4.1-mini',
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'Tu es un expert en analyse business au Gabon. Réponds UNIQUEMENT en JSON valide.' },
+        { role: 'user', content: prompt }
+      ]
     });
 
-    console.log(`✅ Gemini: Analyse JSON reçue`);
-    
+    const content = completion.choices[0].message.content;
+    const structured = JSON.parse(content);
+    console.log('✅ GPT-4.1-mini: Analyse JSON reçue');
+
     return {
-      text: JSON.stringify(structured),
+      text: content,
       structured,
-      usage: { total_tokens: 0 } // Gemini ne retourne pas usage de la même façon, on ignore ou estime
+      usage: completion.usage || { total_tokens: 0 }
     };
 
   } catch (error) {
-    console.error('❌ Erreur Gemini (analyse):', error.message);
-    
-    // Log error pour monitoring si c'est une erreur de quota OpenAI (via fallback)
-    if (error.message.includes('OpenAI')) {
-      await checkOpenAIError(error, { 
-        provider: 'gemini-fallback', 
-        model: 'gpt-4o'
-      });
-    }
-    
+    console.error('❌ Erreur GPT-4.1-mini (analyse):', error.message);
     throw error;
   }
 }
 
-// Helper: Appel IA pour PROPOSITIONS via Gemini 3 Pro avec JSON garanti
+// Helper: Appel IA pour PROPOSITIONS via GPT-4.1-mini avec JSON garanti
 async function callAIPropositions(prompt, options = {}) {
   try {
-    console.log('🚀 Propositions IA via Gemini 3 Pro (Primary)...');
-    
-    // Utiliser Gemini Service
-    const structured = await geminiService.generateJSON(prompt, {
-      systemPrompt: 'Tu es un expert en développement d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.',
-      temperature: 0.7
+    console.log('🚀 Propositions IA via GPT-4.1-mini...');
+
+    const completion = await getOpenAIClient().chat.completions.create({
+      model: 'gpt-4.1-mini',
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'Tu es un expert en développement d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.' },
+        { role: 'user', content: prompt }
+      ]
     });
 
-    console.log(`✅ Gemini: Propositions JSON reçues`);
-    
+    const content = completion.choices[0].message.content;
+    const structured = JSON.parse(content);
+    console.log('✅ GPT-4.1-mini: Propositions JSON reçues');
+
     return {
-      text: JSON.stringify(structured),
+      text: content,
       structured,
-      usage: { total_tokens: 0 }
+      usage: completion.usage || { total_tokens: 0 }
     };
 
   } catch (error) {
-    console.error('❌ Erreur Gemini (propositions):', error.message);
-    
-    if (error.message.includes('OpenAI')) {
-      await checkOpenAIError(error, { 
-        provider: 'gemini-fallback', 
-        model: 'gpt-4o'
-      });
-    }
-    
+    console.error('❌ Erreur GPT-4.1-mini (propositions):', error.message);
     throw error;
   }
 }
