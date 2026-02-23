@@ -79,9 +79,27 @@ router.post('/trigger', requireAdmin, validateBody(triggerSchema), async (req, r
   }
 });
 
-// Test: envoyer un carrousel avec les derniers articles (admin)
-router.post('/test-carousel', requireAdmin, async (req, res) => {
+// Test: envoyer un carrousel avec les derniers articles (admin ou cron secret)
+router.post('/test-carousel', async (req, res) => {
   try {
+    // Auth: admin JWT ou secret (CRON_SECRET / SUPABASE_SERVICE_ROLE_KEY)
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const validSecrets = [
+      process.env.CRON_SECRET,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ].filter(Boolean);
+    const isSecretAuth = token && validSecrets.includes(token);
+
+    if (!isSecretAuth) {
+      // Fallback: vérifier admin JWT
+      const { requireAdmin: checkAdmin } = require('../middleware/auth');
+      await new Promise((resolve, reject) => {
+        checkAdmin(req, res, (err) => err ? reject(err) : resolve());
+      });
+      if (res.headersSent) return;
+    }
+
     const { limit = 5 } = req.body;
     const supabaseService = require('../supabase-config');
     const channelId = process.env.WHAPI_CHANNEL_ID;
