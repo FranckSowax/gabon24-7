@@ -986,12 +986,24 @@ router.post('/cron-trigger', async (req, res) => {
     const { timeSlot = 'morning', language = 'fr', debug = false } = req.body;
     console.log(`🎙️ Cron trigger: ${timeSlot} [${language}]`);
 
-    // Diagnostic: check if articles query works
+    // Diagnostic: replicate exact scheduler query
     if (debug) {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: testArticles, error: testErr } = await supabaseService.supabase
+
+      // Simple query (works)
+      const { data: simple, error: simpleErr } = await supabaseService.supabase
         .from('articles')
         .select('id, title, published_at')
+        .gte('published_at', since)
+        .limit(3);
+
+      // Exact scheduler query
+      const { data: full, error: fullErr } = await supabaseService.supabase
+        .from('articles')
+        .select(`id, title, summary, summary_ai, content, source, category,
+          created_at, published_at, view_count,
+          sentiment, keywords, entities,
+          enrichment_score, relevance_score, quality_score, importance`)
         .gte('published_at', since)
         .order('published_at', { ascending: false })
         .limit(5);
@@ -999,9 +1011,9 @@ router.post('/cron-trigger', async (req, res) => {
       return res.json({
         debug: true,
         since,
-        articlesFound: testArticles?.length || 0,
-        queryError: testErr?.message || null,
-        sample: testArticles?.slice(0, 2)?.map(a => ({ title: a.title?.substring(0, 50), published_at: a.published_at }))
+        simpleQuery: { count: simple?.length || 0, error: simpleErr?.message || null },
+        fullQuery: { count: full?.length || 0, error: fullErr?.message || null, errorCode: fullErr?.code || null },
+        sample: full?.slice(0, 1)?.map(a => ({ title: a.title?.substring(0, 50) }))
       });
     }
 
