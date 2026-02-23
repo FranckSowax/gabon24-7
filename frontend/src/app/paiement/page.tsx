@@ -56,8 +56,7 @@ function PaiementContent() {
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
   const [paymentReference, setPaymentReference] = useState<string | null>(null)
   const [modalStatus, setModalStatus] = useState<ModalPaymentStatus>('pending')
-  const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [iframeFailed, setIframeFailed] = useState(false)
+  const [popupBlocked, setPopupBlocked] = useState(false)
 
   // Récupérer les paramètres de paiement depuis l'URL
   useEffect(() => {
@@ -173,21 +172,23 @@ function PaiementContent() {
     }
   }
 
-  const handleOpenPortalNewTab = () => {
-    if (portalUrl) {
-      window.open(portalUrl, '_blank', 'noopener,noreferrer')
+  const openPortalPopup = (url: string) => {
+    const w = Math.min(500, window.innerWidth - 40)
+    const h = Math.min(700, window.innerHeight - 40)
+    const left = (window.innerWidth - w) / 2 + window.screenX
+    const top = (window.innerHeight - h) / 2 + window.screenY
+    const popup = window.open(url, 'ebilling_portal', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`)
+    if (!popup || popup.closed) {
+      setPopupBlocked(true)
+    } else {
+      setPopupBlocked(false)
     }
   }
 
-  // Detect if iframe fails to load (e.g. X-Frame-Options block)
+  // Auto-open popup when modal shows
   useEffect(() => {
     if (!showWaitingModal || !portalUrl || modalStatus !== 'pending') return
-    setIframeLoaded(false)
-    setIframeFailed(false)
-    const timeout = setTimeout(() => {
-      if (!iframeLoaded) setIframeFailed(true)
-    }, 8000)
-    return () => clearTimeout(timeout)
+    openPortalPopup(portalUrl)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showWaitingModal, portalUrl, modalStatus])
 
@@ -414,7 +415,7 @@ function PaiementContent() {
                     <h4 className="font-medium text-orange-300">Paiement sécurisé E-Billing</h4>
                   </div>
                   <p className="text-sm text-gray-400">
-                    Le portail de paiement s&apos;ouvrira directement ci-dessous.
+                    Le portail de paiement s&apos;ouvrira dans une fenêtre dédiée.
                     Choisissez votre moyen de paiement : Mobile Money (Airtel, Moov) ou Carte bancaire (Visa, Mastercard).
                   </p>
                 </div>
@@ -473,26 +474,19 @@ function PaiementContent() {
         </main>
       </div>
 
-      {/* Modal E-Billing avec iframe intégré */}
+      {/* Modal d'attente E-Billing (popup) */}
       {showWaitingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleCloseModal} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
-          {/* Modal - large pour contenir l'iframe */}
-          <div className="relative w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-            <div className="bg-gray-800/95 backdrop-blur-xl rounded-2xl border border-gray-700/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="relative w-full max-w-md mx-4">
+            <div className="bg-gray-800/95 backdrop-blur-xl rounded-3xl border border-gray-700/50 shadow-2xl overflow-hidden">
 
-              {/* Header bar */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700/50 bg-gray-900/50 flex-shrink-0">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700/50 bg-gray-900/50">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-green-400" />
                   <span className="text-sm font-medium text-white">Paiement sécurisé E-Billing</span>
-                  {paymentConfig && (
-                    <span className="text-sm text-orange-400 font-bold ml-2">
-                      {paymentConfig.amount.toLocaleString('fr-FR')} FCFA
-                    </span>
-                  )}
                 </div>
                 <button
                   onClick={handleCloseModal}
@@ -502,86 +496,96 @@ function PaiementContent() {
                 </button>
               </div>
 
-              {/* Contenu principal */}
-              {modalStatus === 'pending' && (
-                <div className="flex-1 relative min-h-[500px]">
-                  {/* Spinner de chargement iframe */}
-                  {!iframeLoaded && !iframeFailed && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 z-10">
-                      <Loader2 className="w-10 h-10 animate-spin text-orange-500 mb-4" />
-                      <p className="text-gray-400 text-sm">Chargement du portail de paiement...</p>
-                    </div>
-                  )}
-
-                  {/* Iframe E-Billing */}
-                  {portalUrl && !iframeFailed && (
-                    <iframe
-                      src={portalUrl}
-                      className="w-full h-full min-h-[500px] border-0"
-                      title="Portail de paiement E-Billing"
-                      onLoad={() => setIframeLoaded(true)}
-                      allow="payment"
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
-                    />
-                  )}
-
-                  {/* Fallback si iframe bloqué */}
-                  {iframeFailed && (
-                    <div className="flex flex-col items-center justify-center p-8 text-center min-h-[500px]">
-                      <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
-                        <ExternalLink className="w-8 h-8 text-orange-400" />
+              <div className="p-8 text-center">
+                {/* Pending */}
+                {modalStatus === 'pending' && (
+                  <>
+                    <div className="relative inline-block mb-6">
+                      <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center">
+                        <Clock className="w-10 h-10 text-orange-400" />
                       </div>
-                      <h3 className="text-lg font-bold text-white mb-2">
-                        Le portail s&apos;ouvre dans un nouvel onglet
-                      </h3>
-                      <p className="text-gray-400 text-sm mb-6 max-w-sm">
-                        Le portail de paiement ne peut pas s&apos;afficher ici.
-                        Cliquez ci-dessous pour l&apos;ouvrir dans un nouvel onglet.
-                      </p>
-                      <button
-                        onClick={handleOpenPortalNewTab}
-                        className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-orange-500/25"
-                      >
-                        <ExternalLink className="w-5 h-5" />
-                        Ouvrir le portail E-Billing
-                      </button>
-                      <p className="text-xs text-gray-500 mt-4">
-                        Cette page se mettra à jour automatiquement après votre paiement.
-                      </p>
+                      <div className="absolute -top-1 -right-1 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center animate-bounce">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
 
-              {/* Status: completed */}
-              {modalStatus === 'completed' && (
-                <div className="flex flex-col items-center justify-center p-10 text-center min-h-[300px]">
-                  <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-10 h-10 text-green-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-green-400 mb-2">Paiement confirmé !</h2>
-                  <p className="text-gray-400 text-sm mb-4">Redirection en cours...</p>
-                  <Loader2 className="w-6 h-6 animate-spin text-green-400" />
-                </div>
-              )}
+                    <h2 className="text-xl font-bold text-white mb-2">Finalisez votre paiement</h2>
+                    {paymentConfig && (
+                      <p className="text-orange-400 font-bold text-lg mb-3">
+                        {paymentConfig.amount.toLocaleString('fr-FR')} FCFA
+                      </p>
+                    )}
+                    <p className="text-gray-400 text-sm mb-6">
+                      Complétez votre paiement dans la fenêtre E-Billing.
+                      <br />
+                      <strong className="text-gray-300">Cette page se mettra à jour automatiquement.</strong>
+                    </p>
 
-              {/* Status: failed / cancelled */}
-              {(modalStatus === 'failed' || modalStatus === 'cancelled') && (
-                <div className="flex flex-col items-center justify-center p-10 text-center min-h-[300px]">
-                  <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-                    <AlertCircle className="w-10 h-10 text-red-400" />
-                  </div>
-                  <h2 className="text-xl font-bold text-red-400 mb-2">
-                    {modalStatus === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué'}
-                  </h2>
-                  <p className="text-gray-400 text-sm mb-4">Redirection en cours...</p>
-                  <Loader2 className="w-6 h-6 animate-spin text-red-400" />
-                </div>
-              )}
+                    {/* Bouton réouvrir le portail (si popup bloqué ou fermé) */}
+                    {popupBlocked ? (
+                      <div className="space-y-3 mb-4">
+                        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                          <p className="text-yellow-300 text-sm">
+                            La fenêtre a été bloquée par votre navigateur.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => portalUrl && openPortalPopup(portalUrl)}
+                          className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/25"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                          Ouvrir le portail de paiement
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => portalUrl && openPortalPopup(portalUrl)}
+                        className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 mb-4"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Rouvrir la fenêtre de paiement
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleCloseModal}
+                      className="w-full py-3 bg-gray-700/50 hover:bg-gray-700 text-gray-400 rounded-xl font-medium transition-colors"
+                    >
+                      Annuler
+                    </button>
+                  </>
+                )}
+
+                {/* Completed */}
+                {modalStatus === 'completed' && (
+                  <>
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle2 className="w-10 h-10 text-green-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-green-400 mb-2">Paiement confirmé !</h2>
+                    <p className="text-gray-400 text-sm mb-4">Redirection en cours...</p>
+                    <Loader2 className="w-6 h-6 animate-spin text-green-400 mx-auto" />
+                  </>
+                )}
+
+                {/* Failed / Cancelled */}
+                {(modalStatus === 'failed' || modalStatus === 'cancelled') && (
+                  <>
+                    <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <AlertCircle className="w-10 h-10 text-red-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-red-400 mb-2">
+                      {modalStatus === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué'}
+                    </h2>
+                    <p className="text-gray-400 text-sm mb-4">Redirection en cours...</p>
+                    <Loader2 className="w-6 h-6 animate-spin text-red-400 mx-auto" />
+                  </>
+                )}
+              </div>
 
               {/* Footer */}
               {modalStatus === 'pending' && (
-                <div className="flex items-center justify-between px-5 py-3 border-t border-gray-700/50 bg-gray-900/50 flex-shrink-0">
+                <div className="flex items-center justify-between px-5 py-3 border-t border-gray-700/50 bg-gray-900/50">
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     <span>Vérification automatique en cours</span>
