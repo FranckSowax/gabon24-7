@@ -101,13 +101,20 @@ router.post('/test-carousel', async (req, res) => {
       if (res.headersSent) return;
     }
 
-    const { limit = 5 } = req.body;
+    const { limit = 5, phone } = req.body;
     const supabaseService = require('../supabase-config');
-    const channelId = process.env.WHAPI_CHANNEL_ID;
     const frontendUrl = process.env.FRONTEND_URL || 'https://gabon24-7.netlify.app';
 
-    if (!channelId) {
-      return res.status(400).json({ success: false, error: 'WHAPI_CHANNEL_ID non configuré' });
+    // Destination: numéro de téléphone (DM) ou chaîne WhatsApp
+    let destination;
+    if (phone) {
+      // Nettoyer le numéro: enlever +, espaces, tirets
+      destination = phone.replace(/[\s\-\+]/g, '') + '@s.whatsapp.net';
+    } else {
+      destination = process.env.WHAPI_CHANNEL_ID;
+      if (!destination) {
+        return res.status(400).json({ success: false, error: 'WHAPI_CHANNEL_ID non configuré et aucun phone fourni' });
+      }
     }
 
     // Récupérer les derniers articles avec images
@@ -123,8 +130,8 @@ router.post('/test-carousel', async (req, res) => {
       return res.json({ success: false, message: 'Aucun article avec image trouvé' });
     }
 
-    console.log(`🧪 Test carrousel: ${articles.length} articles`);
-    const result = await whapiService.sendCarouselPost(channelId, articles, frontendUrl);
+    console.log(`🧪 Test carrousel vers ${phone ? phone : 'chaîne'}: ${articles.length} articles`);
+    const result = await whapiService.sendCarouselPost(destination, articles, frontendUrl);
 
     res.json({ success: true, ...result });
   } catch (error) {
