@@ -79,4 +79,43 @@ router.post('/trigger', requireAdmin, validateBody(triggerSchema), async (req, r
   }
 });
 
+// Test: envoyer un carrousel avec les derniers articles (admin)
+router.post('/test-carousel', requireAdmin, async (req, res) => {
+  try {
+    const { limit = 5 } = req.body;
+    const supabaseService = require('../supabase-config');
+    const channelId = process.env.WHAPI_CHANNEL_ID;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://gabon24-7.netlify.app';
+
+    if (!channelId) {
+      return res.status(400).json({ success: false, error: 'WHAPI_CHANNEL_ID non configuré' });
+    }
+
+    // Récupérer les derniers articles avec images
+    const { data: articles, error } = await supabaseService.supabase
+      .from('articles')
+      .select('id, title, summary_ai, summary, source, image_urls')
+      .not('image_urls', 'is', null)
+      .order('published_at', { ascending: false })
+      .limit(Math.min(limit, 10));
+
+    if (error) throw error;
+    if (!articles || articles.length === 0) {
+      return res.json({ success: false, message: 'Aucun article avec image trouvé' });
+    }
+
+    console.log(`🧪 Test carrousel: ${articles.length} articles`);
+    const result = await whapiService.sendCarouselPost(channelId, articles, frontendUrl);
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('❌ Erreur test carrousel:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: error.response?.data
+    });
+  }
+});
+
 module.exports = router;

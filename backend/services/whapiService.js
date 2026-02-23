@@ -499,10 +499,82 @@ async function getPendingCount() {
   }
 }
 
+/**
+ * Envoyer un carrousel d'articles sur la chaîne WhatsApp
+ * Utilise POST /messages/carousel — jusqu'à 10 cards avec image, texte et bouton
+ * @param {string} channelId - ID de la chaîne WhatsApp
+ * @param {Array} articles - Tableau d'articles (max 10)
+ * @param {string} frontendUrl - URL du frontend
+ * @returns {Promise<object>}
+ */
+async function sendCarouselPost(channelId, articles, frontendUrl) {
+  if (!WHAPI_TOKEN) throw new Error('WHAPI_TOKEN manquant');
+  if (!articles || articles.length === 0) throw new Error('Aucun article fourni');
+
+  // Limiter à 10 cards (max WhatsApp)
+  const items = articles.slice(0, 10);
+
+  // Construire les cards
+  const cards = items.map((article, i) => {
+    const title = article.title || 'Article';
+    const summary = (article.summary_ai || article.summary || '').substring(0, 200);
+    const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
+    const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
+    const source = article.source ? `📡 ${article.source}` : '';
+
+    const card = {
+      id: `card_${i}`,
+      body: `📰 *${title}*\n${source}\n\n${summary}`,
+      buttons: [
+        {
+          type: 'url',
+          title: '🚀 Analyse IA',
+          url: analyzeUrl
+        }
+      ]
+    };
+
+    if (imageUrl) {
+      card.header = {
+        type: 'image',
+        image: { link: imageUrl }
+      };
+    }
+
+    return card;
+  });
+
+  const payload = {
+    to: channelId,
+    body: {
+      text: `📊 *${items.length} actus Gabon* — Swipez pour découvrir les opportunités business`
+    },
+    cards
+  };
+
+  console.log(`📱 Envoi carrousel WhatsApp: ${items.length} cards`);
+
+  const response = await axios.post(
+    `${WHAPI_BASE_URL}/messages/carousel`,
+    payload,
+    {
+      headers: {
+        'Authorization': `Bearer ${WHAPI_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  console.log('✅ Carrousel envoyé avec succès');
+  return { success: true, type: 'carousel', cards: items.length, data: response.data };
+}
+
 module.exports = {
   sendWhatsAppMessage,
   sendInteractiveMessage,
   sendChannelPost,
+  sendCarouselPost,
   sendPendingArticles,
   sendAlertNotification,
   getMessageStatus,
