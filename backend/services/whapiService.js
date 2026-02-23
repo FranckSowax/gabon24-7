@@ -221,18 +221,58 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 }
 
 /**
+ * Générer 3 opportunités business à partir du titre et résumé d'un article
+ * Utilise Gemini pour proposer des idées d'entreprise liées à la problématique
+ */
+async function generateOpportunities(title, summary) {
+  try {
+    const geminiService = require('./gemini-service');
+    const prompt = `Contexte article d'actualité au Gabon :
+Titre : ${title}
+Résumé : ${summary}
+
+En te basant sur la problématique soulevée par cet article, propose exactement 3 idées de business concrètes et variées (tout type de catégorie et d'activité) qu'un entrepreneur pourrait lancer en lien avec cette actualité.
+
+Réponds en JSON strict :
+{
+  "opportunities": ["Idée 1 en une phrase courte et percutante", "Idée 2 en une phrase courte et percutante", "Idée 3 en une phrase courte et percutante"]
+}`;
+
+    const result = await geminiService.generateJSON(prompt, {
+      systemPrompt: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.',
+      temperature: 0.8
+    });
+
+    if (result && result.opportunities && result.opportunities.length >= 3) {
+      return result.opportunities.slice(0, 3);
+    }
+    return null;
+  } catch (error) {
+    console.error('Erreur génération opportunités WhatsApp:', error.message);
+    return null;
+  }
+}
+
+/**
  * Poster un article sur une chaîne WhatsApp (newsletter)
  * Utilise /messages/image pour afficher l'image en header + caption
+ * Inclut 3 opportunités business générées par IA
  * Fallback sur /messages/text si pas d'image
  */
 async function sendChannelPost(channelId, article, frontendUrl) {
   const title = article.title;
   const summary = article.summary_ai || 'Pas de résumé disponible.';
-  const articleUrl = article.url;
   const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
   const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
 
-  const caption = `📰 *${title}*\n\n${summary}\n\n🔗 Lire l'article :\n${articleUrl}\n\n💡 *Analyser les opportunités IA* :\n${analyzeUrl}\n\n---\n_Gabon 24/7 — Votre source d'info_`;
+  // Générer les opportunités business via IA
+  const opportunities = await generateOpportunities(title, summary);
+  let opportunitiesBlock = '';
+  if (opportunities) {
+    opportunitiesBlock = `\n\n💼 *Opportunités détectées :*\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
+  }
+
+  const caption = `📰 *${title}*\n\n${summary}${opportunitiesBlock}\n\n🚀 *Analyser les opportunités IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
 
   if (imageUrl) {
     // Envoi avec image en header
