@@ -28,13 +28,7 @@ async function generatePublicAudioSummary(timeSlot, language = 'fr') {
     // Récupérer les 50 derniers articles avec scores d'enrichissement + importance
     const { data: articles, error: articlesError } = await supabaseService.supabase
       .from('articles')
-      .select(`
-        id, title, summary, summary_ai, content, source, category,
-        created_at, published_at, view_count,
-        sentiment, keywords, entities,
-        enrichment_score, relevance_score, quality_score,
-        importance
-      `)
+      .select('id, title, summary, summary_ai, content, source, category, published_at, view_count')
       .gte('published_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order('published_at', { ascending: false })
       .limit(50);
