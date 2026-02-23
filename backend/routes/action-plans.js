@@ -105,9 +105,19 @@ Réponds UNIQUEMENT avec un JSON valide au format suivant (pas de markdown, pas 
         });
 
         const content = completion.choices[0].message.content.trim();
-        // Retirer les éventuels backticks markdown
-        const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-        actionPlanData = JSON.parse(cleanContent);
+        // Nettoyer les blocs markdown ```json ... ```
+        let cleanContent = content.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        try {
+          actionPlanData = JSON.parse(cleanContent);
+        } catch {
+          // Fallback: extraire le JSON enfoui dans du texte
+          const jsonMatch = cleanContent.match(/\{[\s\S]*"actions"[\s\S]*\}/);
+          if (jsonMatch) {
+            actionPlanData = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('Impossible de parser le JSON du plan d\'action');
+          }
+        }
       } else {
         throw new Error('Aucun service IA disponible');
       }

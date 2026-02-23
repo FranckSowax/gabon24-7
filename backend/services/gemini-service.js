@@ -56,8 +56,16 @@ class GeminiService {
    */
   cleanJson(text) {
     if (!text) return "";
-    let cleaned = text.replace(/```json/gi, "").replace(/```/g, "");
-    return cleaned.trim();
+    let cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    // Si le parsing direct échoue, tenter d'extraire le JSON enfoui
+    try {
+      JSON.parse(cleaned);
+      return cleaned;
+    } catch {
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      if (jsonMatch) return jsonMatch[0];
+      return cleaned; // retourner tel quel, le caller gèrera l'erreur
+    }
   }
 
   sleep(ms) {
