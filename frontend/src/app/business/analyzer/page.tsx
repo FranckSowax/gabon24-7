@@ -272,17 +272,43 @@ export default function BusinessAnalyzerPage() {
   }
 
   // Pré-sélectionner un article si aid est présent dans l'URL
+  // Si l'article n'est pas dans la liste chargée, le récupérer par ID
   useEffect(() => {
-    try {
-      if (typeof window === 'undefined') return
-      const params = new URLSearchParams(window.location.search)
-      const aid = params.get('aid')
-      if (aid && articles.length > 0) {
-        const found = articles.find(a => a.id === aid) || null
-        if (found) setSelectedArticle(found)
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const aid = params.get('aid')
+    if (!aid) return
+
+    // Si les articles sont chargés, chercher dedans
+    if (articles.length > 0) {
+      const found = articles.find(a => a.id === aid)
+      if (found) {
+        setSelectedArticle(found)
+        return
       }
-    } catch {}
-  }, [articles])
+    }
+
+    // Article non trouvé dans la liste : le récupérer par ID depuis l'API
+    if (!loading) {
+      const fetchArticleById = async () => {
+        try {
+          const response = await fetch(`${API_URL}/api/articles/${aid}`)
+          const data = await response.json()
+          if (data.success && data.article) {
+            // Ajouter l'article en tête de liste et le sélectionner
+            setArticles(prev => {
+              if (prev.find(a => a.id === data.article.id)) return prev
+              return [data.article, ...prev]
+            })
+            setSelectedArticle(data.article)
+          }
+        } catch (error) {
+          console.error('Erreur récupération article par ID:', error)
+        }
+      }
+      fetchArticleById()
+    }
+  }, [articles, loading])
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % howItWorksSteps.length)

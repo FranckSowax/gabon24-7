@@ -1132,6 +1132,42 @@ app.get('/api/articles', async (req, res) => {
   }
 });
 
+// Route pour récupérer un article par son ID (utilisé pour le deep-linking WhatsApp)
+app.get('/api/articles/:id', async (req, res, next) => {
+  // Ne pas capturer les routes nommées (all, check-updates, etc.)
+  const { id } = req.params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return next();
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ success: false, error: 'Article non trouvé' });
+    }
+
+    const article = {
+      id: data.id,
+      title: data.title,
+      summary: data.summary || '',
+      image_url: data.image_url || null,
+      imageUrl: data.image_url || null,
+      publishedAt: formatTimeAgo(data.published_at),
+      category: data.category,
+      source: data.source || 'Source inconnue',
+      url: data.url,
+      published_at: data.published_at
+    };
+
+    res.json({ success: true, article });
+  } catch (error) {
+    console.error('Erreur récupération article par ID:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
 // Route pour trouver des articles similaires avec IA (matching STRICT)
 app.post('/api/articles/similar', async (req, res) => {
   try {
