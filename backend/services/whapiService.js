@@ -227,20 +227,21 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 async function generateOpportunities(title, summary) {
   try {
     const OpenAI = require('openai');
-    const apiKey = process.env.KIMI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.warn('KIMI_API_KEY manquante - opportunités non générées');
+      console.warn('OPENAI_API_KEY manquante - opportunités non générées');
       return null;
     }
 
-    const client = new OpenAI({ apiKey, baseURL: 'https://api.moonshot.ai/v1' });
+    const client = new OpenAI({ apiKey });
     const response = await client.chat.completions.create({
-      model: 'kimi-k2.5-preview',
+      model: 'gpt-4.1-mini',
       temperature: 0.6,
+      response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide, sans markdown ni commentaire.'
+          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.'
         },
         {
           role: 'user',
@@ -259,26 +260,14 @@ Réponds en JSON strict :
     });
 
     const content = response.choices[0].message.content;
-    console.log('🔍 Kimi opportunities raw response:', content.substring(0, 300));
+    console.log('🔍 GPT-4.1-mini opportunities response:', content.substring(0, 300));
 
-    // Nettoyer le contenu : supprimer les blocs markdown ```json ... ```
-    let cleaned = content
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .trim();
-
-    // Essayer d'extraire le JSON s'il est enfoui dans du texte
-    const jsonMatch = cleaned.match(/\{[\s\S]*"opportunities"[\s\S]*\}/);
-    if (jsonMatch) {
-      cleaned = jsonMatch[0];
-    }
-
-    const result = JSON.parse(cleaned);
+    const result = JSON.parse(content);
     if (result && result.opportunities && result.opportunities.length >= 3) {
       console.log('✅ 3 opportunités générées avec succès');
       return result.opportunities.slice(0, 3);
     }
-    console.warn('⚠️ Réponse Kimi invalide - pas assez d\'opportunités:', result);
+    console.warn('⚠️ Réponse invalide - pas assez d\'opportunités:', result);
     return null;
   } catch (error) {
     console.error('❌ Erreur génération opportunités WhatsApp:', error.message);
