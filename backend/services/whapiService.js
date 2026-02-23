@@ -222,12 +222,30 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 
 /**
  * Générer 3 opportunités business à partir du titre et résumé d'un article
- * Utilise Gemini pour proposer des idées d'entreprise liées à la problématique
+ * Utilise OpenAI GPT-4.1 pour proposer des idées d'entreprise liées à la problématique
  */
 async function generateOpportunities(title, summary) {
   try {
-    const geminiService = require('./gemini-service');
-    const prompt = `Contexte article d'actualité au Gabon :
+    const OpenAI = require('openai');
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn('OPENAI_API_KEY manquante - opportunités non générées');
+      return null;
+    }
+
+    const openai = new OpenAI({ apiKey });
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4.1',
+      temperature: 0.8,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.'
+        },
+        {
+          role: 'user',
+          content: `Contexte article d'actualité au Gabon :
 Titre : ${title}
 Résumé : ${summary}
 
@@ -236,13 +254,12 @@ En te basant sur la problématique soulevée par cet article, propose exactement
 Réponds en JSON strict :
 {
   "opportunities": ["Idée 1 en une phrase courte et percutante", "Idée 2 en une phrase courte et percutante", "Idée 3 en une phrase courte et percutante"]
-}`;
-
-    const result = await geminiService.generateJSON(prompt, {
-      systemPrompt: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.',
-      temperature: 0.8
+}`
+        }
+      ]
     });
 
+    const result = JSON.parse(response.choices[0].message.content);
     if (result && result.opportunities && result.opportunities.length >= 3) {
       return result.opportunities.slice(0, 3);
     }
