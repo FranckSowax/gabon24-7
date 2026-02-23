@@ -271,7 +271,76 @@ async function callGemini(prompt, options = {}) {
 }
 
 /**
- * Appeler GPT-5 Nano avec fallback OpenAI ou Gemini selon configuration
+ * Appeler Kimi K2.5 (Moonshot AI, OpenAI-compatible)
+ */
+async function callKimi(prompt, options = {}) {
+  const {
+    systemPrompt = 'Tu es un expert business gabonais. Réponds en JSON strict uniquement.',
+    maxTokens = 800,
+    temperature = 0.5,
+    returnJSON = true
+  } = options;
+
+  const kimiApiKey = process.env.KIMI_API_KEY;
+  if (!kimiApiKey) throw new Error('KIMI_API_KEY manquant');
+
+  console.log('🌙 Appel Kimi K2.5...');
+  const startTime = Date.now();
+
+  const response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${kimiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'kimi-k2.5-preview',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: maxTokens,
+      temperature: temperature
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Kimi API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  const elapsed = Date.now() - startTime;
+  console.log(`✅ Kimi réponse reçue en ${elapsed}ms`);
+
+  let parsedContent = content;
+  if (returnJSON) {
+    const cleaned = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    try {
+      parsedContent = JSON.parse(cleaned);
+    } catch {
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      if (jsonMatch) {
+        parsedContent = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Impossible de parser le JSON de la réponse Kimi');
+      }
+    }
+  }
+
+  return {
+    content: parsedContent,
+    rawContent: content,
+    usage: data.usage || { prompt_tokens: Math.ceil(prompt.length / 4), completion_tokens: Math.ceil(content.length / 4), total_tokens: Math.ceil((prompt.length + content.length) / 4) },
+    model: 'kimi-k2.5-preview',
+    provider: 'kimi',
+    elapsed_ms: elapsed
+  };
+}
+
+/**
+ * Appeler IA avec fallback: Kimi K2.5 → Gemini → Replicate → OpenAI
  * @param {string} prompt - Prompt utilisateur
  * @param {Object} options - Options de configuration
  * @returns {Promise<Object>} - Réponse avec content et usage
@@ -285,39 +354,37 @@ async function callGPT5NanoWithFallback(prompt, options = {}) {
     ...gpt5Options
   } = options;
 
-  // Si Gemini est le provider préféré, l'utiliser en premier
-  if (preferredProvider === 'gemini' && process.env.GEMINI_API_KEY) {
+  // 1. Primary: Kimi K2.5
+  if (process.env.KIMI_API_KEY) {
     try {
-      console.log('♊ Utilisation de Gemini (provider configuré)');
+      console.log('🌙 Utilisation de Kimi K2.5 (modèle principal)');
+      return await callKimi(prompt, gpt5Options);
+    } catch (error) {
+      console.error('⚠️ Kimi échoué:', error.message);
+    }
+  }
+
+  // 2. Fallback: Gemini
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      console.log('♊ Fallback Gemini...');
       return await callGemini(prompt, gpt5Options);
     } catch (error) {
       console.error('⚠️ Gemini échoué:', error.message);
-      // Continuer vers les autres providers
     }
   }
 
-  // Si OpenAI est le provider préféré
-  if (preferredProvider === 'openai' && process.env.OPENAI_API_KEY) {
-    try {
-      console.log(`🤖 Utilisation de OpenAI ${preferredModel || openaiModel} (provider configuré)`);
-      return await callOpenAI(prompt, { ...gpt5Options, model: preferredModel || openaiModel });
-    } catch (error) {
-      console.error('⚠️ OpenAI échoué:', error.message);
-      // Continuer vers les autres providers
-    }
-  }
-
+  // 3. Fallback: GPT-5 Nano (Replicate)
   try {
-    // Essayer GPT-5 Nano (Replicate) par défaut
     return await callGPT5Nano(prompt, gpt5Options);
   } catch (error) {
     console.error('⚠️ GPT-5 Nano échoué:', error.message);
-    
-    if (!fallbackToOpenAI) {
+
+    if (!fallbackToOpenAI || !process.env.OPENAI_API_KEY) {
       throw error;
     }
 
-    // Fallback vers OpenAI
+    // 4. Last resort: OpenAI
     console.log('🔄 Fallback vers OpenAI', openaiModel);
     return await callOpenAI(prompt, { ...gpt5Options, model: openaiModel });
   }
@@ -454,5 +521,6 @@ module.exports = {
   callGPT5NanoWithFallback,
   callOpenAI,
   callGemini,
+  callKimi,
   calculateCost
 };

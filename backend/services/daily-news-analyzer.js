@@ -168,15 +168,15 @@ ${articlesContext}
     }
 
     // Si on a OpenAI, utiliser GPT pour générer le résumé
-    if (process.env.OPENAI_API_KEY) {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    if (process.env.KIMI_API_KEY) {
+      const response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${process.env.KIMI_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'kimi-k2.5-preview',
           messages: [
             {
               role: 'system',
@@ -206,7 +206,7 @@ ${articlesContext}
       return summary.trim();
     } else {
       // Fallback: générer un résumé détaillé sans IA
-      console.log('⚠️  OPENAI_API_KEY manquant, génération de résumé détaillé basique');
+      console.log('⚠️  KIMI_API_KEY manquant, génération de résumé détaillé basique');
       
       // Filtrer les articles politiques et économiques
       const politicalArticles = articles.filter(a => 

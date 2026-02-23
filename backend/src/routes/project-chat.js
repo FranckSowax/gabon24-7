@@ -8,14 +8,16 @@ const router = express.Router();
 
 const { supabase } = supabaseService;
 
-// Initialiser OpenAI (conditionnel)
+// Initialiser Kimi K2.5 (Moonshot AI, OpenAI-compatible)
 let openai = null;
-if (process.env.OPENAI_API_KEY) {
+const KIMI_MODEL = 'kimi-k2.5-preview';
+if (process.env.KIMI_API_KEY) {
   openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.KIMI_API_KEY,
+    baseURL: 'https://api.moonshot.ai/v1'
   });
 } else {
-  console.warn('⚠️ OPENAI_API_KEY non configurée - Routes project-chat désactivées');
+  console.warn('⚠️ KIMI_API_KEY non configurée - Routes project-chat désactivées');
 }
 
 // Envoyer un message et obtenir réponse
@@ -40,7 +42,7 @@ router.post('/send-message', async (req, res) => {
     if (!openai) {
       return res.status(503).json({
         success: false,
-        error: 'Service OpenAI non disponible'
+        error: 'Service IA non disponible'
       });
     }
 
@@ -149,20 +151,20 @@ INSTRUCTIONS:
     // Appel à OpenAI avec le modèle configuré
     let aiResponse;
     try {
-      console.log(`🤖 Appel OpenAI ${configuredModel || 'gpt-4o-mini'}`);
-      
+      console.log(`🤖 Appel Kimi ${KIMI_MODEL}`);
+
       const completion = await openai.chat.completions.create({
-        model: configuredModel || 'gpt-4o-mini',
+        model: KIMI_MODEL,
         messages: conversationHistory,
         max_tokens: 800,
         temperature: 0.7
       });
 
       aiResponse = completion.choices[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
-      
-      console.log(`✅ Réponse ${configuredModel || 'gpt-4o-mini'} reçue`);
+
+      console.log(`✅ Réponse Kimi reçue`);
     } catch (aiError) {
-      console.error('Erreur appel OpenAI:', aiError);
+      console.error('Erreur appel Kimi:', aiError);
       aiResponse = "Désolé, je rencontre une difficulté technique. Pouvez-vous reformuler votre question ?";
     }
 
@@ -383,13 +385,13 @@ router.post('/generate-quick-response', async (req, res) => {
       });
     }
 
-    console.log('🤖 Génération réponse rapide GPT-4o...');
+    console.log(`🤖 Génération réponse rapide Kimi ${KIMI_MODEL}...`);
 
-    // Générer réponse avec OpenAI GPT-4o
+    // Générer réponse avec Kimi K2.5
     let aiResponse = '';
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: KIMI_MODEL,
         messages: [
           {
             role: 'system',
@@ -405,10 +407,10 @@ router.post('/generate-quick-response', async (req, res) => {
       });
 
       aiResponse = completion.choices[0]?.message?.content || "Je rencontre une difficulté technique.";
-      
-      console.log('✅ Réponse GPT-4o générée');
+
+      console.log('✅ Réponse Kimi générée');
     } catch (aiError) {
-      console.error('Erreur appel OpenAI:', aiError);
+      console.error('Erreur appel Kimi:', aiError);
       aiResponse = "Je rencontre une difficulté technique. Veuillez reformuler votre question.";
     }
 

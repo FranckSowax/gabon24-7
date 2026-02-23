@@ -2,15 +2,17 @@ const OpenAI = require('openai');
 
 class OpenAIService {
   constructor() {
-    // Initialiser OpenAI avec la clé API (à configurer via variable d'environnement)
+    // Initialiser Kimi K2.5 (Moonshot AI, OpenAI-compatible)
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || 'your-openai-api-key-here'
+      apiKey: process.env.KIMI_API_KEY || 'not-configured',
+      baseURL: 'https://api.moonshot.ai/v1'
     });
-    
-    this.isConfigured = !!process.env.OPENAI_API_KEY;
-    
+
+    this.model = 'kimi-k2.5-preview';
+    this.isConfigured = !!process.env.KIMI_API_KEY;
+
     if (!this.isConfigured) {
-      console.warn('⚠️ OpenAI API Key non configurée. Utilisez OPENAI_API_KEY dans les variables d\'environnement.');
+      console.warn('⚠️ KIMI_API_KEY non configurée. Service IA texte désactivé.');
     }
   }
 
@@ -35,7 +37,7 @@ Contenu: ${content}
 Résumé en une phrase complète:`;
 
       const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: this.model,
         messages: [
           {
             role: "system",
@@ -103,7 +105,7 @@ Contenu: ${content}
 Mots-clés (séparés par des virgules):`;
 
       const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: this.model,
         messages: [
           {
             role: "system", 
@@ -149,7 +151,7 @@ Contenu: ${content.substring(0, 500)}
 Sentiment:`;
 
       const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: this.model,
         messages: [
           {
             role: "system",
@@ -185,7 +187,7 @@ Sentiment:`;
   getUsageStats() {
     return {
       configured: this.isConfigured,
-      model: 'gpt-3.5-turbo',
+      model: this.model,
       features: ['résumés', 'mots-clés', 'sentiment']
     };
   }

@@ -17,33 +17,34 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Configuration par défaut (fallback si DB indisponible)
 const DEFAULT_CONFIG = {
   // Business
-  initial_analysis: { model: 'gemini-3-pro', credits: 30 },
-  re_analysis: { model: 'gpt-4-turbo-preview', credits: 25 },
-  action_plan: { model: 'gpt-4-turbo-preview', credits: 25 },
-  skill_test: { model: 'gemini-3-pro', credits: 30 },
-  custom_training: { model: 'gemini-3-pro', credits: 50 },
-  business_plan: { model: 'gemini-3-pro', credits: 150 },
-  motivation_letter: { model: 'gemini-3-pro', credits: 20 },
-  sponsored_article: { model: 'gemini-3-pro', credits: 50 },
-  
+  initial_analysis: { model: 'kimi-k2.5-preview', credits: 30 },
+  re_analysis: { model: 'kimi-k2.5-preview', credits: 25 },
+  action_plan: { model: 'kimi-k2.5-preview', credits: 25 },
+  skill_test: { model: 'kimi-k2.5-preview', credits: 30 },
+  custom_training: { model: 'kimi-k2.5-preview', credits: 50 },
+  business_plan: { model: 'kimi-k2.5-preview', credits: 150 },
+  motivation_letter: { model: 'kimi-k2.5-preview', credits: 20 },
+  sponsored_article: { model: 'kimi-k2.5-preview', credits: 50 },
+
   // Chat
-  chat_message: { model: 'gpt-4o-mini', credits: 2 },
-  document_analysis: { model: 'gpt-4-turbo-preview', credits: 15 },
-  
+  chat_message: { model: 'kimi-k2.5-preview', credits: 2 },
+  document_analysis: { model: 'kimi-k2.5-preview', credits: 15 },
+
   // Content
-  ai_analysis: { model: 'gemini-3-pro', credits: 10 },
-  audio_summary: { model: 'gemini-3-pro', credits: 5 }, // Migrated to Gemini
-  tldr_summary: { model: 'gemini-3-pro', credits: 0 },  // Migrated to Gemini
+  ai_analysis: { model: 'kimi-k2.5-preview', credits: 10 },
+  audio_summary: { model: 'kimi-k2.5-preview', credits: 5 },
+  tldr_summary: { model: 'kimi-k2.5-preview', credits: 0 },
   article_premium: { model: null, credits: 1 },
-  
+
   // Veille
-  opportunity_analysis: { model: 'gemini-3-pro', credits: 15 }, // Migrated from llama/replicate
-  veille_report: { model: 'gpt-4-turbo-preview', credits: 20 },
+  opportunity_analysis: { model: 'kimi-k2.5-preview', credits: 15 },
+  veille_report: { model: 'kimi-k2.5-preview', credits: 20 },
   custom_alert: { model: null, credits: 3 },
 };
 
 // Mapping des modèles vers les providers
 const MODEL_PROVIDERS = {
+  'kimi-k2.5-preview': 'kimi',
   'gpt-4-turbo-preview': 'openai',
   'gpt-4o': 'openai',
   'gpt-4o-mini': 'openai',

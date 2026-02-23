@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const openaiApiKey = process.env.OPENAI_API_KEY;
+const kimiApiKey = process.env.KIMI_API_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variables d\'environnement manquantes');
@@ -21,17 +21,17 @@ const RATE_LIMITS = {
 
 // Fonction pour générer un résumé IA avec gestion d'erreur robuste
 async function generateAISummary(title, content, retryCount = 0) {
-  if (!openaiApiKey || !content) return null;
-  
+  if (!kimiApiKey || !content) return null;
+
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${kimiApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'kimi-k2.5-preview',
         messages: [{
           role: 'user',
           content: `Résume cet article en français en 2-3 phrases maximum, en restant factuel et informatif:\n\nTitre: ${title}\n\nContenu: ${content.substring(0, 1000)}`
@@ -40,35 +40,34 @@ async function generateAISummary(title, content, retryCount = 0) {
         temperature: 0.3
       })
     });
-    
+
     if (response.status === 429) {
-      // Rate limit atteint
       const retryAfter = parseInt(response.headers.get('retry-after') || '60');
-      console.warn(`⚠️ Rate limit OpenAI, attente ${retryAfter}s`);
-      
+      console.warn(`⚠️ Rate limit Kimi, attente ${retryAfter}s`);
+
       if (retryCount < 3) {
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         return generateAISummary(title, content, retryCount + 1);
       }
       throw new Error('Rate limit dépassé après 3 tentatives');
     }
-    
+
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Kimi API error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     return data.choices[0]?.message?.content?.trim() || null;
-    
+
   } catch (error) {
     console.error('Erreur génération résumé IA:', error);
-    
+
     if (retryCount < 2 && !error.message.includes('Rate limit')) {
       console.log(`🔄 Retry ${retryCount + 1}/2 pour résumé IA`);
       await new Promise(resolve => setTimeout(resolve, 1000));
       return generateAISummary(title, content, retryCount + 1);
     }
-    
+
     throw error;
   }
 }
@@ -242,14 +241,14 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Vérifier si OpenAI est configuré
-    if (!openaiApiKey) {
+    // Vérifier si Kimi est configuré
+    if (!kimiApiKey) {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'OpenAI non configuré, résumés IA désactivés',
+          message: 'KIMI_API_KEY non configuré, résumés IA désactivés',
           processed: 0
         })
       };

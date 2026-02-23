@@ -222,26 +222,25 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 
 /**
  * Générer 3 opportunités business à partir du titre et résumé d'un article
- * Utilise OpenAI GPT-4.1 pour proposer des idées d'entreprise liées à la problématique
+ * Utilise Kimi K2.5 (Moonshot AI) pour proposer des idées d'entreprise liées à la problématique
  */
 async function generateOpportunities(title, summary) {
   try {
     const OpenAI = require('openai');
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.KIMI_API_KEY;
     if (!apiKey) {
-      console.warn('OPENAI_API_KEY manquante - opportunités non générées');
+      console.warn('KIMI_API_KEY manquante - opportunités non générées');
       return null;
     }
 
-    const openai = new OpenAI({ apiKey });
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4.1',
-      temperature: 0.8,
-      response_format: { type: 'json_object' },
+    const client = new OpenAI({ apiKey, baseURL: 'https://api.moonshot.ai/v1' });
+    const response = await client.chat.completions.create({
+      model: 'kimi-k2.5-preview',
+      temperature: 0.6,
       messages: [
         {
           role: 'system',
-          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.'
+          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide, sans markdown ni commentaire.'
         },
         {
           role: 'user',
@@ -259,7 +258,10 @@ Réponds en JSON strict :
       ]
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    // Nettoyer le contenu si entouré de ```json ... ```
+    const cleaned = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    const result = JSON.parse(cleaned);
     if (result && result.opportunities && result.opportunities.length >= 3) {
       return result.opportunities.slice(0, 3);
     }

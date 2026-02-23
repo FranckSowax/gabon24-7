@@ -2,20 +2,23 @@ const OpenAI = require('openai');
 
 class OpenAIEditorialService {
   constructor() {
-    // Configuration OpenAI avec clé API depuis les variables d'environnement
-    const apiKey = process.env.OPENAI_API_KEY;
-    
+    // Configuration Kimi K2.5 (Moonshot AI, OpenAI-compatible)
+    const apiKey = process.env.KIMI_API_KEY;
+
+    this.model = 'kimi-k2.5-preview';
+
     if (!apiKey) {
-      console.warn('⚠️ OPENAI_API_KEY non configurée - Service IA désactivé');
+      console.warn('⚠️ KIMI_API_KEY non configurée - Service IA Editorial désactivé');
       this.openai = null;
       return;
     }
-    
+
     this.openai = new OpenAI({
-      apiKey: apiKey
+      apiKey: apiKey,
+      baseURL: 'https://api.moonshot.ai/v1'
     });
-    
-    console.log('✅ Service OpenAI Editorial initialisé');
+
+    console.log('✅ Service Kimi Editorial initialisé');
   }
 
   /**
@@ -43,7 +46,7 @@ L'éditorial doit :
 Éditorial :`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.model,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 500,
         temperature: 0.7
@@ -74,7 +77,7 @@ Contenu : ${content?.substring(0, 500)}
 Répondez uniquement par : "positif", "négatif" ou "neutre"`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.model,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 10,
         temperature: 0.1
@@ -106,7 +109,7 @@ Contenu : ${content?.substring(0, 500)}
 Répondez uniquement par une liste de mots-clés séparés par des virgules.`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.model,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 50,
         temperature: 0.3

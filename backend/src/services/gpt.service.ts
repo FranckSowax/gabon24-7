@@ -6,16 +6,18 @@ import { supabaseAdmin } from '../config/database';
 export class GPTService {
   private openai: OpenAI;
   private readonly CACHE_TTL = 3600; // 1 heure
+  private readonly model = 'kimi-k2.5-preview';
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    
+    const apiKey = process.env.KIMI_API_KEY;
+
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY manquante dans les variables d\'environnement');
+      throw new Error('KIMI_API_KEY manquante dans les variables d\'environnement');
     }
 
     this.openai = new OpenAI({
       apiKey,
+      baseURL: 'https://api.moonshot.ai/v1',
       timeout: 30000, // 30 secondes
     });
   }
@@ -41,7 +43,7 @@ export class GPTService {
 
       // Appel à l'API OpenAI
       const completion = await this.openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+        model: this.model,
         messages: [
           {
             role: 'system',
@@ -109,7 +111,7 @@ export class GPTService {
       const prompt = this.buildEditorialPrompt(templateType, articles, customPrompt);
 
       const completion = await this.openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+        model: this.model,
         messages: [
           {
             role: 'system',
@@ -164,7 +166,7 @@ Privilégie les termes spécifiques au Gabon, les noms propres, et les concepts 
 `;
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo', // Modèle moins cher pour cette tâche
+        model: this.model,
         messages: [
           {
             role: 'system',

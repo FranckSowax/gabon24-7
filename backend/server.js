@@ -4724,10 +4724,10 @@ try {
 }
 
 // Vérification de la configuration critique
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('⚠️  OPENAI_API_KEY manquante ! Les fonctionnalités IA seront limitées.');
+if (!process.env.KIMI_API_KEY) {
+  console.warn('⚠️  KIMI_API_KEY manquante ! Les fonctionnalités IA seront limitées.');
 } else {
-  console.log('✅ OPENAI_API_KEY détectée.');
+  console.log('✅ KIMI_API_KEY détectée (Kimi K2.5).');
 }
 
 if (!process.env.RAPIDAPI_KEY && !process.env.RAPIDAPI_FOOTBALL_KEY) {

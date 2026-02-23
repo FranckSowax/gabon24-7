@@ -420,20 +420,20 @@ router.post('/', async (req, res) => {
     }
 
     // Appel OpenAI
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ success: false, error: 'OPENAI_API_KEY manquant' });
+    if (!process.env.KIMI_API_KEY) {
+      return res.status(500).json({ success: false, error: 'KIMI_API_KEY manquant' });
     }
 
     const prompt = buildPrompt(serviceType, articlesText, context, tone, options);
 
-    const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiResp = await fetch('https://api.moonshot.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.KIMI_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'kimi-k2.5-preview',
         messages: [
           { role: 'system', content: 'Tu es un assistant IA expert en journalisme et synthèse.' },
           { role: 'user', content: prompt }

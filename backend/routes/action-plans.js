@@ -5,14 +5,15 @@ const supabaseService = require('../supabase-config');
 const aiConfigService = require('../services/ai-config-service');
 const geminiService = require('../services/gemini-service');
 
-// Instanciation conditionnelle d'OpenAI
+// Instanciation conditionnelle de Kimi K2.5 (Moonshot AI)
 let openai = null;
-if (process.env.OPENAI_API_KEY) {
+if (process.env.KIMI_API_KEY) {
   openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.KIMI_API_KEY,
+    baseURL: 'https://api.moonshot.ai/v1'
   });
 } else {
-  console.warn('⚠️ OPENAI_API_KEY non configurée - Routes action-plans désactivées');
+  console.warn('⚠️ KIMI_API_KEY non configurée - Routes action-plans désactivées');
 }
 
 /**
@@ -88,7 +89,7 @@ Réponds UNIQUEMENT avec un JSON valide au format suivant (pas de markdown, pas 
       } else if (openai) {
         // Utiliser OpenAI
         const completion = await openai.chat.completions.create({
-          model: configuredModel || 'gpt-4-turbo-preview',
+          model: 'kimi-k2.5-preview',
           messages: [
             {
               role: 'system',
