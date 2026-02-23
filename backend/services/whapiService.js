@@ -514,45 +514,42 @@ async function sendCarouselPost(channelId, articles, frontendUrl) {
   // Limiter à 10 cards (max WhatsApp)
   const items = articles.slice(0, 10);
 
-  // Construire les cards
-  const cards = items.map((article, i) => {
+  // Filtrer les articles qui ont une image (obligatoire pour le carrousel)
+  const withImages = items.filter(a => a.image_urls && a.image_urls.length > 0);
+  if (withImages.length === 0) throw new Error('Aucun article avec image pour le carrousel');
+
+  // Construire les cards (format Whapi: media, text, buttons avec id)
+  const cards = withImages.map((article, i) => {
     const title = article.title || 'Article';
     const summary = (article.summary_ai || article.summary || '').substring(0, 200);
-    const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
+    const imageUrl = article.image_urls[0];
     const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
     const source = article.source ? `📡 ${article.source}` : '';
 
-    const card = {
+    return {
       id: `card_${i}`,
-      body: `📰 *${title}*\n${source}\n\n${summary}`,
+      media: { media: imageUrl },
+      text: `📰 *${title}*\n${source}\n\n${summary}`,
       buttons: [
         {
           type: 'url',
-          title: '🚀 Analyse IA',
+          title: 'Analyse IA',
+          id: `btn_${i}`,
           url: analyzeUrl
         }
       ]
     };
-
-    if (imageUrl) {
-      card.header = {
-        type: 'image',
-        image: { link: imageUrl }
-      };
-    }
-
-    return card;
   });
 
   const payload = {
     to: channelId,
     body: {
-      text: `📊 *${items.length} actus Gabon* — Swipez pour découvrir les opportunités business`
+      text: `📊 *${withImages.length} actus Gabon* — Swipez pour découvrir les opportunités business`
     },
     cards
   };
 
-  console.log(`📱 Envoi carrousel WhatsApp: ${items.length} cards`);
+  console.log(`📱 Envoi carrousel WhatsApp: ${withImages.length} cards`);
 
   const response = await axios.post(
     `${WHAPI_BASE_URL}/messages/carousel`,
