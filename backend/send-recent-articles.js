@@ -16,8 +16,8 @@ const DELAY_BETWEEN_POSTS = 8000; // 8 secondes entre chaque envoi
 
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
-      .select('id, title, summary_ai, url, image_urls, published_at, whatsapp_sent')
-      .not('summary_ai', 'is', null)
+      .select('id, title, summary_ai, summary, url, image_urls, published_at, whatsapp_sent')
+      .or('summary_ai.not.is.null,summary.not.is.null')
       .gte('published_at', since)
       .order('published_at', { ascending: true });
 
