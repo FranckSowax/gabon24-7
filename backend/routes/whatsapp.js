@@ -88,6 +88,7 @@ router.post('/test-carousel', async (req, res) => {
     const validSecrets = [
       process.env.CRON_SECRET,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
+      process.env.KIMI_API_KEY,
     ].filter(Boolean);
     const isSecretAuth = token && validSecrets.includes(token);
 
