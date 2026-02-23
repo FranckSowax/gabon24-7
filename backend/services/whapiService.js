@@ -221,13 +221,89 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 }
 
 /**
- * Envoie les articles non envoyés vers WhatsApp
+ * Poster un article sur une chaîne WhatsApp (newsletter)
+ * Utilise /messages/image pour afficher l'image en header + caption
+ * Fallback sur /messages/text si pas d'image
+ */
+async function sendChannelPost(channelId, article, frontendUrl) {
+  const title = article.title;
+  const summary = article.ai_summary || 'Pas de résumé disponible.';
+  const articleUrl = article.url;
+  const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
+  const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
+
+  const caption = `📰 *${title}*\n\n${summary}\n\n🔗 Lire l'article :\n${articleUrl}\n\n💡 *Analyser les opportunités IA* :\n${analyzeUrl}\n\n---\n_Gabon 24/7 — Votre source d'info_`;
+
+  if (imageUrl) {
+    // Envoi avec image en header
+    const response = await axios.post(
+      `${WHAPI_BASE_URL}/messages/image`,
+      {
+        to: channelId,
+        media: imageUrl,
+        caption,
+        width: 800,
+        height: 418
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${WHAPI_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
+    return { success: true, type: 'image', data: response.data };
+  } else {
+    // Fallback texte si pas d'image
+    const response = await axios.post(
+      `${WHAPI_BASE_URL}/messages/text`,
+      {
+        to: channelId,
+        body: caption,
+        typing_time: 0
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${WHAPI_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
+    return { success: true, type: 'text', data: response.data };
+  }
+}
+
+/**
+ * Récupérer la liste des chaînes WhatsApp (newsletters)
+ */
+async function getChannels() {
+  try {
+    const response = await axios.get(
+      `${WHAPI_BASE_URL}/newsletters?count=100`,
+      {
+        headers: {
+          'Authorization': `Bearer ${WHAPI_TOKEN}`,
+          'Accept': 'application/json'
+        }
+      }
+    );
+    return { success: true, channels: response.data.newsletters || [] };
+  } catch (error) {
+    console.error('Erreur récupération chaînes:', error.message);
+    return { success: false, error: error.message, channels: [] };
+  }
+}
+
+/**
+ * Envoie les articles non envoyés vers la chaîne WhatsApp
  * Limité à 5 articles par exécution pour éviter le spam
  */
 async function sendPendingArticles(limit = 5) {
   if (!WHAPI_TOKEN) {
     console.error('Token Whapi manquant, impossible d\'envoyer les messages');
-    return;
+    return { sent: 0, errors: 0, message: 'Token Whapi manquant' };
   }
 
   const supabaseService = require('../supabase-config');
@@ -236,8 +312,11 @@ async function sendPendingArticles(limit = 5) {
 
   if (!channelId) {
     console.error('WHAPI_CHANNEL_ID non configuré');
-    return;
+    return { sent: 0, errors: 0, message: 'WHAPI_CHANNEL_ID non configuré' };
   }
+
+  let sent = 0;
+  let errors = 0;
 
   try {
     // 1. Récupérer les articles enrichis mais non envoyés
@@ -245,7 +324,7 @@ async function sendPendingArticles(limit = 5) {
       .from('articles')
       .select('id, title, ai_summary, url, image_urls')
       .eq('whatsapp_sent', false)
-      .not('ai_summary', 'is', null) // S'assurer qu'il y a un résumé
+      .not('ai_summary', 'is', null)
       .order('published_at', { ascending: false })
       .limit(limit);
 
@@ -253,51 +332,68 @@ async function sendPendingArticles(limit = 5) {
 
     if (!articles || articles.length === 0) {
       console.log('Aucun article en attente d\'envoi WhatsApp');
-      return;
+      return { sent: 0, errors: 0, pending: 0, message: 'Aucun article en attente' };
     }
 
-    console.log(`${articles.length} articles trouvés pour envoi WhatsApp`);
+    console.log(`📱 ${articles.length} articles trouvés pour envoi WhatsApp`);
 
-    // 2. Boucle d'envoi
+    // 2. Boucle d'envoi avec image en header
     for (const article of articles) {
       try {
-        const title = article.title;
-        const summary = article.ai_summary || 'Pas de résumé disponible.';
-        const originalUrl = article.url;
-        // Rediriger vers l'analyseur avec l'ID de l'article pré-sélectionné (aid)
-        const opportunityUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
-        
-        // Déterminer si on envoie une image
-        const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
+        const result = await sendChannelPost(channelId, article, frontendUrl);
 
-        await sendInteractiveMessage(channelId, title, summary, originalUrl, opportunityUrl, imageUrl);
-        
         // Marquer comme envoyé
         await supabaseService.supabase
           .from('articles')
           .update({ whatsapp_sent: true })
           .eq('id', article.id);
-          
-        console.log(`Article ${article.id} envoyé sur WhatsApp avec succès`);
-        
-        // Pause de 5 secondes pour respecter les limites de débit
+
+        console.log(`✅ Article ${article.id} envoyé (${result.type}) sur WhatsApp`);
+        sent++;
+
+        // Pause de 5 secondes entre chaque envoi
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
+
       } catch (sendError) {
-        console.error(`Erreur lors de l'envoi de l'article ${article.id}:`, sendError.message);
-        // On continue avec l'article suivant même si un échoue
+        console.error(`❌ Erreur envoi article ${article.id}:`, sendError.response?.data || sendError.message);
+        errors++;
       }
     }
+
+    return { sent, errors, total: articles.length };
   } catch (error) {
     console.error('Erreur globale service WhatsApp:', error);
+    return { sent, errors, message: error.message };
+  }
+}
+
+/**
+ * Compter les articles en attente d'envoi WhatsApp
+ */
+async function getPendingCount() {
+  try {
+    const supabaseService = require('../supabase-config');
+    const { count, error } = await supabaseService.supabase
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .eq('whatsapp_sent', false)
+      .not('ai_summary', 'is', null);
+
+    if (error) throw error;
+    return { success: true, count: count || 0 };
+  } catch (error) {
+    return { success: false, count: 0, error: error.message };
   }
 }
 
 module.exports = {
   sendWhatsAppMessage,
   sendInteractiveMessage,
+  sendChannelPost,
   sendPendingArticles,
   sendAlertNotification,
   getMessageStatus,
+  getChannels,
+  getPendingCount,
   isValidPhoneNumber
 };

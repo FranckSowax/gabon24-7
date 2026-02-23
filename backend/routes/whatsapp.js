@@ -10,13 +10,16 @@ const triggerSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(5),
 });
 
-// Route de test simple pour WhatsApp (publique pour health checks)
+// Route de statut WhatsApp (publique pour health checks)
 router.get('/status', async (req, res) => {
   try {
-    // On pourrait ajouter une vérification réelle de la connexion Whapi ici si disponible
+    const pending = await whapiService.getPendingCount();
     res.json({
       success: true,
-      data: { status: 'connected' },
+      data: {
+        status: 'connected',
+        pendingArticles: pending.count
+      },
       message: 'WhatsApp service actif'
     });
   } catch (error) {
@@ -25,15 +28,43 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// Déclencher l'envoi manuel des articles en attente
-// 🔒 SÉCURISÉ: Admin uniquement + validation des inputs
+// Récupérer la liste des chaînes WhatsApp (admin)
+router.get('/channels', requireAdmin, async (req, res) => {
+  try {
+    const result = await whapiService.getChannels();
+    res.json({
+      success: result.success,
+      channels: result.channels
+    });
+  } catch (error) {
+    console.error('Erreur channels WhatsApp:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Nombre d'articles en attente d'envoi (admin)
+router.get('/pending', requireAdmin, async (req, res) => {
+  try {
+    const result = await whapiService.getPendingCount();
+    res.json({
+      success: result.success,
+      count: result.count
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Déclencher l'envoi manuel des articles en attente (admin)
 router.post('/trigger', requireAdmin, validateBody(triggerSchema), async (req, res) => {
   try {
     const { limit } = req.body;
     console.log(`Déclenchement manuel envoi WhatsApp (limite: ${limit}) par admin ${req.user.id}`);
 
     // Lancer en arrière-plan pour ne pas bloquer la requête
-    whapiService.sendPendingArticles(limit).catch(err => {
+    whapiService.sendPendingArticles(limit).then(result => {
+      console.log('Envoi WhatsApp terminé:', result);
+    }).catch(err => {
       console.error('Erreur lors de l\'envoi manuel WhatsApp:', err);
     });
 
