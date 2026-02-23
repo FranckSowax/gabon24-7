@@ -967,4 +967,33 @@ router.post('/generate-scheduled-summary', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/audio/cron-trigger - Déclenchement par cron/admin (sans auth utilisateur)
+// Protégé par CRON_SECRET ou SUPABASE_SERVICE_ROLE_KEY
+router.post('/cron-trigger', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!authHeader || !cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ success: false, error: 'Non autorisé' });
+    }
+
+    const { timeSlot = 'morning', language = 'fr' } = req.body;
+    console.log(`🎙️ Cron trigger: ${timeSlot} [${language}]`);
+
+    const { generatePublicAudioSummary } = require('../services/audio-scheduler');
+    const summaryId = await generatePublicAudioSummary(timeSlot, language);
+
+    res.json({
+      success: !!summaryId,
+      summaryId,
+      message: summaryId ? 'Génération lancée' : 'Aucun article disponible'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur cron-trigger:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
