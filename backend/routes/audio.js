@@ -983,8 +983,27 @@ router.post('/cron-trigger', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
 
-    const { timeSlot = 'morning', language = 'fr' } = req.body;
+    const { timeSlot = 'morning', language = 'fr', debug = false } = req.body;
     console.log(`🎙️ Cron trigger: ${timeSlot} [${language}]`);
+
+    // Diagnostic: check if articles query works
+    if (debug) {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: testArticles, error: testErr } = await supabaseService.supabase
+        .from('articles')
+        .select('id, title, published_at')
+        .gte('published_at', since)
+        .order('published_at', { ascending: false })
+        .limit(5);
+
+      return res.json({
+        debug: true,
+        since,
+        articlesFound: testArticles?.length || 0,
+        queryError: testErr?.message || null,
+        sample: testArticles?.slice(0, 2)?.map(a => ({ title: a.title?.substring(0, 50), published_at: a.published_at }))
+      });
+    }
 
     const { generatePublicAudioSummary } = require('../services/audio-scheduler');
     const summaryId = await generatePublicAudioSummary(timeSlot, language);
