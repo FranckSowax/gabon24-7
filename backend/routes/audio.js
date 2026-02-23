@@ -972,9 +972,14 @@ router.post('/generate-scheduled-summary', requireAuth, async (req, res) => {
 router.post('/cron-trigger', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const cronSecret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const validSecrets = [
+      process.env.CRON_SECRET,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      process.env.KIMI_API_KEY
+    ].filter(Boolean);
 
-    if (!authHeader || !cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token || !validSecrets.includes(token)) {
       return res.status(401).json({ success: false, error: 'Non autorisé' });
     }
 
