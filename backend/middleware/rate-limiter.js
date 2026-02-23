@@ -99,15 +99,16 @@ const authLimiter = rateLimit({
 });
 
 /**
- * Limiteur pour les paiements
- * 20 requêtes par heure par utilisateur
+ * Limiteur pour les paiements (POST uniquement)
+ * Skip les GET (polling statut) pour ne limiter que les créations de paiement
+ * 20 requêtes par heure par IP
  */
 const paymentLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  skip: (req) => req.method === 'GET',
   message: {
     success: false,
     error: 'Trop de tentatives de paiement. Veuillez patienter.',
