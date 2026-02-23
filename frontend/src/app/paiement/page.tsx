@@ -465,7 +465,7 @@ function PaiementContent() {
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                <span className="text-xs">DriveBy Africa</span>
+                <span className="text-xs">E-Billing</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />

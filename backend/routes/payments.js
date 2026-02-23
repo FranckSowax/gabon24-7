@@ -1,5 +1,5 @@
 /**
- * ROUTES DE PAIEMENT - E-Billing (DriveBy Africa)
+ * ROUTES DE PAIEMENT - E-Billing (Gabon Insight)
  *
  * Endpoints pour tous les paiements via E-Billing:
  * - POST /api/payments/credits      - Achat de crédits
@@ -297,7 +297,7 @@ router.get('/health', async (req, res) => {
   res.json({
     status: 'ok',
     service: 'ebilling-payments',
-    provider: 'DriveBy Africa E-Billing',
+    provider: 'Gabon Insight E-Billing',
     timestamp: new Date().toISOString(),
   });
 });

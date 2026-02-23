@@ -1,5 +1,5 @@
 /**
- * SERVICE DE PAIEMENT E-BILLING (DriveBy Africa)
+ * SERVICE DE PAIEMENT E-BILLING (Gabon Insight)
  *
  * Gère tous les paiements via E-Billing (billing-easy.com):
  * - Achats de crédits

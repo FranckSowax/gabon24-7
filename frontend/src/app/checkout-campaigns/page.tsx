@@ -279,7 +279,7 @@ export default function CheckoutCampaignsPage() {
         return
       }
 
-      // MODE NORMAL: Via E-Billing (DriveBy Africa)
+      // MODE NORMAL: Via E-Billing
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
       // Créer les campagnes avec status 'unpaid'

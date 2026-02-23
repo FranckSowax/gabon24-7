@@ -215,13 +215,7 @@ export default function AudioPlayerBanner() {
     try {
       setLoading(true)
       const cacheBuster = Date.now()
-      const res = await fetch(`${API_URL}/api/audio/latest-public?language=${currentLang}&_t=${cacheBuster}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      })
+      const res = await fetch(`${API_URL}/api/audio/latest-public?language=${currentLang}&_t=${cacheBuster}`)
       const data = await res.json()
       
       console.log('📻 Audio résumé chargé:', data)
