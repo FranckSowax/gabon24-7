@@ -1794,9 +1794,9 @@ app.get('/api/homepage/articles', async (req, res) => {
       total: transformedArticles.length
     };
 
-    // Mettre en cache Redis - 3 minutes
+    // Mettre en cache Redis - 30 secondes (fraîcheur des articles)
     if (redisCache.isAvailable()) {
-      await redisCache.set(cacheKey, response, 180);
+      await redisCache.set(cacheKey, response, 30);
     }
 
     res.json(response);

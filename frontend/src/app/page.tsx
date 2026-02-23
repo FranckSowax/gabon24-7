@@ -457,8 +457,8 @@ export default function HomePage() {
             const { articles, timestamp } = JSON.parse(cached)
             const cacheAge = Date.now() - timestamp
             
-            // Utiliser le cache si moins de 5 minutes
-            if (cacheAge < 5 * 60 * 1000) {
+            // Utiliser le cache si moins de 30 secondes
+            if (cacheAge < 30 * 1000) {
               return articles
             }
           }
@@ -476,13 +476,13 @@ export default function HomePage() {
           throw new Error('Health not OK')
         }
       } catch (e) {
-        // Health NOK: retourner le cache si présent, sinon vide rapide
+        // Health NOK: retourner le cache récent si présent, sinon vide
         if (typeof window !== 'undefined') {
           try {
             const cachedAny = localStorage.getItem('homepage_articles_cache')
             if (cachedAny) {
-              const { articles } = JSON.parse(cachedAny)
-              return articles || []
+              const { articles, timestamp } = JSON.parse(cachedAny)
+              if (Date.now() - timestamp < 60 * 1000) return articles || []
             }
           } catch {}
         }
@@ -547,9 +547,8 @@ export default function HomePage() {
             const { articles, timestamp } = JSON.parse(cached)
             const cacheAge = Date.now() - timestamp
             
-            // Utiliser le cache si moins de 5 minutes
-            if (cacheAge < 5 * 60 * 1000) {
-              // Utilisation du cache local
+            // Utiliser le cache si moins de 1 minute (fallback erreur)
+            if (cacheAge < 60 * 1000) {
               return articles
             }
           }
