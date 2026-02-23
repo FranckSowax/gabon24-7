@@ -383,14 +383,17 @@ async function sendPendingArticles(limit = 5) {
   let errors = 0;
 
   try {
-    // 1. Récupérer uniquement les articles récents non envoyés (dernières 24h)
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // 1. Ne publier que les articles créés APRÈS l'activation du service (22 fév 2026 22:00 UTC)
+    //    + uniquement ceux des dernières 24h pour éviter les rattrapages
+    const WHATSAPP_START = '2026-02-23T19:41:00.000Z';
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const since = since24h > WHATSAPP_START ? since24h : WHATSAPP_START;
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
       .select('id, title, summary_ai, summary, source, author, url, image_urls')
       .eq('whatsapp_sent', false)
       .or('summary_ai.not.is.null,summary.not.is.null')
-      .gte('published_at', since)
+      .gte('created_at', since)
       .order('published_at', { ascending: false })
       .limit(limit);
 
@@ -474,13 +477,15 @@ async function sendPendingArticles(limit = 5) {
 async function getPendingCount() {
   try {
     const supabaseService = require('../supabase-config');
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const WHATSAPP_START = '2026-02-23T19:41:00.000Z';
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const since = since24h > WHATSAPP_START ? since24h : WHATSAPP_START;
     const { count, error } = await supabaseService.supabase
       .from('articles')
       .select('id', { count: 'exact', head: true })
       .eq('whatsapp_sent', false)
       .or('summary_ai.not.is.null,summary.not.is.null')
-      .gte('published_at', since);
+      .gte('created_at', since);
 
     if (error) throw error;
     return { success: true, count: count || 0 };
