@@ -61,9 +61,9 @@ router.post('/generate-summary', requireAuth, async (req, res) => {
       
       const { data } = await supabaseService.supabase
         .from('articles')
-        .select('id,title,summary,summary_ai,content,source,url,category,created_at')
-        .gte('created_at', twentyFourHoursAgo)
-        .order('created_at', { ascending: false });
+        .select('id,title,summary,summary_ai,content,source,url,category,published_at')
+        .gte('published_at', twentyFourHoursAgo)
+        .order('published_at', { ascending: false });
       
       articles = data || [];
       console.log(`📰 ${articles.length} articles trouvés dans les dernières 24h`);

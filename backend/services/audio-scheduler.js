@@ -35,8 +35,8 @@ async function generatePublicAudioSummary(timeSlot, language = 'fr') {
         enrichment_score, relevance_score, quality_score,
         importance
       `)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-      .order('created_at', { ascending: false })
+      .gte('published_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .order('published_at', { ascending: false })
       .limit(50);
 
     if (articlesError || !articles || articles.length === 0) {
