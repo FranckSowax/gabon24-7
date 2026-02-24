@@ -30,6 +30,7 @@ import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import FootballScores from '@/components/widgets/FootballScores'
 import HeroSlider from '@/components/hero/HeroSlider'
+import Footer from '@/components/layout/Footer'
 import { supabase } from '@/lib/supabase'
 // Force rebuild for media_name support - v4.9 (Fixed generate-project-proposals function)
 
@@ -1820,6 +1821,9 @@ export default function HomePage() {
       
       {/* MCP Enhanced Image System Active */}
       <div className="hidden" data-version="mcp-enhanced-v1.0" />
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
