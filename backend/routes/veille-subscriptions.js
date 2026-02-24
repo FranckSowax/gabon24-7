@@ -296,9 +296,14 @@ router.post('/demo', async (req, res) => {
     try {
       const whapiService = require('../services/whapiService');
       const welcomeMessage = `Bienvenue sur Gabon Insight - Veille & Alertes !\n\nVotre demo gratuite de 24h est activee.\n\nVous recevrez des alertes carrousel WhatsApp chaque heure (7h-22h) sur les actualites gabonaises.\n\nPour configurer vos propres alertes, rendez-vous sur :\nhttps://gaboninsight.com/veille\n\nBonne decouverte !`;
-      await whapiService.sendWhatsAppMessage(cleanNumber, welcomeMessage);
+      console.log(`[DEMO] Envoi WhatsApp bienvenue vers ${cleanNumber}...`);
+      const whatsappResult = await whapiService.sendWhatsAppMessage(cleanNumber, welcomeMessage);
+      console.log(`[DEMO] WhatsApp bienvenue resultat:`, JSON.stringify(whatsappResult));
     } catch (whatsappErr) {
-      console.warn('WhatsApp bienvenue echoue:', whatsappErr.message);
+      console.error('[DEMO] WhatsApp bienvenue echoue:', whatsappErr.message);
+      if (whatsappErr.response?.data) {
+        console.error('[DEMO] Whapi error details:', JSON.stringify(whatsappErr.response.data));
+      }
     }
 
     res.json({
