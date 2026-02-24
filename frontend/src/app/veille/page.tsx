@@ -22,18 +22,11 @@ import Sidebar from '@/components/layout/Sidebar'
 import AlertsSidebar from '@/components/veille/AlertsSidebar'
 import MatchedArticleCard from '@/components/veille/MatchedArticleCard'
 import AlertModal from '@/components/admin/AlertModal'
+import SubscriptionBanner from '@/components/veille/SubscriptionBanner'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-
-// Mode développement
-const DEV_MODE = true;
-const DEV_USER = {
-  id: '9bb0138d-a587-4b46-a541-a309048bf97a',
-  email: 'sowaxcom@gmail.com',
-  name: 'Admin Dev'
-};
 
 interface UserAlert {
   id: string;
@@ -80,10 +73,14 @@ interface AlertStats {
 }
 
 export default function VeillePageNew() {
-  const { user: authUser, subscriptionPlan, subscriptionLoading, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const user = DEV_MODE ? DEV_USER : authUser;
+  const user = authUser;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+  // Veille subscription state
+  const [veilleSubscription, setVeilleSubscription] = useState<any>(null);
+  const [veilleLoading, setVeilleLoading] = useState(true);
 
   // Helper pour obtenir les headers d'authentification
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
@@ -95,16 +92,45 @@ export default function VeillePageNew() {
     return headers
   }, [])
 
-  // Protection de la page - Attendre que l'abonnement soit chargé
+  // Verifier l'abonnement veille
   useEffect(() => {
-    if (!authLoading && !subscriptionLoading && !DEV_MODE) {
-      if (!authUser) {
-        router.push('/auth/signin?redirect=/veille')
-      } else if (subscriptionPlan?.slug !== 'pro') {
-        router.push('/abonnement')
-      }
+    if (authLoading) return;
+
+    if (!authUser) {
+      router.push('/auth/signin?redirect=/veille');
+      return;
     }
-  }, [authUser, subscriptionPlan, authLoading, subscriptionLoading, router]);
+
+    // Fetch veille subscription
+    const checkSubscription = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setVeilleLoading(false);
+          return;
+        }
+
+        const res = await fetch(`${API_URL}/api/veille/subscription`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await res.json();
+
+        if (data.success && data.subscription) {
+          setVeilleSubscription(data.subscription);
+        } else {
+          // Pas d'abonnement veille, rediriger vers la landing
+          router.push('/veille-alertes');
+          return;
+        }
+      } catch {
+        // En cas d'erreur, laisser l'acces (fallback)
+      } finally {
+        setVeilleLoading(false);
+      }
+    };
+
+    checkSubscription();
+  }, [authUser, authLoading, router, API_URL]);
 
   // États
   const [alerts, setAlerts] = useState<UserAlert[]>([]);
@@ -112,13 +138,13 @@ export default function VeillePageNew() {
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Loading guard for auth - Attendre que l'abonnement soit chargé
-  if ((authLoading || subscriptionLoading || (!authUser && !DEV_MODE) || (subscriptionPlan?.slug !== 'pro' && !DEV_MODE)) && !loading) {
+  // Loading guard for auth + veille subscription
+  if (authLoading || veilleLoading || !authUser) {
      return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-12 h-12 text-orange-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Vérification de l'accès...</p>
+          <p className="text-gray-600 font-medium">Vérification de l&apos;accès...</p>
         </div>
       </div>
     );
@@ -341,6 +367,20 @@ export default function VeillePageNew() {
             ? 'lg:ml-[576px]'
             : 'lg:ml-64'
         }`}>
+          {/* Bandeau abonnement veille */}
+          {veilleSubscription && (
+            <div className="px-4 sm:px-6 lg:px-8 pt-4">
+              <SubscriptionBanner
+                planName={veilleSubscription.veille_plans?.name || 'Veille'}
+                planSlug={veilleSubscription.veille_plans?.slug || 'particulier'}
+                status={veilleSubscription.status}
+                expiresAt={veilleSubscription.current_period_end}
+                currentAlertCount={stats?.total_alerts || 0}
+                maxAlerts={veilleSubscription.veille_plans?.max_alerts || 5}
+              />
+            </div>
+          )}
+
           {/* Header sticky avec glassmorphism */}
           <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
             <div className="px-4 sm:px-6 lg:px-8 py-4">

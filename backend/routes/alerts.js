@@ -23,12 +23,12 @@ router.post('/process', async (req, res) => {
       return res.json({ success: true, message: 'Aucune alerte active', processed: 0 });
     }
 
-    // Récupérer articles récents avec MÉTADONNÉES + KEYWORDS
+    // Récupérer articles récents avec MÉTADONNÉES + KEYWORDS + IMAGES
     // Colonnes DB réelles: category, importance, is_breaking, sentiment_score, keywords
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: articles } = await supabaseService.supabase
       .from('articles')
-      .select('id,title,summary,source,url,published_at,category,sentiment_score,importance,is_breaking,keywords')
+      .select('id,title,summary,summary_ai,source,url,image_urls,published_at,category,sentiment_score,importance,is_breaking,keywords')
       .eq('is_published', true)
       .gte('created_at', yesterday)
       .order('created_at', { ascending: false });
@@ -39,6 +39,10 @@ router.post('/process', async (req, res) => {
 
     let matchCount = 0;
     let skippedByFilter = 0;
+
+    // Collecteur pour envoi WhatsApp carrousel groupé
+    // Structure: { "userId_phone": { alertName, phone, userId, alertId, articles: [] } }
+    const whatsappBatches = {};
 
     // Grouper alertes par catégorie pour optimisation (Option 1 du diagnostic)
     const alertsByCategory = {};
@@ -136,47 +140,22 @@ router.post('/process', async (req, res) => {
                 console.warn('⚠️ Erreur notification:', notifError.message);
               }
               
-              // 📱 ENVOI WHATSAPP si activé
+              // 📱 COLLECTER pour envoi WhatsApp carrousel groupé
               if (alert.whatsapp_enabled && alert.whatsapp_numbers && alert.whatsapp_numbers.length > 0) {
-                try {
-                  const whapiService = require('../services/whapiService');
-                  
-                  // Envoyer à tous les numéros configurés
-                  for (const phoneNumber of alert.whatsapp_numbers) {
-                    const alertData = {
+                for (const phoneNumber of alert.whatsapp_numbers) {
+                  const batchKey = `${alert.user_id}_${phoneNumber}_${alert.id}`;
+                  if (!whatsappBatches[batchKey]) {
+                    whatsappBatches[batchKey] = {
                       alertName: alert.name,
-                      articleTitle: article.title,
-                      articleSummary: article.summary || article.summary_ai || 'Résumé non disponible',
-                      articleUrl: article.url,
-                      matchedKeywords: matchResult.matchedKeywords,
-                      confidenceScore: matchResult.confidence
+                      phone: phoneNumber,
+                      userId: alert.user_id,
+                      alertId: alert.id,
+                      articles: [],
+                      matchIds: []
                     };
-                    
-                    const result = await whapiService.sendAlertNotification(phoneNumber, alertData);
-                    
-                    // Logger l'envoi
-                    await supabaseService.supabase
-                      .from('whatsapp_notifications')
-                      .insert({
-                        user_id: alert.user_id,
-                        alert_id: alert.id,
-                        match_id: newMatch.id,
-                        phone_number: phoneNumber,
-                        message_text: `Alerte: ${alert.name} - ${article.title}`,
-                        article_title: article.title,
-                        article_url: article.url,
-                        confidence_score: matchResult.confidence,
-                        status: result.success ? 'sent' : 'failed',
-                        whapi_message_id: result.messageId,
-                        error_message: result.error,
-                        sent_at: result.success ? new Date().toISOString() : null
-                      });
-                    
-                    console.log(`📱 WhatsApp ${result.success ? 'envoyé' : 'échoué'} à ${phoneNumber} pour alerte "${alert.name}"`);
                   }
-                } catch (whatsappError) {
-                  console.error('❌ Erreur envoi WhatsApp:', whatsappError);
-                  // Ne pas bloquer le processus si WhatsApp échoue
+                  whatsappBatches[batchKey].articles.push(article);
+                  whatsappBatches[batchKey].matchIds.push(newMatch.id);
                 }
               }
             }
@@ -185,7 +164,62 @@ router.post('/process', async (req, res) => {
       }
     }
 
-    console.log(`✅ Traitement terminé: ${matchCount} matches, ${skippedByFilter} articles filtrés par IA`);
+    // 📱 ENVOI WHATSAPP CARROUSEL GROUPÉ
+    let whatsappSentCount = 0;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://gaboninsight.com';
+
+    for (const [batchKey, batch] of Object.entries(whatsappBatches)) {
+      try {
+        const whapiService = require('../services/whapiService');
+
+        // Grouper par lots de 5 articles (max carrousel WhatsApp)
+        const articleChunks = [];
+        for (let i = 0; i < batch.articles.length; i += 5) {
+          articleChunks.push(batch.articles.slice(i, i + 5));
+        }
+
+        for (const chunk of articleChunks) {
+          const result = await whapiService.sendAlertCarousel(
+            batch.phone,
+            batch.alertName,
+            chunk,
+            frontendUrl
+          );
+
+          // Logger l'envoi
+          for (let j = 0; j < chunk.length; j++) {
+            const art = chunk[j];
+            const matchId = batch.matchIds[j] || null;
+            await supabaseService.supabase
+              .from('whatsapp_notifications')
+              .insert({
+                user_id: batch.userId,
+                alert_id: batch.alertId,
+                match_id: matchId,
+                phone_number: batch.phone,
+                message_text: `Alerte carrousel: ${batch.alertName} - ${art.title}`,
+                article_title: art.title,
+                article_url: art.url,
+                status: result.success ? 'sent' : 'failed',
+                whapi_message_id: result.messageId,
+                sent_at: result.success ? new Date().toISOString() : null
+              });
+          }
+
+          whatsappSentCount += chunk.length;
+          console.log(`📱 Carrousel ${batch.alertName}: ${chunk.length} articles envoyés à ${batch.phone}`);
+
+          // Pause entre les carrousels pour éviter le rate limiting
+          if (articleChunks.length > 1) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+      } catch (whatsappError) {
+        console.error(`❌ Erreur envoi carrousel WhatsApp (${batch.alertName}):`, whatsappError.message);
+      }
+    }
+
+    console.log(`✅ Traitement terminé: ${matchCount} matches, ${skippedByFilter} filtrés par IA, ${whatsappSentCount} envois WhatsApp`);
 
     res.json({
       success: true,
@@ -511,9 +545,21 @@ router.post('/create', requireAuth, async (req, res) => {
     } = req.body;
 
     if (!name || keywords.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'name et keywords sont requis' 
+      return res.status(400).json({
+        success: false,
+        error: 'name et keywords sont requis'
+      });
+    }
+
+    // Vérifier l'abonnement Veille & Alertes
+    const veilleService = require('../services/veille-subscription.service');
+    const limitCheck = await veilleService.enforceAlertLimits(userId, keywords.length);
+
+    if (!limitCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: limitCheck.message,
+        requiresSubscription: limitCheck.requiresSubscription || false
       });
     }
 

@@ -507,6 +507,7 @@ class EBillingPaymentService {
       case 'subscription': await this.processSubscriptionPayment(payment); break;
       case 'quiz': await this.processQuizPayment(payment); break;
       case 'campaign': await this.processCampaignPayment(payment); break;
+      case 'veille_subscription': await this.processVeilleSubscriptionPayment(payment); break;
       default: console.warn(`⚠️ Type de paiement inconnu: ${payment_type}`);
     }
   }
@@ -603,6 +604,40 @@ class EBillingPaymentService {
       if (error) console.error(`❌ Erreur mise à jour campagne ${campaignId}:`, error);
     }
     console.log(`✅ ${campaignIds.length} campagne(s) payée(s)`);
+  }
+
+  async processVeilleSubscriptionPayment(payment) {
+    const planSlug = payment.veille_plan_slug || payment.plan_slug;
+    const whatsappNumber = payment.veille_whatsapp_number;
+
+    if (!planSlug) { console.error('❌ Plan veille slug manquant'); return; }
+    if (!whatsappNumber) { console.error('❌ Numéro WhatsApp veille manquant'); return; }
+
+    try {
+      const veilleService = require('./veille-subscription.service');
+      const subscription = await veilleService.createSubscription(
+        payment.user_id,
+        planSlug,
+        whatsappNumber,
+        payment.plan_duration || 1,
+        { ebilling_reference: payment.bill_id, payment_amount: payment.amount }
+      );
+
+      // Envoyer confirmation WhatsApp
+      try {
+        const whapiService = require('./whapiService');
+        const planName = subscription.veille_plans?.name || planSlug;
+        const endDate = new Date(subscription.current_period_end).toLocaleDateString('fr-FR');
+        const message = `Votre abonnement Veille & Alertes "${planName}" est actif !\n\nValable jusqu'au ${endDate}.\n\nConfigurez vos alertes sur :\nhttps://gaboninsight.com/veille\n\nMerci pour votre confiance !`;
+        await whapiService.sendWhatsAppMessage(whatsappNumber, message);
+      } catch (whatsappErr) {
+        console.warn('WhatsApp confirmation veille échoué:', whatsappErr.message);
+      }
+
+      console.log(`✅ Abonnement veille "${planSlug}" activé pour ${payment.user_id}`);
+    } catch (err) {
+      console.error('❌ Erreur activation abonnement veille:', err.message);
+    }
   }
 
   // =====================================================

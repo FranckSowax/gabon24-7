@@ -17,13 +17,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-// 🚧 MODE DÉVELOPPEMENT - UTILISATEUR FACTICE
-const DEV_MODE = true;
-const DEV_USER = {
-  id: '9bb0138d-a587-4b46-a541-a309048bf97a',
-  email: 'admin@gabon-insight.com',
-  name: 'Admin Dev'
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface AlertTemplate {
   id: string;
@@ -79,10 +73,18 @@ export default function AlertModal({
   alert
 }: AlertModalProps) {
   const { user: authUser, loading: authLoading } = useAuth();
-  
-  // 🚧 MODE DÉVELOPPEMENT - Utiliser utilisateur factice si pas authentifié
-  const user = DEV_MODE ? DEV_USER : authUser;
-  
+  const user = authUser;
+
+  // Veille subscription limits
+  const [veilleLimits, setVeilleLimits] = useState<{
+    subscribed: boolean;
+    maxAlerts: number;
+    maxKeywordsPerAlert: number;
+    maxWhatsappNumbers: number;
+    planSlug: string | null;
+    currentAlertCount: number;
+  } | null>(null);
+
   const [formData, setFormData] = useState<UserAlert>({
     name: '',
     description: '',
@@ -147,6 +149,30 @@ export default function AlertModal({
     "Relais Infos Gabon",
     "Sport 241"
   ];
+
+  // Charger les limites veille a l'ouverture
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchLimits = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(`${API_URL}/api/veille/limits`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setVeilleLimits(data);
+        }
+      } catch {
+        // Silently fail - limits won't be enforced on frontend
+      }
+    };
+
+    fetchLimits();
+  }, [isOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -223,13 +249,24 @@ export default function AlertModal({
   };
 
   const addKeyword = () => {
-    if (keywordInput.trim() && !formData.keywords.includes(keywordInput.trim())) {
-      setFormData(prev => ({
+    if (!keywordInput.trim() || formData.keywords.includes(keywordInput.trim())) return;
+
+    // Verifier la limite de mots-cles du plan veille
+    if (veilleLimits && veilleLimits.maxKeywordsPerAlert !== -1 &&
+        formData.keywords.length >= veilleLimits.maxKeywordsPerAlert) {
+      setErrors(prev => ({
         ...prev,
-        keywords: [...prev.keywords, keywordInput.trim()]
+        keywords: `Limite: ${veilleLimits.maxKeywordsPerAlert} mots-cles max (plan ${veilleLimits.planSlug}). Passez a Entreprise pour des mots-cles illimites.`
       }));
-      setKeywordInput('');
+      return;
     }
+
+    setFormData(prev => ({
+      ...prev,
+      keywords: [...prev.keywords, keywordInput.trim()]
+    }));
+    setKeywordInput('');
+    setErrors(prev => ({ ...prev, keywords: '' }));
   };
 
   const removeKeyword = (keyword: string) => {

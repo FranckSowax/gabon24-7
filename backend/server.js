@@ -3971,6 +3971,10 @@ app.use('/api/audio', audioRoutes);
 const alertsRoutes = require('./routes/alerts');
 app.use('/api/alerts', alertsRoutes);
 
+// Routes Veille - Abonnements
+const veilleSubscriptionsRoutes = require('./routes/veille-subscriptions');
+app.use('/api/veille', veilleSubscriptionsRoutes);
+
 // Routes Recherche Intelligente (avec IA)
 const searchRoutes = require('./routes/search');
 app.use('/api/search', searchRoutes);
@@ -4050,18 +4054,24 @@ app.post('/api/articles/:id/share', trendingRoutes);
 
 console.log('📈 Routes tendances chargées');
 
-// ==================== CRON MATCHING ALERTES TEMPS RÉEL ====================
-// Vérifier les nouveaux articles toutes les 5 minutes et matcher avec les alertes
-console.log('⏰ Démarrage du matching automatique des alertes...');
+// ==================== CRON MATCHING ALERTES (HORAIRE 7h-22h GABON) ====================
+console.log('⏰ Démarrage du matching automatique des alertes (horaire, 7h-22h Gabon)...');
 
 async function processAlertsAutomatically() {
+  // Vérifier la plage horaire (7h-22h heure Gabon = UTC+1)
+  const gabonHour = (new Date().getUTCHours() + 1) % 24;
+  if (gabonHour < 7 || gabonHour >= 22) {
+    console.log(`⏰ Hors plage horaire (${gabonHour}h Gabon), skip alertes.`);
+    return;
+  }
+
   try {
-    console.log('🔔 Traitement automatique des alertes...');
+    console.log(`🔔 Traitement automatique des alertes (${gabonHour}h Gabon)...`);
     const response = await fetch('http://localhost:3001/api/alerts/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log(`✅ Alertes traitées: ${result.processed} matches sur ${result.articlesScanned} articles`);
@@ -4073,13 +4083,29 @@ async function processAlertsAutomatically() {
   }
 }
 
-// Exécuter toutes les 5 minutes (300000 ms)
-setInterval(processAlertsAutomatically, 5 * 60 * 1000);
+// Exécuter toutes les heures (3600000 ms)
+setInterval(processAlertsAutomatically, 60 * 60 * 1000);
 
 // Exécuter immédiatement au démarrage (après 30 secondes)
 setTimeout(processAlertsAutomatically, 30000);
 
-console.log('✅ Matching automatique des alertes activé (toutes les 5 minutes)');
+console.log('✅ Matching automatique des alertes activé (toutes les heures, 7h-22h Gabon)');
+
+// ==================== CRON EXPIRATION DEMOS VEILLE ====================
+async function expireVeilleTrials() {
+  try {
+    const veilleService = require('./services/veille-subscription.service');
+    const result = await veilleService.expireTrials();
+    if (result.expired > 0) {
+      console.log(`⏰ ${result.expired} demo(s) veille expirée(s)`);
+    }
+  } catch (error) {
+    console.error('❌ Erreur expiration demos veille:', error.message);
+  }
+}
+
+setInterval(expireVeilleTrials, 60 * 60 * 1000); // Toutes les heures
+setTimeout(expireVeilleTrials, 60000); // 1 minute après démarrage
 
 // ==================== CRON NETTOYAGE HEBDOMADAIRE ====================
 function normalizeUrlInline(url) {

@@ -567,6 +567,76 @@ async function sendCarouselPost(channelId, articles, frontendUrl) {
   return { success: true, type: 'carousel', cards: items.length, data: response.data };
 }
 
+/**
+ * Envoyer un carrousel d'articles matchés pour une alerte WhatsApp
+ * Regroupe les articles en carrousel de max 5 cartes
+ * @param {string} phoneNumber - Numéro WhatsApp du destinataire
+ * @param {string} alertName - Nom de l'alerte
+ * @param {Array} articles - Articles matchés (avec image_urls, title, summary, url, source)
+ * @param {string} frontendUrl - URL du frontend
+ * @returns {Promise<object>}
+ */
+async function sendAlertCarousel(phoneNumber, alertName, articles, frontendUrl) {
+  if (!WHAPI_TOKEN) throw new Error('WHAPI_TOKEN manquant');
+  if (!articles || articles.length === 0) throw new Error('Aucun article fourni');
+
+  const cleanNumber = phoneNumber.replace(/[\s\-()]/g, '');
+
+  // Filtrer les articles avec images (obligatoire pour carrousel)
+  const withImages = articles.filter(a => a.image_urls && a.image_urls.length > 0).slice(0, 5);
+
+  // Si aucun article avec image, fallback texte groupé
+  if (withImages.length === 0) {
+    const textMessage = `🔔 *Alerte: ${alertName}*\n\n${articles.slice(0, 5).map((a, i) =>
+      `${i + 1}. *${a.title}*\n   ${a.url}`
+    ).join('\n\n')}\n\n_Gabon Insight - Veille & Alertes_`;
+    return await sendWhatsAppMessage(cleanNumber, textMessage);
+  }
+
+  const cards = withImages.map((article, i) => {
+    const title = (article.title || 'Article').substring(0, 100);
+    const summary = (article.summary_ai || article.summary || '').substring(0, 180);
+    const source = article.source ? `📡 ${article.source}\n` : '';
+
+    return {
+      id: `alert_card_${i}`,
+      media: { media: article.image_urls[0] },
+      text: `📰 *${title}*\n${source}\n${summary}`,
+      buttons: [{
+        type: 'url',
+        title: 'Lire',
+        id: `btn_read_${i}`,
+        url: article.url || `${frontendUrl}/article/${article.id}`
+      }]
+    };
+  });
+
+  const payload = {
+    to: cleanNumber,
+    body: {
+      text: `🔔 *Alerte: ${alertName}*\n${withImages.length} article(s) détecté(s)`
+    },
+    cards
+  };
+
+  console.log(`📱 Envoi carrousel alerte "${alertName}": ${withImages.length} cards à ${cleanNumber}`);
+
+  const response = await axios.post(
+    `${WHAPI_BASE_URL}/messages/carousel`,
+    payload,
+    {
+      headers: {
+        'Authorization': `Bearer ${WHAPI_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  console.log(`✅ Carrousel alerte envoyé à ${cleanNumber}`);
+  return { success: true, type: 'carousel', messageId: response.data?.id, cards: withImages.length };
+}
+
 module.exports = {
   sendWhatsAppMessage,
   sendInteractiveMessage,
@@ -574,6 +644,7 @@ module.exports = {
   sendCarouselPost,
   sendPendingArticles,
   sendAlertNotification,
+  sendAlertCarousel,
   getMessageStatus,
   getChannels,
   getPendingCount,
