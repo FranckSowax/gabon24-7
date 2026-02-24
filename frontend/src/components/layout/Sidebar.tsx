@@ -441,6 +441,12 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               </a>
             ))}
           </div>
+
+          {/* Liens légaux */}
+          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-1 px-3">
+            <a href="/politique-de-confidentialite" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Confidentialité</a>
+            <a href="/suppression-des-donnees" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Suppression des données</a>
+          </div>
         </div>
       </aside>
     </>
