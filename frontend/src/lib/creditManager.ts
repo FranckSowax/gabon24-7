@@ -243,9 +243,9 @@ export async function getTransactionHistory(
 export const CREDIT_COSTS = {
   ARTICLE_PREMIUM: 1,          // Déverrouiller un article premium
   AUDIO_SUMMARY: 5,            // Générer un résumé audio (~800 tokens + TTS 30s)
-  AI_ANALYSIS: 6,              // Analyse IA approfondie (~5000 tokens)
+  AI_ANALYSIS: 15,             // Analyse IA approfondie (~5000 tokens)
   VEILLE_REPORT: 5,            // Rapport de veille complet (~3500 tokens)
-  OPPORTUNITY_ANALYSIS: 6,     // Analyse d'opportunité (~4000 tokens)
+  OPPORTUNITY_ANALYSIS: 15,    // Analyse d'opportunité (~4000 tokens)
   CUSTOM_ALERT: 2,             // Créer une alerte personnalisée
 } as const
 

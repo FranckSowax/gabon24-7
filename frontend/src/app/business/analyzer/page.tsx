@@ -334,7 +334,7 @@ export default function BusinessAnalyzerPage() {
         if (data.success) {
           const total = (data.balance || 0) + (data.bonus_balance || 0)
           setCreditBalance(total)
-          if (total < 6) setShowWhatsAppGuide(true)
+          if (total < 15) setShowWhatsAppGuide(true)
         }
       } catch {
         // Silently fail, user can still use the page normally
@@ -1728,19 +1728,19 @@ export default function BusinessAnalyzerPage() {
 
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                  creditBalance !== null && creditBalance >= 6
+                  creditBalance !== null && creditBalance >= 15
                     ? 'bg-green-100 text-green-600'
                     : user ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'
                 }`}>
-                  {creditBalance !== null && creditBalance >= 6 ? '\u2713' : '2'}
+                  {creditBalance !== null && creditBalance >= 15 ? '\u2713' : '2'}
                 </div>
                 <div>
                   <div className="text-sm font-medium text-gray-900">
-                    {creditBalance !== null && creditBalance >= 6
+                    {creditBalance !== null && creditBalance >= 15
                       ? `${creditBalance} credits disponibles`
                       : 'Rechargez vos credits'}
                   </div>
-                  <div className="text-xs text-gray-500">L&apos;analyse coute 6 credits</div>
+                  <div className="text-xs text-gray-500">L&apos;analyse coute 15 credits</div>
                 </div>
               </div>
 
@@ -1763,7 +1763,7 @@ export default function BusinessAnalyzerPage() {
               >
                 Se connecter
               </button>
-            ) : creditBalance !== null && creditBalance < 6 ? (
+            ) : creditBalance !== null && creditBalance < 15 ? (
               <button
                 onClick={() => { setShowWhatsAppGuide(false); setShowTopUpModal(true) }}
                 className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
