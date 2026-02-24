@@ -137,6 +137,23 @@ export default function VeillePageNew() {
   const [matches, setMatches] = useState<RecentMatch[]>([]);
   const [stats, setStats] = useState<AlertStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<UserAlert | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAlertsSidebarOpen, setIsAlertsSidebarOpen] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterConfidence, setFilterConfidence] = useState<number>(0);
+  const [sortBy, setSortBy] = useState<'date' | 'confidence' | 'importance'>('date');
+
+  // Charger les données (hook must be before any early return)
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Loading guard for auth + veille subscription
   if (authLoading || veilleLoading || !authUser) {
@@ -149,22 +166,6 @@ export default function VeillePageNew() {
       </div>
     );
   }
-  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
-  const [showAlertModal, setShowAlertModal] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<UserAlert | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isAlertsSidebarOpen, setIsAlertsSidebarOpen] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterConfidence, setFilterConfidence] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<'date' | 'confidence' | 'importance'>('date');
-
-  // Charger les données
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
 
   const fetchData = async () => {
     try {
