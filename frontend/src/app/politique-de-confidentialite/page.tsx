@@ -109,6 +109,9 @@ export default function PolitiqueDeConfidentialite() {
             <p className="text-gray-700 leading-relaxed mt-3">
               Pour exercer ces droits, contactez-nous &agrave; : <a href="mailto:contact@gaboninsight.com" className="text-orange-600 hover:underline">contact@gaboninsight.com</a>
             </p>
+            <p className="text-gray-700 leading-relaxed mt-2">
+              Pour demander la suppression de vos donn&eacute;es : <a href="/suppression-des-donnees" className="text-orange-600 hover:underline">Formulaire de suppression</a>
+            </p>
           </section>
 
           <section>

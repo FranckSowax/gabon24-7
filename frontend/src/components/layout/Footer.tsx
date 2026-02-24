@@ -22,7 +22,13 @@ export default function Footer() {
               href="/politique-de-confidentialite"
               className="hover:text-white transition-colors"
             >
-              Politique de confidentialit&eacute;
+              Confidentialit&eacute;
+            </Link>
+            <Link
+              href="/suppression-des-donnees"
+              className="hover:text-white transition-colors"
+            >
+              Suppression des donn&eacute;es
             </Link>
             <a
               href="mailto:contact@gaboninsight.com"
