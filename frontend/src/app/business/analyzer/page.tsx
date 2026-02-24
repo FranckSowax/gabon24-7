@@ -216,6 +216,11 @@ export default function BusinessAnalyzerPage() {
   const [mobileIsLoadingProposals, setMobileIsLoadingProposals] = useState(false)
   const [mobileLastUserContext, setMobileLastUserContext] = useState<any>(null)
   
+  // WhatsApp welcome guide
+  const [fromWhatsApp, setFromWhatsApp] = useState(false)
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [showWhatsAppGuide, setShowWhatsAppGuide] = useState(false)
+
   // Détection desktop pour rendu conditionnel
   const [isDesktop, setIsDesktop] = useState(false)
   
@@ -277,6 +282,8 @@ export default function BusinessAnalyzerPage() {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const aid = params.get('aid')
+    const source = params.get('source')
+    if (source === 'whatsapp') setFromWhatsApp(true)
     if (!aid) return
 
     // Si les articles sont chargés, chercher dedans
@@ -309,6 +316,32 @@ export default function BusinessAnalyzerPage() {
       fetchArticleById()
     }
   }, [articles, loading])
+
+  // WhatsApp guide: check auth + credit balance
+  useEffect(() => {
+    if (!fromWhatsApp || authLoading) return
+
+    if (!user) {
+      setShowWhatsAppGuide(true)
+      return
+    }
+
+    // User is logged in, check credit balance
+    const checkCredits = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/credits/stats?type=balance&userId=${user.id}`)
+        const data = await res.json()
+        if (data.success) {
+          const total = (data.balance || 0) + (data.bonus_balance || 0)
+          setCreditBalance(total)
+          if (total < 6) setShowWhatsAppGuide(true)
+        }
+      } catch {
+        // Silently fail, user can still use the page normally
+      }
+    }
+    checkCredits()
+  }, [fromWhatsApp, authLoading, user, API_URL])
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % howItWorksSteps.length)
@@ -1664,6 +1697,96 @@ export default function BusinessAnalyzerPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal guidage WhatsApp */}
+      {showWhatsAppGuide && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => user && setShowWhatsAppGuide(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Analyseur Business IA</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Transformez cet article en projet business avec notre IA
+            </p>
+
+            <div className="space-y-3 text-left mb-6">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                  user ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+                }`}>
+                  {user ? '\u2713' : '1'}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {user ? 'Connecte' : 'Connectez-vous'}
+                  </div>
+                  {!user && <div className="text-xs text-gray-500">Gratuit, en 30 secondes</div>}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                  creditBalance !== null && creditBalance >= 6
+                    ? 'bg-green-100 text-green-600'
+                    : user ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {creditBalance !== null && creditBalance >= 6 ? '\u2713' : '2'}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {creditBalance !== null && creditBalance >= 6
+                      ? `${creditBalance} credits disponibles`
+                      : 'Rechargez vos credits'}
+                  </div>
+                  <div className="text-xs text-gray-500">L&apos;analyse coute 6 credits</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Lancez l&apos;analyse</div>
+                  <div className="text-xs text-gray-500">Business plan, budget, strategie</div>
+                </div>
+              </div>
+            </div>
+
+            {!user ? (
+              <button
+                onClick={() => {
+                  const currentUrl = window.location.pathname + window.location.search
+                  window.location.href = `/auth/signin?redirectTo=${encodeURIComponent(currentUrl)}`
+                }}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+              >
+                Se connecter
+              </button>
+            ) : creditBalance !== null && creditBalance < 6 ? (
+              <button
+                onClick={() => { setShowWhatsAppGuide(false); setShowTopUpModal(true) }}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+              >
+                Recharger mes credits
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowWhatsAppGuide(false)}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+              >
+                Commencer l&apos;analyse
+              </button>
+            )}
+
+            {user && (
+              <button onClick={() => setShowWhatsAppGuide(false)} className="mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                Fermer
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal de recharge crédits */}
       <TopUpModal
