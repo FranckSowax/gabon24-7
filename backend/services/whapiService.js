@@ -293,7 +293,7 @@ async function sendChannelPost(channelId, article, frontendUrl) {
   const opportunities = await generateOpportunities(title, summary);
   let opportunitiesBlock = '';
   if (opportunities) {
-    opportunitiesBlock = `\n\n💼 *Opportunités détectées :*\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
+    opportunitiesBlock = `\n\n💼 *Opportunité Gabon Insight :*\n\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
   }
 
   // Ligne source (média)
@@ -301,7 +301,7 @@ async function sendChannelPost(channelId, article, frontendUrl) {
   // Ligne auteur
   const authorLine = author ? `\n✍🏾 ${author}` : '';
 
-  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n\n👉🏾 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Lancer l'analyse IA* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
+  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n\n👉🏾 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Creer un projet Business a partir de cet article* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
 
   if (imageUrl) {
     // Envoi avec image en header
