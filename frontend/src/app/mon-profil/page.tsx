@@ -438,7 +438,43 @@ export default function MonProfilPage() {
           {/* ============================================ */}
           <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-              <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2" role="tablist">
+              {/* Mobile: icon-only grid tabs */}
+              <div className="flex sm:hidden items-center justify-between py-2 gap-0.5" role="tablist">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => !tab.disabled && setActiveTab(tab.id)}
+                    disabled={tab.disabled}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    aria-label={tab.label}
+                    className={`relative flex flex-col items-center gap-0.5 flex-1 py-2 rounded-lg transition-all duration-200 ${
+                      tab.disabled
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : activeTab === tab.id
+                        ? 'text-orange-600'
+                        : 'text-gray-400 hover:text-gray-700'
+                    }`}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span className={`text-[10px] font-medium leading-tight ${
+                      activeTab === tab.id ? 'text-orange-600' : 'text-gray-400'
+                    }`}>
+                      {tab.label.length > 8 ? tab.label.slice(0, 7) + '.' : tab.label}
+                    </span>
+                    {activeTab === tab.id && !tab.disabled && (
+                      <motion.div
+                        layoutId="activeTabMobile"
+                        className="absolute inset-0 bg-orange-50 rounded-lg -z-10"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop/Tablet: full label tabs */}
+              <nav className="hidden sm:flex items-center gap-1 overflow-x-auto scrollbar-hide py-2" role="tablist">
                 {TABS.map(tab => (
                   <button
                     key={tab.id}
