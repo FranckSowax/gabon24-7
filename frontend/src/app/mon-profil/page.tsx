@@ -314,7 +314,6 @@ export default function MonProfilPage() {
 
   const currentPlan = subscriptionPlan?.slug || 'free'
   const creditsBalance = profile?.credits_balance || 0
-  const currentTabData = TABS.find(t => t.id === activeTab)
 
   // Calculer les jours restants avant expiration
   const getDaysRemaining = (): number => {
@@ -368,777 +367,808 @@ export default function MonProfilPage() {
         />
 
         <main className="flex-1 lg:ml-64 min-h-[calc(100vh-4rem)]">
-          {/* Mobile Header */}
-          <div className="lg:hidden sticky top-16 z-40 bg-white border-b border-gray-200 px-4 py-3">
-            <button
-              onClick={() => setMobileTabsOpen(!mobileTabsOpen)}
-              className="flex items-center justify-between w-full"
-            >
-              <div className="flex items-center gap-3">
-                {currentTabData && <currentTabData.icon className="w-5 h-5 text-orange-500" />}
-                <span className="font-semibold text-gray-900">{currentTabData?.label}</span>
-              </div>
-              <ChevronLeft className={`w-5 h-5 text-gray-500 transition-transform ${mobileTabsOpen ? 'rotate-90' : '-rotate-90'}`} />
-            </button>
-
-            <AnimatePresence>
-              {mobileTabsOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-3 pb-1 space-y-1">
-                    {TABS.map(tab => (
-                      <button
-                        key={tab.id}
-                        onClick={() => {
-                          if (!tab.disabled) {
-                            setActiveTab(tab.id)
-                            setMobileTabsOpen(false)
-                          }
-                        }}
-                        disabled={tab.disabled}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                          tab.disabled
-                            ? 'text-gray-400 cursor-not-allowed opacity-50'
-                            : activeTab === tab.id
-                            ? 'bg-orange-50 text-orange-600'
-                            : 'text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        <tab.icon className="w-5 h-5" />
-                        <span className="font-medium">{tab.label}</span>
-                        {'comingSoon' in tab && tab.comingSoon && (
-                          <span className="ml-auto text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Bientôt</span>
-                        )}
-                      </button>
-                    ))}
+          {/* ============================================ */}
+          {/* HERO BANNER */}
+          {/* ============================================ */}
+          <div className="border-b border-gray-100 bg-white">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                {/* Avatar */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden ring-4 ring-orange-100 bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl sm:text-3xl text-white font-bold">
+                        {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                    )}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                </div>
+
+                {/* Name + Plan Badge */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                    {profile?.full_name || 'Utilisateur'}
+                  </h1>
+                  <p className="text-sm text-gray-500 truncate">{profile?.email}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      currentPlan === 'pro'
+                        ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                        : currentPlan === 'discovery'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {currentPlan === 'pro' && <Crown className="w-3 h-3" />}
+                      {currentPlan === 'discovery' && <Zap className="w-3 h-3" />}
+                      {subscriptionPlan?.name || 'Freemium'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Stats Pills */}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>{creditsBalance} crédits</span>
+                  </div>
+                  {subscription && daysRemaining > 0 && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+                      daysRemaining <= 7
+                        ? 'bg-red-50 text-red-700'
+                        : 'bg-orange-50 text-orange-700'
+                    }`}>
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{daysRemaining}j restants</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Depuis {(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '...'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 py-6 lg:px-8 lg:py-10">
-            <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
-              {/* Desktop Sidebar Navigation */}
-              <aside className="hidden lg:block w-64 flex-shrink-0">
-                <div className="sticky top-24 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  <nav className="p-2">
-                    {TABS.map(tab => (
-                      <button
-                        key={tab.id}
-                        onClick={() => !tab.disabled && setActiveTab(tab.id)}
-                        disabled={tab.disabled}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                          tab.disabled
-                            ? 'text-gray-400 cursor-not-allowed opacity-50'
-                            : activeTab === tab.id
-                            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                      >
-                        <tab.icon className={`w-5 h-5 ${activeTab === tab.id && !tab.disabled ? 'text-white' : ''}`} />
-                        <span className="font-medium">{tab.label}</span>
-                        {'comingSoon' in tab && tab.comingSoon && (
-                          <span className="ml-auto text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Bientôt</span>
-                        )}
-                      </button>
-                    ))}
-                  </nav>
+          {/* ============================================ */}
+          {/* HORIZONTAL TAB BAR (sticky) */}
+          {/* ============================================ */}
+          <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+              <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2" role="tablist">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => !tab.disabled && setActiveTab(tab.id)}
+                    disabled={tab.disabled}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                      tab.disabled
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : activeTab === tab.id
+                        ? 'text-orange-600'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                    {'comingSoon' in tab && tab.comingSoon && (
+                      <span className="ml-1 px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-400 rounded">Bientôt</span>
+                    )}
+                    {activeTab === tab.id && !tab.disabled && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-orange-50 rounded-lg -z-10"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
 
-                  {/* Logout button */}
-                  <div className="border-t border-gray-100 p-2">
+          {/* ============================================ */}
+          {/* TAB CONTENT */}
+          {/* ============================================ */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+              >
+
+                {/* ========== PROFILE TAB ========== */}
+                {activeTab === 'profile' && (
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      <div className="px-6 py-4">
+                        <h2 className="text-base font-semibold text-gray-900">Informations personnelles</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Vos informations de base sur la plateforme</p>
+                      </div>
+
+                      <div className="px-6 py-5 space-y-5">
+                        {/* Avatar upload */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Photo de profil</label>
+                          <div className="flex items-center gap-4">
+                            {user && (
+                              <AvatarUpload
+                                userId={user.id}
+                                currentAvatar={profile?.avatar_url}
+                                onUploadSuccess={(url) => {
+                                  setProfile({ ...profile!, avatar_url: url })
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Name */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom complet</label>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editForm.full_name || ''}
+                              onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                              className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-gray-400"
+                              placeholder="Votre nom complet"
+                            />
+                          ) : (
+                            <p className="px-3.5 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-900 border border-transparent">
+                              {profile?.full_name || <span className="text-gray-400 italic">Non renseigné</span>}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                            <Mail className="w-3.5 h-3.5" />
+                            Email
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <p className="flex-1 px-3.5 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-500 border border-transparent">
+                              {profile?.email}
+                            </p>
+                            <span className="px-2 py-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 rounded">Vérifié</span>
+                          </div>
+                        </div>
+
+                        {/* Phone */}
+                        <div>
+                          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                            <Phone className="w-3.5 h-3.5" />
+                            Téléphone
+                          </label>
+                          {isEditing ? (
+                            <input
+                              type="tel"
+                              value={editForm.phone_number || ''}
+                              onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                              className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-gray-400"
+                              placeholder="+241 XX XX XX XX"
+                            />
+                          ) : (
+                            <p className="px-3.5 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-900 border border-transparent">
+                              {profile?.phone_number || <span className="text-gray-400 italic">Non renseigné</span>}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Bio */}
+                        <div>
+                          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                            <FileText className="w-3.5 h-3.5" />
+                            À propos
+                          </label>
+                          {isEditing ? (
+                            <textarea
+                              value={editForm.bio || ''}
+                              onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                              rows={3}
+                              className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-none placeholder:text-gray-400"
+                              placeholder="Présentez-vous en quelques mots..."
+                            />
+                          ) : (
+                            <p className="px-3.5 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-900 border border-transparent min-h-[80px]">
+                              {profile?.bio || <span className="text-gray-400 italic">Non renseigné</span>}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action footer */}
+                      <div className="px-6 py-4 bg-gray-50/50 flex items-center justify-end gap-3">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => { setIsEditing(false); setEditForm(profile || {}) }}
+                              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              onClick={handleSaveProfile}
+                              disabled={saving}
+                              className="px-4 py-2.5 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                            >
+                              {saving ? 'Enregistrement...' : 'Enregistrer'}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="px-4 py-2.5 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                          >
+                            Modifier le profil
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== SUBSCRIPTION TAB ========== */}
+                {activeTab === 'subscription' && (
+                  <div className="space-y-6">
+                    {/* Current Plan Banner */}
+                    <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl p-5 lg:p-6 text-white">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+                      <div className="relative">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div>
+                            <p className="text-orange-200 text-xs font-medium uppercase tracking-wider mb-1">Plan actuel</p>
+                            <h2 className="text-2xl font-bold">{subscriptionPlan?.name || 'Freemium'}</h2>
+                            <div className="flex flex-wrap items-center gap-3 mt-2">
+                              {displayPrice.price > 0 ? (
+                                displayPrice.isYearly ? (
+                                  <div className="space-y-1">
+                                    <p className="text-orange-100">
+                                      <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/an
+                                      <span className="ml-2 text-xs">({displayPrice.monthlyEquivalent?.toLocaleString('fr-FR')} FCFA/mois)</span>
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                                        -{displayPrice.discount}% économisé
+                                      </span>
+                                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
+                                        Abonnement annuel
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-orange-100">
+                                    <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/mois
+                                  </p>
+                                )
+                              ) : (
+                                <p className="text-orange-100">Gratuit</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm">
+                            <Sparkles className="w-4 h-4" />
+                            <span className="font-semibold">{creditsBalance} crédits</span>
+                          </div>
+                        </div>
+
+                        {/* Days remaining */}
+                        {subscription && displayPrice.price > 0 && (
+                          <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t border-white/20">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-orange-200" />
+                              <span className="text-sm text-orange-100">
+                                Renouvellement : <span className="text-white font-medium">
+                                  {new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
+                                    day: 'numeric', month: 'long', year: 'numeric'
+                                  })}
+                                </span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-orange-200" />
+                              <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                                daysRemaining <= 7
+                                  ? 'bg-red-500 text-white'
+                                  : daysRemaining <= 14
+                                  ? 'bg-yellow-500 text-yellow-900'
+                                  : 'bg-white/20 text-white'
+                              }`}>
+                                {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            {displayPrice.isYearly && (
+                              <div className="flex items-center gap-2 text-xs text-orange-100">
+                                <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full" />
+                                Crédits renouvelés chaque mois
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Plans Grid */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Choisir un plan</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {SUBSCRIPTION_PLANS.map((plan, index) => {
+                          const Icon = plan.icon
+                          const isCurrentPlan = currentPlan === plan.slug || (currentPlan === 'free' && plan.id === 'free')
+
+                          return (
+                            <motion.div
+                              key={plan.id}
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={`relative rounded-xl border p-5 transition-all duration-200 ${
+                                isCurrentPlan
+                                  ? 'border-orange-300 bg-orange-50/50 ring-1 ring-orange-200'
+                                  : plan.popular
+                                  ? 'border-orange-200 bg-white hover:border-orange-300 hover:shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                              }`}
+                            >
+                              {plan.popular && !isCurrentPlan && (
+                                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                                  <span className="bg-orange-500 text-white px-3 py-0.5 rounded-full text-[11px] font-bold shadow-sm">
+                                    RECOMMANDÉ
+                                  </span>
+                                </div>
+                              )}
+                              {isCurrentPlan && (
+                                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                                  <span className="bg-green-500 text-white px-3 py-0.5 rounded-full text-[11px] font-bold shadow-sm flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> ACTUEL
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3`}>
+                                <Icon className="w-5 h-5 text-white" />
+                              </div>
+
+                              <h4 className="text-lg font-bold text-gray-900">{plan.name}</h4>
+                              <div className="mt-1 mb-3">
+                                <span className="text-2xl font-bold text-gray-900">{plan.price.toLocaleString('fr-FR')}</span>
+                                <span className="text-sm text-gray-500 ml-1">FCFA/mois</span>
+                              </div>
+
+                              <ul className="space-y-2 mb-5">
+                                {plan.features.map((feature, i) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                                    <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+
+                              {isCurrentPlan ? (
+                                <button disabled className="w-full py-2.5 text-sm bg-gray-100 text-gray-400 rounded-lg font-medium cursor-not-allowed">
+                                  Plan actuel
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleSubscriptionUpgrade(plan)}
+                                  className={`w-full py-2.5 text-sm rounded-lg font-medium transition-all ${
+                                    plan.popular
+                                      ? 'bg-orange-500 text-white hover:bg-orange-600'
+                                      : 'bg-gray-900 text-white hover:bg-gray-800'
+                                  }`}
+                                >
+                                  {plan.price === 0 ? 'Passer au gratuit' : 'Choisir ce plan'}
+                                </button>
+                              )}
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== CREDITS TAB ========== */}
+                {activeTab === 'credits' && (
+                  <div className="space-y-6">
+                    {/* Credits Balance */}
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-5 text-white flex items-center justify-between">
+                      <div>
+                        <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Solde disponible</p>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-3xl sm:text-4xl font-bold">{creditsBalance}</span>
+                          <span className="text-emerald-200 text-sm">crédits</span>
+                        </div>
+                      </div>
+                      <div className="w-14 h-14 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <Coins className="w-7 h-7" />
+                      </div>
+                    </div>
+
+                    {/* Credit Packages */}
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      <div className="px-6 py-4">
+                        <h3 className="text-base font-semibold text-gray-900">Acheter des crédits</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">Packs de crédits à la carte</p>
+                      </div>
+                      <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {creditPackages.map((pkg, index) => (
+                          <motion.div
+                            key={pkg.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`relative rounded-xl border p-5 text-center transition-all duration-200 ${
+                              pkg.is_popular
+                                ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200'
+                                : 'border-gray-200 hover:border-emerald-200 hover:shadow-sm'
+                            }`}
+                          >
+                            {pkg.is_popular && (
+                              <span className="absolute -top-2.5 right-3 bg-emerald-500 text-white px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                                Populaire
+                              </span>
+                            )}
+
+                            <p className="text-3xl font-bold text-gray-900">{pkg.credits}</p>
+                            <p className="text-xs text-gray-500 mb-1">crédits</p>
+                            {pkg.bonus_credits > 0 && (
+                              <p className="text-xs text-emerald-600 font-medium">+{pkg.bonus_credits} bonus</p>
+                            )}
+
+                            <div className="my-3 pt-3 border-t border-gray-100">
+                              <p className="text-xl font-bold text-orange-600">{pkg.price_xaf.toLocaleString('fr-FR')}</p>
+                              <p className="text-[11px] text-gray-400">FCFA ({Math.round(pkg.price_xaf / (pkg.credits + (pkg.bonus_credits || 0)))} FCFA/crédit)</p>
+                            </div>
+
+                            <button
+                              onClick={() => handleCreditPurchase(pkg)}
+                              className={`w-full py-2.5 text-sm rounded-lg font-medium transition-colors ${
+                                pkg.is_popular
+                                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                  : 'bg-gray-900 text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              Acheter
+                            </button>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Transactions Preview */}
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      <div className="px-6 py-4 flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-gray-900">Transactions récentes</h3>
+                        <button
+                          onClick={() => setActiveTab('history')}
+                          className="text-sm text-orange-500 hover:text-orange-600 font-medium"
+                        >
+                          Voir tout
+                        </button>
+                      </div>
+                      <div className="px-6 py-4">
+                        <p className="text-sm text-gray-400 text-center py-3">
+                          Consultez l'onglet Historique pour voir vos transactions
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== PROJETS TAB ========== */}
+                {activeTab === 'projets' && (
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-5 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-bold mb-1">Mes Projets</h2>
+                        <p className="text-blue-100 text-sm">Gérez vos projets business</p>
+                      </div>
+                      <button
+                        onClick={() => router.push('/business/mes-projets')}
+                        className="bg-white text-blue-600 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        Voir tous
+                        <ChevronLeft className="w-4 h-4 rotate-180" />
+                      </button>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      <div className="px-6 py-4">
+                        <h3 className="text-base font-semibold text-gray-900">Accès rapide</h3>
+                      </div>
+                      <div className="p-5 grid gap-4 sm:grid-cols-2">
+                        <a
+                          href="/business/mes-projets"
+                          className="group p-4 border border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                              <FolderOpen className="w-5 h-5 text-blue-600 group-hover:text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600">Tous mes projets</h4>
+                              <p className="text-xs text-gray-500">Liste complète</p>
+                            </div>
+                          </div>
+                        </a>
+
+                        <a
+                          href="/business/creer-projet"
+                          className="group p-4 border border-dashed border-gray-300 rounded-xl hover:border-green-400 hover:bg-green-50/50 transition-all"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-500 transition-colors">
+                              <span className="text-xl text-green-600 group-hover:text-white">+</span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-900 group-hover:text-green-600">Nouveau projet</h4>
+                              <p className="text-xs text-gray-500">Créer un projet</p>
+                            </div>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== HISTORY TAB ========== */}
+                {activeTab === 'history' && user && (
+                  <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                    <div className="px-6 py-4">
+                      <h2 className="text-base font-semibold text-gray-900">Historique des transactions</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">Vos paiements et achats de crédits</p>
+                    </div>
+                    <div className="p-6">
+                      <TransactionHistory userId={user.id} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== NOTIFICATIONS TAB ========== */}
+                {activeTab === 'notifications' && (
+                  <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                    <div className="px-6 py-4">
+                      <h2 className="text-base font-semibold text-gray-900">Notifications</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">Gérez vos préférences de notification</p>
+                    </div>
+
+                    <div className="px-6 py-2">
+                      {[
+                        { key: 'email', label: 'Notifications par email', desc: 'Recevez des mises à jour par email' },
+                        { key: 'push', label: 'Notifications push', desc: 'Notifications sur votre appareil' },
+                        { key: 'whatsapp', label: 'WhatsApp', desc: 'Alertes et veilles sur WhatsApp' },
+                        { key: 'newsletter', label: 'Newsletter', desc: 'Actualités hebdomadaires' },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{item.label}</h4>
+                            <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                          </div>
+                          <button
+                            onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key as keyof typeof notifications] })}
+                            className={`relative w-11 h-6 rounded-full transition-colors ${
+                              notifications[item.key as keyof typeof notifications] ? 'bg-orange-500' : 'bg-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${
+                                notifications[item.key as keyof typeof notifications] ? 'left-6' : 'left-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="px-6 py-4 bg-gray-50/50 flex justify-end">
+                      <button className="px-4 py-2.5 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                        Enregistrer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== APPEARANCE TAB ========== */}
+                {activeTab === 'appearance' && (
+                  <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                    <div className="px-6 py-4">
+                      <h2 className="text-base font-semibold text-gray-900">Apparence</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">Personnalisez l'apparence de l'application</p>
+                    </div>
+
+                    <div className="px-6 py-5 space-y-6">
+                      {/* Theme */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Thème</label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { value: 'light', label: 'Clair', icon: '☀️' },
+                            { value: 'dark', label: 'Sombre', icon: '🌙' },
+                            { value: 'system', label: 'Système', icon: '💻' },
+                          ].map((theme) => (
+                            <button
+                              key={theme.value}
+                              onClick={() => handleThemeChange(theme.value)}
+                              className={`p-3 rounded-lg border transition-all text-center ${
+                                appearance.theme === theme.value
+                                  ? 'border-orange-400 bg-orange-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <span className="text-xl mb-1 block">{theme.icon}</span>
+                              <span className="text-xs font-medium text-gray-700">{theme.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Language */}
+                      <div>
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                          <Globe className="w-3.5 h-3.5" />
+                          Langue
+                        </label>
+                        <select
+                          value={appearance.language}
+                          onChange={(e) => setAppearance({ ...appearance, language: e.target.value })}
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                        >
+                          <option value="fr">Français</option>
+                          <option value="en">English</option>
+                          <option value="zh">中文 (Chinois)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="px-6 py-4 bg-gray-50/50 flex justify-end">
+                      <button className="px-4 py-2.5 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                        Enregistrer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== SECURITY TAB ========== */}
+                {activeTab === 'security' && (
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      <div className="px-6 py-4">
+                        <h2 className="text-base font-semibold text-gray-900">Sécurité</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Gérez la sécurité de votre compte</p>
+                      </div>
+
+                      <div className="p-2">
+                        <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-all group">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Lock className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="text-sm font-medium text-gray-900">Changer le mot de passe</h4>
+                              <p className="text-xs text-gray-500">Dernière modification: jamais</p>
+                            </div>
+                          </div>
+                          <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+
+                        <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-all group">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
+                              <Shield className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="text-sm font-medium text-gray-900">Authentification à deux facteurs</h4>
+                              <p className="text-xs text-gray-500">Non activée</p>
+                            </div>
+                          </div>
+                          <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+
+                        <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-all group">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <History className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="text-sm font-medium text-gray-900">Sessions actives</h4>
+                              <p className="text-xs text-gray-500">1 session active</p>
+                            </div>
+                          </div>
+                          <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="bg-white rounded-xl border border-red-200 divide-y divide-red-100">
+                      <div className="px-6 py-4">
+                        <h3 className="text-sm font-semibold text-red-600">Zone dangereuse</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Ces actions sont irréversibles</p>
+                      </div>
+
+                      <div className="px-6 py-4">
+                        {!showDeleteConfirm ? (
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="px-4 py-2 text-sm border border-red-300 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-all"
+                          >
+                            Supprimer mon compte
+                          </button>
+                        ) : (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <Shield className="w-4 h-4 text-red-600" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-red-700">Êtes-vous sûr ?</h4>
+                                <p className="text-xs text-red-600 mt-0.5">
+                                  Toutes vos données, crédits et abonnements seront perdus.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-red-700 mb-1.5">
+                                Tapez <strong>SUPPRIMER</strong> pour confirmer
+                              </label>
+                              <input
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                placeholder="SUPPRIMER"
+                                className="w-full px-3 py-2 text-sm border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                              />
+                            </div>
+
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }}
+                                className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
+                              >
+                                Annuler
+                              </button>
+                              <button
+                                onClick={handleDeleteAccount}
+                                disabled={deleteConfirmText !== 'SUPPRIMER' || deleting}
+                                className="flex-1 px-3 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                {deleting ? 'Suppression...' : 'Supprimer'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Logout (mobile-friendly) */}
                     <button
                       onClick={async () => {
                         await supabase.auth.signOut()
                         router.push('/')
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all"
+                      className="w-full flex items-center justify-center gap-2 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl border border-gray-200 transition-all font-medium"
                     >
-                      <LogOut className="w-5 h-5" />
-                      <span className="font-medium">Déconnexion</span>
+                      <LogOut className="w-4 h-4" />
+                      Déconnexion
                     </button>
                   </div>
-                </div>
-              </aside>
+                )}
 
-              {/* Main Content */}
-              <div className="flex-1 min-w-0">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {/* PROFILE TAB */}
-                    {activeTab === 'profile' && (
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 lg:p-8">
-                          <div className="flex items-center justify-between mb-8">
-                            <div>
-                              <h1 className="text-2xl font-bold text-gray-900">Profil</h1>
-                              <p className="text-gray-500 mt-1">Gérez vos informations personnelles</p>
-                            </div>
-                          </div>
-
-                          {/* Avatar Section */}
-                          <div className="mb-8">
-                            <label className="block text-sm font-medium text-gray-700 mb-4">Photo de profil</label>
-                            <div className="flex flex-wrap items-center gap-4">
-                              {user && (
-                                <AvatarUpload
-                                  userId={user.id}
-                                  currentAvatar={profile?.avatar_url}
-                                  onUploadSuccess={(url) => {
-                                    setProfile({ ...profile!, avatar_url: url })
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Form Fields */}
-                          <div className="space-y-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nom complet
-                              </label>
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={editForm.full_name || ''}
-                                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
-                                  placeholder="Votre nom complet"
-                                />
-                              ) : (
-                                <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900">
-                                  {profile?.full_name || 'Non renseigné'}
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4" />
-                                  Email
-                                </div>
-                              </label>
-                              <div className="px-4 py-3 bg-gray-100 rounded-xl text-gray-600">
-                                {profile?.email}
-                                <span className="ml-2 text-xs text-gray-400">(non modifiable)</span>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Phone className="w-4 h-4" />
-                                  Téléphone
-                                </div>
-                              </label>
-                              {isEditing ? (
-                                <input
-                                  type="tel"
-                                  value={editForm.phone_number || ''}
-                                  onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
-                                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
-                                  placeholder="+241 XX XX XX XX"
-                                />
-                              ) : (
-                                <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900">
-                                  {profile?.phone_number || 'Non renseigné'}
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="w-4 h-4" />
-                                  À propos
-                                </div>
-                              </label>
-                              {isEditing ? (
-                                <textarea
-                                  value={editForm.bio || ''}
-                                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                                  rows={4}
-                                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all resize-none"
-                                  placeholder="Présentez-vous en quelques mots..."
-                                />
-                              ) : (
-                                <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900 min-h-[100px]">
-                                  {profile?.bio || 'Non renseigné'}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
-                            {isEditing ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setIsEditing(false)
-                                    setEditForm(profile || {})
-                                  }}
-                                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-all"
-                                >
-                                  Annuler
-                                </button>
-                                <button
-                                  onClick={handleSaveProfile}
-                                  disabled={saving}
-                                  className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 transition-all shadow-lg shadow-orange-500/25"
-                                >
-                                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setIsEditing(true)}
-                                className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25"
-                              >
-                                Modifier le profil
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SUBSCRIPTION TAB */}
-                    {activeTab === 'subscription' && (
-                      <div className="space-y-6">
-                        {/* Current Plan Banner */}
-                        <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl shadow-orange-500/20">
-                          <div className="flex flex-col gap-4">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div>
-                                <p className="text-orange-100 text-sm font-medium mb-1">Abonnement actuel</p>
-                                <h2 className="text-3xl font-bold">{subscriptionPlan?.name || 'Freemium'}</h2>
-                                <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  {displayPrice.price > 0 ? (
-                                    displayPrice.isYearly ? (
-                                      <div className="space-y-1">
-                                        <p className="text-orange-100">
-                                          <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/an
-                                          <span className="ml-2 text-xs">({displayPrice.monthlyEquivalent?.toLocaleString('fr-FR')} FCFA/mois)</span>
-                                        </p>
-                                        <div className="flex items-center gap-2">
-                                          <span className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-                                            -{displayPrice.discount}% économisé
-                                          </span>
-                                          <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
-                                            Abonnement annuel
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <p className="text-orange-100">
-                                        <span className="text-white font-semibold">{displayPrice.price.toLocaleString('fr-FR')}</span> FCFA/mois
-                                      </p>
-                                    )
-                                  ) : (
-                                    <p className="text-orange-100">Gratuit</p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-                                <Sparkles className="w-5 h-5" />
-                                <span className="font-medium">{creditsBalance} crédits</span>
-                              </div>
-                            </div>
-
-                            {/* Jours restants - affiché seulement pour les abonnés payants */}
-                            {subscription && displayPrice.price > 0 && (
-                              <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/20">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-orange-200" />
-                                  <span className="text-sm text-orange-100">
-                                    Prochain renouvellement : <span className="text-white font-medium">
-                                      {new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric'
-                                      })}
-                                    </span>
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-orange-200" />
-                                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
-                                    daysRemaining <= 7
-                                      ? 'bg-red-500 text-white'
-                                      : daysRemaining <= 14
-                                      ? 'bg-yellow-500 text-yellow-900'
-                                      : 'bg-white/20 text-white'
-                                  }`}>
-                                    {daysRemaining} jour{daysRemaining > 1 ? 's' : ''} restant{daysRemaining > 1 ? 's' : ''}
-                                  </span>
-                                </div>
-                                {displayPrice.isYearly && (
-                                  <div className="flex items-center gap-2 text-xs text-orange-100">
-                                    <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                                    Crédits renouvelés chaque mois
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Plans Grid */}
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 mb-6">Choisir un plan</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-                            {SUBSCRIPTION_PLANS.map((plan) => {
-                              const Icon = plan.icon
-                              const isCurrentPlan = currentPlan === plan.slug || (currentPlan === 'free' && plan.id === 'free')
-
-                              return (
-                                <div
-                                  key={plan.id}
-                                  className={`relative rounded-2xl border-2 p-6 transition-all duration-300 ${
-                                    plan.popular
-                                      ? 'border-orange-500 shadow-xl shadow-orange-500/10'
-                                      : 'border-gray-200 hover:border-gray-300'
-                                  } ${isCurrentPlan ? 'bg-orange-50' : 'bg-white'}`}
-                                >
-                                  {plan.popular && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                      <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
-                                        RECOMMANDÉ
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}>
-                                    <Icon className="w-6 h-6 text-white" />
-                                  </div>
-
-                                  <h4 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h4>
-                                  <div className="mb-4">
-                                    <span className="text-3xl font-bold text-gray-900">
-                                      {plan.price.toLocaleString('fr-FR')}
-                                    </span>
-                                    <span className="text-gray-500 ml-1">FCFA/mois</span>
-                                  </div>
-
-                                  <ul className="space-y-3 mb-6">
-                                    {plan.features.map((feature, index) => (
-                                      <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                        <span>{feature}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-
-                                  {isCurrentPlan ? (
-                                    <button
-                                      disabled
-                                      className="w-full py-3 bg-gray-100 text-gray-500 rounded-xl font-medium cursor-not-allowed"
-                                    >
-                                      Plan actuel
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleSubscriptionUpgrade(plan)}
-                                      className={`w-full py-3 rounded-xl font-medium transition-all ${
-                                        plan.popular
-                                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/25'
-                                          : 'bg-gray-900 text-white hover:bg-gray-800'
-                                      }`}
-                                    >
-                                      {plan.price === 0 ? 'Passer au gratuit' : 'Choisir ce plan'}
-                                    </button>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* CREDITS TAB */}
-                    {activeTab === 'credits' && (
-                      <div className="space-y-6">
-                        {/* Credits Balance */}
-                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl shadow-emerald-500/20">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <p className="text-emerald-100 text-sm font-medium mb-1">Solde disponible</p>
-                              <h2 className="text-4xl lg:text-5xl font-bold">{creditsBalance}</h2>
-                              <p className="text-emerald-100 mt-1">crédits</p>
-                            </div>
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                              <Coins className="w-10 h-10" />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Credit Packages */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                          <div className="flex items-center justify-between mb-6">
-                            <div>
-                              <h3 className="text-xl font-bold text-gray-900">Acheter des crédits</h3>
-                              <p className="text-gray-500 text-sm mt-1">Packs de crédits à la carte</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            {creditPackages.map((pkg) => (
-                              <div
-                                key={pkg.id}
-                                className={`relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg ${
-                                  pkg.is_popular
-                                    ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-500/10'
-                                    : 'border-gray-200 bg-white hover:border-emerald-300'
-                                }`}
-                              >
-                                {pkg.is_popular && (
-                                  <span className="absolute -top-2.5 right-4 bg-emerald-500 text-white px-3 py-0.5 rounded-full text-xs font-bold">
-                                    Populaire
-                                  </span>
-                                )}
-
-                                <div className="text-center mb-4">
-                                  <p className="text-4xl font-bold text-gray-900">{pkg.credits}</p>
-                                  <p className="text-sm text-gray-500">crédits</p>
-                                  {pkg.bonus_credits > 0 && (
-                                    <p className="text-xs text-emerald-600 font-medium mt-1">
-                                      +{pkg.bonus_credits} bonus
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div className="text-center mb-4">
-                                  <p className="text-2xl font-bold text-orange-600">
-                                    {pkg.price_xaf.toLocaleString('fr-FR')}
-                                  </p>
-                                  <p className="text-xs text-gray-500">FCFA</p>
-                                </div>
-
-                                <button
-                                  onClick={() => handleCreditPurchase(pkg)}
-                                  className={`w-full py-3 rounded-xl font-medium transition-all ${
-                                    pkg.is_popular
-                                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/25'
-                                      : 'bg-gray-900 text-white hover:bg-gray-800'
-                                  }`}
-                                >
-                                  Acheter
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PROJETS TAB */}
-                    {activeTab === 'projets' && (
-                      <div className="space-y-6">
-                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl shadow-blue-500/20">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <h2 className="text-2xl font-bold mb-2">Mes Projets</h2>
-                              <p className="text-blue-100">Gérez vos projets business</p>
-                            </div>
-                            <button
-                              onClick={() => router.push('/business/mes-projets')}
-                              className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
-                            >
-                              Voir tous
-                              <ChevronLeft className="w-4 h-4 rotate-180" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                          <h3 className="text-lg font-bold text-gray-900 mb-6">Accès rapide</h3>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <a
-                              href="/business/mes-projets"
-                              className="group p-5 border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:bg-blue-50 transition-all"
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-                                  <FolderOpen className="w-6 h-6 text-blue-600 group-hover:text-white" />
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 group-hover:text-blue-600">Tous mes projets</h4>
-                                  <p className="text-sm text-gray-500">Liste complète</p>
-                                </div>
-                              </div>
-                            </a>
-
-                            <a
-                              href="/business/creer-projet"
-                              className="group p-5 border-2 border-dashed border-gray-300 rounded-2xl hover:border-green-500 hover:bg-green-50 transition-all"
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-500 transition-colors">
-                                  <span className="text-2xl group-hover:text-white">+</span>
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 group-hover:text-green-600">Nouveau projet</h4>
-                                  <p className="text-sm text-gray-500">Créer un projet</p>
-                                </div>
-                              </div>
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* HISTORY TAB */}
-                    {activeTab === 'history' && user && (
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 lg:p-8 border-b border-gray-100">
-                          <h2 className="text-xl font-bold text-gray-900">Historique des transactions</h2>
-                          <p className="text-gray-500 mt-1">Vos paiements et achats de crédits</p>
-                        </div>
-                        <div className="p-6 lg:p-8">
-                          <TransactionHistory userId={user.id} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* NOTIFICATIONS TAB */}
-                    {activeTab === 'notifications' && (
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                        <div className="mb-8">
-                          <h2 className="text-xl font-bold text-gray-900">Notifications</h2>
-                          <p className="text-gray-500 mt-1">Gérez vos préférences de notification</p>
-                        </div>
-
-                        <div className="space-y-6">
-                          {[
-                            { key: 'email', label: 'Notifications par email', desc: 'Recevez des mises à jour par email' },
-                            { key: 'push', label: 'Notifications push', desc: 'Notifications sur votre appareil' },
-                            { key: 'whatsapp', label: 'WhatsApp', desc: 'Alertes et veilles sur WhatsApp' },
-                            { key: 'newsletter', label: 'Newsletter', desc: 'Actualités hebdomadaires' },
-                          ].map((item) => (
-                            <div key={item.key} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
-                              <div>
-                                <h4 className="font-medium text-gray-900">{item.label}</h4>
-                                <p className="text-sm text-gray-500">{item.desc}</p>
-                              </div>
-                              <button
-                                onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key as keyof typeof notifications] })}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${
-                                  notifications[item.key as keyof typeof notifications] ? 'bg-orange-500' : 'bg-gray-300'
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                                    notifications[item.key as keyof typeof notifications] ? 'left-7' : 'left-1'
-                                  }`}
-                                />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
-                          <button className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25">
-                            Enregistrer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* APPEARANCE TAB */}
-                    {activeTab === 'appearance' && (
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                        <div className="mb-8">
-                          <h2 className="text-xl font-bold text-gray-900">Apparence</h2>
-                          <p className="text-gray-500 mt-1">Personnalisez l'apparence de l'application</p>
-                        </div>
-
-                        <div className="space-y-8">
-                          {/* Theme */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-4">Thème</label>
-                            <div className="grid grid-cols-3 gap-4">
-                              {[
-                                { value: 'light', label: 'Clair', icon: '☀️' },
-                                { value: 'dark', label: 'Sombre', icon: '🌙' },
-                                { value: 'system', label: 'Système', icon: '💻' },
-                              ].map((theme) => (
-                                <button
-                                  key={theme.value}
-                                  onClick={() => handleThemeChange(theme.value)}
-                                  className={`p-4 rounded-xl border-2 transition-all ${
-                                    appearance.theme === theme.value
-                                      ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                                      : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                                  }`}
-                                >
-                                  <span className="text-2xl mb-2 block">{theme.icon}</span>
-                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{theme.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Language */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-4">
-                              <div className="flex items-center gap-2">
-                                <Globe className="w-4 h-4" />
-                                Langue
-                              </div>
-                            </label>
-                            <select
-                              value={appearance.language}
-                              onChange={(e) => setAppearance({ ...appearance, language: e.target.value })}
-                              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                            >
-                              <option value="fr">Français</option>
-                              <option value="en">English</option>
-                              <option value="zh">中文 (Chinois)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
-                          <button className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25">
-                            Enregistrer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SECURITY TAB */}
-                    {activeTab === 'security' && (
-                      <div className="space-y-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
-                          <div className="mb-8">
-                            <h2 className="text-xl font-bold text-gray-900">Sécurité</h2>
-                            <p className="text-gray-500 mt-1">Gérez la sécurité de votre compte</p>
-                          </div>
-
-                          <div className="space-y-4">
-                            <button className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <Lock className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div className="text-left">
-                                  <h4 className="font-medium text-gray-900">Changer le mot de passe</h4>
-                                  <p className="text-sm text-gray-500">Dernière modification: jamais</p>
-                                </div>
-                              </div>
-                              <ChevronLeft className="w-5 h-5 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                  <Shield className="w-5 h-5 text-green-600" />
-                                </div>
-                                <div className="text-left">
-                                  <h4 className="font-medium text-gray-900">Authentification à deux facteurs</h4>
-                                  <p className="text-sm text-gray-500">Non activée</p>
-                                </div>
-                              </div>
-                              <ChevronLeft className="w-5 h-5 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                  <History className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <div className="text-left">
-                                  <h4 className="font-medium text-gray-900">Sessions actives</h4>
-                                  <p className="text-sm text-gray-500">1 session active</p>
-                                </div>
-                              </div>
-                              <ChevronLeft className="w-5 h-5 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Danger Zone */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6 lg:p-8">
-                          <h3 className="text-lg font-bold text-red-600 mb-4">Zone dangereuse</h3>
-                          <p className="text-gray-600 text-sm mb-4">
-                            Ces actions sont irréversibles. Procédez avec précaution.
-                          </p>
-
-                          {!showDeleteConfirm ? (
-                            <button
-                              onClick={() => setShowDeleteConfirm(true)}
-                              className="px-6 py-2.5 border-2 border-red-500 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all"
-                            >
-                              Supprimer mon compte
-                            </button>
-                          ) : (
-                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-4">
-                              <div className="flex items-start gap-3">
-                                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <Shield className="w-5 h-5 text-red-600" />
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-red-700">Êtes-vous sûr ?</h4>
-                                  <p className="text-sm text-red-600 mt-1">
-                                    Cette action est irréversible. Toutes vos données, crédits et abonnements seront perdus.
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-red-700 mb-2">
-                                  Tapez <strong>SUPPRIMER</strong> pour confirmer
-                                </label>
-                                <input
-                                  type="text"
-                                  value={deleteConfirmText}
-                                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                  placeholder="SUPPRIMER"
-                                  className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                />
-                              </div>
-
-                              <div className="flex gap-3">
-                                <button
-                                  onClick={() => {
-                                    setShowDeleteConfirm(false)
-                                    setDeleteConfirmText('')
-                                  }}
-                                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
-                                >
-                                  Annuler
-                                </button>
-                                <button
-                                  onClick={handleDeleteAccount}
-                                  disabled={deleteConfirmText !== 'SUPPRIMER' || deleting}
-                                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                >
-                                  {deleting ? 'Suppression...' : 'Supprimer définitivement'}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
