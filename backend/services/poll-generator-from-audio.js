@@ -327,7 +327,7 @@ async function deactivateOldAutoPpolls() {
 
     const { data, error } = await supabaseService.supabase
       .from('polls')
-      .update({ is_active: false, status: 'closed' })
+      .update({ is_active: false, status: 'expired' })
       .eq('is_manual', false)
       .lt('created_at', twoDaysAgo.toISOString());
 
