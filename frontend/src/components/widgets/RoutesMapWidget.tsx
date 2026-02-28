@@ -403,19 +403,31 @@ export default function RoutesMapWidget() {
           )}
         </div>
 
-        {/* Indicateurs de navigation */}
+        {/* Indicateurs de navigation - progress segments */}
         {routes.length > 1 && (
-          <div className="flex justify-center gap-1.5 mt-2">
+          <div className="flex items-center gap-[3px] mt-2 px-1">
             {routes.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`h-2 rounded-full transition-all duration-200 ${
-                  currentIndex === index
-                    ? 'bg-teal-500 w-4'
-                    : timeBasedStyles.isNight ? 'bg-white/30 w-2 hover:bg-white/50' : 'bg-gray-300 w-2 hover:bg-gray-400'
-                }`}
-              />
+                aria-label={`Itinéraire ${index + 1}`}
+                className="flex-1 h-[3px] rounded-full overflow-hidden group"
+              >
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    currentIndex === index
+                      ? 'bg-teal-500'
+                      : currentIndex > index
+                      ? timeBasedStyles.isNight ? 'bg-white/25' : 'bg-teal-500/25'
+                      : timeBasedStyles.isNight ? 'bg-white/12' : 'bg-gray-300/60 group-hover:bg-gray-400/60'
+                  }`}
+                  style={currentIndex === index && !isPaused ? {
+                    animation: 'progressFill 8s linear forwards'
+                  } : currentIndex === index ? {
+                    width: '100%'
+                  } : undefined}
+                />
+              </button>
             ))}
           </div>
         )}

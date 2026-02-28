@@ -201,3 +201,8 @@ button:active, .btn:active, [role="button"]:active {
 .animate-pulse-slow {
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
