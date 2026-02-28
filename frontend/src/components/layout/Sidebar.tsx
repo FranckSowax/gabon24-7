@@ -139,7 +139,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   const menuItems = [
     { icon: '🏠', label: 'Accueil', href: '/', active: true },
     { icon: '🕒', label: 'Historique', href: '/historique' },
-    { icon: '🎮', label: 'Jeu Quiz', href: '/jeu', badge: 'NEW' }
+    { icon: '🎮', label: 'Jeu Quiz', href: 'https://emoneygabon.alwaysdata.net/la-map-gabon/la-map-landing/', badge: 'NEW', external: true }
   ]
 
   const settingsItems = [
@@ -297,6 +297,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               <a
                 key={item.href}
                 href={item.href}
+                {...('external' in item && item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 onClick={() => {
                   if (onMobileClose) onMobileClose();
                 }}
