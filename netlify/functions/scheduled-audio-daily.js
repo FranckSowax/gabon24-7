@@ -75,59 +75,59 @@ async function generatePublicDailySummary() {
 
     console.log('📝 Script généré:', script.substring(0, 200) + '...')
 
-    // Générer l'audio avec OpenAI TTS
-    if (!OPENAI_API_KEY) {
-      console.error('❌ OPENAI_API_KEY manquant')
-      return { success: false, error: 'OPENAI_API_KEY manquant' }
-    }
+    // Générer l'audio avec OpenAI TTS (si clé disponible)
+    let audioUrl = null
+    let duration = 0
 
-    const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: OPENAI_TTS_MODEL,
-        voice: 'alloy',
-        input: script,
-        response_format: 'mp3'
-      })
-    })
-
-    if (!ttsResp.ok) {
-      const errText = await ttsResp.text()
-      throw new Error(`OpenAI TTS error: ${errText}`)
-    }
-
-    const audioBuffer = Buffer.from(await ttsResp.arrayBuffer())
-    const duration = Math.max(15, Math.ceil(audioBuffer.length / 16000))
-
-    console.log(`🔊 Audio généré: ${audioBuffer.length} bytes, ~${duration}s`)
-
-    // Upload vers Supabase Storage
-    const fileName = `public/daily_${timeSlot}_${Date.now()}.mp3`
-    const { error: uploadErr } = await supabase.storage
-      .from('audio-summaries')
-      .upload(fileName, audioBuffer, {
-        contentType: 'audio/mpeg',
-        upsert: true
+    if (OPENAI_API_KEY) {
+      const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: OPENAI_TTS_MODEL,
+          voice: 'alloy',
+          input: script,
+          response_format: 'mp3'
+        })
       })
 
-    if (uploadErr) {
-      console.error('❌ Upload error:', uploadErr)
-      throw uploadErr
+      if (!ttsResp.ok) {
+        const errText = await ttsResp.text()
+        console.error(`⚠️ OpenAI TTS error: ${errText}`)
+      } else {
+        const audioBuffer = Buffer.from(await ttsResp.arrayBuffer())
+        duration = Math.max(15, Math.ceil(audioBuffer.length / 16000))
+
+        console.log(`🔊 Audio généré: ${audioBuffer.length} bytes, ~${duration}s`)
+
+        // Upload vers Supabase Storage
+        const fileName = `public/daily_${timeSlot}_${Date.now()}.mp3`
+        const { error: uploadErr } = await supabase.storage
+          .from('audio-summaries')
+          .upload(fileName, audioBuffer, {
+            contentType: 'audio/mpeg',
+            upsert: true
+          })
+
+        if (uploadErr) {
+          console.error('⚠️ Upload error:', uploadErr)
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('audio-summaries')
+            .getPublicUrl(fileName)
+          audioUrl = urlData?.publicUrl
+          console.log('🔗 Audio URL:', audioUrl)
+        }
+      }
+    } else {
+      console.warn('⚠️ OPENAI_API_KEY manquant - sauvegarde texte uniquement')
     }
-
-    // Obtenir l'URL publique
-    const { data: urlData } = supabase.storage
-      .from('audio-summaries')
-      .getPublicUrl(fileName)
-
-    const audioUrl = urlData?.publicUrl
-    console.log('🔗 Audio URL:', audioUrl)
 
     // Insérer dans audio_summaries avec user_id = NULL (public)
+    // Sauvegarde même sans audio (texte seul) pour que le résumé soit disponible
     const { data: summary, error: insertErr } = await supabase
       .from('audio_summaries')
       .insert({
@@ -138,10 +138,10 @@ async function generatePublicDailySummary() {
         text_summary: script,
         audio_url: audioUrl,
         audio_duration_seconds: duration,
-        status: 'completed',
+        status: audioUrl ? 'completed' : 'text_only',
         language: 'fr',
         time_slot: timeSlot,
-        voice_used: 'alloy'
+        voice_used: audioUrl ? 'alloy' : null
       })
       .select()
       .single()
@@ -151,8 +151,8 @@ async function generatePublicDailySummary() {
       throw insertErr
     }
 
-    console.log('✅ Résumé audio PUBLIC créé:', summary.id)
-    return { success: true, summaryId: summary.id, audioUrl }
+    console.log(`✅ Résumé PUBLIC créé: ${summary.id} (${audioUrl ? 'avec audio' : 'texte seul'})`)
+    return { success: true, summaryId: summary.id, audioUrl, textOnly: !audioUrl }
 
   } catch (error) {
     console.error('❌ Erreur génération résumé public:', error)
