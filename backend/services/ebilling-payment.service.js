@@ -11,12 +11,13 @@
  * Devise: XAF
  *
  * Flow:
- * 1. Backend crée une facture via E-Billing API
- * 2. Frontend redirige l'utilisateur vers le portail E-Billing
- * 3. L'utilisateur paie sur le portail (choix opérateur/carte)
- * 4. Frontend poll le statut via backend
- * 5. Backend vérifie le statut auprès de E-Billing
- * 6. Quand complété, backend exécute l'action (crédits, abo, quiz)
+ * 1. Backend enregistre la transaction dans le PHP multi-app (init.php)
+ * 2. Backend crée une facture via E-Billing API
+ * 3. Frontend redirige l'utilisateur vers le portail E-Billing
+ * 4. L'utilisateur paie sur le portail (choix opérateur/carte)
+ * 5. Frontend poll le statut via backend
+ * 6. Backend vérifie le statut via E-Billing + PHP multi-app (check_status.php)
+ * 7. Quand complété, backend exécute l'action (crédits, abo, quiz)
  */
 
 const { supabase } = require('../config/supabase');
@@ -36,6 +37,9 @@ const EBILLING_CONFIG = {
   apiKey: process.env.EBILLING_API_KEY,
 };
 
+// Configuration Backend PHP Multi-App (suivi centralisé des transactions)
+const PHP_BACKEND_URL = process.env.PHP_PAYMENT_BACKEND_URL || 'https://emoneygabon.alwaysdata.net/la-map-gabon/api/payment';
+
 // Générer le header Basic Auth
 function getBasicAuth() {
   const credentials = `${EBILLING_CONFIG.username}:${EBILLING_CONFIG.apiKey}`;
@@ -49,12 +53,102 @@ class EBillingPaymentService {
 
   /**
    * Génère une référence unique pour le paiement
-   * Format: GI + type (3 chars) + timestamp base36 + random (max 20 chars)
+   * Format: GI_{timestamp}_{random4digits} (compatible PHP multi-app)
    */
   generateReference(type = 'PAY') {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `GI${type}${timestamp}${random}`.substring(0, 20);
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `GI_${timestamp}_${random}`;
+  }
+
+  /**
+   * Formate un numéro de téléphone au format Gabon (241XXXXXXXX sans +)
+   */
+  formatPhoneNumber(phone) {
+    if (!phone) return '24174000000';
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('00')) cleaned = cleaned.substring(2);
+    if (cleaned.startsWith('241')) return cleaned;
+    if (cleaned.startsWith('0')) return '241' + cleaned.substring(1);
+    return '241' + cleaned;
+  }
+
+  // =====================================================
+  // BACKEND PHP MULTI-APP (enregistrement centralisé)
+  // =====================================================
+
+  /**
+   * Enregistre la transaction dans le backend PHP multi-app
+   * DOIT être appelé AVANT la création de facture E-Billing
+   */
+  async initPhpTransaction({ userId, amount, phone, description, reference }) {
+    try {
+      const formattedPhone = this.formatPhoneNumber(phone);
+
+      const payload = {
+        user_id: userId,
+        amount: Math.round(amount),
+        phone_number: formattedPhone,
+        payment_system: 'ebilling',
+        transaction_type: 'deposit',
+        currency: 'XAF',
+        description: (description || 'Paiement Gabon Insight').substring(0, 100),
+        external_reference: reference,
+      };
+
+      console.log('📤 Init PHP multi-app:', { reference, amount, url: `${PHP_BACKEND_URL}/init.php` });
+
+      const response = await axios.post(
+        `${PHP_BACKEND_URL}/init.php`,
+        payload,
+        { headers: { 'Content-Type': 'application/json' }, timeout: 15000 }
+      );
+
+      const data = response.data;
+
+      if (!data.success) {
+        console.error('❌ PHP init échoué:', data);
+        return { success: false, error: data.message || 'Erreur initialisation PHP backend' };
+      }
+
+      console.log(`✅ PHP multi-app: transaction enregistrée (mysql_id=${data.data?.mysql_id})`);
+      return { success: true, mysql_id: data.data?.mysql_id };
+
+    } catch (err) {
+      console.error('❌ Erreur PHP multi-app init:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message,
+      });
+      return { success: false, error: err.response?.data?.message || err.message };
+    }
+  }
+
+  /**
+   * Vérifie le statut d'un paiement via le backend PHP multi-app
+   */
+  async checkPhpPaymentStatus(reference) {
+    try {
+      const url = `${PHP_BACKEND_URL}/check_status.php?external_reference=${reference}`;
+      const response = await axios.get(url, { timeout: 10000 });
+      const data = response.data;
+
+      if (!data.success) {
+        return { success: false, status: 'pending' };
+      }
+
+      const status = data.data?.status || 'pending';
+      return {
+        success: true,
+        status,
+        walletCredited: data.data?.wallet_credited,
+        amount: data.data?.amount,
+      };
+
+    } catch (err) {
+      console.warn('⚠️ PHP check_status error:', err.message);
+      return { success: false, status: 'pending' };
+    }
   }
 
   // =====================================================
@@ -313,14 +407,29 @@ class EBillingPaymentService {
         return { success: false, error: 'Montant minimum: 100 XAF' };
       }
 
-      // 1. Créer la facture E-Billing
+      // 1. Enregistrer la transaction dans le backend PHP multi-app
+      const phpResult = await this.initPhpTransaction({
+        userId,
+        amount,
+        phone: userEmail, // Le phone sera formaté dans la méthode
+        description,
+        reference,
+      });
+
+      if (!phpResult.success) {
+        console.error('❌ PHP multi-app init échoué, on continue avec E-Billing:', phpResult.error);
+        // On log l'erreur mais on continue — le paiement ne doit pas être bloqué
+        // si le backend PHP est temporairement indisponible
+      }
+
+      // 2. Créer la facture E-Billing
       const invoiceResult = await this.createInvoice({
         amount, description, reference, payerName: userName, payerEmail: userEmail,
       });
 
       if (!invoiceResult.success) return invoiceResult;
 
-      // 2. Enregistrer le paiement en base
+      // 3. Enregistrer le paiement en base Supabase
       const { data: payment, error: insertError } = await this.supabase
         .from('ebilling_payments')
         .insert({
@@ -342,6 +451,7 @@ class EBillingPaymentService {
           metadata: {
             type, plan_name: planName, quiz_name: quizName,
             user_email: userEmail, user_name: userName,
+            php_mysql_id: phpResult.success ? phpResult.mysql_id : null,
           },
         })
         .select()
@@ -352,7 +462,7 @@ class EBillingPaymentService {
         return { success: false, error: 'Erreur lors de l\'enregistrement du paiement' };
       }
 
-      console.log(`✅ Paiement E-Billing initié: ${reference} (${type}) - bill_id=${invoiceResult.bill_id}`);
+      console.log(`✅ Paiement initié: ${reference} (${type}) - bill_id=${invoiceResult.bill_id} - php_init=${phpResult.success}`);
 
       return {
         success: true,
@@ -395,37 +505,55 @@ class EBillingPaymentService {
         };
       }
 
+      // Vérifier via E-Billing API
+      let resolvedStatus = null;
+      let resolvedData = null;
+
       if (payment.bill_id) {
         const statusResult = await this.checkInvoiceStatus(payment.bill_id);
-
         if (statusResult.success && statusResult.status !== 'pending') {
-          const updateData = {
-            status: statusResult.status,
-            ebilling_status_data: statusResult.data,
-            updated_at: new Date().toISOString(),
-          };
-          if (statusResult.status === 'completed') {
-            updateData.completed_at = new Date().toISOString();
-          }
-
-          await this.supabase
-            .from('ebilling_payments')
-            .update(updateData)
-            .eq('reference', reference);
-
-          if (statusResult.status === 'completed') {
-            await this.processCompletedPayment(payment);
-          }
-
-          return {
-            success: true,
-            payment: {
-              reference: payment.reference, status: statusResult.status,
-              amount: payment.amount, type: payment.payment_type,
-              completed_at: statusResult.status === 'completed' ? new Date().toISOString() : null,
-            },
-          };
+          resolvedStatus = statusResult.status;
+          resolvedData = statusResult.data;
         }
+      }
+
+      // Vérifier aussi via le backend PHP multi-app (double vérification)
+      if (!resolvedStatus || resolvedStatus === 'pending') {
+        const phpStatus = await this.checkPhpPaymentStatus(reference);
+        if (phpStatus.success && phpStatus.status === 'completed') {
+          resolvedStatus = 'completed';
+        } else if (phpStatus.success && (phpStatus.status === 'failed' || phpStatus.status === 'cancelled')) {
+          resolvedStatus = phpStatus.status;
+        }
+      }
+
+      if (resolvedStatus && resolvedStatus !== 'pending') {
+        const updateData = {
+          status: resolvedStatus,
+          ebilling_status_data: resolvedData,
+          updated_at: new Date().toISOString(),
+        };
+        if (resolvedStatus === 'completed') {
+          updateData.completed_at = new Date().toISOString();
+        }
+
+        await this.supabase
+          .from('ebilling_payments')
+          .update(updateData)
+          .eq('reference', reference);
+
+        if (resolvedStatus === 'completed') {
+          await this.processCompletedPayment(payment);
+        }
+
+        return {
+          success: true,
+          payment: {
+            reference: payment.reference, status: resolvedStatus,
+            amount: payment.amount, type: payment.payment_type,
+            completed_at: resolvedStatus === 'completed' ? new Date().toISOString() : null,
+          },
+        };
       }
 
       return {
