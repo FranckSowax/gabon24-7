@@ -1,17 +1,20 @@
 /**
  * FOOTBALL CONTROLLER
- * Scores de football en direct via free-api-live-football-data (RapidAPI)
+ * Scores de football en direct via free-football-api-data (RapidAPI)
  *
- * API: https://rapidapi.com/Creativesdev/api/free-api-live-football-data
- * Endpoints utilisés:
- *   - /football-current-live : matchs en direct
- *   - /football-popular-leagues : ligues populaires
+ * API: https://rapidapi.com/Developer12/api/free-football-api-data
+ * Endpoints:
+ *   - /football-current-live          : matchs en direct
+ *   - /football-event-status          : nombre de matchs live / statut événement
+ *   - /football-categories-live-unique-tournaments : matchs live par pays
+ *   - /football-get-league-live-match : matchs live par ligue
+ *   - /football-event-detail          : détails d'un événement
  *
- * Le backend transforme la réponse de la nouvelle API en format compatible
+ * Le backend transforme la réponse en format compatible
  * avec le frontend (format API-Football v3) pour éviter de modifier le widget.
  */
 
-const API_HOST = 'free-api-live-football-data.p.rapidapi.com';
+const API_HOST = 'free-football-api-data.p.rapidapi.com';
 const API_BASE = `https://${API_HOST}`;
 
 // Cache pour les matchs en direct (2 minutes)
@@ -22,32 +25,45 @@ let fixturesCache = {
 };
 
 /**
- * Headers pour l'API RapidAPI
+ * Helper: Fetch depuis la nouvelle API avec headers + timeout + gestion d'erreurs
  */
-function getHeaders() {
+async function fetchFromApi(path) {
   const apiKey = process.env.RAPIDAPI_KEY;
-  if (!apiKey) return null;
-  return {
-    'x-rapidapi-host': API_HOST,
-    'x-rapidapi-key': apiKey
-  };
+  if (!apiKey) {
+    return { error: 'RAPIDAPI_KEY non configuré', status: 0 };
+  }
+
+  const url = `${API_BASE}${path}`;
+  console.log(`[Football API] GET ${url}`);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-rapidapi-host': API_HOST,
+      'x-rapidapi-key': apiKey
+    },
+    signal: AbortSignal.timeout(10000)
+  });
+
+  if (!response.ok) {
+    console.warn(`[Football API] HTTP ${response.status} pour ${path}`);
+    return { error: `HTTP ${response.status}`, status: response.status };
+  }
+
+  const data = await response.json();
+  return { data, status: response.status };
 }
 
 /**
- * Transforme un match de la nouvelle API (FotMob-style) en format API-Football v3
+ * Transforme un match de l'API (FotMob-style) en format API-Football v3
  * Le frontend attend: { fixture, league, teams, goals }
- *
- * La nouvelle API peut retourner plusieurs formats possibles.
- * Cette fonction gère les cas connus et log les formats inconnus.
  */
 function transformMatch(match, index) {
   // Format A: Objet avec home/away comme sous-objets (FotMob-style)
-  // { id, home: { name, id, score }, away: { name, id, score }, status, league/tournament, ... }
   if (match.home && match.away) {
     const homeScore = match.home.score ?? match.homeScore ?? match.scores?.home ?? null;
     const awayScore = match.away.score ?? match.awayScore ?? match.scores?.away ?? null;
 
-    // Déterminer le statut du match
     let statusShort = 'LIVE';
     let statusLong = 'En cours';
     let elapsed = null;
@@ -66,11 +82,9 @@ function transformMatch(match, index) {
       }
     }
 
-    // Minutes écoulées
     elapsed = match.time?.minutes || match.minute || match.elapsed || match.min || null;
     if (typeof elapsed === 'string') elapsed = parseInt(elapsed, 10) || null;
 
-    // Si le match a un statut textuel plus précis
     if (match.statusText) {
       statusLong = match.statusText;
       if (match.statusText.includes('HT') || match.statusText === 'Half Time') {
@@ -79,7 +93,6 @@ function transformMatch(match, index) {
       }
     }
 
-    // Ligue / Tournoi
     const league = match.league || match.tournament || match.competition || {};
     const leagueId = league.id || league.leagueId || 0;
     const leagueName = league.name || league.leagueName || 'Compétition';
@@ -89,14 +102,8 @@ function transformMatch(match, index) {
       fixture: {
         id: match.id || match.matchId || index,
         date: match.date || match.utcTime || match.startTime || new Date().toISOString(),
-        status: {
-          short: statusShort,
-          long: statusLong,
-          elapsed: elapsed
-        },
-        venue: {
-          name: match.venue?.name || match.stadium || null
-        }
+        status: { short: statusShort, long: statusLong, elapsed },
+        venue: { name: match.venue?.name || match.stadium || null }
       },
       league: {
         id: leagueId,
@@ -118,10 +125,7 @@ function transformMatch(match, index) {
           winner: homeScore !== null && awayScore !== null ? awayScore > homeScore : null
         }
       },
-      goals: {
-        home: homeScore,
-        away: awayScore
-      }
+      goals: { home: homeScore, away: awayScore }
     };
   }
 
@@ -170,7 +174,7 @@ function transformMatch(match, index) {
     return match;
   }
 
-  // Format inconnu - log pour debug et retourner un format valide
+  // Format inconnu
   console.warn('⚠️ Format match inconnu, clés:', Object.keys(match));
   return {
     fixture: {
@@ -179,12 +183,7 @@ function transformMatch(match, index) {
       status: { short: 'LIVE', long: 'En cours', elapsed: null },
       venue: { name: null }
     },
-    league: {
-      id: 0,
-      name: 'Match en direct',
-      logo: '',
-      round: null
-    },
+    league: { id: 0, name: 'Match en direct', logo: '', round: null },
     teams: {
       home: { id: 0, name: 'Équipe A', logo: '', winner: null },
       away: { id: 0, name: 'Équipe B', logo: '', winner: null }
@@ -195,32 +194,23 @@ function transformMatch(match, index) {
 
 /**
  * Extrait la liste des matchs depuis la réponse de l'API
- * L'API peut retourner différentes structures
  */
 function extractMatches(apiResponse) {
   if (!apiResponse) return [];
 
   const resp = apiResponse.response || apiResponse;
 
-  // { response: { live: [...] } }
   if (resp.live && Array.isArray(resp.live)) return resp.live;
-
-  // { response: { matches: [...] } }
   if (resp.matches && Array.isArray(resp.matches)) return resp.matches;
-
-  // { response: { data: [...] } }
   if (resp.data && Array.isArray(resp.data)) return resp.data;
-
-  // { response: [...] } (tableau direct)
   if (Array.isArray(resp)) return resp;
 
-  // { response: { leagues: [{ matches: [...] }] } } (groupé par ligue)
+  // Groupé par ligue
   if (resp.leagues && Array.isArray(resp.leagues)) {
     const allMatches = [];
     for (const league of resp.leagues) {
       const matches = league.matches || league.events || league.fixtures || [];
       for (const match of matches) {
-        // Injecter les infos de ligue dans chaque match
         if (!match.league && !match.tournament) {
           match.league = {
             id: league.id || league.leagueId,
@@ -247,6 +237,10 @@ function extractMatches(apiResponse) {
   return [];
 }
 
+// ============================================
+// HANDLERS
+// ============================================
+
 /**
  * GET /api/football/fixtures
  * Récupère les matchs en direct
@@ -261,36 +255,21 @@ async function getLiveFixtures(req, res) {
       return res.json(fixturesCache.data);
     }
 
-    const headers = getHeaders();
-    if (!headers) {
-      console.warn('RAPIDAPI_KEY non configuré pour le football');
+    const result = await fetchFromApi('/football-current-live');
+
+    if (result.error && result.status === 0) {
       return res.json({ success: true, response: [], message: 'Service Football non configuré' });
     }
 
-    console.log('[LIVE] Récupération matchs en direct via free-api-live-football-data...');
-
-    const response = await fetch(`${API_BASE}/football-current-live`, {
-      method: 'GET',
-      headers: headers,
-      signal: AbortSignal.timeout(10000)
-    });
-
-    if (!response.ok) {
-      console.warn(`API Football HTTP ${response.status}`);
-      const emptyResponse = { success: true, response: [], message: `API indisponible (HTTP ${response.status})` };
+    if (result.error) {
+      const emptyResponse = { success: true, response: [], message: `API indisponible (${result.error})` };
       fixturesCache = { data: emptyResponse, timestamp: now, expiry: 5 * 60 * 1000 };
       return res.json(emptyResponse);
     }
 
-    const apiData = await response.json();
+    const apiData = result.data;
+    console.log(`API response keys: ${Object.keys(apiData).join(', ')}`);
 
-    // Log la structure brute pour le debug initial
-    console.log(`API response status: ${apiData.status}, keys: ${Object.keys(apiData).join(', ')}`);
-    if (apiData.response) {
-      console.log(`Response keys: ${Object.keys(apiData.response).join(', ')}`);
-    }
-
-    // Si l'API retourne un statut "failed" (pas de matchs en direct)
     if (apiData.status === 'failed' || apiData.error) {
       console.log('Pas de matchs en direct actuellement');
       const emptyResponse = { success: true, response: [] };
@@ -298,89 +277,191 @@ async function getLiveFixtures(req, res) {
       return res.json(emptyResponse);
     }
 
-    // Extraire et transformer les matchs
     const rawMatches = extractMatches(apiData);
     console.log(`Matchs bruts extraits: ${rawMatches.length}`);
 
-    // Log le premier match pour comprendre le format (seulement la première fois)
-    if (rawMatches.length > 0) {
-      const firstMatch = rawMatches[0];
-      console.log(`Premier match - clés: ${Object.keys(firstMatch).join(', ')}`);
-      if (firstMatch.home) console.log(`  home clés: ${Object.keys(firstMatch.home).join(', ')}`);
-      if (firstMatch.away) console.log(`  away clés: ${Object.keys(firstMatch.away).join(', ')}`);
-    }
-
     const transformedMatches = rawMatches.map((match, i) => transformMatch(match, i));
+    const response = { success: true, response: transformedMatches };
 
-    const result = { success: true, response: transformedMatches };
-
-    // Mettre en cache
-    fixturesCache = { data: result, timestamp: now, expiry: 2 * 60 * 1000 };
-
+    fixturesCache = { data: response, timestamp: now, expiry: 2 * 60 * 1000 };
     console.log(`${transformedMatches.length} matchs en direct transformés et mis en cache`);
-    res.json(result);
+    res.json(response);
 
   } catch (error) {
     console.error('Erreur API Football:', error.message);
-
-    // Utiliser le cache expiré comme fallback
     if (fixturesCache.data) {
       console.log('Utilisation du cache expiré comme fallback');
       return res.json(fixturesCache.data);
     }
-
     res.json({ success: true, response: [], message: 'Service temporairement indisponible' });
   }
 }
 
 /**
- * GET /api/football/fixtures/date
- * Pas de endpoint "matchs du jour" dans la free API.
- * Retourne une réponse vide - le frontend affichera "aucun match".
+ * GET /api/football/live-count
+ * Nombre de matchs en direct (via football-event-status sans eventid)
+ */
+async function getLiveCount(req, res) {
+  try {
+    const result = await fetchFromApi('/football-event-status');
+
+    if (result.error) {
+      return res.json({ success: false, count: 0, message: result.error });
+    }
+
+    const data = result.data;
+    // L'API retourne les infos générales sur les événements live
+    const count = data.liveCount || data.count || (data.response ? Object.keys(data.response).length : 0);
+
+    res.json({ success: true, count, data: data.response || data });
+
+  } catch (error) {
+    console.error('Erreur getLiveCount:', error.message);
+    res.json({ success: false, count: 0, message: error.message });
+  }
+}
+
+/**
+ * GET /api/football/live/country/:countryId
+ * Matchs en direct par pays (tournois uniques)
+ */
+async function getLiveByCountry(req, res) {
+  try {
+    const { countryId } = req.params;
+    if (!countryId) {
+      return res.status(400).json({ success: false, error: 'countryId requis' });
+    }
+
+    const result = await fetchFromApi(`/football-categories-live-unique-tournaments?countryid=${countryId}`);
+
+    if (result.error) {
+      return res.json({ success: false, response: [], message: result.error });
+    }
+
+    const apiData = result.data;
+    const rawMatches = extractMatches(apiData);
+    const transformedMatches = rawMatches.map((match, i) => transformMatch(match, i));
+
+    res.json({ success: true, response: transformedMatches });
+
+  } catch (error) {
+    console.error('Erreur getLiveByCountry:', error.message);
+    res.json({ success: true, response: [], message: error.message });
+  }
+}
+
+/**
+ * GET /api/football/live/league/:leagueId
+ * Matchs en direct par ligue
+ */
+async function getLiveByLeague(req, res) {
+  try {
+    const { leagueId } = req.params;
+    if (!leagueId) {
+      return res.status(400).json({ success: false, error: 'leagueId requis' });
+    }
+
+    const result = await fetchFromApi(`/football-get-league-live-match?countryid=${leagueId}`);
+
+    if (result.error) {
+      return res.json({ success: false, response: [], message: result.error });
+    }
+
+    const apiData = result.data;
+    const rawMatches = extractMatches(apiData);
+    const transformedMatches = rawMatches.map((match, i) => transformMatch(match, i));
+
+    res.json({ success: true, response: transformedMatches });
+
+  } catch (error) {
+    console.error('Erreur getLiveByLeague:', error.message);
+    res.json({ success: true, response: [], message: error.message });
+  }
+}
+
+/**
+ * GET /api/football/event/:eventId
+ * Détails complets d'un événement/match
+ */
+async function getEventDetail(req, res) {
+  try {
+    const { eventId } = req.params;
+    if (!eventId) {
+      return res.status(400).json({ success: false, error: 'eventId requis' });
+    }
+
+    const result = await fetchFromApi(`/football-event-detail?eventid=${eventId}`);
+
+    if (result.error) {
+      return res.json({ success: false, data: null, message: result.error });
+    }
+
+    res.json({ success: true, data: result.data?.response || result.data });
+
+  } catch (error) {
+    console.error('Erreur getEventDetail:', error.message);
+    res.json({ success: false, data: null, message: error.message });
+  }
+}
+
+/**
+ * GET /api/football/event/:eventId/status
+ * Statut d'un événement spécifique
+ */
+async function getEventStatus(req, res) {
+  try {
+    const { eventId } = req.params;
+    if (!eventId) {
+      return res.status(400).json({ success: false, error: 'eventId requis' });
+    }
+
+    const result = await fetchFromApi(`/football-event-status?eventid=${eventId}`);
+
+    if (result.error) {
+      return res.json({ success: false, data: null, message: result.error });
+    }
+
+    res.json({ success: true, data: result.data?.response || result.data });
+
+  } catch (error) {
+    console.error('Erreur getEventStatus:', error.message);
+    res.json({ success: false, data: null, message: error.message });
+  }
+}
+
+/**
+ * Stubs pour les anciens endpoints (non disponibles avec cette API)
  */
 async function getFixturesByDate(req, res) {
-  // La free API n'a pas d'endpoint pour les matchs par date
-  // On réutilise les matchs live s'ils existent dans le cache
   if (fixturesCache.data && fixturesCache.data.response?.length > 0) {
     return res.json(fixturesCache.data);
   }
   res.json({ success: true, response: [], message: 'Matchs du jour non disponibles avec cette API' });
 }
 
-/**
- * GET /api/football/h2h
- * Non disponible avec la free API
- */
 async function getHeadToHead(req, res) {
   res.json({ success: true, response: [], message: 'H2H non disponible' });
 }
 
-/**
- * GET /api/football/standings
- * Non disponible avec la free API
- */
 async function getStandings(req, res) {
   res.json({ success: true, response: [], message: 'Classements non disponibles' });
 }
 
-/**
- * GET /api/football/team
- * Non disponible avec la free API
- */
 async function getTeam(req, res) {
   res.json({ success: true, response: [], message: 'Info équipe non disponible' });
 }
 
-/**
- * GET /api/football/teams/search
- * Non disponible avec la free API
- */
 async function searchTeams(req, res) {
   res.json({ success: true, response: [], message: 'Recherche non disponible' });
 }
 
 module.exports = {
   getLiveFixtures,
+  getLiveCount,
+  getLiveByCountry,
+  getLiveByLeague,
+  getEventDetail,
+  getEventStatus,
   getHeadToHead,
   getFixturesByDate,
   getStandings,

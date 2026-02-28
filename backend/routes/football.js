@@ -1,34 +1,56 @@
 /**
  * ROUTES FOOTBALL
  * Endpoints pour les scores de football en direct
- * API: free-api-live-football-data (RapidAPI)
+ * API: free-football-api-data (RapidAPI)
  */
 
 const express = require('express');
 const router = express.Router();
 const footballController = require('../controllers/footballController');
 
+// ============================================
+// LIVE SCORES
+// ============================================
+
 // GET /api/football/fixtures - Matchs en direct (live)
 router.get('/fixtures', footballController.getLiveFixtures);
 
-// GET /api/football/fixtures/date - Matchs par date
-// Params: date (YYYY-MM-DD), league (optionnel), season (optionnel)
+// GET /api/football/live-count - Nombre de matchs en direct
+router.get('/live-count', footballController.getLiveCount);
+
+// GET /api/football/live/country/:countryId - Matchs live par pays
+router.get('/live/country/:countryId', footballController.getLiveByCountry);
+
+// GET /api/football/live/league/:leagueId - Matchs live par ligue
+router.get('/live/league/:leagueId', footballController.getLiveByLeague);
+
+// ============================================
+// EVENT DETAILS
+// ============================================
+
+// GET /api/football/event/:eventId - Détails d'un événement
+router.get('/event/:eventId', footballController.getEventDetail);
+
+// GET /api/football/event/:eventId/status - Statut d'un événement
+router.get('/event/:eventId/status', footballController.getEventStatus);
+
+// ============================================
+// LEGACY (stubs)
+// ============================================
+
+// GET /api/football/fixtures/date - Matchs par date (stub)
 router.get('/fixtures/date', footballController.getFixturesByDate);
 
-// GET /api/football/h2h - Confrontations directes (Head-to-Head)
-// Params: team1 (ID équipe 1), team2 (ID équipe 2), last (nombre de matchs, défaut 10)
+// GET /api/football/h2h - Head-to-Head (stub)
 router.get('/h2h', footballController.getHeadToHead);
 
-// GET /api/football/standings - Classement d'une ligue
-// Params: league (ID de la ligue), season (optionnel, année ex: 2024)
+// GET /api/football/standings - Classements (stub)
 router.get('/standings', footballController.getStandings);
 
-// GET /api/football/team - Infos d'une équipe
-// Params: id (ID de l'équipe)
+// GET /api/football/team - Info équipe (stub)
 router.get('/team', footballController.getTeam);
 
-// GET /api/football/teams/search - Recherche d'équipes
-// Params: name (minimum 3 caractères)
+// GET /api/football/teams/search - Recherche (stub)
 router.get('/teams/search', footballController.searchTeams);
 
 module.exports = router;
