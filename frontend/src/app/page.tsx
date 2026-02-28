@@ -1211,8 +1211,33 @@ export default function HomePage() {
 
               {/* Zone Widgets (météo, sondages, trafic, pub, youtube) - utilisée pour contrôle du scroll */}
               <div ref={widgetsAreaRef} className="w-full">
-                {/* Widgets météo, sondage et trafic */}
-                <div className="mb-4 sm:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+                {/* Mobile: galerie horizontale swipeable */}
+                <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                  <div className="flex gap-3 w-max pb-2">
+                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full"><WeatherWidget /></LazyMount>
+                    </div>
+                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full"><MultiQuestionPollWidget /></LazyMount>
+                    </div>
+                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full"><RoutesMapWidget /></LazyMount>
+                    </div>
+                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full">
+                        <div className="bg-white rounded-lg shadow-sm border p-3 w-full h-full">
+                          <YouTubeWidget />
+                        </div>
+                      </LazyMount>
+                    </div>
+                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full"><FootballScores /></LazyMount>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop: grille 3 colonnes (inchangée) */}
+                <div className="hidden lg:grid grid-cols-3 gap-6 mb-8 w-full">
                   <LazyMount className="w-full"><WeatherWidget /></LazyMount>
                   <LazyMount className="w-full"><MultiQuestionPollWidget /></LazyMount>
                   <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
@@ -1228,13 +1253,6 @@ export default function HomePage() {
 
                 {/* Slider publicitaire */}
                 <LazyMount className="w-full mb-6"><PromotionalSlider /></LazyMount>
-
-                {/* Widget YouTube mobile */}
-                <LazyMount className="lg:hidden mb-4 sm:mb-6 w-full">
-                  <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 w-full">
-                    <YouTubeWidget />
-                  </div>
-                </LazyMount>
               </div>
 
               {/* Navigation des onglets - Design moderne et responsive */}
