@@ -241,17 +241,38 @@ router.get('/status/:reference', requireAuth, async (req, res) => {
 /**
  * GET /api/payments/history
  * Récupère l'historique des paiements de l'utilisateur
+ * Auto-réconcilie les paiements pending avant de retourner l'historique
  */
 router.get('/history', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 20;
 
+    // Auto-réconciliation: vérifier les paiements pending en arrière-plan
+    ebillingService.reconcileUserPayments(userId).catch(err => {
+      console.warn('⚠️ Auto-reconciliation error:', err.message);
+    });
+
     const result = await ebillingService.getUserPaymentHistory(userId, limit);
     res.json(result);
 
   } catch (error) {
     console.error('❌ Erreur historique:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/reconcile
+ * Réconcilie manuellement les paiements pending de l'utilisateur
+ */
+router.post('/reconcile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await ebillingService.reconcileUserPayments(userId);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Erreur réconciliation:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

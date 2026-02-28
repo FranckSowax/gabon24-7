@@ -3,14 +3,18 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface Transaction {
   id: string
-  type: 'credit_purchase' | 'subscription_change' | 'credit_usage'
+  type: 'credit_purchase' | 'subscription_change' | 'credit_usage' | 'purchase'
   amount: number
   credits?: number
   description: string
-  status: 'completed' | 'pending' | 'failed'
+  status: 'completed' | 'pending' | 'failed' | 'cancelled'
   created_at: string
+  source?: 'credit_transactions' | 'ebilling_payments'
+  payment_reference?: string
 }
 
 interface TransactionHistoryProps {
@@ -20,6 +24,7 @@ interface TransactionHistoryProps {
 export default function TransactionHistory({ userId }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [reconciling, setReconciling] = useState(false)
   const [filter, setFilter] = useState<'all' | 'credits' | 'subscriptions'>('all')
   const [monthlyStats, setMonthlyStats] = useState({
     creditsUsed: 0,
@@ -34,21 +39,72 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
 
   const loadTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('credit_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50)
+      // Charger les deux sources en parallèle
+      const [creditResult, ebillingResult] = await Promise.allSettled([
+        supabase
+          .from('credit_transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('ebilling_payments')
+          .select('*')
+          .eq('user_id', userId)
+          .in('status', ['pending', 'failed', 'cancelled'])
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ])
 
-      if (error) {
-        console.error('Erreur chargement transactions:', error)
-        // Données de démonstration si erreur
+      const allTransactions: Transaction[] = []
+
+      // Ajouter les credit_transactions (complétées)
+      if (creditResult.status === 'fulfilled' && creditResult.value.data) {
+        creditResult.value.data.forEach((t: any) => {
+          allTransactions.push({
+            ...t,
+            source: 'credit_transactions',
+          })
+        })
+      }
+
+      // Ajouter les ebilling_payments non-complétées (pending/failed/cancelled)
+      if (ebillingResult.status === 'fulfilled' && ebillingResult.value.data) {
+        ebillingResult.value.data.forEach((p: any) => {
+          // Éviter les doublons (si déjà dans credit_transactions)
+          const alreadyExists = allTransactions.some(
+            t => t.payment_reference === p.reference || t.payment_reference === p.bill_id
+          )
+          if (!alreadyExists) {
+            allTransactions.push({
+              id: p.id,
+              type: p.payment_type === 'credits' ? 'credit_purchase' : 'subscription_change',
+              amount: p.amount || 0,
+              credits: (p.credits_to_add || 0) + (p.bonus_credits || 0),
+              description: p.description || `Paiement ${p.payment_type} - ${p.reference}`,
+              status: p.status,
+              created_at: p.created_at,
+              source: 'ebilling_payments',
+              payment_reference: p.reference,
+            })
+          }
+        })
+      }
+
+      // Trier par date décroissante
+      allTransactions.sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+
+      if (allTransactions.length > 0) {
+        setTransactions(allTransactions)
+      } else if (
+        (creditResult.status === 'fulfilled' && creditResult.value.error) &&
+        (ebillingResult.status === 'fulfilled' && ebillingResult.value.error)
+      ) {
         setTransactions(getDemoTransactions())
-      } else if (data) {
-        setTransactions(data)
       } else {
-        setTransactions(getDemoTransactions())
+        setTransactions(allTransactions)
       }
     } catch (error) {
       console.error('Erreur:', error)
@@ -58,12 +114,40 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
     }
   }
 
+  const handleReconcile = async () => {
+    setReconciling(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (!token) return
+
+      const response = await fetch(`${API_URL}/api/payments/reconcile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await response.json()
+
+      if (data.success && data.reconciled > 0) {
+        // Recharger les transactions après réconciliation
+        await loadTransactions()
+        await loadMonthlyStats()
+      }
+    } catch (error) {
+      console.error('Erreur réconciliation:', error)
+    } finally {
+      setReconciling(false)
+    }
+  }
+
   const loadMonthlyStats = async () => {
     const now = new Date()
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('credit_transactions')
         .select('type, amount, credits:amount')
         .eq('user_id', userId)
@@ -73,7 +157,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
         const stats = data.reduce((acc: { creditsUsed: number, creditsPurchased: number, totalSpent: number }, t: any) => {
           if (t.type === 'credit_usage') {
             acc.creditsUsed += t.credits || 0
-          } else if (t.type === 'credit_purchase') {
+          } else if (t.type === 'credit_purchase' || t.type === 'purchase') {
             acc.creditsPurchased += t.credits || 0
             acc.totalSpent += t.amount || 0
           }
@@ -125,16 +209,19 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
     }
   ]
 
+  const pendingPayments = transactions.filter(t => t.status === 'pending')
+
   const filteredTransactions = transactions.filter(t => {
     if (filter === 'all') return true
-    if (filter === 'credits') return t.type === 'credit_purchase' || t.type === 'credit_usage'
+    if (filter === 'credits') return t.type === 'credit_purchase' || t.type === 'credit_usage' || t.type === 'purchase'
     if (filter === 'subscriptions') return t.type === 'subscription_change'
     return true
   })
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'credit_purchase': return '💰'
+      case 'credit_purchase':
+      case 'purchase': return '💰'
       case 'subscription_change': return '👑'
       case 'credit_usage': return '📊'
       default: return '📝'
@@ -146,6 +233,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
       case 'completed': return 'text-green-600 bg-green-100'
       case 'pending': return 'text-yellow-600 bg-yellow-100'
       case 'failed': return 'text-red-600 bg-red-100'
+      case 'cancelled': return 'text-gray-600 bg-gray-100'
       default: return 'text-gray-600 bg-gray-100'
     }
   }
@@ -155,6 +243,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
       case 'completed': return 'Complété'
       case 'pending': return 'En attente'
       case 'failed': return 'Échoué'
+      case 'cancelled': return 'Annulé'
       default: return status
     }
   }
@@ -174,16 +263,43 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
     return (
       <div className="text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Chargement de l'historique...</p>
+        <p className="mt-4 text-gray-600">Chargement de l&apos;historique...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      {/* Alerte paiements en attente */}
+      {pendingPayments.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⏳</span>
+            <div className="flex-1">
+              <h4 className="font-semibold text-yellow-800">
+                {pendingPayments.length} paiement{pendingPayments.length > 1 ? 's' : ''} en attente
+              </h4>
+              <p className="text-sm text-yellow-700 mt-1">
+                {pendingPayments.length === 1
+                  ? `Un paiement de ${pendingPayments[0].amount?.toLocaleString('fr-FR')} FCFA est en attente de confirmation.`
+                  : `Des paiements sont en attente de confirmation par le service de paiement.`
+                }
+              </p>
+              <button
+                onClick={handleReconcile}
+                disabled={reconciling}
+                className="mt-3 px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
+              >
+                {reconciling ? 'Vérification en cours...' : 'Vérifier le statut'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats mensuelles */}
       <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
-        <h3 className="text-xl font-bold mb-4">📊 Consommation ce mois-ci</h3>
+        <h3 className="text-xl font-bold mb-4">Consommation ce mois-ci</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
             <p className="text-sm text-blue-100 mb-1">Crédits utilisés</p>
@@ -221,7 +337,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          💰 Crédits
+          Crédits
         </button>
         <button
           onClick={() => setFilter('subscriptions')}
@@ -231,7 +347,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          👑 Abonnements
+          Abonnements
         </button>
       </div>
 
@@ -247,12 +363,14 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
             {filteredTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="p-4 hover:bg-gray-50 transition-colors"
+                className={`p-4 hover:bg-gray-50 transition-colors ${
+                  transaction.status === 'pending' ? 'bg-yellow-50/50' : ''
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
                     <div className="text-3xl mt-1">
-                      {getTransactionIcon(transaction.type)}
+                      {transaction.status === 'pending' ? '⏳' : getTransactionIcon(transaction.type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900">
@@ -265,17 +383,24 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
                           {getStatusLabel(transaction.status)}
                         </span>
+                        {transaction.payment_reference && (
+                          <span className="text-xs text-gray-400">
+                            Réf: {transaction.payment_reference}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="text-right ml-4">
-                    {transaction.credits && (
+                    {transaction.credits ? (
                       <p className={`text-lg font-bold ${
-                        transaction.type === 'credit_usage' ? 'text-red-600' : 'text-green-600'
+                        transaction.type === 'credit_usage' ? 'text-red-600'
+                          : transaction.status === 'pending' ? 'text-yellow-600'
+                          : 'text-green-600'
                       }`}>
                         {transaction.type === 'credit_usage' ? '-' : '+'}{transaction.credits} crédits
                       </p>
-                    )}
+                    ) : null}
                     {transaction.amount > 0 && (
                       <p className="text-sm text-gray-600 mt-1">
                         {transaction.amount.toLocaleString('fr-FR')} FCFA
@@ -292,7 +417,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
       {/* Export button */}
       <div className="flex justify-center">
         <button className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-          📥 Exporter l'historique (CSV)
+          Exporter l&apos;historique (CSV)
         </button>
       </div>
     </div>

@@ -18,6 +18,8 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface UserProfile {
   id: string
   full_name: string
@@ -138,6 +140,25 @@ export default function MonProfilPage() {
       loadCreditPackages()
     }
   }, [user])
+
+  // Auto-reconcile pending payments when user visits credits or history tab
+  useEffect(() => {
+    if (!user || (activeTab !== 'credits' && activeTab !== 'history')) return
+    const reconcile = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData?.session?.access_token
+        if (!token) return
+        await fetch(`${API_URL}/api/payments/reconcile`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        })
+        // Silently refresh profile to get updated credits_balance
+        loadUserProfile()
+      } catch (_) { /* silent */ }
+    }
+    reconcile()
+  }, [user, activeTab])
 
   const loadCreditPackages = async () => {
     try {

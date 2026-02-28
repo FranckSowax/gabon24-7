@@ -787,6 +787,96 @@ class EBillingPaymentService {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Reconcilie les paiements pending d'un utilisateur.
+   * Vérifie chaque paiement pending via E-Billing API + PHP backend,
+   * et crédite l'utilisateur si le paiement est confirmé.
+   */
+  async reconcileUserPayments(userId) {
+    try {
+      // Récupérer tous les paiements pending de cet utilisateur (dernières 72h)
+      const since = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+      const { data: pendingPayments, error } = await this.supabase
+        .from('ebilling_payments')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (!pendingPayments || pendingPayments.length === 0) {
+        return { success: true, reconciled: 0, message: 'Aucun paiement en attente' };
+      }
+
+      console.log(`🔄 Réconciliation: ${pendingPayments.length} paiement(s) pending pour ${userId}`);
+
+      let reconciled = 0;
+      const results = [];
+
+      for (const payment of pendingPayments) {
+        let resolvedStatus = null;
+
+        // 1. Vérifier via E-Billing API
+        if (payment.bill_id) {
+          const statusResult = await this.checkInvoiceStatus(payment.bill_id);
+          if (statusResult.success && statusResult.status !== 'pending') {
+            resolvedStatus = statusResult.status;
+          }
+        }
+
+        // 2. Vérifier via PHP backend
+        if (!resolvedStatus || resolvedStatus === 'pending') {
+          const phpStatus = await this.checkPhpPaymentStatus(payment.reference);
+          if (phpStatus.success && phpStatus.status === 'completed') {
+            resolvedStatus = 'completed';
+          } else if (phpStatus.success && ['failed', 'cancelled'].includes(phpStatus.status)) {
+            resolvedStatus = phpStatus.status;
+          }
+        }
+
+        if (resolvedStatus && resolvedStatus !== 'pending') {
+          const updateData = {
+            status: resolvedStatus,
+            updated_at: new Date().toISOString(),
+          };
+          if (resolvedStatus === 'completed') {
+            updateData.completed_at = new Date().toISOString();
+          }
+
+          await this.supabase
+            .from('ebilling_payments')
+            .update(updateData)
+            .eq('id', payment.id);
+
+          if (resolvedStatus === 'completed') {
+            await this.processCompletedPayment(payment);
+            reconciled++;
+          }
+
+          results.push({ reference: payment.reference, status: resolvedStatus, amount: payment.amount });
+          console.log(`✅ Réconcilié: ${payment.reference} → ${resolvedStatus}`);
+        } else {
+          results.push({ reference: payment.reference, status: 'still_pending', amount: payment.amount });
+        }
+      }
+
+      return {
+        success: true,
+        reconciled,
+        total_checked: pendingPayments.length,
+        results,
+        message: reconciled > 0
+          ? `${reconciled} paiement(s) réconcilié(s) et crédité(s)`
+          : 'Aucun paiement confirmé trouvé',
+      };
+
+    } catch (err) {
+      console.error('❌ Erreur réconciliation:', err);
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 // Singleton
