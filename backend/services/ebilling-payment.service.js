@@ -22,6 +22,7 @@
 
 const { supabase } = require('../config/supabase');
 const axios = require('axios');
+const whapiService = require('./whapiService');
 
 // Configuration E-Billing
 if (process.env.NODE_ENV === 'production') {
@@ -292,6 +293,45 @@ class EBillingPaymentService {
 
       if (planError || !plan) {
         return { success: false, error: 'Plan d\'abonnement non trouvé' };
+      }
+
+      // Protection double-paiement: vérifier si l'utilisateur a déjà un abo actif du même plan
+      const { data: activeSub } = await this.supabase
+        .from('subscriptions')
+        .select('id, current_period_end')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .gt('current_period_end', new Date().toISOString())
+        .limit(1)
+        .single();
+
+      if (activeSub) {
+        const endDate = new Date(activeSub.current_period_end).toLocaleDateString('fr-FR');
+        return {
+          success: false,
+          error: `Vous avez déjà un abonnement actif jusqu'au ${endDate}. Attendez son expiration ou contactez le support pour un changement de plan.`,
+          existing_subscription: { id: activeSub.id, expires: activeSub.current_period_end },
+        };
+      }
+
+      // Vérifier aussi les paiements pending récents pour éviter double-clic
+      const recentCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min
+      const { data: pendingPayment } = await this.supabase
+        .from('ebilling_payments')
+        .select('id, reference, created_at')
+        .eq('user_id', userId)
+        .eq('payment_type', 'subscription')
+        .eq('status', 'pending')
+        .gte('created_at', recentCutoff)
+        .limit(1)
+        .single();
+
+      if (pendingPayment) {
+        return {
+          success: false,
+          error: 'Un paiement d\'abonnement est déjà en cours. Veuillez patienter ou vérifier votre paiement précédent.',
+          pending_reference: pendingPayment.reference,
+        };
       }
 
       const amount = duration === 12 && plan.price_yearly
@@ -628,6 +668,27 @@ class EBillingPaymentService {
 
   async processCompletedPayment(payment) {
     const { payment_type, user_id } = payment;
+
+    // Idempotence: check credits_granted flag to prevent double processing
+    if (payment.credits_granted) {
+      console.log(`⏭️ Paiement ${payment.reference} déjà traité (credits_granted=true), skip`);
+      return;
+    }
+
+    // Atomic flag: set credits_granted=true BEFORE processing (prevents race condition)
+    const { data: flagged, error: flagErr } = await this.supabase
+      .from('ebilling_payments')
+      .update({ credits_granted: true })
+      .eq('id', payment.id)
+      .eq('credits_granted', false) // Only update if still false (atomic check)
+      .select('id')
+      .single();
+
+    if (flagErr || !flagged) {
+      console.log(`⏭️ Paiement ${payment.reference} déjà en cours de traitement par un autre processus`);
+      return;
+    }
+
     console.log(`✅ Traitement paiement complété: ${payment_type} pour ${user_id}`);
 
     switch (payment_type) {
@@ -656,8 +717,33 @@ class EBillingPaymentService {
         p_description: `Achat E-Billing - ${payment.reference}`,
       });
 
-      if (error) console.error('❌ Erreur ajout crédits:', error);
-      else console.log(`✅ ${creditsToAdd + bonusCredits} crédits ajoutés à ${payment.user_id}`);
+      if (error) {
+        console.error('❌ Erreur ajout crédits:', error);
+      } else {
+        console.log(`✅ ${creditsToAdd + bonusCredits} crédits ajoutés à ${payment.user_id}`);
+
+        // WhatsApp confirmation
+        try {
+          const { data: user } = await this.supabase
+            .from('users')
+            .select('phone_number, full_name')
+            .eq('id', payment.user_id)
+            .single();
+
+          if (user?.phone_number) {
+            const totalCredits = creditsToAdd + bonusCredits;
+            const msg = `✅ *Crédits ajoutés avec succès !*\n\n`
+              + `${totalCredits} crédit${totalCredits > 1 ? 's' : ''} ont été ajoutés à votre compte Gabon 24/7.\n\n`
+              + `💰 Montant payé : ${parseInt(payment.amount).toLocaleString('fr-FR')} FCFA\n`
+              + (bonusCredits > 0 ? `🎁 Dont ${bonusCredits} crédits bonus\n` : '')
+              + `📱 Réf : ${payment.reference}\n\n`
+              + `Merci pour votre achat !`;
+            await whapiService.sendWhatsAppMessage(user.phone_number, msg);
+          }
+        } catch (whatsappErr) {
+          console.warn('⚠️ WhatsApp confirmation crédits échoué:', whatsappErr.message);
+        }
+      }
     }
   }
 
@@ -699,6 +785,31 @@ class EBillingPaymentService {
         p_description: `Crédits mensuels - Abonnement ${plan.name}`,
       });
       console.log(`✅ ${monthlyCredits} crédits mensuels attribués`);
+    }
+
+    // Update users table
+    await this.supabase.from('users')
+      .update({ subscription_type: plan.slug, updated_at: new Date().toISOString() })
+      .eq('id', payment.user_id);
+
+    // WhatsApp confirmation
+    try {
+      const { data: user } = await this.supabase
+        .from('users')
+        .select('phone_number, full_name')
+        .eq('id', payment.user_id)
+        .single();
+
+      if (user?.phone_number) {
+        const msg = `🎉 *Abonnement ${plan.name} activé !*\n\n`
+          + `Votre abonnement est actif jusqu'au *${endDate.toLocaleDateString('fr-FR')}*.\n\n`
+          + (monthlyCredits > 0 ? `💰 ${monthlyCredits} crédits mensuels ajoutés à votre compte.\n` : '')
+          + `📱 Réf : ${payment.reference}\n\n`
+          + `Profitez de tous vos avantages sur Gabon 24/7 !`;
+        await whapiService.sendWhatsAppMessage(user.phone_number, msg);
+      }
+    } catch (whatsappErr) {
+      console.warn('⚠️ WhatsApp confirmation abonnement échoué:', whatsappErr.message);
     }
 
     console.log(`✅ Abonnement ${plan.name} activé jusqu'au ${endDate.toLocaleDateString('fr-FR')}`);

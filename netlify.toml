@@ -75,6 +75,10 @@
 [functions."scheduled-audio-cleanup"]
   schedule = "0 * * * *"
 
+# Lifecycle abonnements - 7h UTC (8h Gabon) chaque jour
+[functions."scheduled-subscription-lifecycle"]
+  schedule = "0 7 * * *"
+
 # Headers de sécurité
 [[headers]]
   for = "/*"
