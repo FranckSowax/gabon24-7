@@ -253,15 +253,18 @@ exports.handler = async (event, context) => {
     console.log('🗳️ Début génération sondage quotidien...');
     
     // Vérification des variables d'environnement
-    if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Configuration manquante'
+          error: 'Configuration Supabase manquante'
         })
       };
+    }
+    if (!replicateToken && !openaiApiKey) {
+      console.warn('⚠️ Aucune clé IA, utilisation des questions par défaut');
     }
 
     // 1. Analyser les actualités
