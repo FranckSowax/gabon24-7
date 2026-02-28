@@ -53,6 +53,12 @@ BEGIN
   END IF;
 END $$;
 
+-- Normalize existing status values before adding constraint
+UPDATE public.polls SET status = 'expired'
+  WHERE status IS NOT NULL AND status NOT IN ('draft', 'published', 'expired');
+UPDATE public.polls SET status = 'draft'
+  WHERE status IS NULL;
+
 -- Add/update status check constraint (drop old one if exists)
 ALTER TABLE public.polls DROP CONSTRAINT IF EXISTS polls_status_check;
 ALTER TABLE public.polls ADD CONSTRAINT polls_status_check
