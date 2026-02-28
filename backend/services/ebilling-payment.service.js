@@ -670,23 +670,33 @@ class EBillingPaymentService {
     const { payment_type, user_id } = payment;
 
     // Idempotence: check credits_granted flag to prevent double processing
-    if (payment.credits_granted) {
+    if (payment.credits_granted === true) {
       console.log(`⏭️ Paiement ${payment.reference} déjà traité (credits_granted=true), skip`);
       return;
     }
 
     // Atomic flag: set credits_granted=true BEFORE processing (prevents race condition)
-    const { data: flagged, error: flagErr } = await this.supabase
-      .from('ebilling_payments')
-      .update({ credits_granted: true })
-      .eq('id', payment.id)
-      .eq('credits_granted', false) // Only update if still false (atomic check)
-      .select('id')
-      .single();
+    // Wrapped in try/catch in case credits_granted column doesn't exist yet
+    try {
+      const { data: flagged, error: flagErr } = await this.supabase
+        .from('ebilling_payments')
+        .update({ credits_granted: true })
+        .eq('id', payment.id)
+        .eq('credits_granted', false)
+        .select('id')
+        .single();
 
-    if (flagErr || !flagged) {
-      console.log(`⏭️ Paiement ${payment.reference} déjà en cours de traitement par un autre processus`);
-      return;
+      if (flagErr || !flagged) {
+        // Check if column doesn't exist (error code 42703) — proceed anyway
+        if (flagErr?.code === '42703' || flagErr?.message?.includes('credits_granted')) {
+          console.warn('⚠️ Colonne credits_granted inexistante, traitement sans idempotence atomique');
+        } else {
+          console.log(`⏭️ Paiement ${payment.reference} déjà en cours de traitement par un autre processus`);
+          return;
+        }
+      }
+    } catch (flagException) {
+      console.warn('⚠️ Erreur vérification credits_granted, traitement quand même:', flagException.message);
     }
 
     console.log(`✅ Traitement paiement complété: ${payment_type} pour ${user_id}`);
@@ -704,9 +714,15 @@ class EBillingPaymentService {
   async processCreditsPayment(payment) {
     const creditsToAdd = payment.credits_to_add || 0;
     const bonusCredits = payment.bonus_credits || 0;
+    const totalCredits = creditsToAdd + bonusCredits;
 
-    if (creditsToAdd > 0) {
-      const { error } = await this.supabase.rpc('add_credits', {
+    if (creditsToAdd <= 0) return;
+
+    let creditsAdded = false;
+
+    // Attempt 1: Try RPC add_credits
+    try {
+      const { data, error } = await this.supabase.rpc('add_credits', {
         p_user_id: payment.user_id,
         p_credits: creditsToAdd,
         p_bonus_credits: bonusCredits,
@@ -718,31 +734,86 @@ class EBillingPaymentService {
       });
 
       if (error) {
-        console.error('❌ Erreur ajout crédits:', error);
+        console.error('❌ RPC add_credits erreur Supabase:', error);
+      } else if (data && data.success === false) {
+        console.error('❌ RPC add_credits erreur interne:', data.error);
       } else {
-        console.log(`✅ ${creditsToAdd + bonusCredits} crédits ajoutés à ${payment.user_id}`);
+        creditsAdded = true;
+        console.log(`✅ RPC: ${totalCredits} crédits ajoutés à ${payment.user_id}`);
+      }
+    } catch (rpcErr) {
+      console.error('❌ RPC add_credits exception:', rpcErr.message);
+    }
 
-        // WhatsApp confirmation
-        try {
-          const { data: user } = await this.supabase
-            .from('users')
-            .select('phone_number, full_name')
-            .eq('id', payment.user_id)
-            .single();
+    // Attempt 2: Direct SQL fallback if RPC failed
+    if (!creditsAdded) {
+      console.log('🔄 Fallback: ajout crédits direct SQL...');
+      try {
+        // Upsert user_credits
+        const { data: existing } = await this.supabase
+          .from('user_credits')
+          .select('balance')
+          .eq('user_id', payment.user_id)
+          .single();
 
-          if (user?.phone_number) {
-            const totalCredits = creditsToAdd + bonusCredits;
-            const msg = `✅ *Crédits ajoutés avec succès !*\n\n`
-              + `${totalCredits} crédit${totalCredits > 1 ? 's' : ''} ont été ajoutés à votre compte Gabon 24/7.\n\n`
-              + `💰 Montant payé : ${parseInt(payment.amount).toLocaleString('fr-FR')} FCFA\n`
-              + (bonusCredits > 0 ? `🎁 Dont ${bonusCredits} crédits bonus\n` : '')
-              + `📱 Réf : ${payment.reference}\n\n`
-              + `Merci pour votre achat !`;
-            await whapiService.sendWhatsAppMessage(user.phone_number, msg);
-          }
-        } catch (whatsappErr) {
-          console.warn('⚠️ WhatsApp confirmation crédits échoué:', whatsappErr.message);
+        const currentBalance = existing?.balance || 0;
+        const newBalance = currentBalance + totalCredits;
+
+        if (existing) {
+          await this.supabase
+            .from('user_credits')
+            .update({ balance: newBalance, updated_at: new Date().toISOString() })
+            .eq('user_id', payment.user_id);
+        } else {
+          await this.supabase
+            .from('user_credits')
+            .insert({ user_id: payment.user_id, balance: newBalance });
         }
+
+        // Log transaction
+        await this.supabase
+          .from('credit_transactions')
+          .insert({
+            user_id: payment.user_id,
+            type: 'purchase',
+            amount: totalCredits,
+            description: `Achat E-Billing - ${payment.reference}`,
+            metadata: {
+              package_id: payment.package_id,
+              price_paid_xaf: parseInt(payment.amount),
+              payment_method: 'ebilling',
+              payment_reference: payment.bill_id || payment.reference,
+              fallback: true,
+            },
+          });
+
+        creditsAdded = true;
+        console.log(`✅ Fallback SQL: ${totalCredits} crédits ajoutés à ${payment.user_id}`);
+      } catch (fallbackErr) {
+        console.error('❌ Fallback SQL crédits échoué:', fallbackErr.message);
+      }
+    }
+
+    // WhatsApp confirmation (only if credits were added)
+    if (creditsAdded) {
+      try {
+        const { data: user } = await this.supabase
+          .from('users')
+          .select('phone_number, full_name')
+          .eq('id', payment.user_id)
+          .single();
+
+        if (user?.phone_number) {
+          const msg = `✅ *Crédits ajoutés avec succès !*\n\n`
+            + `${totalCredits} crédit${totalCredits > 1 ? 's' : ''} ont été ajoutés à votre compte Gabon 24/7.\n\n`
+            + `💰 Montant payé : ${parseInt(payment.amount).toLocaleString('fr-FR')} FCFA\n`
+            + (bonusCredits > 0 ? `🎁 Dont ${bonusCredits} crédits bonus\n` : '')
+            + `📱 Réf : ${payment.reference}\n\n`
+            + `Merci pour votre achat !`;
+          await whapiService.sendWhatsAppMessage(user.phone_number, msg);
+        }
+      } catch (whatsappErr) {
+        console.warn('⚠️ WhatsApp confirmation crédits échoué:', whatsappErr.message);
       }
     }
   }

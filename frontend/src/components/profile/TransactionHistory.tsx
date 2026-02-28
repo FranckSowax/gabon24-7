@@ -105,9 +105,8 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
           .from('ebilling_payments')
           .select('*')
           .eq('user_id', userId)
-          .in('status', ['pending', 'failed', 'cancelled'])
           .order('created_at', { ascending: false })
-          .limit(20),
+          .limit(30),
       ])
 
       const allTransactions: DisplayTransaction[] = []
@@ -133,7 +132,7 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
         })
       }
 
-      // Map ebilling_payments (pending/failed/cancelled only)
+      // Map ebilling_payments (all statuses, deduplicated against credit_transactions)
       if (ebillingResult.status === 'fulfilled' && ebillingResult.value.data) {
         (ebillingResult.value.data as EbillingPayment[]).forEach(p => {
           const alreadyExists = allTransactions.some(

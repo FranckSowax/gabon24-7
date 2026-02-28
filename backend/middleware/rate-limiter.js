@@ -108,7 +108,7 @@ const paymentLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === 'GET',
+  skip: (req) => req.method === 'GET' || req.path.includes('/ebilling/callback'),
   message: {
     success: false,
     error: 'Trop de tentatives de paiement. Veuillez patienter.',
