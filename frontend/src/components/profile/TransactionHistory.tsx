@@ -210,18 +210,24 @@ export default function TransactionHistory({ userId }: TransactionHistoryProps) 
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
     try {
-      const { data } = await supabase
+      // Use select('*') to avoid failing on missing columns
+      const { data, error } = await supabase
         .from('credit_transactions')
-        .select('type, amount, price_paid_xaf')
+        .select('*')
         .eq('user_id', userId)
         .gte('created_at', firstDayOfMonth)
 
-      if (data) {
-        const stats = (data as CreditTransaction[]).reduce((acc, t) => {
+      if (error) {
+        console.error('Erreur requête stats:', error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        const stats = data.reduce((acc: { creditsUsed: number, creditsPurchased: number, totalSpent: number }, t: any) => {
           if (t.type === 'consumption') {
-            acc.creditsUsed += Math.abs(t.amount)
-          } else if (t.type === 'purchase' || t.type === 'subscription' || t.type === 'bonus') {
-            acc.creditsPurchased += t.amount
+            acc.creditsUsed += Math.abs(t.amount || 0)
+          } else if (['purchase', 'subscription', 'bonus'].includes(t.type)) {
+            acc.creditsPurchased += Math.abs(t.amount || 0)
             acc.totalSpent += t.price_paid_xaf || 0
           }
           return acc
