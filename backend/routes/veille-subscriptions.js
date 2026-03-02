@@ -181,7 +181,7 @@ router.post('/subscribe', requireAuth, async (req, res) => {
 // =====================================================
 router.post('/demo', async (req, res) => {
   try {
-    const { whatsappNumber, email, name } = req.body;
+    const { whatsappNumber, email, name, keywords } = req.body;
 
     if (!whatsappNumber || !email) {
       return res.status(400).json({
@@ -189,6 +189,15 @@ router.post('/demo', async (req, res) => {
         error: 'whatsappNumber et email sont requis'
       });
     }
+
+    // Valider keywords (2-3 requis)
+    if (!keywords || !Array.isArray(keywords) || keywords.length < 2 || keywords.length > 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez fournir 2 ou 3 mots-cles'
+      });
+    }
+    const cleanKeywords = keywords.map(k => String(k).trim().toLowerCase()).filter(k => k.length >= 2).slice(0, 3);
 
     const cleanNumber = whatsappNumber.replace(/[\s\-()]/g, '');
     if (!/^\+[1-9]\d{6,14}$/.test(cleanNumber)) {
@@ -279,13 +288,13 @@ router.post('/demo', async (req, res) => {
           metadata: { demo: true, email, name }
         });
 
-      // Creer une alerte demo
+      // Creer une alerte demo avec les mots-cles du user
       await supabase
         .from('user_alerts')
         .insert({
           user_id: userId,
-          name: 'Actualites Gabon (Demo)',
-          keywords: ['gabon', 'gouvernement', 'economie'],
+          name: `Veille Demo (${cleanKeywords.join(', ')})`,
+          keywords: cleanKeywords,
           is_active: true,
           whatsapp_enabled: true,
           whatsapp_numbers: [cleanNumber]
@@ -293,17 +302,14 @@ router.post('/demo', async (req, res) => {
     }
 
     // Envoyer message WhatsApp de bienvenue
-    try {
-      const whapiService = require('../services/whapiService');
-      const welcomeMessage = `Bienvenue sur Gabon Insight - Veille & Alertes !\n\nVotre demo gratuite de 24h est activee.\n\nVous recevrez des alertes carrousel WhatsApp chaque heure (7h-22h) sur les actualites gabonaises.\n\nPour configurer vos propres alertes, rendez-vous sur :\nhttps://gaboninsight.com/veille\n\nBonne decouverte !`;
-      console.log(`[DEMO] Envoi WhatsApp bienvenue vers ${cleanNumber}...`);
-      const whatsappResult = await whapiService.sendWhatsAppMessage(cleanNumber, welcomeMessage);
-      console.log(`[DEMO] WhatsApp bienvenue resultat:`, JSON.stringify(whatsappResult));
-    } catch (whatsappErr) {
-      console.error('[DEMO] WhatsApp bienvenue echoue:', whatsappErr.message);
-      if (whatsappErr.response?.data) {
-        console.error('[DEMO] Whapi error details:', JSON.stringify(whatsappErr.response.data));
-      }
+    const whapiService = require('../services/whapiService');
+    const welcomeMessage = `*Bienvenue sur Gabon Insight* - Veille & Alertes\n\nVotre demo gratuite de 24h est activee.\n\nVos mots-cles de veille :\n${cleanKeywords.map(k => `  - ${k}`).join('\n')}\n\nVous recevrez des alertes WhatsApp des qu'un article correspondant a vos mots-cles sera detecte.\n\nBonne decouverte !`;
+    console.log(`[DEMO] Envoi WhatsApp bienvenue vers ${cleanNumber}...`);
+    const whatsappResult = await whapiService.sendWhatsAppMessage(cleanNumber, welcomeMessage);
+    if (!whatsappResult.success) {
+      console.error('[DEMO] WhatsApp bienvenue echoue:', whatsappResult.error, whatsappResult.details);
+    } else {
+      console.log(`[DEMO] WhatsApp bienvenue envoye: ${whatsappResult.messageId}`);
     }
 
     res.json({
@@ -311,6 +317,8 @@ router.post('/demo', async (req, res) => {
       message: 'Demo activee avec succes',
       trialEnd: trialEnd.toISOString(),
       whatsappNumber: cleanNumber,
+      keywords: cleanKeywords,
+      whatsappSent: whatsappResult.success,
       hasAccount: userId !== null
     });
 

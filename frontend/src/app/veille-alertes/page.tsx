@@ -86,7 +86,7 @@ export default function VeilleAlertesLanding() {
   const router = useRouter()
   const [plans, setPlans] = useState<VeillePlan[]>([])
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [demoForm, setDemoForm] = useState({ whatsappNumber: '', email: '', name: '' })
+  const [demoForm, setDemoForm] = useState({ whatsappNumber: '', email: '', name: '', keywords: '' })
   const [demoLoading, setDemoLoading] = useState(false)
   const [demoError, setDemoError] = useState('')
   const [demoSuccess, setDemoSuccess] = useState(false)
@@ -103,13 +103,24 @@ export default function VeilleAlertesLanding() {
   const handleDemo = async (e: React.FormEvent) => {
     e.preventDefault()
     setDemoError('')
+
+    // Valider keywords (2-3 requis)
+    const keywordsList = demoForm.keywords
+      .split(',')
+      .map(k => k.trim().toLowerCase())
+      .filter(k => k.length >= 2)
+    if (keywordsList.length < 2 || keywordsList.length > 3) {
+      setDemoError('Entrez 2 ou 3 mots-cles separes par des virgules.')
+      return
+    }
+
     setDemoLoading(true)
 
     try {
       const res = await fetch(`${API_URL}/api/veille/demo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(demoForm)
+        body: JSON.stringify({ ...demoForm, keywords: keywordsList })
       })
       const data = await res.json()
 
@@ -352,7 +363,7 @@ export default function VeilleAlertesLanding() {
                 <Check className="w-8 h-8 text-green-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Demo activee !</h3>
-              <p className="text-gray-400">Vous allez recevoir un message WhatsApp de bienvenue...</p>
+              <p className="text-gray-400">Verifiez votre WhatsApp, vous allez recevoir un message de bienvenue.</p>
             </div>
           ) : (
             <form onSubmit={handleDemo} className="bg-white/5 backdrop-blur rounded-2xl p-6 sm:p-8 space-y-4">
@@ -393,6 +404,20 @@ export default function VeilleAlertesLanding() {
                   placeholder="Votre nom"
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Mots-cles de veille (2 a 3) *
+                </label>
+                <input
+                  type="text"
+                  value={demoForm.keywords}
+                  onChange={e => setDemoForm(f => ({ ...f, keywords: e.target.value }))}
+                  placeholder="ex: petrole, economie, Libreville"
+                  required
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Separez par des virgules. Vous recevrez les articles contenant ces mots.</p>
               </div>
 
               {demoError && (
