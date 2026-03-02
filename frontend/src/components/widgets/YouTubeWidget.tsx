@@ -210,7 +210,7 @@ export default function YouTubeWidget({ className = '' }: YouTubeWidgetProps) {
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${className}`}>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col ${className}`}>
       {/* Header */}
       <div className="p-4 pb-3">
         <div className="flex items-center space-x-2 mb-3">
@@ -225,11 +225,11 @@ export default function YouTubeWidget({ className = '' }: YouTubeWidgetProps) {
       </div>
 
       {/* Video Thumbnail */}
-      <div 
-        className="relative cursor-pointer group"
+      <div
+        className="relative cursor-pointer group flex-1 min-h-0"
         onClick={handleVideoClick}
       >
-        <div className="aspect-video bg-gray-900 relative overflow-hidden">
+        <div className="bg-gray-900 relative overflow-hidden w-full h-full min-h-[160px]">
           {latestVideo.thumbnail ? (
             <img 
               src={latestVideo.thumbnail}

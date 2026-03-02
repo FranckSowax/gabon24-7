@@ -161,7 +161,7 @@ export default function AudioPlayerBanner() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
-  const [playbackRate, setPlaybackRate] = useState(1)
+  const [playbackRate, setPlaybackRate] = useState(1.5)
   const [progress, setProgress] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -187,7 +187,10 @@ export default function AudioPlayerBanner() {
       }
     }
 
-    const updateDuration = () => setDuration(audio.duration)
+    const updateDuration = () => {
+      setDuration(audio.duration)
+      audio.playbackRate = playbackRate
+    }
     const handlePlay = () => setIsPlaying(true)
     const handlePause = () => setIsPlaying(false)
     const handleEnded = () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -13,7 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production
 type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 
 function AttenteContent() {
-  const { user } = useAuth()
+  useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const reference = searchParams?.get('reference') || null
@@ -23,57 +23,75 @@ function AttenteContent() {
   const [checkCount, setCheckCount] = useState(0)
   const [isChecking, setIsChecking] = useState(false)
 
-  const maxChecks = 60 // 10 minutes max (10s interval)
+  const maxChecks = 90 // 3 minutes max (2s interval)
 
-  const checkStatus = useCallback(async () => {
-    if (!reference || checkCount >= maxChecks) return
-
-    setIsChecking(true)
-    try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
-
-      const response = await fetch(`${API_URL}/api/payments/status/${reference}`, {
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.payment) {
-        setStatus(data.payment.status)
-
-        if (data.payment.status === 'completed') {
-          setTimeout(() => {
-            router.push(`/paiement/succes?reference=${reference}`)
-          }, 1500)
-        } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
-          setTimeout(() => {
-            router.push(`/paiement/echec?reference=${reference}&reason=${data.payment.status}`)
-          }, 1500)
-        }
-      }
-    } catch (error) {
-      console.warn('Erreur vérification statut:', error)
-    } finally {
-      setIsChecking(false)
-      setCheckCount(prev => prev + 1)
-    }
-  }, [reference, checkCount, maxChecks, router])
-
+  // Polling toutes les 2s via BACKEND_URL (qui appelle check_status.php)
   useEffect(() => {
     if (!reference) {
       router.push('/mon-profil')
       return
     }
 
-    // Vérifier immédiatement puis toutes les 10 secondes
-    checkStatus()
-    const interval = setInterval(checkStatus, 10000)
+    let cancelled = false
+    let pollCount = 0
+    let timeoutId: NodeJS.Timeout
 
-    return () => clearInterval(interval)
-  }, [reference, checkStatus, router])
+    const checkStatus = async () => {
+      if (cancelled || pollCount >= maxChecks) return
+      pollCount++
+      setCheckCount(pollCount)
+      setIsChecking(true)
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData?.session?.access_token
+
+        const response = await fetch(`${API_URL}/api/payments/status/${reference}`, {
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
+        })
+
+        if (cancelled) return
+        const data = await response.json()
+
+        if (data.success && data.payment) {
+          setStatus(data.payment.status)
+
+          if (data.payment.status === 'completed') {
+            setIsChecking(false)
+            setTimeout(() => {
+              router.push(`/paiement/succes?reference=${reference}`)
+            }, 1500)
+            return // Arrêter le polling
+          } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
+            setIsChecking(false)
+            setTimeout(() => {
+              router.push(`/paiement/echec?reference=${reference}&reason=${data.payment.status}`)
+            }, 1500)
+            return // Arrêter le polling
+          }
+        }
+      } catch (error) {
+        console.warn('Erreur vérification statut:', error)
+      } finally {
+        setIsChecking(false)
+      }
+
+      // Continuer le polling si pas de statut final
+      if (!cancelled) {
+        timeoutId = setTimeout(checkStatus, 2000)
+      }
+    }
+
+    // Premier check après 1s, puis toutes les 2s
+    timeoutId = setTimeout(checkStatus, 1000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+    }
+  }, [reference, router])
 
   const handleManualCheck = () => {
     setCheckCount(0)

@@ -1223,15 +1223,15 @@ export default function HomePage() {
                     <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
                       <LazyMount className="w-full h-full"><RoutesMapWidget /></LazyMount>
                     </div>
-                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
+                    <div className="w-[82vw] max-w-[340px] h-[500px] flex-shrink-0 snap-start">
                       <LazyMount className="w-full h-full">
-                        <div className="bg-white rounded-lg shadow-sm border p-3 w-full h-full">
-                          <YouTubeWidget />
+                        <div className="bg-white rounded-lg shadow-sm border p-3 w-full h-[500px] flex flex-col">
+                          <YouTubeWidget className="flex-1 flex flex-col" />
                         </div>
                       </LazyMount>
                     </div>
-                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><FootballScores /></LazyMount>
+                    <div className="w-[82vw] max-w-[340px] h-[500px] flex-shrink-0 snap-start">
+                      <LazyMount className="w-full h-full"><FootballScores className="h-[500px]" /></LazyMount>
                     </div>
                   </div>
                 </div>

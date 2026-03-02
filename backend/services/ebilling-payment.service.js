@@ -134,11 +134,26 @@ class EBillingPaymentService {
       const response = await axios.get(url, { timeout: 10000 });
       const data = response.data;
 
+      console.log(`📡 PHP check_status (${reference}):`, JSON.stringify(data?.data || data));
+
       if (!data.success) {
         return { success: false, status: 'pending' };
       }
 
-      const status = data.data?.status || 'pending';
+      // Le PHP peut retourner le statut dans data.status ou via is_completed/is_paid
+      let status = data.data?.status || 'pending';
+
+      // Normaliser: le PHP peut retourner 'complete' au lieu de 'completed'
+      if (status === 'complete') status = 'completed';
+      if (status === 'success' || status === 'paid') status = 'completed';
+
+      // Fallback: vérifier les flags booléens is_completed / is_paid
+      if (status === 'pending' || status === 'not_found') {
+        if (data.data?.is_completed === true || data.data?.is_paid === true) {
+          status = 'completed';
+        }
+      }
+
       return {
         success: true,
         status,

@@ -108,13 +108,14 @@ function PaiementContent() {
     }
   }, [user, authLoading, router, searchParams])
 
-  // Polling du statut de paiement quand le modal d'attente est ouvert
+  // Polling du statut de paiement toutes les 2s via BACKEND_URL (check_status.php)
   useEffect(() => {
     if (!showWaitingModal || !paymentReference || modalStatus !== 'pending') return
 
     let pollCount = 0
-    const maxPolls = 60 // 10 minutes max (10s interval)
+    const maxPolls = 90 // 3 minutes max (2s interval)
     let cancelled = false
+    let timeoutId: NodeJS.Timeout
 
     const checkStatus = async () => {
       if (cancelled || pollCount >= maxPolls) return
@@ -140,27 +141,32 @@ function PaiementContent() {
               setShowWaitingModal(false)
               router.push(`/paiement/succes?reference=${paymentReference}`)
             }, 1500)
+            return // Arrêter le polling
           } else if (data.payment.status === 'failed' || data.payment.status === 'cancelled') {
             setModalStatus(data.payment.status)
             setTimeout(() => {
               setShowWaitingModal(false)
               router.push(`/paiement/echec?reference=${paymentReference}&reason=${data.payment.status}`)
             }, 1500)
+            return // Arrêter le polling
           }
         }
       } catch (err) {
         console.warn('Erreur vérification statut:', err)
       }
+
+      // Continuer le polling si pas de statut final
+      if (!cancelled) {
+        timeoutId = setTimeout(checkStatus, 2000)
+      }
     }
 
-    // Première vérification après 5s, puis toutes les 10s
-    const initialTimeout = setTimeout(checkStatus, 5000)
-    const interval = setInterval(checkStatus, 10000)
+    // Première vérification après 1s, puis toutes les 2s
+    timeoutId = setTimeout(checkStatus, 1000)
 
     return () => {
       cancelled = true
-      clearTimeout(initialTimeout)
-      clearInterval(interval)
+      clearTimeout(timeoutId)
     }
   }, [showWaitingModal, paymentReference, modalStatus, router])
 
