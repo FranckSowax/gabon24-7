@@ -125,15 +125,22 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
     }
     
     loadCredits()
-    
+
     // Rafraîchir toutes les 2 minutes (réduit la charge serveur)
     const interval = setInterval(() => {
       if (user) {
         loadCredits()
       }
     }, 120000)
-    
-    return () => clearInterval(interval)
+
+    // Écouter l'événement credits-updated (après paiement)
+    const handleCreditsUpdated = () => { loadCredits() }
+    window.addEventListener('credits-updated', handleCreditsUpdated)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('credits-updated', handleCreditsUpdated)
+    }
   }, [user])
 
   const menuItems = [

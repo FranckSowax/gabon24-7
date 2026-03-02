@@ -29,9 +29,9 @@ export interface CreditBalance {
 export async function getCreditBalance(userId: string): Promise<number> {
   try {
     const { data, error } = await supabase
-      .from('users')
-      .select('credits_balance')
-      .eq('id', userId)
+      .from('user_credits')
+      .select('balance, bonus_balance')
+      .eq('user_id', userId)
       .single()
 
     if (error) {
@@ -39,7 +39,7 @@ export async function getCreditBalance(userId: string): Promise<number> {
       return 0
     }
 
-    return data?.credits_balance || 0
+    return (data?.balance || 0) + (data?.bonus_balance || 0)
   } catch (error) {
     console.error('Erreur getCreditBalance:', error)
     return 0
