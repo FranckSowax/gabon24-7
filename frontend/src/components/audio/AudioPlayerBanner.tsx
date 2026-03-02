@@ -514,15 +514,6 @@ export default function AudioPlayerBanner() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Chargement du résumé...</span>
                   </div>
-                ) : summary?.text_summary ? (
-                  <div className="space-y-2 px-2">
-                    <p className="text-white/90 text-xs leading-relaxed line-clamp-4 text-left">
-                      {summary.text_summary.substring(0, 250)}...
-                    </p>
-                    <a href="/audio/daily" className="inline-block text-xs text-orange-300 hover:text-orange-200 font-medium">
-                      Lire le résumé complet →
-                    </a>
-                  </div>
                 ) : (
                   'Aucun résumé audio disponible'
                 )}
@@ -672,15 +663,6 @@ export default function AudioPlayerBanner() {
                     <div className="flex items-center gap-2 text-white/70">
                       <Loader2 className="w-5 h-5 animate-spin" />
                       <span>Chargement du résumé audio...</span>
-                    </div>
-                  ) : summary?.text_summary ? (
-                    <div className="space-y-2 max-w-xl">
-                      <p className="text-white/85 text-sm leading-relaxed line-clamp-3">
-                        {summary.text_summary.substring(0, 300)}...
-                      </p>
-                      <a href="/audio/daily" className="inline-block text-sm text-orange-300 hover:text-orange-200 font-medium">
-                        Lire le résumé complet →
-                      </a>
                     </div>
                   ) : (
                     <AudioVisualizer isPlaying={false} />
