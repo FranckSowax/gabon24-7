@@ -372,4 +372,48 @@ router.get('/demo/status', async (req, res) => {
   }
 });
 
+// =====================================================
+// DELETE /api/veille/demo/reset - Supprimer une demo (admin)
+// =====================================================
+router.delete('/demo/reset', async (req, res) => {
+  try {
+    const { whatsapp } = req.query;
+    if (!whatsapp) {
+      return res.status(400).json({ success: false, error: 'Parametre whatsapp requis' });
+    }
+
+    const cleanNumber = whatsapp.replace(/[\s\-()]/g, '');
+
+    const { data: t } = await supabase
+      .from('veille_demo_trials')
+      .delete()
+      .eq('whatsapp_number', cleanNumber)
+      .select();
+
+    const { data: a } = await supabase
+      .from('user_alerts')
+      .delete()
+      .contains('whatsapp_numbers', [cleanNumber])
+      .select('id');
+
+    const { data: s } = await supabase
+      .from('veille_subscriptions')
+      .delete()
+      .eq('whatsapp_number', cleanNumber)
+      .select('id');
+
+    res.json({
+      success: true,
+      deleted: {
+        trials: t?.length || 0,
+        alerts: a?.length || 0,
+        subscriptions: s?.length || 0
+      }
+    });
+  } catch (err) {
+    console.error('Erreur DELETE /api/veille/demo/reset:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
