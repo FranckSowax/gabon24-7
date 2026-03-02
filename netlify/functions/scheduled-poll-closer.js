@@ -55,7 +55,7 @@ exports.handler = async (event, context) => {
           const qIds = questions.map(q => q.id)
           // Compter les réponses associées aux questions
           const { count, error: cErr } = await supabase
-            .from('poll_responses')
+            .from('poll_votes')
             .select('id', { count: 'exact', head: true })
             .in('question_id', qIds)
           if (cErr) {
@@ -67,7 +67,7 @@ exports.handler = async (event, context) => {
       } else {
         // Sondage simple (mcq / yes_no) - compter via poll_id
         const { count, error: cErr } = await supabase
-          .from('poll_responses')
+          .from('poll_votes')
           .select('id', { count: 'exact', head: true })
           .eq('poll_id', poll.id)
         if (cErr) {
@@ -80,7 +80,7 @@ exports.handler = async (event, context) => {
       // Archiver et désactiver
       const { data: updated, error: upErr } = await supabase
         .from('polls')
-        .update({ status: 'archived', is_active: false, total_votes: totalVotes })
+        .update({ status: 'expired', is_active: false, total_votes: totalVotes })
         .eq('id', poll.id)
         .select()
         .single()
