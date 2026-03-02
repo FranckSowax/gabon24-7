@@ -2,23 +2,21 @@ const OpenAI = require('openai');
 
 class OpenAIEditorialService {
   constructor() {
-    // Configuration Kimi K2.5 (Moonshot AI, OpenAI-compatible)
-    const apiKey = process.env.KIMI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
 
-    this.model = 'kimi-k2.5-preview';
+    this.model = 'gpt-4.1-mini';
 
     if (!apiKey) {
-      console.warn('⚠️ KIMI_API_KEY non configurée - Service IA Editorial désactivé');
+      console.warn('⚠️ OPENAI_API_KEY non configurée - Service IA Editorial désactivé');
       this.openai = null;
       return;
     }
 
     this.openai = new OpenAI({
       apiKey: apiKey,
-      baseURL: 'https://api.moonshot.ai/v1'
     });
 
-    console.log('✅ Service Kimi Editorial initialisé');
+    console.log('✅ Service OpenAI Editorial initialisé (gpt-4.1-mini)');
   }
 
   /**

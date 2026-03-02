@@ -10,8 +10,7 @@ const supabaseService = require('./supabase-config');
 const OpenAI = require('openai');
 
 const openai = new OpenAI({
-  apiKey: process.env.KIMI_API_KEY,
-  baseURL: 'https://api.moonshot.ai/v1',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 /**
@@ -22,7 +21,7 @@ async function generateTLDR(title, content) {
     const text = `${title}\n\n${content || ''}`.substring(0, 3000);
 
     const response = await openai.chat.completions.create({
-      model: 'kimi-k2.5-preview',
+      model: 'gpt-4.1-mini',
       messages: [
         {
           role: 'system',
@@ -71,8 +70,8 @@ async function main() {
   console.log('═'.repeat(60));
   console.log(`⏰ ${new Date().toLocaleString('fr-FR')}\n`);
 
-  if (!process.env.KIMI_API_KEY) {
-    console.error('❌ KIMI_API_KEY manquant dans .env');
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('❌ OPENAI_API_KEY manquant dans .env');
     process.exit(1);
   }
 

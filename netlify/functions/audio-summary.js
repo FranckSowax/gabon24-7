@@ -7,8 +7,7 @@ const OPENAI_TEXT_MODEL = 'gpt-4o-mini'
 const DAILY_SCRIPT_MODEL = 'gpt-4o'
 
 console.log('🔍 Audio Summary - Environment check:')
-console.log('REPLICATE_API_TOKEN:', process.env.REPLICATE_API_TOKEN ? 'SET' : 'MISSING')
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET (fallback)' : 'MISSING')
+console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'MISSING')
 
 function calcCustomCreditsUnits(articleCount) {
   // Doc: base 2 + 0.5 per extra after 5. Align with existing scheme (x10 units)

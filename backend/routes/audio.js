@@ -975,7 +975,7 @@ router.post('/cron-trigger', async (req, res) => {
     const validSecrets = [
       process.env.CRON_SECRET,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
-      process.env.KIMI_API_KEY
+      process.env.OPENAI_API_KEY
     ].filter(Boolean);
 
     const token = authHeader?.replace('Bearer ', '');

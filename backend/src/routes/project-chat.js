@@ -8,16 +8,15 @@ const router = express.Router();
 
 const { supabase } = supabaseService;
 
-// Initialiser Kimi K2.5 (Moonshot AI, OpenAI-compatible)
+// Initialiser OpenAI GPT-4.1-mini
 let openai = null;
-const KIMI_MODEL = 'kimi-k2.5-preview';
-if (process.env.KIMI_API_KEY) {
+const OPENAI_MODEL = 'gpt-4.1-mini';
+if (process.env.OPENAI_API_KEY) {
   openai = new OpenAI({
-    apiKey: process.env.KIMI_API_KEY,
-    baseURL: 'https://api.moonshot.ai/v1'
+    apiKey: process.env.OPENAI_API_KEY,
   });
 } else {
-  console.warn('⚠️ KIMI_API_KEY non configurée - Routes project-chat désactivées');
+  console.warn('⚠️ OPENAI_API_KEY non configurée - Routes project-chat désactivées');
 }
 
 // Envoyer un message et obtenir réponse
@@ -151,10 +150,10 @@ INSTRUCTIONS:
     // Appel à OpenAI avec le modèle configuré
     let aiResponse;
     try {
-      console.log(`🤖 Appel Kimi ${KIMI_MODEL}`);
+      console.log(`🤖 Appel OpenAI ${OPENAI_MODEL}`);
 
       const completion = await openai.chat.completions.create({
-        model: KIMI_MODEL,
+        model: OPENAI_MODEL,
         messages: conversationHistory,
         max_tokens: 800,
         temperature: 0.7
@@ -162,7 +161,7 @@ INSTRUCTIONS:
 
       aiResponse = completion.choices[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
 
-      console.log(`✅ Réponse Kimi reçue`);
+      console.log(`✅ Réponse OpenAI reçue`);
     } catch (aiError) {
       console.error('Erreur appel Kimi:', aiError);
       aiResponse = "Désolé, je rencontre une difficulté technique. Pouvez-vous reformuler votre question ?";
@@ -385,13 +384,13 @@ router.post('/generate-quick-response', async (req, res) => {
       });
     }
 
-    console.log(`🤖 Génération réponse rapide Kimi ${KIMI_MODEL}...`);
+    console.log(`🤖 Génération réponse rapide Kimi ${OPENAI_MODEL}...`);
 
     // Générer réponse avec Kimi K2.5
     let aiResponse = '';
     try {
       const completion = await openai.chat.completions.create({
-        model: KIMI_MODEL,
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',
@@ -408,7 +407,7 @@ router.post('/generate-quick-response', async (req, res) => {
 
       aiResponse = completion.choices[0]?.message?.content || "Je rencontre une difficulté technique.";
 
-      console.log('✅ Réponse Kimi générée');
+      console.log('✅ Réponse OpenAI générée');
     } catch (aiError) {
       console.error('Erreur appel Kimi:', aiError);
       aiResponse = "Je rencontre une difficulté technique. Veuillez reformuler votre question.";

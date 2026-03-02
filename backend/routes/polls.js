@@ -328,54 +328,31 @@ Retourne UNIQUEMENT un objet JSON:
   "rationale": "Brève explication de la stratégie"
 }`;
 
-    // Appel Replicate GPT-5 Nano
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    // Appel OpenAI GPT-4.1-mini
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        version: "26e1bd4fb0be0aa56c969e09ec7d55f3fc55fa2b83e5ce5023c9ad8e64477751",
-        input: {
-          prompt: prompt,
-          max_new_tokens: 1000,
-          temperature: 0.7,
-          top_p: 0.9,
-          top_k: 50
-        }
+        model: 'gpt-4.1-mini',
+        messages: [
+          { role: 'system', content: 'Tu es un expert en sondages d\'opinion au Gabon. Réponds uniquement en JSON valide.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
       })
     });
 
-    const prediction = await response.json();
-    
-    if (response.status !== 201) {
-      throw new Error(`Erreur Replicate: ${prediction.detail || 'Erreur inconnue'}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.status}`);
     }
 
-    console.log('📊 Prediction créée:', prediction.id);
-
-    // Attendre résultat (max 60s)
-    let result = prediction;
-    let attempts = 0;
-    
-    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
-        headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` }
-      });
-      
-      result = await pollResponse.json();
-      attempts++;
-    }
-
-    if (result.status !== 'succeeded') {
-      throw new Error('Timeout génération IA');
-    }
-
-    // Parser sortie
-    const output = Array.isArray(result.output) ? result.output.join('') : result.output;
+    const result = await response.json();
+    const output = result.choices[0]?.message?.content || '';
     console.log('📄 Sortie IA:', output.substring(0, 200));
 
     // Extraire JSON
@@ -385,7 +362,7 @@ Retourne UNIQUEMENT un objet JSON:
     }
 
     const data = JSON.parse(jsonMatch[0]);
-    
+
     console.log('✅ Questions générées:', data.questions.length);
 
     res.json({

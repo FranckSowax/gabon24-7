@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const kimiApiKey = process.env.KIMI_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variables d\'environnement manquantes');
@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Rate limits OpenAI GPT-3.5-turbo (Tier 1)
+// Rate limits OpenAI GPT-4.1-mini
 const RATE_LIMITS = {
   MAX_REQUESTS_PER_MINUTE: 3500,
   MAX_TOKENS_PER_MINUTE: 160000,
@@ -21,17 +21,17 @@ const RATE_LIMITS = {
 
 // Fonction pour générer un résumé IA avec gestion d'erreur robuste
 async function generateAISummary(title, content, retryCount = 0) {
-  if (!kimiApiKey || !content) return null;
+  if (!openaiApiKey || !content) return null;
 
   try {
-    const response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${kimiApiKey}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'kimi-k2.5-preview',
+        model: 'gpt-4.1-mini',
         messages: [{
           role: 'user',
           content: `Résume cet article en français en 2-3 phrases maximum, en restant factuel et informatif:\n\nTitre: ${title}\n\nContenu: ${content.substring(0, 1000)}`
@@ -43,7 +43,7 @@ async function generateAISummary(title, content, retryCount = 0) {
 
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('retry-after') || '60');
-      console.warn(`⚠️ Rate limit Kimi, attente ${retryAfter}s`);
+      console.warn(`⚠️ Rate limit OpenAI, attente ${retryAfter}s`);
 
       if (retryCount < 3) {
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
@@ -53,7 +53,7 @@ async function generateAISummary(title, content, retryCount = 0) {
     }
 
     if (!response.ok) {
-      throw new Error(`Kimi API error: ${response.status} ${response.statusText}`);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -242,13 +242,13 @@ exports.handler = async (event, context) => {
 
   try {
     // Vérifier si Kimi est configuré
-    if (!kimiApiKey) {
+    if (!openaiApiKey) {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'KIMI_API_KEY non configuré, résumés IA désactivés',
+          message: 'OPENAI_API_KEY non configuré, résumés IA désactivés',
           processed: 0
         })
       };

@@ -623,16 +623,8 @@ app.get('/api/supabase-articles', (req, res) => {
 const weatherRoutes = require('./src/routes/weather');
 app.use('/api/weather', weatherRoutes);
 
-// Démarrer les planificateurs (désactivé temporairement)
-try {
-  // const { startPollScheduler } = require('./dist/schedulers/poll.scheduler');
-  // const { pollWorker } = require('./dist/workers/poll.worker');
-  
-  // startPollScheduler();
-  console.log('📊 Planificateur de sondages désactivé temporairement');
-} catch (error) {
-  console.log('⚠️ Planificateur de sondages non disponible:', error.message);
-}
+// Sondages gérés par crons Netlify (generate-daily-poll 18h, poll-publisher 19h, poll-closer 18h55)
+console.log('📊 Sondages: gérés par crons Netlify (génération 18h UTC, publication 19h UTC)');
 
 // Routes API de base
 app.get('/api/status', (req, res) => {
@@ -4752,10 +4744,10 @@ try {
 }
 
 // Vérification de la configuration critique
-if (!process.env.KIMI_API_KEY) {
-  console.warn('⚠️  KIMI_API_KEY manquante ! Les fonctionnalités IA seront limitées.');
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('⚠️  OPENAI_API_KEY manquante ! Les fonctionnalités IA seront limitées.');
 } else {
-  console.log('✅ KIMI_API_KEY détectée (Kimi K2.5).');
+  console.log('✅ OPENAI_API_KEY détectée (GPT-4.1-mini).');
 }
 
 if (!process.env.RAPIDAPI_KEY && !process.env.RAPIDAPI_FOOTBALL_KEY) {

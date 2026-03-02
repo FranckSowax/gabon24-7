@@ -2,13 +2,12 @@
  * 🤖 SERVICE IA ROBUSTE (Wrapper Unifié)
  *
  * Architecture:
- * 1. Primary: Kimi K2.5 (Moonshot AI - rapide, performant, OpenAI-compatible)
+ * 1. Primary: OpenAI GPT-4.1-mini
  * 2. Fallback: Google Gemini via SDK @google/generative-ai
  *
  * Features:
  * - Retry Pattern (Exponential Backoff)
  * - JSON Sanitization
- * - Strict Types
  * - Automatic fallback on errors (429/503)
  */
 
@@ -19,27 +18,25 @@ require('dotenv').config();
 class GeminiService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
-    this.kimiApiKey = process.env.KIMI_API_KEY;
+    this.openaiApiKey = process.env.OPENAI_API_KEY;
 
-    // Modèle principal: Kimi K2.5 (Moonshot AI)
-    this.kimiModel = 'kimi-k2.5-preview';
+    // Modèle principal: OpenAI GPT-4.1-mini
+    this.openaiModel = 'gpt-4.1-mini';
 
     // Modèles Gemini (fallback)
     this.models = {
-      text: 'gemini-flash-latest',
-      textFallback: 'gemini-1.5-flash',
-      image: 'gemini-flash-latest'
+      text: 'gemini-2.0-flash',
+      image: 'gemini-2.0-flash'
     };
 
-    this.primaryModelId = process.env.GEMINI_MODEL_NAME || this.models.text;
-    this.fallbackModelId = this.models.textFallback;
+    this.primaryModelId = this.models.text;
 
-    // Initialisation Kimi K2.5 (Primary)
-    if (this.kimiApiKey) {
-      this.kimi = new OpenAI({ apiKey: this.kimiApiKey, baseURL: 'https://api.moonshot.ai/v1' });
-      console.log(`✅ Kimi ${this.kimiModel} initialisé (modèle principal)`);
+    // Initialisation OpenAI (Primary)
+    if (this.openaiApiKey) {
+      this.openai = new OpenAI({ apiKey: this.openaiApiKey });
+      console.log(`✅ OpenAI ${this.openaiModel} initialisé (modèle principal)`);
     } else {
-      console.warn('⚠️ KIMI_API_KEY non configuré - Kimi K2.5 indisponible');
+      console.warn('⚠️ OPENAI_API_KEY non configuré - Service IA principal désactivé');
     }
 
     // Initialisation Google Gemini (Fallback)
@@ -57,14 +54,13 @@ class GeminiService {
   cleanJson(text) {
     if (!text) return "";
     let cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-    // Si le parsing direct échoue, tenter d'extraire le JSON enfoui
     try {
       JSON.parse(cleaned);
       return cleaned;
     } catch {
       const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
       if (jsonMatch) return jsonMatch[0];
-      return cleaned; // retourner tel quel, le caller gèrera l'erreur
+      return cleaned;
     }
   }
 
@@ -99,7 +95,7 @@ class GeminiService {
 
   /**
    * Méthode principale pour obtenir du JSON
-   * Ordre: Kimi K2.5 → Gemini Primary → Gemini Fallback
+   * Ordre: OpenAI GPT-4.1-mini → Gemini
    */
   async generateJSON(prompt, options = {}) {
     if (typeof options === 'string') {
@@ -109,18 +105,18 @@ class GeminiService {
     const { systemPrompt = "", temperature = 0.7 } = options;
 
     try {
-      // 1. Primary: Kimi K2.5
-      if (this.kimi) {
+      // 1. Primary: OpenAI GPT-4.1-mini
+      if (this.openai) {
         try {
           return await this.executeWithRetry(async () => {
-            return await this.generateWithKimi(prompt, systemPrompt, true, temperature);
+            return await this.generateWithOpenAI(prompt, systemPrompt, true, temperature);
           });
-        } catch (kimiError) {
-          console.error(`❌ Erreur Kimi ${this.kimiModel}:`, kimiError.message);
+        } catch (openaiError) {
+          console.error(`❌ Erreur OpenAI ${this.openaiModel}:`, openaiError.message);
         }
       }
 
-      // 2. Fallback: Gemini Primary
+      // 2. Fallback: Gemini
       if (this.genAI) {
         try {
           return await this.executeWithRetry(async () => {
@@ -141,27 +137,6 @@ class GeminiService {
           });
         } catch (geminiError) {
           console.error(`❌ Erreur Gemini (${this.primaryModelId}):`, geminiError.message);
-
-          // 3. Fallback: Gemini Secondary
-          if (this.fallbackModelId && this.fallbackModelId !== this.primaryModelId) {
-            console.log(`🔄 Fallback Gemini (${this.fallbackModelId})...`);
-            try {
-              return await this.executeWithRetry(async () => {
-                const model = this.genAI.getGenerativeModel({
-                  model: this.fallbackModelId,
-                  generationConfig: {
-                    responseMimeType: "application/json",
-                    temperature: temperature
-                  },
-                  systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
-                });
-                const result = await model.generateContent(prompt);
-                return JSON.parse(this.cleanJson(result.response.text()));
-              });
-            } catch (flashError) {
-              console.error(`❌ Erreur Gemini Fallback (${this.fallbackModelId}):`, flashError.message);
-            }
-          }
         }
       }
 
@@ -175,66 +150,50 @@ class GeminiService {
 
   /**
    * Stream text generation
-   * Ordre: Kimi K2.5 → Gemini
+   * Ordre: OpenAI → Gemini
    */
   async streamText(prompt, options = {}) {
     const { systemPrompt = "", temperature = 0.7 } = options;
 
-    // 1. Primary: Kimi streaming
-    if (this.kimi) {
+    // 1. Primary: OpenAI streaming
+    if (this.openai) {
       try {
-        return await this.streamWithKimi(prompt, systemPrompt, temperature);
+        return await this.streamWithOpenAI(prompt, systemPrompt, temperature);
       } catch (error) {
-        console.error(`❌ Erreur Kimi Stream:`, error.message);
+        console.error(`❌ Erreur OpenAI Stream:`, error.message);
       }
     }
 
     // 2. Fallback: Gemini streaming
     if (this.genAI) {
-      try {
-        const model = this.genAI.getGenerativeModel({
-          model: this.primaryModelId,
-          generationConfig: { temperature },
-          systemInstruction: systemPrompt ? {
-            role: "system",
-            parts: [{ text: systemPrompt }]
-          } : undefined
-        });
+      const model = this.genAI.getGenerativeModel({
+        model: this.primaryModelId,
+        generationConfig: { temperature },
+        systemInstruction: systemPrompt ? {
+          role: "system",
+          parts: [{ text: systemPrompt }]
+        } : undefined
+      });
 
-        const result = await model.generateContentStream(prompt);
-        return result.stream;
-      } catch (error) {
-        console.error(`❌ Erreur Gemini Stream (${this.primaryModelId}):`, error.message);
-
-        if (this.fallbackModelId && this.fallbackModelId !== this.primaryModelId) {
-          console.log(`🔄 Fallback Stream Gemini (${this.fallbackModelId})...`);
-          const model = this.genAI.getGenerativeModel({
-            model: this.fallbackModelId,
-            generationConfig: { temperature },
-            systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined
-          });
-          const result = await model.generateContentStream(prompt);
-          return result.stream;
-        }
-        throw error;
-      }
+      const result = await model.generateContentStream(prompt);
+      return result.stream;
     }
 
     throw new Error("Streaming IA indisponible");
   }
 
   /**
-   * Streaming Kimi K2.5
+   * Streaming OpenAI
    */
-  async streamWithKimi(prompt, systemPrompt, temperature = 0.7) {
-    if (!this.kimi) throw new Error("Kimi non configuré");
+  async streamWithOpenAI(prompt, systemPrompt, temperature = 0.7) {
+    if (!this.openai) throw new Error("OpenAI non configuré");
 
     const messages = [];
     if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
     messages.push({ role: "user", content: prompt });
 
-    const stream = await this.kimi.chat.completions.create({
-      model: this.kimiModel,
+    const stream = await this.openai.chat.completions.create({
+      model: this.openaiModel,
       messages: messages,
       stream: true,
       temperature: temperature,
@@ -255,20 +214,20 @@ class GeminiService {
 
   /**
    * Méthode pour texte simple (non JSON)
-   * Ordre: Kimi → Gemini
+   * Ordre: OpenAI → Gemini
    */
   async generateText(prompt, options = {}) {
     const { systemPrompt = "", temperature = 0.7 } = options;
 
     try {
-      // 1. Primary: Kimi
-      if (this.kimi) {
+      // 1. Primary: OpenAI
+      if (this.openai) {
         try {
           return await this.executeWithRetry(async () => {
-            return await this.generateWithKimi(prompt, systemPrompt, false, temperature);
+            return await this.generateWithOpenAI(prompt, systemPrompt, false, temperature);
           });
         } catch (error) {
-          console.error(`❌ Erreur Kimi Text:`, error.message);
+          console.error(`❌ Erreur OpenAI Text:`, error.message);
         }
       }
 
@@ -297,10 +256,10 @@ class GeminiService {
   }
 
   /**
-   * Appel Kimi K2.5 (JSON ou texte)
+   * Appel OpenAI GPT-4.1-mini (JSON ou texte)
    */
-  async generateWithKimi(prompt, systemPrompt, jsonMode = false, temperature = 0.7) {
-    if (!this.kimi) throw new Error("Kimi non configuré");
+  async generateWithOpenAI(prompt, systemPrompt, jsonMode = false, temperature = 0.7) {
+    if (!this.openai) throw new Error("OpenAI non configuré");
 
     const messages = [];
     if (systemPrompt) {
@@ -311,8 +270,8 @@ class GeminiService {
     }
     messages.push({ role: "user", content: prompt });
 
-    const completion = await this.kimi.chat.completions.create({
-      model: this.kimiModel,
+    const completion = await this.openai.chat.completions.create({
+      model: this.openaiModel,
       messages: messages,
       temperature: temperature,
     });

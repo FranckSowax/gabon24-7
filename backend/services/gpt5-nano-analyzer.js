@@ -1,7 +1,6 @@
 /**
- * Service d'analyse d'articles avec OpenAI GPT-5 Nano (via Replicate)
- * Remplace l'ancienne dépendance OpenAI directe
- * GPT-5 Nano: Lightweight, rapide, idéal pour génération de résumés et articles sponsorisés
+ * Service d'analyse d'articles avec OpenAI GPT-4.1-mini
+ * Utilise Gemini comme fallback via gemini-service
  */
 
 const fetch = require('node-fetch');
@@ -156,36 +155,7 @@ Génère maintenant l'article complet en JSON. Sois créatif, professionnel et c
 }
 
 /**
- * Polling pour attendre le résultat de la prédiction (Nécessaire pour Replicate)
- */
-async function pollPredictionResult(predictionId, maxAttempts = 60) {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Attendre 2s
-
-    const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-      headers: {
-        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-      }
-    });
-
-    const prediction = await response.json();
-    
-    if (prediction.status === 'succeeded') {
-      return prediction;
-    }
-    
-    if (prediction.status === 'failed' || prediction.status === 'canceled') {
-      throw new Error(`Prédiction échouée: ${prediction.error || prediction.status}`);
-    }
-
-    console.log(`⏳ Tentative ${attempt + 1}/${maxAttempts} - Status: ${prediction.status}`);
-  }
-
-  throw new Error('Timeout: génération trop longue');
-}
-
-/**
- * Générer un résumé audio journalistique avec GPT-5 Nano
+ * Générer un résumé audio journalistique via Gemini (OpenAI primary fallback)
  * Optimisé pour la prononciation phonétique (TTS)
  */
 async function generateJournalisticSummary(articles, language = 'fr') {
@@ -198,8 +168,8 @@ async function generateJournalisticSummary(articles, language = 'fr') {
     
     console.log(`📊 Génération résumé pour ${articles.length} articles en ${language}`);
     
-    if (!process.env.REPLICATE_API_TOKEN) {
-      console.log('⚠️  REPLICATE_API_TOKEN manquant, génération basique');
+    if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+      console.log('⚠️  Aucune clé IA disponible, génération basique');
       return generateBasicSummary(articles, language);
     }
 
@@ -430,64 +400,11 @@ async function generateArticleImage(articleInfo) {
     };
 
   } catch (geminiError) {
-    console.warn(`⚠️ Gemini Image échoué (${geminiError.message}), bascule sur Replicate (Nano Banana)...`);
-
-    // 2. Fallback Replicate (Nano Banana)
-    try {
-      if (!process.env.REPLICATE_API_TOKEN) {
-        throw new Error('REPLICATE_API_TOKEN requis pour le fallback');
-      }
-
-      // Utilisation du endpoint predictions standard ou model
-      const response = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'wait'
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: imagePrompt,
-            image_input: [], // Pas d'images de référence
-            output_format: 'jpg'
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Replicate API error: ${response.status} - ${errorText}`);
-      }
-
-      let prediction = await response.json();
-      console.log('🔄 Prediction Replicate créée:', prediction.id);
-
-      // Polling si nécessaire
-      if (prediction.status !== 'succeeded') {
-        prediction = await pollPredictionResult(prediction.id);
-      }
-
-      if (!prediction || !prediction.output) {
-        throw new Error('Aucune image générée par Replicate');
-      }
-
-      // Récupérer URL de l'image
-      const imageUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-      
-      console.log('✅ Image générée (Replicate Fallback):', imageUrl);
-      return {
-        success: true,
-        image_url: imageUrl
-      };
-
-    } catch (replicateError) {
-      console.error('❌ Erreur Fallback Replicate:', replicateError);
-      return {
-        success: false,
-        error: `Gemini: ${geminiError.message} | Replicate: ${replicateError.message}`
-      };
-    }
+    console.warn(`⚠️ Gemini Image échoué (${geminiError.message})`);
+    return {
+      success: false,
+      error: geminiError.message
+    };
   }
 }
 
@@ -748,49 +665,8 @@ Representing: ${title}`;
         image_url: imageUrl
       };
     } catch (geminiError) {
-      console.warn(`⚠️ Gemini Image échoué, bascule sur Replicate (Nano Banana)...`, geminiError.message);
-
-      // 2. Fallback Replicate (Nano Banana)
-      if (!process.env.REPLICATE_API_TOKEN) {
-        throw new Error('REPLICATE_API_TOKEN requis pour fallback');
-      }
-
-      const response = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'wait'
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: imagePrompt,
-            aspect_ratio: '16:9',
-            output_format: 'jpg',
-            image_input: []
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Replicate API error: ${response.status} - ${errorText}`);
-      }
-
-      let prediction = await response.json();
-      
-      // Polling
-      if (prediction.status !== 'succeeded') {
-        prediction = await pollPredictionResult(prediction.id);
-      }
-
-      const fallbackUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-      console.log(`✅ Image générée (Replicate Fallback): ${fallbackUrl}`);
-
-      return {
-        success: true,
-        image_url: fallbackUrl
-      };
+      console.warn(`⚠️ Gemini Image échoué:`, geminiError.message);
+      throw geminiError;
     }
 
   } catch (error) {
