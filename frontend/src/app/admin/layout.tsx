@@ -1,30 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   FileText,
   Users,
   MessageSquare,
-  Monitor,
   BarChart3,
-  Navigation,
   Eye,
   Settings,
-  Bell,
   BellRing,
   Activity,
   Search,
   ChevronDown,
   Menu,
   X,
-  Wallet,
   Megaphone,
   Gamepad2,
-  Coins
+  Coins,
+  Loader2,
+  ShieldAlert,
+  LogOut
 } from 'lucide-react';
 import NotificationBell from '@/components/admin/NotificationBell';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminLayout({
   children,
@@ -32,7 +33,45 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Admin verification
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [adminChecking, setAdminChecking] = useState(true);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (authLoading) return;
+
+      if (!user) {
+        setIsAdmin(false);
+        setAdminChecking(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+
+        if (error || !data) {
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data.is_admin === true);
+        }
+      } catch {
+        setIsAdmin(false);
+      } finally {
+        setAdminChecking(false);
+      }
+    };
+
+    checkAdmin();
+  }, [user, authLoading]);
 
   const navigation = [
     { name: 'Tableau de bord', href: '/admin', icon: LayoutDashboard },
@@ -46,9 +85,72 @@ export default function AdminLayout({
     { name: 'Veille RSS', href: '/admin/veille', icon: Eye },
     { name: 'Feedbacks', href: '/admin/feedbacks', icon: MessageSquare },
     { name: 'Tarification', href: '/admin/tarification', icon: Coins },
-    { name: '🎮 Jeu Quiz', href: '/admin/jeu', icon: Gamepad2, badge: 'NEW' },
+    { name: 'Jeu Quiz', href: '/admin/jeu', icon: Gamepad2, badge: 'NEW' },
     { name: 'Paramètres', href: '/admin/settings', icon: Settings },
   ];
+
+  // Loading state
+  if (authLoading || adminChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto" />
+          <p className="mt-4 text-gray-500">Vérification des accès...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+            <ShieldAlert className="w-10 h-10 text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-3">Connexion requise</h1>
+          <p className="text-gray-400 mb-6">
+            Vous devez être connecté pour accéder à cette page.
+          </p>
+          <button
+            onClick={() => router.push('/auth/signin?redirect=/admin')}
+            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-colors"
+          >
+            Se connecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not admin
+  if (isAdmin === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+            <ShieldAlert className="w-10 h-10 text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-3">Accès refusé</h1>
+          <p className="text-gray-400 mb-6">
+            Cette section est réservée aux administrateurs.
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-colors"
+          >
+            Retour à l&apos;accueil
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin name/email from auth
+  const adminName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin';
+  const adminEmail = user.email || '';
+  const adminInitial = adminName.charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
@@ -60,7 +162,7 @@ export default function AdminLayout({
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">🇬🇦</span>
+                  <span className="text-white font-bold text-sm">G</span>
                 </div>
                 <span className="font-bold text-gray-900">Gabon Insight</span>
               </div>
@@ -101,7 +203,7 @@ export default function AdminLayout({
         <div className="flex items-center px-6 py-6 border-b border-gray-100">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold">🇬🇦</span>
+              <span className="text-white font-bold">G</span>
             </div>
             <div>
               <h1 className="font-bold text-xl text-gray-900">Gabon Insight</h1>
@@ -109,7 +211,7 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
-        
+
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navigation.map((item: any) => {
             const isActive = pathname === item.href;
@@ -120,7 +222,7 @@ export default function AdminLayout({
                 className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                   isActive
                     ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
-                    : item.badge 
+                    : item.badge
                       ? 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 hover:from-purple-100 hover:to-indigo-100 border border-purple-200'
                       : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:shadow-sm'
                 }`}
@@ -141,18 +243,24 @@ export default function AdminLayout({
             );
           })}
         </nav>
-        
+
         {/* User section */}
         <div className="p-6 border-t border-gray-100">
           <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-gray-50 to-orange-50 rounded-xl">
             <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+              <span className="text-white font-bold text-sm">{adminInitial}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">Administrateur</p>
-              <p className="text-xs text-gray-500">admin@gabon247.com</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">{adminName}</p>
+              <p className="text-xs text-gray-500 truncate">{adminEmail}</p>
             </div>
-            <ChevronDown className="w-4 h-4 text-gray-400" />
+            <button
+              onClick={() => { signOut(); router.push('/'); }}
+              className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+              title="Déconnexion"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -170,7 +278,7 @@ export default function AdminLayout({
                 >
                   <Menu className="w-6 h-6" />
                 </button>
-                
+
                 <div className="hidden md:flex items-center space-x-4">
                   <div className="relative">
                     <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -185,14 +293,14 @@ export default function AdminLayout({
 
               <div className="flex items-center space-x-4">
                 <NotificationBell />
-                
+
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-sm">A</span>
+                    <span className="text-white font-bold text-sm">{adminInitial}</span>
                   </div>
                   <div className="hidden md:block">
-                    <p className="text-sm font-semibold text-gray-900">Admin</p>
-                    <p className="text-xs text-gray-500">En ligne</p>
+                    <p className="text-sm font-semibold text-gray-900">{adminName}</p>
+                    <p className="text-xs text-gray-500">Administrateur</p>
                   </div>
                 </div>
               </div>
