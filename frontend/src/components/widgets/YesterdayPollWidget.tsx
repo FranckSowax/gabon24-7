@@ -65,21 +65,35 @@ export default function YesterdayPollWidget({ className = '' }: YesterdayPollWid
     }
   }
 
-  // Charger les statistiques d'un sondage spécifique
+  // Charger les statistiques d'un sondage spécifique depuis poll_votes
   const loadPollStats = async (pollId: string) => {
     try {
-      const { data: stats, error: statsError } = await supabase
-        .from('poll_stats')
-        .select('*')
+      const { data: votes, error: votesError } = await supabase
+        .from('poll_votes')
+        .select('response')
         .eq('poll_id', pollId)
-        .order('vote_count', { ascending: false })
-      
-      if (statsError) {
-        console.error('Erreur lors du chargement des stats:', statsError)
+
+      if (votesError) {
+        console.error('Erreur lors du chargement des votes:', votesError)
         return
       }
-      
-      setPollStats(stats || [])
+
+      // Calculer les stats depuis les votes bruts
+      const voteCounts: Record<string, number> = {}
+      const totalVotes = (votes || []).length
+      for (const vote of (votes || [])) {
+        voteCounts[vote.response] = (voteCounts[vote.response] || 0) + 1
+      }
+
+      const computed: PollStats[] = Object.entries(voteCounts)
+        .map(([response_value, vote_count]) => ({
+          response_value,
+          vote_count,
+          percentage: totalVotes > 0 ? (vote_count / totalVotes) * 100 : 0
+        }))
+        .sort((a, b) => b.vote_count - a.vote_count)
+
+      setPollStats(computed)
     } catch (error) {
       console.error('Erreur:', error)
     }

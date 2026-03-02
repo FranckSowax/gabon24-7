@@ -437,7 +437,7 @@ router.get('/latest-public', async (req, res) => {
       .select('*')
       .is('user_id', null)
       .eq('summary_type', 'daily')
-      .eq('status', 'completed')
+      .in('status', ['completed', 'text_only'])
       .eq('language', language)
       .order('created_at', { ascending: false })
       .limit(1)

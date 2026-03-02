@@ -91,16 +91,31 @@ router.get('/stats', async (req, res) => {
 
     console.log(`📊 Récupération des stats pour la question: ${questionId}`);
 
-    const { data: stats, error } = await supabase
-      .from('poll_responses')
-      .select('response_value')
+    const { data: votes, error } = await supabase
+      .from('poll_votes')
+      .select('response')
       .eq('question_id', questionId);
 
     if (error) throw error;
 
+    // Calculer les statistiques (comptage + pourcentage par réponse)
+    const voteCounts = {};
+    const totalVotes = (votes || []).length;
+    for (const vote of (votes || [])) {
+      const val = vote.response;
+      voteCounts[val] = (voteCounts[val] || 0) + 1;
+    }
+
+    const computedStats = Object.entries(voteCounts).map(([response_value, vote_count]) => ({
+      response_value,
+      vote_count,
+      percentage: totalVotes > 0 ? (vote_count / totalVotes) * 100 : 0
+    }));
+
     const response = {
       success: true,
-      stats: stats || []
+      stats: computedStats,
+      total_votes: totalVotes
     };
 
     // Mettre en cache Redis - 5 minutes
@@ -163,7 +178,24 @@ router.post('/vote', async (req, res) => {
       console.log('🗑️ Cache stats invalidé après vote');
     }
 
-    res.json({ success: true, vote: data[0] });
+    // Recalculer les stats après le vote
+    const { data: allVotes } = await supabase
+      .from('poll_votes')
+      .select('response')
+      .eq('question_id', questionId);
+
+    const voteCounts = {};
+    const totalVotes = (allVotes || []).length;
+    for (const v of (allVotes || [])) {
+      voteCounts[v.response] = (voteCounts[v.response] || 0) + 1;
+    }
+    const stats = Object.entries(voteCounts).map(([response_value, vote_count]) => ({
+      response_value,
+      vote_count,
+      percentage: totalVotes > 0 ? (vote_count / totalVotes) * 100 : 0
+    }));
+
+    res.json({ success: true, vote: data[0], stats });
   } catch (error) {
     console.error('❌ Erreur enregistrement vote:', error);
     res.json({ success: false, error: error.message });

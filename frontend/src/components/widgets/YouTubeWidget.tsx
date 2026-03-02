@@ -26,7 +26,7 @@ export default function YouTubeWidget({ className = '' }: YouTubeWidgetProps) {
   const intervalRef = useRef<number | null>(null)
   const debug = true // Activé temporairement pour debug
 
-  const RSS_URL = 'https://rss.app/feeds/8Zm0ezBRaaD2NiOF.xml'
+  const RSS_URL = 'https://rss.app/feeds/JMQQ0e08D1OlELDI.xml'
 
   const parseRSSFeed = async () => {
     try {
@@ -268,7 +268,7 @@ export default function YouTubeWidget({ className = '' }: YouTubeWidgetProps) {
         </h4>
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-500">
-            Gabon Télévision
+            Gabon 24
           </span>
           <span className="text-xs text-gray-500">
             {formatDate(latestVideo.publishedAt)}
