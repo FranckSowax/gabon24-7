@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Clock, Bell, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Clock, Bell, ArrowRight, CheckCircle, AlertTriangle, Search, BarChart3, ExternalLink } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
@@ -27,6 +27,9 @@ function VeilleDemoContent() {
   const [isExpired, setIsExpired] = useState(false)
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 })
+  const [keywords, setKeywords] = useState<string[]>([])
+  const [matchCount, setMatchCount] = useState(0)
+  const [hasAccount, setHasAccount] = useState(false)
 
   useEffect(() => {
     if (!whatsapp) {
@@ -40,6 +43,9 @@ function VeilleDemoContent() {
         if (data.success && data.found) {
           setTrialEnd(data.trial.trialEnd)
           setIsExpired(data.trial.isExpired)
+          setKeywords(data.trial.keywords || [])
+          setMatchCount(data.trial.matchCount || 0)
+          setHasAccount(data.trial.hasAccount || false)
         }
       })
       .catch(() => {})
@@ -70,6 +76,24 @@ function VeilleDemoContent() {
 
     return () => clearInterval(interval)
   }, [trialEnd, isExpired])
+
+  // Refresh match count every 2 minutes
+  useEffect(() => {
+    if (!whatsapp || isExpired) return
+
+    const interval = setInterval(() => {
+      fetch(`${API_URL}/api/veille/demo/status?whatsapp=${encodeURIComponent(whatsapp)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.found) {
+            setMatchCount(data.trial.matchCount || 0)
+          }
+        })
+        .catch(() => {})
+    }, 120000)
+
+    return () => clearInterval(interval)
+  }, [whatsapp, isExpired])
 
   if (loading) {
     return (
@@ -106,10 +130,15 @@ function VeilleDemoContent() {
         <div className="text-center max-w-md">
           <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Demo terminee</h1>
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-500 mb-4">
             Votre periode d&apos;essai de 24h est ecoulee. Abonnez-vous pour continuer
             a recevoir vos alertes sur WhatsApp.
           </p>
+          {matchCount > 0 && (
+            <p className="text-sm text-gray-400 mb-8">
+              {matchCount} article{matchCount > 1 ? 's' : ''} detecte{matchCount > 1 ? 's' : ''} pendant votre demo.
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/veille-alertes/subscribe?plan=particulier"
@@ -140,7 +169,7 @@ function VeilleDemoContent() {
         </Link>
 
         {/* Status Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-8">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
@@ -175,15 +204,63 @@ function VeilleDemoContent() {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="text-sm text-gray-500">
-            Une alerte demo &quot;Actualites Gabon&quot; a ete creee automatiquement.
-            Vous recevrez des carrousels WhatsApp chaque heure entre 7h et 22h.
+        {/* Keywords & Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {/* Keywords */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="w-4 h-4 text-orange-500" />
+              <h3 className="text-sm font-semibold text-gray-900">Vos mots-cles</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {keywords.length > 0 ? keywords.map((kw, i) => (
+                <span key={i} className="px-3 py-1 bg-orange-50 text-orange-700 text-sm rounded-full font-medium">
+                  {kw}
+                </span>
+              )) : (
+                <span className="text-sm text-gray-400 italic">Non disponible</span>
+              )}
+            </div>
+          </div>
+
+          {/* Match count */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-blue-500" />
+              <h3 className="text-sm font-semibold text-gray-900">Articles detectes</h3>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-gray-900">{matchCount}</span>
+              <span className="text-sm text-gray-400">article{matchCount !== 1 ? 's' : ''}</span>
+            </div>
+            {matchCount > 0 && (
+              <p className="text-xs text-green-600 mt-1">Envoyes sur WhatsApp</p>
+            )}
           </div>
         </div>
 
+        {/* Dashboard link (only for users with accounts) */}
+        {hasAccount && (
+          <Link
+            href="/veille"
+            className="flex items-center justify-between bg-white rounded-2xl border border-gray-200 p-5 mb-6 hover:border-orange-300 hover:shadow-sm transition-all group"
+          >
+            <div>
+              <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                Tableau de bord Veille
+              </h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Voir vos alertes, articles detectes et statistiques
+              </p>
+            </div>
+            <ExternalLink className="w-5 h-5 text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0" />
+          </Link>
+        )}
+
         {/* What's happening */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Bell className="w-5 h-5 text-orange-500" />
             Ce qui se passe

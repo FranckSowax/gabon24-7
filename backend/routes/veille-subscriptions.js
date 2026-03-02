@@ -354,6 +354,28 @@ router.get('/demo/status', async (req, res) => {
     const now = new Date();
     const isExpired = trial.is_expired || now > new Date(trial.trial_end);
 
+    // Recuperer les keywords de l'alerte demo associee
+    let keywords = [];
+    let matchCount = 0;
+    if (trial.user_id) {
+      const { data: alert } = await supabase
+        .from('user_alerts')
+        .select('id, keywords')
+        .eq('user_id', trial.user_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (alert) {
+        keywords = alert.keywords || [];
+        const { count } = await supabase
+          .from('alert_matches')
+          .select('*', { count: 'exact', head: true })
+          .eq('alert_id', alert.id);
+        matchCount = count || 0;
+      }
+    }
+
     res.json({
       success: true,
       found: true,
@@ -362,7 +384,10 @@ router.get('/demo/status', async (req, res) => {
         trialStart: trial.trial_start,
         trialEnd: trial.trial_end,
         isExpired: isExpired,
-        convertedToSubscription: trial.converted_to_subscription
+        convertedToSubscription: trial.converted_to_subscription,
+        keywords,
+        matchCount,
+        hasAccount: trial.user_id !== null
       }
     });
 
