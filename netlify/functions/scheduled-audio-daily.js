@@ -26,7 +26,8 @@ async function generatePublicDailySummary() {
   console.log('🎙️ Génération du résumé audio PUBLIC quotidien...')
 
   try {
-    // Récupérer les articles des dernières 24h
+    // Récupérer les 10 articles les plus récents des dernières 24h
+    // Limité à 10 pour rester sous la limite TTS de 2000 tokens
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: articles, error: artErr } = await supabase
       .from('articles')
@@ -34,7 +35,7 @@ async function generatePublicDailySummary() {
       .eq('is_published', true)
       .gte('published_at', since)
       .order('published_at', { ascending: false })
-      .limit(50)
+      .limit(10)
 
     if (artErr) throw artErr
     if (!articles || articles.length === 0) {
@@ -65,9 +66,9 @@ async function generatePublicDailySummary() {
     script += `Voici les principales informations du jour:\n\n`
 
     articles.forEach((article, i) => {
-      script += `${i + 1}. ${article.title}\n`
+      script += `${i + 1}. ${article.title}.\n`
       if (article.summary) {
-        script += `${article.summary.substring(0, 200)}...\n\n`
+        script += `${article.summary.substring(0, 120)}\n\n`
       }
     })
 
@@ -123,11 +124,16 @@ async function generatePublicDailySummary() {
         }
       }
     } else {
-      console.warn('⚠️ OPENAI_API_KEY manquant - sauvegarde texte uniquement')
+      console.error('❌ OPENAI_API_KEY manquant - impossible de générer l\'audio')
+      return { success: false, error: 'OPENAI_API_KEY manquant' }
     }
 
-    // Insérer dans audio_summaries avec user_id = NULL (public)
-    // Sauvegarde même sans audio (texte seul) pour que le résumé soit disponible
+    // Ne sauvegarder que si l'audio a été généré avec succès
+    if (!audioUrl) {
+      console.error('❌ Aucun audio généré, pas de sauvegarde en DB')
+      return { success: false, error: 'TTS échoué, aucun audio produit' }
+    }
+
     const { data: summary, error: insertErr } = await supabase
       .from('audio_summaries')
       .insert({
@@ -138,10 +144,10 @@ async function generatePublicDailySummary() {
         text_summary: script,
         audio_url: audioUrl,
         audio_duration_seconds: duration,
-        status: audioUrl ? 'completed' : 'text_only',
+        status: 'completed',
         language: 'fr',
         time_slot: timeSlot,
-        voice_used: audioUrl ? 'alloy' : null
+        voice_used: 'alloy'
       })
       .select()
       .single()
@@ -151,8 +157,8 @@ async function generatePublicDailySummary() {
       throw insertErr
     }
 
-    console.log(`✅ Résumé PUBLIC créé: ${summary.id} (${audioUrl ? 'avec audio' : 'texte seul'})`)
-    return { success: true, summaryId: summary.id, audioUrl, textOnly: !audioUrl }
+    console.log(`✅ Résumé PUBLIC créé: ${summary.id} avec audio`)
+    return { success: true, summaryId: summary.id, audioUrl }
 
   } catch (error) {
     console.error('❌ Erreur génération résumé public:', error)
