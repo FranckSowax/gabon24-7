@@ -59,6 +59,20 @@ function AttenteContent() {
           setStatus(data.payment.status)
 
           if (data.payment.status === 'completed') {
+            // Sécurité: déclencher retry-credits au cas où les crédits n'ont pas été ajoutés
+            try {
+              const { data: sessionRetry } = await supabase.auth.getSession()
+              const retryToken = sessionRetry?.session?.access_token
+              if (retryToken) {
+                await fetch(`${API_URL}/api/payments/retry-credits/${reference}`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${retryToken}` },
+                })
+              }
+            } catch (retryErr) {
+              console.warn('Retry crédits secondaire:', retryErr)
+            }
+
             setIsChecking(false)
             setTimeout(() => {
               router.push(`/paiement/succes?reference=${reference}`)

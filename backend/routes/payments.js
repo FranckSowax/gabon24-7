@@ -277,6 +277,45 @@ router.post('/reconcile', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/payments/retry-credits/:reference
+ * Relance le traitement des crédits pour un paiement completed mais non crédité
+ */
+router.post('/retry-credits/:reference', requireAuth, async (req, res) => {
+  try {
+    const { reference } = req.params;
+    const userId = req.user.id;
+
+    const { data: payment, error } = await ebillingService.supabase
+      .from('ebilling_payments')
+      .select('*')
+      .eq('reference', reference)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !payment) {
+      return res.status(404).json({ success: false, error: 'Paiement non trouvé' });
+    }
+
+    if (payment.status !== 'completed') {
+      return res.json({ success: false, error: `Paiement non complété (status: ${payment.status})` });
+    }
+
+    if (payment.credits_granted === true) {
+      return res.json({ success: true, message: 'Crédits déjà accordés', already_granted: true });
+    }
+
+    console.log(`🔄 Retry crédits manuel pour ${reference} par user ${userId}`);
+    await ebillingService.processCompletedPayment(payment);
+
+    res.json({ success: true, message: 'Crédits traités avec succès' });
+
+  } catch (error) {
+    console.error('❌ Erreur retry crédits:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // WEBHOOKS E-BILLING
 // ============================================

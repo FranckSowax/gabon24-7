@@ -550,6 +550,11 @@ class EBillingPaymentService {
       if (error || !payment) return { success: false, error: 'Paiement non trouvé' };
 
       if (['completed', 'failed', 'cancelled'].includes(payment.status)) {
+        // Si completed mais crédits pas encore accordés, relancer le traitement
+        if (payment.status === 'completed' && payment.credits_granted !== true) {
+          console.log(`🔄 Paiement ${reference} complété mais credits_granted=false, relance traitement...`);
+          await this.processCompletedPayment(payment);
+        }
         return {
           success: true,
           payment: {
@@ -649,6 +654,11 @@ class EBillingPaymentService {
         return { success: true, message: 'Paiement non trouvé mais callback enregistré' };
       }
       if (payment.status === 'completed') {
+        // Même si déjà completed, relancer si crédits pas accordés
+        if (payment.credits_granted !== true) {
+          console.log(`🔄 Callback: paiement ${payment.reference} déjà completed mais credits_granted=false, relance...`);
+          await this.processCompletedPayment(payment);
+        }
         return { success: true, message: 'Paiement déjà traité' };
       }
 

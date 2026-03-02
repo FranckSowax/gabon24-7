@@ -136,6 +136,18 @@ function PaiementContent() {
 
         if (data.success && data.payment) {
           if (data.payment.status === 'completed') {
+            // Sécurité: déclencher retry-credits au cas où les crédits n'ont pas été ajoutés
+            try {
+              if (token) {
+                await fetch(`${API_URL}/api/payments/retry-credits/${paymentReference}`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${token}` },
+                })
+              }
+            } catch (retryErr) {
+              console.warn('Retry crédits secondaire:', retryErr)
+            }
+
             setModalStatus('completed')
             setTimeout(() => {
               setShowWaitingModal(false)
