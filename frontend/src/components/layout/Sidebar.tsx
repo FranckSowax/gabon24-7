@@ -381,14 +381,14 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               Outils
             </h3>
             <div className="space-y-2">
-              <span
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-400 rounded-lg cursor-not-allowed opacity-50"
-                title="Bientôt disponible"
+              <a
+                href="/veille-alertes"
+                onClick={(e) => { e.preventDefault(); window.location.href = '/veille-alertes'; }}
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors group"
               >
                 <span>🔔</span>
                 <span className="flex-1">Veille & Alertes</span>
-                <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">Bientôt</span>
-              </span>
+              </a>
               <a
                 href="/archives-generales"
                 onClick={(e) => handleToolClick(e, '/archives-generales')}
