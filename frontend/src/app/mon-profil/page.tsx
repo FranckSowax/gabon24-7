@@ -139,6 +139,11 @@ export default function MonProfilPage() {
       loadUserProfile()
       loadCreditPackages()
     }
+
+    // Rafraîchir quand les crédits sont mis à jour (après paiement)
+    const handleCreditsUpdated = () => { if (user) loadUserProfile() }
+    window.addEventListener('credits-updated', handleCreditsUpdated)
+    return () => window.removeEventListener('credits-updated', handleCreditsUpdated)
   }, [user])
 
   // Auto-reconcile pending payments when user visits credits or history tab
@@ -186,9 +191,18 @@ export default function MonProfilPage() {
         .eq('id', user.id)
         .single()
 
+      // Récupérer le vrai solde depuis user_credits (source de vérité)
+      const { data: creditData } = await supabase
+        .from('user_credits')
+        .select('balance, bonus_balance')
+        .eq('user_id', user.id)
+        .single()
+
+      const realBalance = (creditData?.balance || 0) + (creditData?.bonus_balance || 0)
+
       if (data) {
-        setProfile(data)
-        setEditForm(data)
+        setProfile({ ...data, credits_balance: realBalance })
+        setEditForm({ ...data, credits_balance: realBalance })
       } else {
         const defaultProfile = {
           id: user.id,
@@ -197,7 +211,7 @@ export default function MonProfilPage() {
           phone_number: (user.user_metadata as any)?.phone_number || '',
           avatar_url: user.user_metadata?.avatar_url || '',
           bio: '',
-          credits_balance: 0
+          credits_balance: realBalance
         }
         setProfile(defaultProfile)
         setEditForm(defaultProfile)

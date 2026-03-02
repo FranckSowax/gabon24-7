@@ -71,7 +71,15 @@ export default function UserProfileWidget() {
     }
 
     load()
-    return () => { cancelled = true }
+
+    // Écouter l'événement credits-updated pour rafraîchir après un paiement
+    const handleCreditsUpdated = () => { load() }
+    window.addEventListener('credits-updated', handleCreditsUpdated)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('credits-updated', handleCreditsUpdated)
+    }
   }, [isClient, authUser?.id])
 
   // Fermer le dropdown quand on clique à l'extérieur

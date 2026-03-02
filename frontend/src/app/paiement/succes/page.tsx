@@ -43,6 +43,9 @@ function SuccesContent() {
       refreshSubscription()
     }
 
+    // Notifier tous les composants que les crédits ont changé
+    window.dispatchEvent(new Event('credits-updated'))
+
     // Animation de confettis (chargé dynamiquement)
     let interval: NodeJS.Timeout
     import('canvas-confetti').then(({ default: confetti }) => {

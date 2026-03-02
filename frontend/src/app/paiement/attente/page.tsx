@@ -73,6 +73,9 @@ function AttenteContent() {
               console.warn('Retry crédits secondaire:', retryErr)
             }
 
+            // Notifier tous les composants que les crédits ont changé
+            window.dispatchEvent(new Event('credits-updated'))
+
             setIsChecking(false)
             setTimeout(() => {
               router.push(`/paiement/succes?reference=${reference}`)
