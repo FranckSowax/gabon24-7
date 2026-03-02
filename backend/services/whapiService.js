@@ -25,14 +25,15 @@ async function sendWhatsAppMessage(phoneNumber, message) {
   try {
     console.log(`📱 Envoi WhatsApp vers ${phoneNumber}...`);
     
-    // Nettoyer le numéro (enlever espaces, tirets, etc.)
-    const cleanNumber = phoneNumber.replace(/[\s\-()]/g, '');
-    
-    // Vérifier format international (+XXX)
-    if (!cleanNumber.startsWith('+')) {
-      throw new Error('Le numéro doit être au format international (+XXX)');
+    // Nettoyer le numéro (enlever espaces, tirets, +)
+    // Whapi attend le format international SANS le + (ex: 24177123456)
+    const cleanNumber = phoneNumber.replace(/[\s\-()+"]/g, '');
+
+    // Vérifier format international (7 à 15 chiffres)
+    if (!/^[1-9]\d{6,14}$/.test(cleanNumber)) {
+      throw new Error('Le numéro doit être au format international (ex: 24177123456)');
     }
-    
+
     const response = await axios.post(
       `${WHAPI_BASE_URL}/messages/text`,
       {
@@ -580,7 +581,8 @@ async function sendAlertCarousel(phoneNumber, alertName, articles, frontendUrl) 
   if (!WHAPI_TOKEN) throw new Error('WHAPI_TOKEN manquant');
   if (!articles || articles.length === 0) throw new Error('Aucun article fourni');
 
-  const cleanNumber = phoneNumber.replace(/[\s\-()]/g, '');
+  // Whapi attend le format sans + (ex: 24177123456)
+  const cleanNumber = phoneNumber.replace(/[\s\-()+"]/g, '');
 
   // Filtrer les articles avec images (obligatoire pour carrousel)
   const withImages = articles.filter(a => a.image_urls && a.image_urls.length > 0).slice(0, 5);
