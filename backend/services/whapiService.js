@@ -301,7 +301,7 @@ async function sendChannelPost(channelId, article, frontendUrl) {
   // Ligne auteur
   const authorLine = author ? `\n✍🏾 ${author}` : '';
 
-  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n\n👉🏾 *Vous voyez une opportunité ? Allez plus loin !*\nCliquez ci-dessous pour obtenir une analyse IA complète : business plan, budget estimé et stratégie de lancement.\n\n🚀 *Creer un projet Business a partir de cet article* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
+  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n🚀 *Créer un projet Business à partir de cet article* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_`;
 
   if (imageUrl) {
     // Envoi avec image en header
