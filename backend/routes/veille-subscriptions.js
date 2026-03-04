@@ -89,7 +89,7 @@ router.get('/limits', requireAuth, async (req, res) => {
 router.post('/subscribe', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { planSlug, whatsappNumber, duration = 1 } = req.body;
+    const { planSlug, whatsappNumber, duration = 1, keywords } = req.body;
 
     if (!planSlug || !whatsappNumber) {
       return res.status(400).json({
@@ -97,6 +97,15 @@ router.post('/subscribe', requireAuth, async (req, res) => {
         error: 'planSlug et whatsappNumber sont requis'
       });
     }
+
+    // Valider les mots-cles (2-3 requis)
+    if (!keywords || !Array.isArray(keywords) || keywords.length < 2 || keywords.length > 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez fournir 2 ou 3 mots-cles pour votre veille'
+      });
+    }
+    const cleanKeywords = keywords.map(k => String(k).trim().toLowerCase()).filter(k => k.length >= 2).slice(0, 3);
 
     if (!['particulier', 'entreprise'].includes(planSlug)) {
       return res.status(400).json({
@@ -155,12 +164,19 @@ router.post('/subscribe', requireAuth, async (req, res) => {
       return res.status(400).json(result);
     }
 
-    // Mettre a jour le paiement avec les infos veille
+    // Mettre a jour le paiement avec les infos veille + keywords
+    const { data: paymentRow } = await supabase
+      .from('ebilling_payments')
+      .select('metadata')
+      .eq('reference', reference)
+      .single();
+
     await supabase
       .from('ebilling_payments')
       .update({
         veille_plan_slug: planSlug,
-        veille_whatsapp_number: cleanNumber
+        veille_whatsapp_number: cleanNumber,
+        metadata: { ...(paymentRow?.metadata || {}), veille_keywords: cleanKeywords }
       })
       .eq('reference', reference);
 

@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Shield, Check, Loader2 } from 'lucide-react'
+import { ArrowLeft, Shield, Check, Loader2, X, Plus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/auth'
 
@@ -40,6 +40,8 @@ function VeilleSubscribeContent() {
   const [plans, setPlans] = useState<VeillePlan[]>([])
   const [selectedPlan, setSelectedPlan] = useState(planSlug)
   const [whatsappNumber, setWhatsappNumber] = useState('')
+  const [keywords, setKeywords] = useState<string[]>([])
+  const [keywordInput, setKeywordInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [paymentRef, setPaymentRef] = useState('')
@@ -64,6 +66,19 @@ function VeilleSubscribeContent() {
 
   const currentPlan = plans.find(p => p.slug === selectedPlan) || plans[0]
 
+  const addKeyword = () => {
+    const kw = keywordInput.trim().toLowerCase()
+    if (!kw || kw.length < 2) return
+    if (keywords.length >= 3) return
+    if (keywords.includes(kw)) return
+    setKeywords([...keywords, kw])
+    setKeywordInput('')
+  }
+
+  const removeKeyword = (index: number) => {
+    setKeywords(keywords.filter((_, i) => i !== index))
+  }
+
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -76,6 +91,11 @@ function VeilleSubscribeContent() {
     const cleanNumber = whatsappNumber.replace(/[\s\-()]/g, '')
     if (!/^\+[1-9]\d{6,14}$/.test(cleanNumber)) {
       setError('Format invalide. Utilisez le format international: +241...')
+      return
+    }
+
+    if (keywords.length < 2) {
+      setError('Veuillez ajouter au moins 2 mots-cles pour votre veille')
       return
     }
 
@@ -97,7 +117,8 @@ function VeilleSubscribeContent() {
         },
         body: JSON.stringify({
           planSlug: selectedPlan,
-          whatsappNumber: cleanNumber
+          whatsappNumber: cleanNumber,
+          keywords
         })
       })
 
@@ -171,8 +192,11 @@ function VeilleSubscribeContent() {
             <Check className="w-8 h-8 text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Abonnement active !</h1>
-          <p className="text-gray-500 mb-4">
-            Votre abonnement Veille & Alertes est actif. Vous allez etre redirige vers votre tableau de bord.
+          <p className="text-gray-500 mb-2">
+            Votre veille WhatsApp est en place. Vous recevrez des alertes sur votre numero.
+          </p>
+          <p className="text-sm text-gray-400 mb-4">
+            Redirection vers votre tableau de bord...
           </p>
           <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
         </div>
@@ -253,6 +277,48 @@ function VeilleSubscribeContent() {
             <p className="text-xs text-gray-400 mt-1">
               Format international requis (ex: +24177123456)
             </p>
+          </div>
+
+          {/* Keywords */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mots-cles de veille * <span className="text-gray-400 font-normal">(2 a 3)</span>
+            </label>
+            <p className="text-xs text-gray-400 mb-2">
+              Recevez des alertes WhatsApp quand un article correspond a vos mots-cles.
+            </p>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={keywordInput}
+                onChange={e => setKeywordInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKeyword() } }}
+                placeholder="Ex: petrole, mines, budget..."
+                maxLength={30}
+                disabled={keywords.length >= 3}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={addKeyword}
+                disabled={keywords.length >= 3 || keywordInput.trim().length < 2}
+                className="px-3 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            {keywords.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {keywords.map((kw, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 text-sm rounded-full font-medium">
+                    {kw}
+                    <button type="button" onClick={() => removeKeyword(i)} className="hover:text-orange-900">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Summary */}

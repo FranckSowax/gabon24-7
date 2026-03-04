@@ -10,47 +10,133 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAdmin } = require('../middleware/auth');
 
-// GET /api/admin/stats - Statistiques principales du dashboard
+// GET /api/admin/stats - Statistiques completes du dashboard
 // 🔒 SÉCURISÉ: Authentification admin requise
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
-    // Total articles
-    const { count: totalArticles } = await supabaseService.supabase
-      .from('articles')
-      .select('*', { count: 'exact', head: true });
-    
-    // Articles aujourd'hui
-    const today = new Date().toISOString().split('T')[0];
-    const { count: todayArticles } = await supabaseService.supabase
-      .from('articles')
-      .select('*', { count: 'exact', head: true })
-      .gte('published_at', today);
-    
-    // Total utilisateurs
-    const { count: totalUsers } = await supabaseService.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-    
-    // Flux RSS actifs
-    const { count: activeFeeds } = await supabaseService.supabase
-      .from('rss_feeds')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
+    const supabase = supabaseService.supabase;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Lancer toutes les requetes en parallele
+    const [
+      articlesTotal,
+      articlesToday,
+      articlesWeek,
+      articlesMonth,
+      usersTotal,
+      usersThisWeek,
+      feedsTotal,
+      feedsActive,
+      feedsError,
+      viewsTotal,
+      viewsToday,
+      viewsUniqueToday,
+      campaignsData,
+      aiTransactions,
+      subscriptionsActive,
+      feedbacksCount,
+      veilleSubsCount
+    ] = await Promise.all([
+      // --- Articles ---
+      supabase.from('articles').select('*', { count: 'exact', head: true }),
+      supabase.from('articles').select('*', { count: 'exact', head: true }).gte('published_at', today),
+      supabase.from('articles').select('*', { count: 'exact', head: true }).gte('published_at', weekAgo),
+      supabase.from('articles').select('*', { count: 'exact', head: true }).gte('published_at', monthAgo),
+      // --- Users ---
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
+      // --- RSS Feeds ---
+      supabase.from('rss_feeds').select('*', { count: 'exact', head: true }),
+      supabase.from('rss_feeds').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('rss_feeds').select('*', { count: 'exact', head: true }).eq('status', 'error'),
+      // --- Article Views (page views) ---
+      supabase.from('article_views').select('*', { count: 'exact', head: true }),
+      supabase.from('article_views').select('*', { count: 'exact', head: true }).gte('viewed_at', today),
+      supabase.from('article_views').select('session_id', { count: 'exact', head: true }).gte('viewed_at', today),
+      // --- Campaigns (ads) ---
+      supabase.from('campaigns').select('views, clicks, impressions, budget, status'),
+      // --- AI / Credit Transactions ---
+      supabase.from('credit_transactions').select('amount, type, description, created_at').eq('type', 'consumption').gte('created_at', monthAgo),
+      // --- Active subscriptions (premium users) ---
+      supabase.from('veille_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      // --- Feedbacks ---
+      supabase.from('feedbacks').select('*', { count: 'exact', head: true }),
+      // --- Veille subscriptions ---
+      supabase.from('veille_subscriptions').select('*', { count: 'exact', head: true })
+    ]);
+
+    // Calculer stats campagnes (ads)
+    const campaigns = campaignsData.data || [];
+    const adImpressions = campaigns.reduce((sum, c) => sum + (c.impressions || 0), 0);
+    const adClicks = campaigns.reduce((sum, c) => sum + (c.clicks || 0), 0);
+    const adViews = campaigns.reduce((sum, c) => sum + (c.views || 0), 0);
+    const adRevenue = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+    const adCtr = adViews > 0 ? parseFloat(((adClicks / adViews) * 100).toFixed(2)) : 0;
+
+    // Calculer stats AI par fonction
+    const aiTx = aiTransactions.data || [];
+    const aiByFunction = {};
+    aiTx.forEach(tx => {
+      const desc = tx.description || 'Autre';
+      const key = desc.includes('résumé') || desc.includes('resume') ? 'Resume IA'
+        : desc.includes('quiz') || desc.includes('jeu') ? 'Quiz Jeu'
+        : desc.includes('audio') || desc.includes('tts') ? 'Audio TTS'
+        : desc.includes('analyse') || desc.includes('opportunit') ? 'Analyse'
+        : 'Autre';
+      aiByFunction[key] = (aiByFunction[key] || 0) + Math.abs(tx.amount || 1);
+    });
+    const aiTotal = Object.values(aiByFunction).reduce((a, b) => a + b, 0);
+    // Convertir en pourcentages
+    const aiByFunctionPct = {};
+    Object.entries(aiByFunction).forEach(([k, v]) => {
+      aiByFunctionPct[k] = aiTotal > 0 ? Math.round((v / aiTotal) * 100) : 0;
+    });
 
     res.json({
-      totalArticles: totalArticles || 0,
-      todayArticles: todayArticles || 0,
-      totalUsers: totalUsers || 0,
-      activeFeeds: activeFeeds || 0
+      // Articles
+      totalArticles: articlesTotal.count || 0,
+      todayArticles: articlesToday.count || 0,
+      weekArticles: articlesWeek.count || 0,
+      monthArticles: articlesMonth.count || 0,
+      // Users
+      totalUsers: usersTotal.count || 0,
+      newUsersThisWeek: usersThisWeek.count || 0,
+      premiumUsers: subscriptionsActive.count || 0,
+      // RSS
+      totalFeeds: feedsTotal.count || 0,
+      activeFeeds: feedsActive.count || 0,
+      errorFeeds: feedsError.count || 0,
+      // Page views
+      totalPageViews: viewsTotal.count || 0,
+      todayPageViews: viewsToday.count || 0,
+      uniqueVisitorsToday: viewsUniqueToday.count || 0,
+      // Ads / Campaigns
+      adImpressions,
+      adClicks,
+      adCtr,
+      adRevenue,
+      activeCampaigns: campaigns.filter(c => c.status === 'active').length,
+      // AI usage
+      aiTotalRequests: aiTx.length,
+      aiByFunction: aiByFunctionPct,
+      // Feedbacks
+      totalFeedbacks: feedbacksCount.count || 0,
+      // Veille
+      totalVeilleSubscriptions: veilleSubsCount.count || 0,
     });
   } catch (error) {
     console.error('❌ Erreur stats:', error);
-    // Retourner des valeurs par défaut en cas d'erreur
     res.json({
-      totalArticles: 0,
-      todayArticles: 0,
-      totalUsers: 0,
-      activeFeeds: 0
+      totalArticles: 0, todayArticles: 0, weekArticles: 0, monthArticles: 0,
+      totalUsers: 0, newUsersThisWeek: 0, premiumUsers: 0,
+      totalFeeds: 0, activeFeeds: 0, errorFeeds: 0,
+      totalPageViews: 0, todayPageViews: 0, uniqueVisitorsToday: 0,
+      adImpressions: 0, adClicks: 0, adCtr: 0, adRevenue: 0, activeCampaigns: 0,
+      aiTotalRequests: 0, aiByFunction: {},
+      totalFeedbacks: 0, totalVeilleSubscriptions: 0
     });
   }
 });
@@ -70,12 +156,18 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
+    // Count active feeds from rss_feeds table
+    const { count: activeFeedsCount } = await supabaseService.supabase
+      .from('rss_feeds')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+
     res.json({
       success: true,
       stats: stats || {
         totalArticles: totalArticles || 0,
         totalUsers: totalUsers || 0,
-        activeFeeds: 14
+        activeFeeds: activeFeedsCount || 0
       }
     });
   } catch (error) {

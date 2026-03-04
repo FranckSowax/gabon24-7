@@ -66,12 +66,9 @@ export default function PreviewArticlePage() {
         is_trending: validate, // Mettre en tendance si validé
       }
 
-      // Si validation, ajouter date publication et vues initiales
+      // Si validation, ajouter date publication
       if (validate) {
         updates.published_at = new Date().toISOString()
-        updates.view_count = 5000 + Math.floor(Math.random() * 3000) // Boost initial
-        updates.share_count = 50 + Math.floor(Math.random() * 50)
-        updates.whatsapp_share_count = 30 + Math.floor(Math.random() * 30)
       }
 
       const { error } = await supabase

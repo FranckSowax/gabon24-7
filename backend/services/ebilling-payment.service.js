@@ -944,6 +944,7 @@ class EBillingPaymentService {
   async processVeilleSubscriptionPayment(payment) {
     const planSlug = payment.veille_plan_slug || payment.plan_slug;
     const whatsappNumber = payment.veille_whatsapp_number;
+    const veilleKeywords = payment.metadata?.veille_keywords || [];
 
     if (!planSlug) { console.error('❌ Plan veille slug manquant'); return; }
     if (!whatsappNumber) { console.error('❌ Numéro WhatsApp veille manquant'); return; }
@@ -958,12 +959,46 @@ class EBillingPaymentService {
         { ebilling_reference: payment.bill_id, payment_amount: payment.amount }
       );
 
-      // Envoyer confirmation WhatsApp
+      // Creer une alerte avec les mots-cles du user (comme la demo)
+      if (veilleKeywords.length >= 2) {
+        try {
+          const { data: existingAlert } = await this.supabase
+            .from('user_alerts')
+            .select('id')
+            .eq('user_id', payment.user_id)
+            .eq('is_active', true)
+            .limit(1)
+            .single();
+
+          if (!existingAlert) {
+            await this.supabase
+              .from('user_alerts')
+              .insert({
+                user_id: payment.user_id,
+                name: `Veille ${subscription.veille_plans?.name || planSlug} (${veilleKeywords.join(', ')})`,
+                keywords: veilleKeywords,
+                is_active: true,
+                whatsapp_enabled: true,
+                whatsapp_numbers: [whatsappNumber]
+              });
+            console.log(`✅ Alerte veille créée avec mots-clés: ${veilleKeywords.join(', ')}`);
+          } else {
+            console.log(`ℹ️ Alerte existante trouvée, pas de création de nouvelle alerte`);
+          }
+        } catch (alertErr) {
+          console.warn('Erreur création alerte veille:', alertErr.message);
+        }
+      }
+
+      // Envoyer confirmation WhatsApp avec details de la veille
       try {
         const whapiService = require('./whapiService');
         const planName = subscription.veille_plans?.name || planSlug;
         const endDate = new Date(subscription.current_period_end).toLocaleDateString('fr-FR');
-        const message = `Votre abonnement Veille & Alertes "${planName}" est actif !\n\nValable jusqu'au ${endDate}.\n\nConfigurez vos alertes sur :\nhttps://gaboninsight.com/veille\n\nMerci pour votre confiance !`;
+        const keywordsLine = veilleKeywords.length > 0
+          ? `\n\nVos mots-cles de veille :\n${veilleKeywords.map(k => `  • ${k}`).join('\n')}\n\nVous recevrez des alertes WhatsApp des qu'un article correspondant sera detecte.`
+          : '\n\nConfigurez vos alertes sur :\nhttps://gaboninsight.com/veille';
+        const message = `*Gabon Insight - Veille & Alertes*\n\nVotre abonnement "${planName}" est actif !\nValable jusqu'au ${endDate}.${keywordsLine}\n\nTableau de bord : https://gaboninsight.com/veille\n\nMerci pour votre confiance !`;
         await whapiService.sendWhatsAppMessage(whatsappNumber, message);
       } catch (whatsappErr) {
         console.warn('WhatsApp confirmation veille échoué:', whatsappErr.message);

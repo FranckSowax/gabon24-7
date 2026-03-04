@@ -36,6 +36,7 @@ export default function RoutesAdminPage() {
   })
 
   useEffect(() => {
+    loadRoutes()
   }, [])
 
   const loadRoutes = async () => {

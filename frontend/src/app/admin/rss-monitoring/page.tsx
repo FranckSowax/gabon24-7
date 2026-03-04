@@ -36,10 +36,20 @@ export default function RSSMonitoringPage() {
   const fetchMonitoringData = async () => {
     try {
       // Récupérer les statistiques de synchronisation
-      const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rss/monitor`)
+      const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rss/feeds`)
       if (statsResponse.ok) {
-        const stats = await statsResponse.json()
-        setFeedsStatus(stats.feeds || [])
+        const data = await statsResponse.json()
+        // Map rss_feeds table data to FeedStatus format
+        const feeds = (data.feeds || []).map((f: any) => ({
+          id: f.id,
+          name: f.name || f.title || 'Sans nom',
+          url: f.url || f.feed_url || '',
+          last_sync: f.last_fetched_at || f.updated_at || f.created_at,
+          status: f.is_active === false ? 'inactive' : f.error_count > 0 ? 'error' : 'active',
+          articles_count: f.articles_count || 0,
+          error_message: f.last_error || undefined
+        }))
+        setFeedsStatus(feeds)
       }
 
       setLastUpdate(new Date())
@@ -54,28 +64,15 @@ export default function RSSMonitoringPage() {
     setSyncing(true)
     try {
       // Lancer une synchronisation complète par batch
-      let offset = 0
-      let totalNewArticles = 0
-      const allResults: any[] = []
-
-      while (true) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rss/sync-batch?offset=${offset}`)
-        if (!response.ok) break
-
-        const batch = await response.json()
-        totalNewArticles += batch.totalNewArticles || 0
-        allResults.push(...(batch.results || []))
-
-        if (!batch.batch?.hasMoreBatches) break
-        offset = batch.batch.nextOffset || offset + 2
-      }
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rss/process-all`, { method: 'POST' })
+      const data = await response.json()
 
       setSyncStats({
-        totalFeeds: allResults.length,
-        processed: allResults.length,
-        newArticles: totalNewArticles,
+        totalFeeds: feedsStatus.length,
+        processed: feedsStatus.length,
+        newArticles: 0,
         timestamp: new Date().toISOString(),
-        results: allResults
+        results: data.success ? [{ feedName: 'Tous les flux', newArticles: 0, status: 'success' as const }] : [{ feedName: 'Erreur', newArticles: 0, status: 'error' as const, error: data.error }]
       })
 
       // Rafraîchir les données

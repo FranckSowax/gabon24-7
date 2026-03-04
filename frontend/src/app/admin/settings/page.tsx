@@ -478,23 +478,23 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-600 mt-1">Vérifiez la configuration des clés API</p>
               </div>
               <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-500 mb-2">Les statuts sont vérifiés côté serveur (Railway). Consultez les variables d'environnement dans le dashboard Railway.</p>
                 {[
-                  { name: 'OPENAI_API_KEY', label: 'OpenAI', status: true },
-                  { name: 'GEMINI_API_KEY', label: 'Google Gemini', status: true },
-                  { name: 'REPLICATE_API_TOKEN', label: 'Replicate', status: true },
-                  { name: 'SUPABASE_URL', label: 'Supabase', status: true },
-                  { name: 'WHATSAPP_TOKEN', label: 'WhatsApp Business', status: false },
+                  { name: 'OPENAI_API_KEY', label: 'OpenAI' },
+                  { name: 'SUPABASE_URL', label: 'Supabase' },
+                  { name: 'WHAPI_TOKEN', label: 'WhatsApp (Whapi)' },
+                  { name: 'EBILLING_API_KEY', label: 'E-Billing' },
                 ].map((api) => (
                   <div key={api.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${api.status ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div className="w-3 h-3 rounded-full bg-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">{api.label}</p>
                         <code className="text-xs text-gray-500">{api.name}</code>
                       </div>
                     </div>
-                    <span className={`text-sm font-medium ${api.status ? 'text-green-600' : 'text-red-600'}`}>
-                      {api.status ? 'Configuré' : 'Non configuré'}
+                    <span className="text-sm font-medium text-gray-500">
+                      Voir Railway
                     </span>
                   </div>
                 ))}
@@ -513,35 +513,16 @@ export default function SettingsPage() {
               </div>
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
-                  onClick={() => {
-                    if (confirm('Vider le cache de l\'application ?')) {
-                      setMessage({ type: 'success', text: 'Cache vidé avec succès' })
-                    }
-                  }}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-                >
-                  <RefreshCw className="w-6 h-6 text-blue-500 mb-2" />
-                  <p className="font-medium text-gray-900">Vider le cache</p>
-                  <p className="text-sm text-gray-500">Supprime toutes les données en cache</p>
-                </button>
-                
-                <button
-                  onClick={() => {
-                    if (confirm('Recharger la configuration IA ?')) {
-                      setMessage({ type: 'success', text: 'Configuration IA rechargée' })
-                    }
-                  }}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-                >
-                  <Bot className="w-6 h-6 text-purple-500 mb-2" />
-                  <p className="font-medium text-gray-900">Recharger config IA</p>
-                  <p className="text-sm text-gray-500">Force le rechargement depuis la DB</p>
-                </button>
-                
-                <button
-                  onClick={() => {
-                    if (confirm('Synchroniser les flux RSS maintenant ?')) {
-                      setMessage({ type: 'success', text: 'Synchronisation RSS lancée' })
+                  onClick={async () => {
+                    if (!confirm('Synchroniser les flux RSS maintenant ?')) return
+                    setMessage({ type: 'success', text: 'Synchronisation RSS en cours...' })
+                    try {
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+                      const res = await fetch(`${API_URL}/api/rss/process-all`, { method: 'POST' })
+                      const data = await res.json()
+                      setMessage({ type: data.success ? 'success' : 'error', text: data.success ? 'Synchronisation RSS terminée avec succès' : `Erreur: ${data.error}` })
+                    } catch {
+                      setMessage({ type: 'error', text: 'Erreur de connexion au serveur' })
                     }
                   }}
                   className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
@@ -550,19 +531,38 @@ export default function SettingsPage() {
                   <p className="font-medium text-gray-900">Sync RSS</p>
                   <p className="text-sm text-gray-500">Synchronise tous les flux RSS</p>
                 </button>
-                
+
                 <button
-                  onClick={() => {
-                    if (confirm('Exporter les logs système ?')) {
-                      setMessage({ type: 'success', text: 'Export des logs en cours...' })
+                  onClick={async () => {
+                    if (!confirm('Forcer le traitement RSS immédiat ?')) return
+                    setMessage({ type: 'success', text: 'Traitement RSS en cours...' })
+                    try {
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+                      const res = await fetch(`${API_URL}/api/rss/process`, { method: 'POST' })
+                      const data = await res.json()
+                      setMessage({ type: data.success ? 'success' : 'error', text: data.success ? 'Traitement RSS terminé' : `Erreur: ${data.error}` })
+                    } catch {
+                      setMessage({ type: 'error', text: 'Erreur de connexion au serveur' })
                     }
                   }}
                   className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
                 >
+                  <Bot className="w-6 h-6 text-purple-500 mb-2" />
+                  <p className="font-medium text-gray-900">Traitement RSS agrégé</p>
+                  <p className="text-sm text-gray-500">Force le traitement du flux agrégé</p>
+                </button>
+
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-60 cursor-not-allowed text-left">
+                  <RefreshCw className="w-6 h-6 text-blue-500 mb-2" />
+                  <p className="font-medium text-gray-900">Vider le cache</p>
+                  <p className="text-sm text-gray-500">Non disponible (pas de Redis configuré)</p>
+                </div>
+
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 opacity-60 cursor-not-allowed text-left">
                   <Server className="w-6 h-6 text-orange-500 mb-2" />
                   <p className="font-medium text-gray-900">Exporter logs</p>
-                  <p className="text-sm text-gray-500">Télécharge les logs système</p>
-                </button>
+                  <p className="text-sm text-gray-500">Non disponible (consultez Railway)</p>
+                </div>
               </div>
             </div>
           )}

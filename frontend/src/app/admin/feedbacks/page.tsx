@@ -34,7 +34,16 @@ interface Feedback {
   } | null
 }
 
+import { supabase } from '@/lib/supabase'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  return headers
+}
 
 const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
   general: { label: 'Avis général', icon: MessageSquare, color: 'bg-blue-100 text-blue-600' },
@@ -58,7 +67,8 @@ export default function AdminFeedbacksPage() {
 
   const fetchFeedbacks = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/feedback`)
+      const headers = await getAuthHeaders()
+      const response = await fetch(`${API_URL}/api/feedback`, { headers })
       const data = await response.json()
       if (data.success) {
         setFeedbacks(data.feedbacks || [])
@@ -83,9 +93,10 @@ export default function AdminFeedbacksPage() {
   const updateStatus = async (id: string, newStatus: string) => {
     setUpdatingId(id)
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${API_URL}/api/feedback/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: newStatus })
       })
       const data = await response.json()

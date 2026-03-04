@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
-  FileText, Rss, Users, TrendingUp, Activity, RefreshCw,
-  BarChart3, ArrowUpRight, Calendar, Gamepad2, Trophy,
-  Eye, MousePointer, Cpu, Coins, MessageSquare, Vote,
-  Megaphone, FolderOpen, Zap, Clock, PieChart, LineChart,
-  Target, Award, Sparkles, Database
+  FileText, Rss, Users, RefreshCw,
+  BarChart3, Gamepad2, Trophy,
+  Eye, MousePointer, Cpu, Coins, Vote,
+  Megaphone, FolderOpen, Zap,
+  Target, Sparkles
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from '@/lib/axios'
@@ -107,22 +107,6 @@ const StatCard = ({
   )
 }
 
-// Composant MiniChart (simulation)
-const MiniChart = ({ data, color }: { data: number[], color: string }) => {
-  const max = Math.max(...data)
-  return (
-    <div className="flex items-end gap-1 h-12">
-      {data.map((val, i) => (
-        <div
-          key={i}
-          className={`w-2 rounded-t bg-${color}-500 transition-all`}
-          style={{ height: `${(val / max) * 100}%`, opacity: 0.5 + (i / data.length) * 0.5 }}
-        />
-      ))}
-    </div>
-  )
-}
-
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
@@ -147,68 +131,57 @@ export default function AdminDashboard() {
       const [
         statsRes,
         gameRes,
-        aiRes,
         pollsRes,
         projectsRes
       ] = await Promise.all([
         axios.get(`${API_URL}/api/admin/stats`, { headers }).catch(() => ({ data: {} })),
         axios.get(`${API_URL}/api/game/dashboard/stats`, { headers }).catch(() => ({ data: { stats: {} } })),
-        axios.get(`${API_URL}/api/ai/admin/status`, { headers }).catch(() => ({ data: { quota: {} } })),
         axios.get(`${API_URL}/api/polls/global-stats`).catch(() => ({ data: { stats: {} } })),
         axios.get(`${API_URL}/api/saved-projects/global-stats`).catch(() => ({ data: { stats: {} } }))
       ])
 
-      // Log pour debug
-      console.log('📊 Stats Response:', statsRes.data)
+      const s = statsRes.data || {}
 
-      const totalArticles = statsRes.data?.totalArticles || 0
-      const totalUsers = statsRes.data?.totalUsers || 0
-
-      // Construire l'objet analytics avec les données réelles
+      // Construire l'objet analytics avec les données réelles du backend
       setAnalytics({
         articles: {
-          total: totalArticles,
-          today: statsRes.data?.todayArticles || 0,
-          thisWeek: Math.floor(totalArticles * 0.02),
-          thisMonth: Math.floor(totalArticles * 0.08)
+          total: s.totalArticles || 0,
+          today: s.todayArticles || 0,
+          thisWeek: s.weekArticles || 0,
+          thisMonth: s.monthArticles || 0
         },
         rssFeeds: {
-          total: 51,
-          active: statsRes.data?.activeFeeds || 0,
-          errors: 3
+          total: s.totalFeeds || 0,
+          active: s.activeFeeds || 0,
+          errors: s.errorFeeds || 0
         },
         users: {
-          total: totalUsers,
-          active: Math.floor(totalUsers * 0.7),
-          premium: Math.floor(totalUsers * 0.15),
-          newThisWeek: statsRes.data?.newUsersThisWeek || 0
+          total: s.totalUsers || 0,
+          active: s.totalUsers || 0,
+          premium: s.premiumUsers || 0,
+          newThisWeek: s.newUsersThisWeek || 0
         },
         aiUsage: {
-          totalRequests: aiRes.data?.quota?.requestsToday || 0,
-          tokensUsed: aiRes.data?.quota?.tokensUsed || 0,
-          costUSD: aiRes.data?.quota?.costToday || 0,
-          byFunction: {
-            'Résumé IA': 45,
-            'Quiz Jeu': 30,
-            'Audio TTS': 15,
-            'Analyse': 10
-          }
+          totalRequests: s.aiTotalRequests || 0,
+          tokensUsed: 0,
+          costUSD: 0,
+          byFunction: s.aiByFunction || {}
         },
         pageViews: {
-          total: 15420,
-          today: 342,
-          uniqueVisitors: 189
+          total: s.totalPageViews || 0,
+          today: s.todayPageViews || 0,
+          uniqueVisitors: s.uniqueVisitorsToday || 0
         },
         clicks: {
-          total: 2840,
-          adClicks: 156,
-          linkClicks: 2684
+          total: s.adClicks || 0,
+          adClicks: s.adClicks || 0,
+          linkClicks: 0
         },
         ads: {
-          impressions: 45000,
-          clicks: 156,
-          ctr: 0.35,
-          revenue: 125000
+          impressions: s.adImpressions || 0,
+          clicks: s.adClicks || 0,
+          ctr: s.adCtr || 0,
+          revenue: s.adRevenue || 0
         },
         polls: {
           total: pollsRes.data?.stats?.totalPolls || 0,
@@ -295,23 +268,20 @@ export default function AdminDashboard() {
           label="Articles"
           value={analytics?.articles.total.toLocaleString() || 0}
           subValue={`+${analytics?.articles.today} aujourd'hui`}
-          trend={{ value: 12, positive: true }}
           color="orange"
         />
         <StatCard
           icon={Users}
           label="Utilisateurs"
           value={analytics?.users.total || 0}
-          subValue={`${analytics?.users.active} actifs`}
-          trend={{ value: 8, positive: true }}
+          subValue={`+${analytics?.users.newThisWeek} cette semaine`}
           color="blue"
         />
         <StatCard
           icon={Eye}
           label="Pages vues"
           value={analytics?.pageViews.total.toLocaleString() || 0}
-          subValue={`${analytics?.pageViews.uniqueVisitors} visiteurs uniques`}
-          trend={{ value: 15, positive: true }}
+          subValue={`${analytics?.pageViews.today} aujourd'hui`}
           color="green"
         />
         <StatCard
@@ -421,30 +391,34 @@ export default function AdminDashboard() {
               Usage IA
             </h3>
             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-              Gemini + OpenAI
+              OpenAI GPT-4.1
             </span>
           </div>
           <div className="space-y-3">
-            {Object.entries(analytics?.aiUsage.byFunction || {}).map(([func, count]) => (
-              <div key={func} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">{func}</span>
-                    <span className="font-medium">{count}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                      style={{ width: `${count}%` }}
-                    />
+            {Object.keys(analytics?.aiUsage.byFunction || {}).length > 0 ? (
+              Object.entries(analytics?.aiUsage.byFunction || {}).map(([func, count]) => (
+                <div key={func} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">{func}</span>
+                      <span className="font-medium">{String(count)}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                        style={{ width: `${count}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">Aucune utilisation IA ce mois</p>
+            )}
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
-            <span className="text-gray-500">Coût total</span>
-            <span className="font-bold text-purple-600">${analytics?.aiUsage.costUSD.toFixed(2)}</span>
+            <span className="text-gray-500">Requetes totales</span>
+            <span className="font-bold text-purple-600">{analytics?.aiUsage.totalRequests || 0}</span>
           </div>
         </div>
       </div>

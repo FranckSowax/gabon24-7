@@ -24,14 +24,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import AlertModal from '@/components/admin/AlertModal';
 
-// 🚧 MODE DÉVELOPPEMENT - UTILISATEUR FACTICE
-const DEV_MODE = true;
-const DEV_USER = {
-  id: '9bb0138d-a587-4b46-a541-a309048bf97a',
-  email: 'admin@gabon-insight.com',
-  name: 'Admin Dev'
-};
-
 interface UserAlert {
   id: string;
   name: string;
@@ -84,8 +76,7 @@ interface ClientData {
 export default function AdminVeillePage() {
   const { user: authUser, loading: authLoading } = useAuth();
   
-  // 🚧 MODE DÉVELOPPEMENT - Utiliser utilisateur factice si pas authentifié
-  const user = DEV_MODE ? DEV_USER : authUser;
+  const user = authUser;
   const [clients, setClients] = useState<ClientData[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const [alerts, setAlerts] = useState<UserAlert[]>([]);
@@ -864,79 +855,7 @@ export default function AdminVeillePage() {
             </div>
           </div>
 
-          {/* Sidebar - Correspondances récentes */}
-          <div>
-            <div
-              
-              
-              className="bg-white rounded-xl shadow-lg border border-gray-100"
-            >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Eye size={20} />
-                  Correspondances Récentes
-                </h2>
-              </div>
-
-              <div className="p-6">
-                {recentMatches.length === 0 ? (
-                  <div className="text-center py-8">
-                    <TrendingUp className="mx-auto text-gray-400 mb-4" size={32} />
-                    <p className="text-gray-500 text-sm">
-                      Aucune correspondance récente
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentMatches.map((match) => (
-                      <div
-                        key={match.match_id}
-                        className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-gray-900 text-sm leading-tight">
-                            {match.article_title}
-                          </h4>
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 flex-shrink-0">
-                            {Math.round(match.confidence_score * 100)}%
-                          </span>
-                        </div>
-                        
-                        <p className="text-xs text-gray-600 mb-2">
-                          Alerte: {match.alert_name}
-                        </p>
-
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {match.matched_keywords.slice(0, 3).map((keyword, idx) => (
-                            <span 
-                              key={idx}
-                              className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs"
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
-                            {new Date(match.created_at).toLocaleDateString('fr-FR')}
-                          </span>
-                          <a
-                            href={match.article_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            Voir l'article
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Duplicate sidebar removed */}
         </div>
       )}
 
