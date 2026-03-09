@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const geminiService = require('../services/gemini-service');
 const supabaseService = require('../supabase-config');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 /**
  * POST /api/skill-test/generate
@@ -214,6 +215,16 @@ GÉNÈRE MAINTENANT LE TEST COMPLET (10 questions) en JSON UNIQUEMENT.`;
         console.warn('⚠️ Erreur notification:', notifError.message);
       }
     }
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'skill-test-generate',
+      description: `Test compétence: ${proposal.titre} (${difficulty})`,
+      creditsUsed: 30,
+      model: 'gemini-3-pro',
+      metadata: { testId: savedTest?.id, difficulty, sector: proposal.secteur, questionCount }
+    });
 
     res.json({
       success: true,
@@ -514,6 +525,16 @@ GÉNÈRE MAINTENANT UN NOUVEAU TEST COMPLET (10 questions) en JSON UNIQUEMENT.`;
     if (saveError) throw saveError;
 
     console.log('✅ Test regénéré avec ID:', savedTest.id);
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'skill-test-regenerate',
+      description: `Regénération test: ${proposal.titre}`,
+      creditsUsed: 30,
+      model: 'gemini-3-pro',
+      metadata: { testId: savedTest.id, originalTestId: id, sector: proposal.secteur }
+    });
 
     res.json({
       success: true,

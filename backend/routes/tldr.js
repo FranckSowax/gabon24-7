@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const geminiService = require('../services/gemini-service');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 // POST /api/tldr - Générer un résumé TL;DR (GRATUIT)
 router.post('/', async (req, res) => {
@@ -61,6 +62,16 @@ FORMAT DE RÉPONSE (JSON strict):
     }
 
     console.log(`✅ [TL;DR] Résumé généré avec succès: ${tldrData.points.length} points`);
+
+    // Track AI usage (gratuit mais on trace l'utilisation)
+    await trackAIUsage({
+      userId: req.body?.userId || null,
+      serviceName: 'tldr',
+      description: `TL;DR: ${title.substring(0, 50)}`,
+      creditsUsed: 0,
+      model: 'gemini-3-pro',
+      metadata: { articleTitle: title, url: url || null }
+    });
 
     res.json({
       success: true,

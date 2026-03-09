@@ -8,6 +8,7 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { checkOpenAIError, checkUsageThreshold } = require('../utils/quota-monitor');
 const aiValidation = require('../middleware/ai-validation');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 // GPT-4.1-mini utilisé directement (voir getOpenAIClient() ci-dessous)
 
 // Helpers
@@ -362,11 +363,21 @@ CONTRAINTE DE SORTIE (JSON UNIQUEMENT, SANS TEXTE HORS JSON):
     const quotaManager = require('../services/openai-quota-manager');
     const quotaRecord = quotaManager.recordSuccessfulRequest('analyze-opportunity');
     const deductionResult = await aiValidation.deductCredits(userId, 'analyze-opportunity');
-    
+
     if (deductionResult.success) {
       console.log(`💰 ${deductionResult.deducted} crédits déduits - Solde restant: ${deductionResult.newBalance}`);
       console.log(`📊 Budget OpenAI: ${quotaRecord.percentageUsed}% utilisé (coût: $${quotaRecord.cost.toFixed(4)})`);
     }
+
+    // Track AI usage (direct insert as backup for RPC-based deduction)
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'analyze-opportunity',
+      description: `Analyse opportunité: ${articleTitle || 'N/A'}`,
+      creditsUsed: validation.requiredCredits || 0,
+      usage,
+      metadata: { analysisId: savedId, articleSource, articleUrl }
+    });
     
     // Sauvegarder dans le cache pour réutilisation future (avec nouveau nom de service)
     await analysisCache.saveToCache(
@@ -569,6 +580,16 @@ IMPORTANT: Reponds UNIQUEMENT avec le JSON demande.`;
 
     console.log('✅ Propositions générées:', parsed.propositions?.length || 0);
 
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'generate-proposals',
+      description: `Génération propositions - Secteur: ${secteur}`,
+      creditsUsed: 5,
+      usage,
+      metadata: { secteur, budget }
+    });
+
     res.json({
       success: true,
       ...parsed,
@@ -633,6 +654,16 @@ Format: JSON array avec structure {title, description, investment, profitability
     } catch (e) {
       console.warn('⚠️ Table opportunity_generations indisponible, retour sans persistence:', e.message);
     }
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'generate-by-budget',
+      description: `Génération idées par budget: ${budget} FCFA`,
+      creditsUsed: 0,
+      usage,
+      metadata: { budget, sector, interests }
+    });
 
     res.json({
       success: true,
@@ -713,6 +744,16 @@ router.post('/enhance', async (req, res) => {
         .eq('id', opportunityId);
     }
 
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'enhance-opportunity',
+      description: `Enrichissement opportunité: ${enhancementType}`,
+      creditsUsed: 0,
+      usage,
+      metadata: { enhancementType, opportunityId }
+    });
+
     res.json({
       success: true,
       enhancementType,
@@ -764,6 +805,16 @@ Format: JSON array {title, description, why_now, quick_win}
     } catch (e) {
       ideas = [{ title: 'Résultat', description: text }];
     }
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'business-ideas',
+      description: `Génération idées d'affaires (${count})`,
+      creditsUsed: 0,
+      usage,
+      metadata: { keywords, count }
+    });
 
     res.json({
       success: true,

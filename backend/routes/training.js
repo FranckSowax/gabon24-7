@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 // Service Gemini 3 Pro centralisé
 // Rapide et économique
@@ -192,6 +193,16 @@ router.post('/generate', async (req, res) => {
     };
 
     console.log('✅ Formation générée:', moduleCount, 'modules');
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'training-generate',
+      description: `Formation: ${baseTitle} (${moduleCount} modules)`,
+      creditsUsed: 150,
+      model: 'gemini-3-pro',
+      metadata: { moduleCount, articleId, projectId }
+    });
 
     // Persister dans Supabase
     let savedTrainingId = null;
@@ -502,6 +513,16 @@ Take a deep breath and work on this problem step-by-step.`;
     }
 
     console.log('✅ Module généré:', parsed.module_title);
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: req.body?.userId || null,
+      serviceName: 'training-generate-module',
+      description: `Module formation: ${module.competence}`,
+      creditsUsed: 20,
+      model: 'gemini-3-pro',
+      metadata: { trainingId: training_id, moduleId }
+    });
 
     // Clear le timeout
     clearTimeout(timeout);

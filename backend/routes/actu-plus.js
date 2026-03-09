@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 // Helper: Extraire les mots-clés importants (copié depuis related-articles.js)
 function extractKeywords(title, description, category) {
@@ -470,7 +471,15 @@ router.post('/', async (req, res) => {
 
     const referenceId = saved?.id;
 
-    // TODO: Consommer crédits via credit-manager Express
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'actu-plus',
+      description: `Actu++ ${service.label} (${articleIds.length} articles)`,
+      creditsUsed: requiredCredits,
+      usage,
+      metadata: { serviceType, articleCount: articleIds.length, usePerplexity }
+    });
 
     res.json({
       success: true,

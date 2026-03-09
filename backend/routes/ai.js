@@ -8,6 +8,9 @@ const { validateBody } = require('../middleware/validation');
 const supabaseService = require('../supabase-config');
 const { processAIRequest, deductCredits } = require('../middleware/ai-validation');
 const pricingService = require('../services/pricing-service');
+const { trackAIUsage } = require('../utils/track-ai-usage');
+
+const DOCUMENT_CREDIT_COST = 3;
 
 // ==================== SCHÉMAS DE VALIDATION ====================
 
@@ -247,7 +250,17 @@ router.post('/regenerate-document', requireAuth, validateBody(regenerateDocSchem
     const { prompt } = req.body;
 
     console.log('🔄 Demande de régénération de document...');
+    const userId = req.user?.id || req.body.userId;
     const content = await aiService.regenerateDocument(prompt);
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'regenerate-document',
+      description: 'Régénération document IA',
+      creditsUsed: 0,
+      metadata: { promptLength: prompt.length }
+    });
 
     res.json({
       success: true,
@@ -405,17 +418,14 @@ Génère le document complet en format Markdown avec une structure claire.`;
         });
     }
 
-    // 9. Enregistrer la transaction de crédits
-    await supabaseService.supabase
-      .from('credit_transactions')
-      .insert({
-        user_id: userId,
-        amount: -DOCUMENT_CREDIT_COST,
-        type: 'usage',
-        description: `Génération document: ${documentType}`,
-        reference_id: projectId,
-        reference_type: 'document_generation'
-      });
+    // 9. Track AI usage
+    await trackAIUsage({
+      userId,
+      serviceName: 'generate-document',
+      description: `Génération document: ${documentType}`,
+      creditsUsed: DOCUMENT_CREDIT_COST,
+      metadata: { projectId, documentType, documentName }
+    });
 
     console.log(`✅ Document "${documentName}" généré avec succès (${DOCUMENT_CREDIT_COST} crédits)`);
 

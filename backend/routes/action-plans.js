@@ -4,6 +4,7 @@ const OpenAI = require('openai');
 const supabaseService = require('../supabase-config');
 const aiConfigService = require('../services/ai-config-service');
 const geminiService = require('../services/gemini-service');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 // Instanciation conditionnelle de OpenAI GPT-4.1-mini
 let openai = null;
@@ -168,6 +169,16 @@ Réponds UNIQUEMENT avec un JSON valide au format suivant (pas de markdown, pas 
     if (itemsError) throw itemsError;
 
     console.log('✅ Plan d\'action créé avec succès:', plan.id);
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'generate-action-plan',
+      description: `Plan d'action: ${proposal.titre || 'N/A'}`,
+      creditsUsed: 0,
+      model: provider === 'gemini' ? 'gemini-3-pro' : 'gpt-4.1-mini',
+      metadata: { planId: plan.id, provider, sector: proposal.secteur, budget: proposal.budget }
+    });
 
     res.json({
       success: true,

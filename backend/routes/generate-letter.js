@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
+const { trackAIUsage } = require('../utils/track-ai-usage');
 
 // Utiliser le client Supabase partagé avec toutes les configurations
 const supabase = supabaseService.supabase;
@@ -185,6 +186,16 @@ Structure toujours le courrier avec : en-tête (coordonnées), objet, corps du t
     } else {
       console.log('✅ Action IA créée dans l\'historique');
     }
+
+    // Track AI usage
+    await trackAIUsage({
+      userId: userId || null,
+      serviceName: 'generate-letter',
+      description: `Courrier: ${letterSubject || recipientName}`,
+      creditsUsed: 0,
+      model: 'gemini-3-pro',
+      metadata: { letterId: savedLetter.id, projectId, recipientType, letterPurpose }
+    });
 
     console.log('💾 Courrier sauvegardé avec ID:', savedLetter.id);
 
