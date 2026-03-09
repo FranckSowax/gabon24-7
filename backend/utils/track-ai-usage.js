@@ -18,12 +18,29 @@ const supabaseService = require('../supabase-config');
  */
 async function trackAIUsage({ userId, serviceName, description, creditsUsed = 0, usage = {}, model = 'gpt-4.1-mini', metadata = {} }) {
   try {
+    // Fetch current balance for balance_after (required NOT NULL column)
+    let balanceAfter = 0;
+    let bonusBalanceAfter = 0;
+    if (userId) {
+      const { data: credits } = await supabaseService.supabase
+        .from('user_credits')
+        .select('credits, bonus_credits')
+        .eq('user_id', userId)
+        .single();
+      if (credits) {
+        balanceAfter = credits.credits || 0;
+        bonusBalanceAfter = credits.bonus_credits || 0;
+      }
+    }
+
     const { error } = await supabaseService.supabase
       .from('credit_transactions')
       .insert({
         user_id: userId || null,
         type: 'consumption',
         amount: -(creditsUsed || 0),
+        balance_after: balanceAfter,
+        bonus_balance_after: bonusBalanceAfter,
         description: description || `IA: ${serviceName}`,
         service_name: serviceName,
         status: 'completed',

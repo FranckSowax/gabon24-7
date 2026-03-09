@@ -343,6 +343,7 @@ CONTRAINTE DE SORTIE (JSON UNIQUEMENT, SANS TEXTE HORS JSON):
           article_url: articleUrl,
           opportunity_title: articleTitle,
           opportunity_description: articleSummary || (typeof text === 'string' ? text.slice(0, 280) : null),
+          category: 'opportunité',
           analysis_data: analysisData,
           status: 'done',
           enrichment_level: null,
