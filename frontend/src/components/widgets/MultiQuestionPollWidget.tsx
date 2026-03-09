@@ -104,27 +104,38 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
         // Charger les questions pour le premier sondage actif
         const activePoll = data.polls.find((poll: Poll) => poll.is_active === true)
         console.log('🔍 Sondage actif trouvé:', activePoll)
-        if (activePoll && activePoll.poll_type === 'series') {
-          console.log('⏳ Chargement des questions pour le sondage:', activePoll.id)
-          await loadPollQuestions(activePoll.id)
+        if (activePoll) {
+          let questionsLoaded = false
 
-          // Vérifier si l'utilisateur a déjà voté pour ce sondage - seulement si connecté
-          if (user) {
-            await checkExistingVotes(activePoll.id)
+          // Pour les séries, essayer de charger les poll_questions
+          if (activePoll.poll_type === 'series') {
+            console.log('⏳ Chargement des questions pour le sondage série:', activePoll.id)
+            await loadPollQuestions(activePoll.id)
+            // Vérifier si des questions ont été chargées (via le state mis à jour dans loadPollQuestions)
+            // On re-fetch pour vérifier car setState est async
+            const checkRes = await fetch(`${API_URL}/api/polls/questions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pollId: activePoll.id })
+            })
+            const checkData = await checkRes.json()
+            questionsLoaded = checkData.success && checkData.questions && checkData.questions.length > 0
           }
-        } else if (activePoll && (activePoll.poll_type === 'mcq' || activePoll.poll_type === 'yes_no' || activePoll.poll_type)) {
-          console.log(`✅ Sondage ${activePoll.poll_type} actif trouvé, création d'une question simple`)
-          // Créer une question simple pour le sondage (mcq ou yes_no)
-          const simpleQuestion: PollQuestion = {
-            id: activePoll.id,
-            poll_id: activePoll.id,
-            question_text: activePoll.question,
-            question_type: activePoll.poll_type === 'yes_no' ? 'yes_no' : 'mcq',
-            options: activePoll.options || [],
-            question_order: 1
+
+          // Fallback: si pas de poll_questions (ou pas series), utiliser les options directes
+          if (!questionsLoaded) {
+            console.log(`✅ Sondage ${activePoll.poll_type} - utilisation des options directes`)
+            const simpleQuestion: PollQuestion = {
+              id: activePoll.id,
+              poll_id: activePoll.id,
+              question_text: activePoll.question,
+              question_type: (activePoll.poll_type === 'yes_no') ? 'yes_no' : 'mcq',
+              options: activePoll.options || [],
+              question_order: 1
+            }
+            setPollQuestions([simpleQuestion])
+            await loadQuestionStats(activePoll.id)
           }
-          setPollQuestions([simpleQuestion])
-          await loadQuestionStats(activePoll.id)
 
           if (user) {
             await checkExistingVotes(activePoll.id)
