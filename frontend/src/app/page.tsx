@@ -115,6 +115,9 @@ export default function HomePage() {
   const [showMobileAIButton, setShowMobileAIButton] = useState(false)
   const [showVideoModal, setShowVideoModal] = useState(false)
   const widgetsAreaRef = useRef<HTMLDivElement | null>(null)
+  const widgetCarouselRef = useRef<HTMLDivElement | null>(null)
+  const [activeWidgetIndex, setActiveWidgetIndex] = useState(0)
+  const WIDGET_COUNT = 5
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
   // État et fonction pour le menu mobile (comme page veille)
@@ -156,6 +159,21 @@ export default function HomePage() {
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleScroll)
     }
+  }, [])
+
+  // Détection du widget actif dans le carousel mobile
+  useEffect(() => {
+    const el = widgetCarouselRef.current
+    if (!el) return
+    const onScroll = () => {
+      const scrollLeft = el.scrollLeft
+      const itemWidth = el.firstElementChild?.firstElementChild?.clientWidth || 300
+      const gap = 12 // gap-3 = 0.75rem = 12px
+      const index = Math.round(scrollLeft / (itemWidth + gap))
+      setActiveWidgetIndex(Math.min(index, WIDGET_COUNT - 1))
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
   }, [])
 
   // Auto-refresh effect
@@ -1212,7 +1230,7 @@ export default function HomePage() {
               {/* Zone Widgets (météo, sondages, trafic, pub, youtube) - utilisée pour contrôle du scroll */}
               <div ref={widgetsAreaRef} className="w-full">
                 {/* Mobile: galerie horizontale swipeable */}
-                <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                <div ref={widgetCarouselRef} className="lg:hidden mb-2 -mx-4 px-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                   <div className="flex gap-3 w-max pb-2">
                     <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
                       <LazyMount className="w-full h-full"><WeatherWidget /></LazyMount>
@@ -1234,6 +1252,19 @@ export default function HomePage() {
                       <LazyMount className="w-full h-full"><FootballScores className="h-[500px]" /></LazyMount>
                     </div>
                   </div>
+                </div>
+                {/* Traits de défilement mobile */}
+                <div className="lg:hidden flex justify-center gap-1.5 mb-4">
+                  {Array.from({ length: WIDGET_COUNT }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-[3px] rounded-full transition-all duration-300 ${
+                        i === activeWidgetIndex
+                          ? 'w-6 bg-orange-500'
+                          : 'w-3 bg-gray-300'
+                      }`}
+                    />
+                  ))}
                 </div>
 
                 {/* Desktop: grille 3 colonnes (inchangée) */}
