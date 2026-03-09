@@ -101,30 +101,34 @@ export default function MultiQuestionPollWidget({ articles = [], className = '' 
       if (data.polls && data.polls.length > 0) {
         setPolls(data.polls)
         
-        // Charger les questions pour le premier sondage actif (series ou mcq)
+        // Charger les questions pour le premier sondage actif
         const activePoll = data.polls.find((poll: Poll) => poll.is_active === true)
         console.log('🔍 Sondage actif trouvé:', activePoll)
         if (activePoll && activePoll.poll_type === 'series') {
           console.log('⏳ Chargement des questions pour le sondage:', activePoll.id)
           await loadPollQuestions(activePoll.id)
-          
+
           // Vérifier si l'utilisateur a déjà voté pour ce sondage - seulement si connecté
           if (user) {
             await checkExistingVotes(activePoll.id)
           }
-        } else if (activePoll && activePoll.poll_type === 'mcq') {
-          console.log('✅ Sondage MCQ actif trouvé, création d\'une question simple')
-          // Créer une question simple pour le sondage MCQ
+        } else if (activePoll && (activePoll.poll_type === 'mcq' || activePoll.poll_type === 'yes_no' || activePoll.poll_type)) {
+          console.log(`✅ Sondage ${activePoll.poll_type} actif trouvé, création d'une question simple`)
+          // Créer une question simple pour le sondage (mcq ou yes_no)
           const simpleQuestion: PollQuestion = {
             id: activePoll.id,
             poll_id: activePoll.id,
             question_text: activePoll.question,
-            question_type: 'mcq',
-            options: activePoll.options,
+            question_type: activePoll.poll_type === 'yes_no' ? 'yes_no' : 'mcq',
+            options: activePoll.options || [],
             question_order: 1
           }
           setPollQuestions([simpleQuestion])
           await loadQuestionStats(activePoll.id)
+
+          if (user) {
+            await checkExistingVotes(activePoll.id)
+          }
         } else {
           console.log('❌ Aucun sondage actif trouvé')
         }

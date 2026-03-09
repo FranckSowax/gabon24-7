@@ -5,9 +5,11 @@ const { callGPT5NanoWithFallback, calculateCost } = require('./utils/replicate-g
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const replicateToken = process.env.REPLICATE_API_TOKEN || '';
 
 console.log('🔍 Daily Poll - Environment check:');
 console.log('OPENAI_API_KEY:', openaiApiKey ? 'SET' : 'MISSING');
+console.log('REPLICATE_API_TOKEN:', replicateToken ? 'SET' : 'MISSING');
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variables d\'environnement Supabase manquantes');

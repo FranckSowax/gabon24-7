@@ -27,8 +27,9 @@ router.get('/', async (req, res) => {
       .from('polls')
       .select('id, question, poll_type, is_active, created_at, expires_at, options')
       .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(5);
 
     if (error) throw error;
 
@@ -38,9 +39,9 @@ router.get('/', async (req, res) => {
       count: polls?.length || 0
     };
 
-    // Mettre en cache Redis - 10 minutes
+    // Mettre en cache Redis - 2 minutes (pour refléter les changements plus vite)
     if (redisCache.isAvailable()) {
-      await redisCache.set(cacheKey, response, 600);
+      await redisCache.set(cacheKey, response, 120);
     }
 
     res.json(response);
