@@ -287,22 +287,15 @@ async function sendChannelPost(channelId, article, frontendUrl) {
   const summary = article.summary_ai || article.summary || 'Pas de résumé disponible.';
   const source = article.source || null;
   const author = article.author || null;
-  const analyzeUrl = `${frontendUrl}/business/analyzer?aid=${article.id}&source=whatsapp`;
+  const articleUrl = article.url || `${frontendUrl}/article/${article.id}`;
   const imageUrl = (article.image_urls && article.image_urls.length > 0) ? article.image_urls[0] : null;
-
-  // Générer les opportunités business via IA
-  const opportunities = await generateOpportunities(title, summary);
-  let opportunitiesBlock = '';
-  if (opportunities) {
-    opportunitiesBlock = `\n\n💼 *Opportunité Gabon Insight :*\n\n• ${opportunities[0]}\n• ${opportunities[1]}\n• ${opportunities[2]}`;
-  }
 
   // Ligne source (média)
   const sourceLine = source ? `\n📡 _${source}_` : '';
   // Ligne auteur
   const authorLine = author ? `\n✍🏾 ${author}` : '';
 
-  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n🚀 *Créer un projet Business à partir de cet article* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_\nhttps://gaboninsight.com`;
+  const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}\n\n🔗 *Lire l'article complet :*\n${articleUrl}\n\n---\n_Gabon Insight — Votre source d'info_\nhttps://gaboninsight.com`;
 
   if (imageUrl) {
     // Envoi avec image en header
