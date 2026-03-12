@@ -1224,6 +1224,11 @@ export default function HomePage() {
           <main className="w-full py-4 sm:py-8">
             <div className="w-full px-4 sm:px-6 lg:px-2">
               
+              {/* H1 SEO — visible mais discret */}
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+                Actualités Gabon & Opportunités d&apos;Investissement
+              </h1>
+
               {/* Hero Slider Dynamique */}
               <HeroSlider />
 

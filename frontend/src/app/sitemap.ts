@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gabon-insight.netlify.app'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gaboninsight.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -64,6 +64,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/business/live-opportunities`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/business/creer-projet`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/business/analyzer`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
     },
   ]
 
