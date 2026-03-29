@@ -113,10 +113,24 @@ export default function ArchivesGeneralesPage() {
         params.set('category', filters.categoryFilter.trim())
       }
 
-      console.log('🔍 Filtres actifs:', {
+      // Filtres de date
+      if (filters.dateFilter && filters.dateFilter !== 'all' && filters.dateFilter !== 'custom') {
+        params.set('datePreset', filters.dateFilter)
+      }
+      if (filters.customDateFrom) {
+        params.set('dateFrom', filters.customDateFrom)
+      }
+      if (filters.customDateTo) {
+        params.set('dateTo', filters.customDateTo)
+      }
+
+      console.log('Filtres actifs:', {
         recherche: filters.searchKeyword || 'aucune',
         source: filters.sourceFilter || 'toutes',
-        catégorie: filters.categoryFilter || 'toutes',
+        categorie: filters.categoryFilter || 'toutes',
+        date: filters.dateFilter,
+        dateFrom: filters.customDateFrom || '-',
+        dateTo: filters.customDateTo || '-',
         page
       })
 

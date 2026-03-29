@@ -968,12 +968,34 @@ app.get('/api/articles/archives', async (req, res) => {
     const searchQuery = req.query.q ? String(req.query.q).trim() : '';
     const sourceFilter = req.query.source ? String(req.query.source) : '';
     const categoryFilter = req.query.category ? String(req.query.category) : '';
+    const dateFrom = req.query.dateFrom ? String(req.query.dateFrom) : '';
+    const dateTo = req.query.dateTo ? String(req.query.dateTo) : '';
+    const datePreset = req.query.datePreset ? String(req.query.datePreset) : '';
 
     console.log(`📅 Récupération articles Archives (> 7j) - Page ${page}...`);
     console.log(`⏰ Cutoff (7j): ${archiveCutoff.toISOString()}`);
     if (searchQuery) console.log(`🔍 Recherche: "${searchQuery}"`);
     if (sourceFilter) console.log(`📰 Source: "${sourceFilter}"`);
     if (categoryFilter) console.log(`🏷️ Catégorie: "${categoryFilter}"`);
+    if (dateFrom || dateTo) console.log(`📆 Dates: ${dateFrom || '...'} → ${dateTo || '...'}`);
+    if (datePreset) console.log(`📆 Preset: ${datePreset}`);
+
+    // Calculer dateFrom/dateTo depuis le preset si fourni
+    let effectiveDateFrom = dateFrom;
+    let effectiveDateTo = dateTo;
+    if (datePreset && datePreset !== 'all' && datePreset !== 'custom') {
+      const presetMap = {
+        'week': 7,
+        'month': 30,
+        '3months': 90,
+        '6months': 180,
+        'year': 365
+      };
+      const days = presetMap[datePreset];
+      if (days) {
+        effectiveDateFrom = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+      }
+    }
 
     // Construire la requête de base
     let countQuery = supabase
@@ -1003,6 +1025,18 @@ app.get('/api/articles/archives', async (req, res) => {
     if (sourceFilter) {
       countQuery = countQuery.ilike('source', `%${sourceFilter}%`);
       dataQuery = dataQuery.ilike('source', `%${sourceFilter}%`);
+    }
+
+    // Filtres de date
+    if (effectiveDateFrom) {
+      countQuery = countQuery.gte('published_at', effectiveDateFrom);
+      dataQuery = dataQuery.gte('published_at', effectiveDateFrom);
+    }
+    if (effectiveDateTo) {
+      // Ajouter 23:59:59 si c'est une date sans heure (YYYY-MM-DD)
+      const toDate = effectiveDateTo.length === 10 ? effectiveDateTo + 'T23:59:59.999Z' : effectiveDateTo;
+      countQuery = countQuery.lte('published_at', toDate);
+      dataQuery = dataQuery.lte('published_at', toDate);
     }
 
     // Compter le total d'articles (avec filtres)

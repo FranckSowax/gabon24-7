@@ -11,6 +11,10 @@ interface SearchWidgetProps {
   onDateRangeChange?: (range: string) => void
   selectedSortBy?: string
   onSortByChange?: (sort: string) => void
+  onDateFromChange?: (date: string) => void
+  onDateToChange?: (date: string) => void
+  dateFrom?: string
+  dateTo?: string
 }
 
 interface Suggestion {
@@ -23,7 +27,7 @@ interface Suggestion {
 const sources = [
   // Médias d'information générale
   '7 Jours Info',
-  'G9 Infos', 
+  'G9 Infos',
   'Actualités - Le Confidentiel du Gabon',
   'Actualités Gabon : Toutes les actualités du Gabon et d\'ailleurs',
   'Accueil - Gabon Actu',
@@ -58,7 +62,7 @@ const sources = [
   'Relais Infos Gabon',
   'Sport 241',
   'Vox Populi 241',
-  
+
   // Sources gouvernementales
   'Agence Equateur',
   'MINISTÈRE DE L\'AGRICULTURE, DE L\'ELEVAGE ET DU DÉVELOPPEMENT RURAL Page',
@@ -78,8 +82,7 @@ const sources = [
   'Ministère du Pétrole et du Gaz Page',
   'MINISTÈRE DU TOURISME DURABLE ET DE L\'ARTISANAT Page',
   'Ministère du Travail, du Plein Emploi et du Dialogue Social Page',
-  'Présidence de la République Gabonaise',
-  'Accueil | Lunion.ga | Actualités Gabon'
+  'Présidence de la République Gabonaise'
 ]
 
 // 🤖 CATÉGORIES IA - Synchronisées avec article-ai-enrichment.js
@@ -113,17 +116,21 @@ interface SavedFilters {
   savedAt: number
 }
 
-export default function SearchWidget({ 
-  onSearch, 
-  searchQuery, 
-  selectedSource, 
-  onSourceChange, 
-  selectedCategory, 
+export default function SearchWidget({
+  onSearch,
+  searchQuery,
+  selectedSource,
+  onSourceChange,
+  selectedCategory,
   onCategoryChange,
   selectedDateRange = 'all',
   onDateRangeChange = () => {},
   selectedSortBy = 'recent',
-  onSortByChange = () => {}
+  onSortByChange = () => {},
+  onDateFromChange,
+  onDateToChange,
+  dateFrom = '',
+  dateTo = ''
 }: SearchWidgetProps) {
   const [query, setQuery] = useState(searchQuery || '')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -131,6 +138,7 @@ export default function SearchWidget({
   const [showFilters, setShowFilters] = useState(false)
   const [trending, setTrending] = useState<string[]>([])
   const [filtersLoaded, setFiltersLoaded] = useState(false)
+  const [showAllCategories, setShowAllCategories] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const filtersRef = useRef<HTMLDivElement>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
@@ -160,7 +168,7 @@ export default function SearchWidget({
   // 💾 Sauvegarder les filtres quand ils changent
   useEffect(() => {
     if (!filtersLoaded) return // Ne pas sauvegarder avant le chargement initial
-    
+
     try {
       const filters: SavedFilters = {
         source: selectedSource,
@@ -192,9 +200,9 @@ export default function SearchWidget({
         setShowSuggestions(false)
       }
       // Pour les filtres, ignorer les clics sur le bouton et sur le dropdown lui-même
-      if (filtersRef.current && 
+      if (filtersRef.current &&
           !filtersRef.current.contains(event.target as Node) &&
-          filterButtonRef.current && 
+          filterButtonRef.current &&
           !filterButtonRef.current.contains(event.target as Node)) {
         setShowFilters(false)
       }
@@ -295,8 +303,13 @@ export default function SearchWidget({
     selectedSource !== 'all',
     selectedCategory !== 'all',
     selectedDateRange !== 'all',
-    selectedSortBy !== 'recent'
+    selectedSortBy !== 'recent',
+    dateFrom !== '',
+    dateTo !== ''
   ].filter(Boolean).length
+
+  // Catégories visibles (6 par défaut, toutes si déplié)
+  const visibleCategories = showAllCategories ? categories : categories.slice(0, 8)
 
   return (
     <div className="w-full">
@@ -311,14 +324,14 @@ export default function SearchWidget({
           </div>
           <input
             type="text"
-            placeholder="Recherche intelligente avec IA..."
+            placeholder="Rechercher des articles, mots-cles..."
             className="w-full pl-9 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-200 focus:border-orange-400 focus:bg-white text-sm placeholder-gray-400 transition-all duration-200"
             value={query}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             onFocus={() => query.length >= 2 && suggestions.length > 0 && setShowSuggestions(true)}
           />
-          
+
           {/* Suggestions auto-complétion */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto">
@@ -333,11 +346,11 @@ export default function SearchWidget({
               ))}
             </div>
           )}
-          
+
           {/* Recherches tendances (si pas de query) - Masqué sur mobile pour économiser l'espace */}
           {!query && trending.length > 0 && !showFilters && (
             <div className="hidden sm:block absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-40">
-              <div className="text-xs font-medium text-gray-500 mb-2">🔥 Tendances</div>
+              <div className="text-xs font-medium text-gray-500 mb-2">Tendances</div>
               <div className="flex flex-wrap gap-1.5">
                 {trending.slice(0, 4).map((keyword, idx) => (
                   <button
@@ -352,7 +365,7 @@ export default function SearchWidget({
             </div>
           )}
         </div>
-        
+
         {/* Bouton Filtres compact */}
         <button
           ref={filterButtonRef}
@@ -381,7 +394,7 @@ export default function SearchWidget({
       <div
         ref={filtersRef}
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          showFilters ? 'max-h-[600px] opacity-100 mt-3' : 'max-h-0 opacity-0'
+          showFilters ? 'max-h-[800px] opacity-100 mt-3' : 'max-h-0 opacity-0'
         }`}
       >
         <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 sm:p-4 space-y-3">
@@ -400,34 +413,36 @@ export default function SearchWidget({
                   onCategoryChange('all')
                   onDateRangeChange('all')
                   onSortByChange('recent')
+                  if (onDateFromChange) onDateFromChange('')
+                  if (onDateToChange) onDateToChange('')
                 }}
                 className="text-xs text-orange-600 hover:text-orange-700 font-medium"
               >
-                Réinitialiser
+                Reinitialiser
               </button>
             )}
           </div>
 
           {/* Grille de filtres responsive */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Filtre Source */}
+            {/* Filtre Source - TOUTES les sources */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Source</label>
-              <select 
+              <select
                 className="w-full px-2.5 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 text-sm bg-gray-50"
                 value={selectedSource}
                 onChange={(e) => handleSourceChange(e.target.value)}
               >
                 <option value="all">Toutes les sources</option>
-                {sources.slice(0, 15).map(source => (
-                  <option key={source} value={source}>{source.length > 30 ? source.substring(0, 30) + '...' : source}</option>
+                {sources.map(source => (
+                  <option key={source} value={source}>{source.length > 40 ? source.substring(0, 40) + '...' : source}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filtre Catégorie */}
+            {/* Filtre Catégorie - TOUTES les catégories */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Catégorie</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Categorie</label>
               <div className="flex flex-wrap gap-1">
                 <button
                   onClick={() => onCategoryChange('all')}
@@ -439,7 +454,7 @@ export default function SearchWidget({
                 >
                   Tout
                 </button>
-                {categories.slice(0, 6).map(category => (
+                {visibleCategories.map(category => (
                   <button
                     key={category}
                     onClick={() => onCategoryChange(category)}
@@ -452,6 +467,22 @@ export default function SearchWidget({
                     {category}
                   </button>
                 ))}
+                {!showAllCategories && categories.length > 8 && (
+                  <button
+                    onClick={() => setShowAllCategories(true)}
+                    className="px-2 py-1 rounded-md text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 transition-all"
+                  >
+                    +{categories.length - 8}
+                  </button>
+                )}
+                {showAllCategories && (
+                  <button
+                    onClick={() => setShowAllCategories(false)}
+                    className="px-2 py-1 rounded-md text-xs font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 transition-all"
+                  >
+                    Moins
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -460,7 +491,7 @@ export default function SearchWidget({
           <div className="grid grid-cols-2 gap-3">
             {/* Filtre Date */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Période</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Periode</label>
               <div className="flex flex-wrap gap-1">
                 {[
                   { value: 'all', label: 'Tout' },
@@ -470,9 +501,16 @@ export default function SearchWidget({
                 ].map(({ value, label }) => (
                   <button
                     key={value}
-                    onClick={() => onDateRangeChange(value)}
+                    onClick={() => {
+                      onDateRangeChange(value)
+                      // Reset custom dates when selecting a preset
+                      if (value !== 'all' && onDateFromChange && onDateToChange) {
+                        onDateFromChange('')
+                        onDateToChange('')
+                      }
+                    }}
                     className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
-                      selectedDateRange === value
+                      selectedDateRange === value && !dateFrom && !dateTo
                         ? 'bg-orange-500 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
@@ -488,9 +526,9 @@ export default function SearchWidget({
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Trier</label>
               <div className="flex flex-wrap gap-1">
                 {[
-                  { value: 'recent', label: '🕒 Récent' },
-                  { value: 'popular', label: '🔥 Pop.' },
-                  { value: 'relevant', label: '⭐ Pert.' }
+                  { value: 'recent', label: 'Recent' },
+                  { value: 'popular', label: 'Populaire' },
+                  { value: 'relevant', label: 'Pertinent' }
                 ].map(({ value, label }) => (
                   <button
                     key={value}
@@ -507,6 +545,39 @@ export default function SearchWidget({
               </div>
             </div>
           </div>
+
+          {/* Date précise - Du / Au */}
+          {onDateFromChange && onDateToChange && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Date precise</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5">Du</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      onDateFromChange(e.target.value)
+                      if (e.target.value) onDateRangeChange('custom')
+                    }}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5">Au</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      onDateToChange(e.target.value)
+                      if (e.target.value) onDateRangeChange('custom')
+                    }}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Bouton Appliquer */}
           <button

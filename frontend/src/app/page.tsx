@@ -320,13 +320,69 @@ export default function HomePage() {
     return articles.filter(article => favoriteArticles.includes(article.id))
   }
 
+  // State pour dates précises
+  const [searchDateFrom, setSearchDateFrom] = useState('')
+  const [searchDateTo, setSearchDateTo] = useState('')
+
+  // Recherche API (pour queries textuelles - cherche dans TOUS les articles)
+  const searchViaAPI = useCallback(async (query: string) => {
+    try {
+      const body: any = {
+        query,
+        limit: 50,
+        offset: 0
+      }
+      if (selectedCategory !== 'all') body.category = selectedCategory
+      if (selectedSource !== 'all') body.source = selectedSource
+      if (searchDateFrom) body.dateFrom = searchDateFrom
+      if (searchDateTo) body.dateTo = searchDateTo
+
+      const res = await fetch(`${API_URL}/api/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      const data = await res.json()
+      if (data.success && data.articles) {
+        const mapped = data.articles.map((a: any) => ({
+          ...a,
+          source: a.rss_feeds?.name || a.source || '',
+          imageUrl: a.image_url || (a.image_urls && a.image_urls[0]) || null,
+          publishedAt: a.published_at ? formatTimeAgoSimple(a.published_at) : '',
+          viewCount: formatViewCount(a.view_count || 0),
+          views: a.view_count || 0
+        }))
+        setDisplayedArticles(mapped)
+      }
+    } catch (error) {
+      console.error('Erreur recherche API:', error)
+    }
+  }, [selectedCategory, selectedSource, searchDateFrom, searchDateTo, API_URL])
+
+  // Formatage simple du temps relatif
+  const formatTimeAgoSimple = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours < 1) return 'A l\'instant'
+    if (hours < 24) return `Il y a ${hours}h`
+    const days = Math.floor(hours / 24)
+    if (days < 7) return `Il y a ${days}j`
+    return new Date(dateStr).toLocaleDateString('fr-FR')
+  }
+
   // Fonction de recherche dynamique optimisée avec useCallback pour éviter les boucles
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query)
-    
-    // 🎯 NE PAS faire de return si query est vide - on doit quand même filtrer par catégorie/source/date
+
     const searchTerm = query.toLowerCase().trim()
-    
+
+    // Si query textuelle >= 3 chars, utiliser l'API search (cherche dans TOUS les articles)
+    if (searchTerm.length >= 3) {
+      searchViaAPI(query)
+      return
+    }
+
+    // Sinon, filtrage client-side sur les articles chargés
     let articlesToFilter: Article[] = []
     switch (activeTab) {
       case 'pour-vous':
@@ -348,7 +404,7 @@ export default function HomePage() {
         articlesToFilter = articles
     }
 
-    // Filtrage amélioré avec recherche dans le contenu et pondération
+    // Filtrage client-side
     const filtered = articlesToFilter.filter(article => {
       const titleMatch = article.title.toLowerCase().includes(searchTerm)
       const summaryMatch = article.summary.toLowerCase().includes(searchTerm)
@@ -359,28 +415,20 @@ export default function HomePage() {
 
       const matchesQuery = query.trim() === '' || titleMatch || summaryMatch || sourceMatch || categoryMatch || authorMatch || contentMatch
       const matchesSource = selectedSource === '' || selectedSource === 'all' || article.media_name === selectedSource || article.source === selectedSource
-      
-      // Filtre par catégorie (insensible à la casse + gestion catégories multiples)
+
       const matchesCategory = selectedCategory === '' || selectedCategory === 'all' || (() => {
         const articleCategory = (article.category || '').toLowerCase()
         const selectedCat = selectedCategory.toLowerCase()
-        const matches = articleCategory === selectedCat || articleCategory.includes(selectedCat)
-        
-        // Log pour déboguer (seulement pour les 3 premiers articles si Sport est sélectionné)
-        if (selectedCategory === 'Sport' && articlesToFilter.indexOf(article) < 3) {
-          console.log(`🔍 Article: "${article.title.substring(0, 40)}..." | Category: "${article.category}" | Matches: ${matches}`)
-        }
-        
-        return matches
+        return articleCategory === selectedCat || articleCategory.includes(selectedCat)
       })()
-      
+
       // Filtre par date
       let matchesDate = true
       if (selectedDateRange !== 'all' && (article.published_at || article.created_at)) {
         const articleDate = new Date(article.published_at || article.created_at || Date.now())
         const now = new Date()
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        
+
         if (selectedDateRange === 'today') {
           matchesDate = articleDate >= today
         } else if (selectedDateRange === 'week') {
@@ -392,54 +440,47 @@ export default function HomePage() {
         }
       }
 
+      // Filtre par date precise
+      if (searchDateFrom && (article.published_at || article.created_at)) {
+        const articleDate = new Date(article.published_at || article.created_at || 0)
+        if (articleDate < new Date(searchDateFrom)) return false
+      }
+      if (searchDateTo && (article.published_at || article.created_at)) {
+        const articleDate = new Date(article.published_at || article.created_at || 0)
+        if (articleDate > new Date(searchDateTo + 'T23:59:59')) return false
+      }
+
       return matchesQuery && matchesSource && matchesCategory && matchesDate
     })
 
     // Tri selon le filtre selectedSortBy
     const sortedFiltered = filtered.sort((a, b) => {
       if (selectedSortBy === 'popular') {
-        // Tri par popularité (vues)
         return (b.view_count || 0) - (a.view_count || 0)
       } else if (selectedSortBy === 'recent') {
-        // Tri par date (plus récent en premier)
         const dateA = new Date(a.published_at || a.created_at || 0).getTime()
         const dateB = new Date(b.published_at || b.created_at || 0).getTime()
         return dateB - dateA
       } else if (selectedSortBy === 'relevant') {
-        // Tri par pertinence (titre > résumé > contenu > source/auteur)
         const aTitle = a.title.toLowerCase().includes(searchTerm) ? 3 : 0
         const aSummary = a.summary.toLowerCase().includes(searchTerm) ? 2 : 0
         const aContent = a.content && a.content.toLowerCase().includes(searchTerm) ? 1 : 0
-        const aOther = (a.source.toLowerCase().includes(searchTerm) || 
+        const aOther = (a.source.toLowerCase().includes(searchTerm) ||
                        (a.author && a.author.toLowerCase().includes(searchTerm))) ? 0.5 : 0
-        
+
         const bTitle = b.title.toLowerCase().includes(searchTerm) ? 3 : 0
         const bSummary = b.summary.toLowerCase().includes(searchTerm) ? 2 : 0
         const bContent = b.content && b.content.toLowerCase().includes(searchTerm) ? 1 : 0
-        const bOther = (b.source.toLowerCase().includes(searchTerm) || 
+        const bOther = (b.source.toLowerCase().includes(searchTerm) ||
                        (b.author && b.author.toLowerCase().includes(searchTerm))) ? 0.5 : 0
-        
-        const aScore = aTitle + aSummary + aContent + aOther
-        const bScore = bTitle + bSummary + bContent + bOther
-        
-        return bScore - aScore
+
+        return (bTitle + bSummary + bContent + bOther) - (aTitle + aSummary + aContent + aOther)
       }
       return 0
     })
 
-    // Log du résultat du filtrage
-    if (selectedCategory !== 'all' && selectedCategory !== '') {
-      console.log(`✅ Filtrage terminé: ${sortedFiltered.length} articles correspondent à la catégorie "${selectedCategory}"`)
-      if (sortedFiltered.length > 0) {
-        console.log('Exemples:', sortedFiltered.slice(0, 3).map(a => ({ 
-          title: a.title.substring(0, 40), 
-          category: a.category 
-        })))
-      }
-    }
-
     setDisplayedArticles(sortedFiltered)
-  }, [selectedSource, selectedCategory, selectedDateRange, selectedSortBy, articles, semaineActuelleArticles, archivedArticles, favoriteArticles, activeTab])
+  }, [selectedSource, selectedCategory, selectedDateRange, selectedSortBy, articles, semaineActuelleArticles, archivedArticles, favoriteArticles, activeTab, searchViaAPI, searchDateFrom, searchDateTo])
 
 
   // Fonction pour récupérer les articles selon l'onglet sélectionné
@@ -1403,7 +1444,7 @@ export default function HomePage() {
                     </div>
                     
                     {/* Ligne 2: Barre de recherche */}
-                    <SearchWidget 
+                    <SearchWidget
                       onSearch={handleSearch}
                       searchQuery={searchQuery}
                       selectedSource={selectedSource}
@@ -1414,6 +1455,10 @@ export default function HomePage() {
                       onDateRangeChange={setSelectedDateRange}
                       selectedSortBy={selectedSortBy}
                       onSortByChange={setSelectedSortBy}
+                      dateFrom={searchDateFrom}
+                      dateTo={searchDateTo}
+                      onDateFromChange={setSearchDateFrom}
+                      onDateToChange={setSearchDateTo}
                     />
                   </div>
                 </div>
