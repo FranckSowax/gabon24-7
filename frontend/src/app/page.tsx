@@ -348,7 +348,7 @@ export default function HomePage() {
           ...a,
           source: a.rss_feeds?.name || a.source || '',
           imageUrl: a.image_url || (a.image_urls && a.image_urls[0]) || null,
-          publishedAt: a.published_at ? formatTimeAgoSimple(a.published_at) : '',
+          published_at: a.published_at || '',
           viewCount: formatViewCount(a.view_count || 0),
           views: a.view_count || 0
         }))
@@ -358,17 +358,6 @@ export default function HomePage() {
       console.error('Erreur recherche API:', error)
     }
   }, [selectedCategory, selectedSource, searchDateFrom, searchDateTo, API_URL])
-
-  // Formatage simple du temps relatif
-  const formatTimeAgoSimple = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    if (hours < 1) return 'A l\'instant'
-    if (hours < 24) return `Il y a ${hours}h`
-    const days = Math.floor(hours / 24)
-    if (days < 7) return `Il y a ${days}j`
-    return new Date(dateStr).toLocaleDateString('fr-FR')
-  }
 
   // Fonction de recherche dynamique optimisée avec useCallback pour éviter les boucles
   const handleSearch = useCallback((query: string) => {
