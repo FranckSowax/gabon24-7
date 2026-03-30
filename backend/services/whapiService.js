@@ -277,6 +277,40 @@ Réponds en JSON strict :
 }
 
 /**
+ * Envoyer un article sur le webhook Make.com pour publication Facebook
+ * Même contenu que la chaîne WhatsApp
+ */
+const FACEBOOK_WEBHOOK_URL = 'https://hook.eu1.make.com/oivubfj8vv2fjgc3i3xc9jhqv67txce3';
+
+async function sendToFacebookWebhook({ title, summary, source, author, articleUrl, analyzeUrl, imageUrl, opportunities, caption }) {
+  try {
+    const payload = {
+      title,
+      summary,
+      source: source || '',
+      author: author || '',
+      articleUrl,
+      analyzeUrl,
+      imageUrl: imageUrl || '',
+      opportunities: opportunities || [],
+      caption,
+      timestamp: new Date().toISOString()
+    };
+
+    const response = await axios.post(FACEBOOK_WEBHOOK_URL, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
+    });
+
+    console.log(`✅ [FACEBOOK] Webhook envoyé: "${title.substring(0, 50)}..."`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.warn(`⚠️ [FACEBOOK] Webhook failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Poster un article sur une chaîne WhatsApp (newsletter)
  * Utilise /messages/image pour afficher l'image en header + caption
  * Inclut 3 opportunités business générées par IA
@@ -304,6 +338,19 @@ async function sendChannelPost(channelId, article, frontendUrl) {
   const authorLine = author ? `\n✍🏾 ${author}` : '';
 
   const caption = `📰 *${title}*${sourceLine}\n\n${summary}${authorLine}${opportunitiesBlock}\n\n🔗 *Lire l'article complet :*\n${articleUrl}\n\n🚀 *Créer un projet Business à partir de cet article* :\n${analyzeUrl}\n\n---\n_Gabon Insight — Votre source d'info_\nhttps://gaboninsight.com`;
+
+  // Envoyer en parallèle sur le webhook Make.com (Facebook)
+  sendToFacebookWebhook({
+    title,
+    summary,
+    source,
+    author,
+    articleUrl,
+    analyzeUrl,
+    imageUrl,
+    opportunities,
+    caption
+  }).catch(err => console.warn('⚠️ [FACEBOOK] Webhook error:', err.message));
 
   if (imageUrl) {
     // Envoi avec image en header
