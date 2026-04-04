@@ -73,18 +73,7 @@ export function ArticleCard({
     e.preventDefault()
     e.stopPropagation()
 
-    // Vérifier la limite quotidienne (si connecté)
-    if (user && !checkAccess()) {
-      openSubscriptionModal()
-      return
-    }
-
-    // Incrémenter le compteur si connecté
-    if (user) {
-      increment()
-    }
-
-    // Action finale - accessible à tous
+    // Action finale - accessible à tous sans restriction
     if (onClick) {
       onClick(article)
     } else if (article.url) {
