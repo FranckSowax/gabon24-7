@@ -73,25 +73,18 @@ export function ArticleCard({
     e.preventDefault()
     e.stopPropagation()
 
-    // 1. Vérifier l'authentification
-    if (!user && !authLoading) {
-      openAuthModal()
-      return
-    }
-
-    // 2. Vérifier la limite quotidienne (si connecté)
+    // Vérifier la limite quotidienne (si connecté)
     if (user && !checkAccess()) {
       openSubscriptionModal()
       return
     }
 
-    // 3. Autorisé : Incrémenter le compteur et ouvrir
+    // Incrémenter le compteur si connecté
     if (user) {
       increment()
     }
 
-    // Action finale
-    console.log('🖱️ Article cliqué (Autorisé):', article.title)
+    // Action finale - accessible à tous
     if (onClick) {
       onClick(article)
     } else if (article.url) {
