@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const path = require('path');
@@ -204,9 +205,38 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
+// Compression gzip/brotli des réponses (désactivée pour SSE/streaming)
+app.use(compression({
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    const ct = res.getHeader('Content-Type') || '';
+    if (ct.includes('text/event-stream')) return false;
+    return compression.filter(req, res);
+  },
+}));
+
 // Parsing du body
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// ============================================
+// 🚀 CACHE HEADERS HTTP - Lecture publique
+// ============================================
+// Helper pour cacher des endpoints publics côté CDN/navigateur
+// Usage : router.get('/articles', cacheControl('public', 300), handler)
+function cacheControl(scope = 'public', maxAgeSeconds = 60, swr = 600) {
+  return (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    res.setHeader(
+      'Cache-Control',
+      `${scope}, max-age=${maxAgeSeconds}, stale-while-revalidate=${swr}`
+    );
+    next();
+  };
+}
+// Exposer en global léger pour les routes existantes (sans refactor massif)
+app.locals.cacheControl = cacheControl;
 
 // ============================================
 // 🛡️ RATE LIMITING GRANULAIRE - Protection contre les abus
@@ -358,12 +388,12 @@ console.log('📦 Chargement des routes modulaires...');
 
 // Enregistrement des routes modulaires (WhatsApp déjà enregistré plus haut)
 app.use('/api/auth', authRoutes);
-app.use('/api/football', footballRoutes);
-app.use('/api/polls', pollsRoutes);
-app.use('/api/events', eventsRoutes);
+app.use('/api/football', cacheControl('public', 60, 300), footballRoutes);  // Scores: 1min cache
+app.use('/api/polls', cacheControl('public', 30, 120), pollsRoutes);        // Sondages: 30s
+app.use('/api/events', cacheControl('public', 300, 900), eventsRoutes);     // Événements: 5min
 app.use('/api/admin', uploadsRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/slides', slidesRoutes);
+app.use('/api/slides', cacheControl('public', 600, 1800), slidesRoutes);    // Slides: 10min
 
 // Routes Paiements (E-Billing)
 const paymentsRoutes = require('./routes/payments');
@@ -4003,7 +4033,7 @@ app.use('/api/veille', veilleSubscriptionsRoutes);
 
 // Routes Recherche Intelligente (avec IA)
 const searchRoutes = require('./routes/search');
-app.use('/api/search', searchRoutes);
+app.use('/api/search', cacheControl('public', 120, 600), searchRoutes);  // Search: 2min cache
 
 // Routes Credit Manager (Gestion crédits - ancien système)
 const creditsRoutes = require('./routes/credits');
@@ -4073,7 +4103,7 @@ console.log('📊 Routes monitoring APM chargées');
 
 // Routes Trending (Tendances - articles les plus vus/partagés)
 const trendingRoutes = require('./routes/trending');
-app.use('/api/stats/trending', trendingRoutes);
+app.use('/api/stats/trending', cacheControl('public', 120, 600), trendingRoutes);  // Trending: 2min
 // Aussi monter les routes de tracking sur /api
 app.post('/api/articles/:id/view', trendingRoutes);
 app.post('/api/articles/:id/share', trendingRoutes);
@@ -4921,7 +4951,7 @@ app.use('/api/tldr', tldrRouter);
 
 // Routes pour les tarifs dynamiques
 const pricingRouter = require('./routes/pricing');
-app.use('/api/pricing', pricingRouter);
+app.use('/api/pricing', cacheControl('public', 600, 1800), pricingRouter);  // Pricing: 10min cache
 
 // ============================================
 // 🎵 TIKTOK TRENDING - ENDPOINT

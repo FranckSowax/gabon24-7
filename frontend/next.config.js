@@ -4,6 +4,15 @@ const nextConfig = {
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
 
+  // Compression Next.js (gzip à la sortie)
+  compress: true,
+
+  // Pas de source maps en prod (réduit taille build, évite leak code)
+  productionBrowserSourceMaps: false,
+
+  // Header X-Powered-By désactivé (réduit fingerprinting)
+  poweredByHeader: false,
+
   experimental: {
     outputFileTracingRoot: process.cwd(),
   },
@@ -15,6 +24,8 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60,
   },
 
   env: {
