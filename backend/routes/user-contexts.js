@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
+const { requireAuth } = require('../middleware/auth');
+
+// Données personnelles utilisateur → auth obligatoire
+router.use(requireAuth);
 
 // GET /api/user-contexts - Récupérer les contextes sauvegardés d'un utilisateur
 router.get('/', async (req, res) => {

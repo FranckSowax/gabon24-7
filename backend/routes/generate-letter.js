@@ -3,9 +3,13 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { requireAuth } = require('../middleware/auth');
 
 // Utiliser le client Supabase partagé avec toutes les configurations
 const supabase = supabaseService.supabase;
+
+// Génération courriers IA = coût € → auth obligatoire
+router.use(requireAuth);
 
 // Service Gemini 3 Pro - Plus performant et contextuel
 

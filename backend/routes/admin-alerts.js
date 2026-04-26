@@ -6,6 +6,10 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../supabase-config');
 const { getPendingAlerts, resolveAlert } = require('../utils/quota-monitor');
+const { requireAdmin } = require('../middleware/auth');
+
+// Toutes les routes admin-alerts requièrent un compte admin
+router.use(requireAdmin);
 
 /**
  * GET /api/admin/alerts

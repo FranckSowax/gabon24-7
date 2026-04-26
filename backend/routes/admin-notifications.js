@@ -2,8 +2,14 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const notificationHelper = require('../utils/notificationHelper');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const supabase = supabaseService.supabase;
+
+// Toutes les routes admin-notifications requièrent une authentification minimum
+// (POST /new-user est appelé après signup, donc requireAuth suffit ;
+//  les autres routes admin sont protégées par requireAdmin individuellement)
+router.use(requireAuth);
 
 /**
  * POST /api/admin-notifications/new-user

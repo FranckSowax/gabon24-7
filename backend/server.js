@@ -4846,6 +4846,27 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
+// Capture des erreurs non gérées — sans crash silencieux
+process.on('uncaughtException', (err, origin) => {
+  console.error('❌ uncaughtException:', err);
+  console.error('Origin:', origin);
+  if (typeof Sentry !== 'undefined' && Sentry.captureException) {
+    try { Sentry.captureException(err); } catch (_) {}
+  }
+  // En prod : laisser le process superviseur (Railway) redémarrer après log
+  if (process.env.NODE_ENV === 'production') {
+    setTimeout(() => process.exit(1), 1000);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ unhandledRejection at:', promise);
+  console.error('Reason:', reason);
+  if (typeof Sentry !== 'undefined' && Sentry.captureException) {
+    try { Sentry.captureException(reason); } catch (_) {}
+  }
+});
+
 // Routes pour le tracking des articles
 const articleViewsRouter = require('./src/routes/article-views');
 app.use('/api/article-views', articleViewsRouter);

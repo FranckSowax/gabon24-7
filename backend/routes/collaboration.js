@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
+const { requireAuth } = require('../middleware/auth');
 const supabase = supabaseService.supabase;
+
+// Collaboration sur projets : auth obligatoire pour toutes routes
+router.use(requireAuth);
 
 // POST /api/collaboration/invite - Inviter un collaborateur
 router.post('/invite', async (req, res) => {

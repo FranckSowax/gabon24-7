@@ -5,6 +5,10 @@ const supabaseService = require('../supabase-config');
 const aiConfigService = require('../services/ai-config-service');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { requireAuth } = require('../middleware/auth');
+
+// Plans d'action user-bound + génération IA → auth obligatoire
+router.use(requireAuth);
 
 // Instanciation conditionnelle de OpenAI GPT-4.1-mini
 let openai = null;

@@ -9,6 +9,10 @@ const supabaseService = require('../supabase-config');
 const { checkOpenAIError, checkUsageThreshold } = require('../utils/quota-monitor');
 const aiValidation = require('../middleware/ai-validation');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { requireAuth } = require('../middleware/auth');
+
+// Toutes les routes opportunités utilisent l'IA (coût €) → auth obligatoire
+router.use(requireAuth);
 // GPT-4.1-mini utilisé directement (voir getOpenAIClient() ci-dessous)
 
 // Helpers

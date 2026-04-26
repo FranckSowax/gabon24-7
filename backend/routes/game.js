@@ -8,6 +8,11 @@ const router = express.Router();
 // Utiliser la configuration partagée au lieu de recréer un client
 const { supabase } = require('../config/supabase');
 const gameQuestionGenerator = require('../services/game-question-generator');
+const { requireAuth } = require('../middleware/auth');
+
+// Toutes les routes du jeu nécessitent un utilisateur connecté
+// (sessions, scores, votes, génération IA = tous user-bound)
+router.use(requireAuth);
 
 // Service Gemini (pour backward compatibility si besoin)
 let geminiService;

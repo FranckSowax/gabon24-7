@@ -5,6 +5,10 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
+const { requireAuth } = require('../middleware/auth');
+
+// Tracking actions user-bound → auth obligatoire
+router.use(requireAuth);
 
 /**
  * POST /api/project-actions/track

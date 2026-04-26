@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const quotaManager = require('../services/openai-quota-manager');
 const aiValidation = require('../middleware/ai-validation');
+const { requireAdmin } = require('../middleware/auth');
+
+// Toutes les routes /admin/* nécessitent un compte admin
+// /health reste public (utilisé par monitoring/uptime checks)
+router.use('/admin', requireAdmin);
 
 /**
  * GET /api/ai/health
