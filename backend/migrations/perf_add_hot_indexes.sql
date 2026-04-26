@@ -1,71 +1,157 @@
 -- =====================================================================
 -- PERF: Indexes sur colonnes filtrées chaudes (audit P1)
--- À exécuter sur Supabase SQL Editor (toutes IF NOT EXISTS, idempotent).
+-- À exécuter sur Supabase SQL Editor.
 --
--- Note: Pas de CONCURRENTLY car le SQL Editor Supabase encapsule en
--- transaction. Sur tables très volumineuses (>1M rows), exécuter via
--- `psql` direct avec CONCURRENTLY (voir bas du fichier).
+-- Chaque CREATE INDEX est wrappé dans un DO block défensif qui vérifie
+-- que la table ET la colonne existent. Cela permet :
+--   - migration idempotente
+--   - aucune erreur si une table n'a pas encore été créée
+--   - aucune erreur si une colonne a été renommée
+--
+-- Pas de CONCURRENTLY car le SQL Editor encapsule en transaction.
+-- Pour tables très volumineuses, voir ALTERNATIVE PROD en bas du fichier.
 -- =====================================================================
 
--- Articles : feed_id (filtré dans aggregation RSS, journal, par source)
-CREATE INDEX IF NOT EXISTS idx_articles_feed_id
-  ON articles(feed_id);
+-- Helper : créer un index si table+colonne(s) existent
+CREATE OR REPLACE FUNCTION pg_temp.create_index_if_columns_exist(
+  p_index_name text,
+  p_table_name text,
+  p_column_expr text,    -- ex: 'feed_id' ou 'user_id, created_at DESC'
+  p_required_cols text[], -- ex: ARRAY['feed_id'] ou ARRAY['user_id','created_at']
+  p_where text DEFAULT NULL
+) RETURNS void AS $$
+DECLARE
+  missing text;
+  ddl text;
+BEGIN
+  -- Vérif table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = p_table_name
+  ) THEN
+    RAISE NOTICE 'SKIP %: table % introuvable', p_index_name, p_table_name;
+    RETURN;
+  END IF;
 
--- Articles : category (déjà partial, on ajoute global pour filtrage simple)
-CREATE INDEX IF NOT EXISTS idx_articles_category_simple
-  ON articles(category)
-  WHERE category IS NOT NULL;
+  -- Vérif colonnes
+  FOREACH missing IN ARRAY p_required_cols LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = p_table_name AND column_name = missing
+    ) THEN
+      RAISE NOTICE 'SKIP %: colonne %.% introuvable', p_index_name, p_table_name, missing;
+      RETURN;
+    END IF;
+  END LOOP;
 
--- Articles : published_at standalone (tri rapide page d'accueil sans filter)
-CREATE INDEX IF NOT EXISTS idx_articles_published_at
-  ON articles(published_at DESC)
-  WHERE is_published = true;
+  ddl := format('CREATE INDEX IF NOT EXISTS %I ON %I(%s)', p_index_name, p_table_name, p_column_expr);
+  IF p_where IS NOT NULL THEN
+    ddl := ddl || ' WHERE ' || p_where;
+  END IF;
 
--- Reading history : par user (historique perso)
-CREATE INDEX IF NOT EXISTS idx_reading_history_user_created
-  ON reading_history(user_id, created_at DESC);
+  EXECUTE ddl;
+  RAISE NOTICE 'OK   %', p_index_name;
+END;
+$$ LANGUAGE plpgsql;
 
--- Favorites : par user (favoris perso)
-CREATE INDEX IF NOT EXISTS idx_favorites_user
-  ON favorites(user_id, created_at DESC);
+-- =====================================================================
+-- ARTICLES
+-- =====================================================================
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_articles_feed_id', 'articles', 'feed_id', ARRAY['feed_id']
+);
 
--- Notifications : par admin destinataire (dashboard admin, badge non-lus)
-CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created
-  ON notifications(recipient_id, created_at DESC)
-  WHERE read_at IS NULL;
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_articles_category_simple', 'articles', 'category',
+  ARRAY['category'], 'category IS NOT NULL'
+);
 
--- Project actions tracking : par user / par projet
-CREATE INDEX IF NOT EXISTS idx_project_actions_user
-  ON project_actions(user_id, created_at DESC);
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_articles_published_at', 'articles', 'published_at DESC',
+  ARRAY['published_at', 'is_published'], 'is_published = true'
+);
 
-CREATE INDEX IF NOT EXISTS idx_project_actions_project
-  ON project_actions(project_id, created_at DESC);
+-- =====================================================================
+-- READING HISTORY (table réelle: user_reading_history)
+-- =====================================================================
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_user_reading_history_user_read_at', 'user_reading_history',
+  'user_id, read_at DESC',
+  ARRAY['user_id', 'read_at']
+);
 
--- Action plans : par user
-CREATE INDEX IF NOT EXISTS idx_action_plans_user
-  ON action_plans(user_id, created_at DESC);
+-- =====================================================================
+-- FAVORITES (table réelle: user_favorites)
+-- =====================================================================
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_user_favorites_user_created', 'user_favorites',
+  'user_id, created_at DESC',
+  ARRAY['user_id', 'created_at']
+);
 
--- Saved projects (Dossiers) : par user
-CREATE INDEX IF NOT EXISTS idx_saved_projects_user
-  ON saved_projects(user_id, created_at DESC);
+-- =====================================================================
+-- NOTIFICATIONS (colonnes: user_id, is_read, created_at)
+-- =====================================================================
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_notifications_user_created_unread', 'notifications',
+  'user_id, created_at DESC',
+  ARRAY['user_id', 'created_at', 'is_read'],
+  'is_read = false'
+);
 
--- Mise à jour des statistiques du planner pour utiliser les nouveaux indexes
-ANALYZE articles;
-ANALYZE reading_history;
-ANALYZE favorites;
+-- =====================================================================
+-- PROJECT ACTIONS / ACTION PLANS / SAVED PROJECTS
+-- =====================================================================
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_project_actions_user', 'project_actions',
+  'user_id, created_at DESC',
+  ARRAY['user_id', 'created_at']
+);
+
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_project_actions_project', 'project_actions',
+  'project_id, created_at DESC',
+  ARRAY['project_id', 'created_at']
+);
+
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_action_plans_user', 'action_plans',
+  'user_id, created_at DESC',
+  ARRAY['user_id', 'created_at']
+);
+
+SELECT pg_temp.create_index_if_columns_exist(
+  'idx_saved_projects_user_created', 'saved_projects',
+  'user_id, created_at DESC',
+  ARRAY['user_id', 'created_at']
+);
+
+-- =====================================================================
+-- ANALYZE pour rafraîchir les stats du planner
+-- =====================================================================
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='articles') THEN
+    EXECUTE 'ANALYZE articles';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='user_reading_history') THEN
+    EXECUTE 'ANALYZE user_reading_history';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='user_favorites') THEN
+    EXECUTE 'ANALYZE user_favorites';
+  END IF;
+END $$;
 
 -- =====================================================================
 -- ALTERNATIVE PROD : exécuter une par une via psql (pas de lock long)
 -- =====================================================================
--- Pour tables volumineuses, ouvrir psql et lancer chaque ligne séparément :
+-- Sur tables volumineuses (>1M rows), préférer CONCURRENTLY hors transaction.
+-- Adapter aux noms de tables/colonnes réels de ton schéma :
 --
 --   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_articles_feed_id ON articles(feed_id);"
 --   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_articles_category_simple ON articles(category) WHERE category IS NOT NULL;"
 --   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC) WHERE is_published = true;"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reading_history_user_created ON reading_history(user_id, created_at DESC);"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_favorites_user ON favorites(user_id, created_at DESC);"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_id, created_at DESC) WHERE read_at IS NULL;"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_actions_user ON project_actions(user_id, created_at DESC);"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_actions_project ON project_actions(project_id, created_at DESC);"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_action_plans_user ON action_plans(user_id, created_at DESC);"
---   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_saved_projects_user ON saved_projects(user_id, created_at DESC);"
+--   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_reading_history_user_read_at ON user_reading_history(user_id, read_at DESC);"
+--   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_favorites_user_created ON user_favorites(user_id, created_at DESC);"
+--   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_user_created_unread ON notifications(user_id, created_at DESC) WHERE is_read = false;"
+--   psql "$DATABASE_URL" -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_saved_projects_user_created ON saved_projects(user_id, created_at DESC);"
