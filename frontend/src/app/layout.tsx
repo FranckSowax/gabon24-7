@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/ui/Toaster'
 import { CreditAlertProvider } from '@/contexts/CreditAlertContext'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { ModalProvider } from '@/contexts/ModalContext'
+import Analytics from '@/components/Analytics'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -127,6 +128,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
+        <Analytics />
         <QueryProvider>
           <ToastProvider>
             <AuthProvider>
