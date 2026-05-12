@@ -2205,6 +2205,63 @@ app.put('/api/admin/rss-feeds/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Endpoint pour activer/désactiver un flux RSS (toggle status)
+app.patch('/api/admin/rss-feeds/:id/toggle', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data: feed, error: fetchErr } = await supabaseService.supabase
+      .from('rss_feeds')
+      .select('status')
+      .eq('id', id)
+      .single();
+    if (fetchErr || !feed) {
+      return res.status(404).json({ success: false, error: 'Flux RSS non trouvé' });
+    }
+    const newStatus = feed.status === 'active' ? 'inactive' : 'active';
+    const { data, error } = await supabaseService.supabase
+      .from('rss_feeds')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, feed: data, message: `Flux ${newStatus === 'active' ? 'activé' : 'désactivé'}` });
+  } catch (error) {
+    console.error('❌ Erreur toggle flux RSS:', error);
+    res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+  }
+});
+
+// Endpoint pour supprimer un flux RSS (et optionnellement ses articles)
+app.delete('/api/admin/rss-feeds/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deleteArticles } = req.query; // ?deleteArticles=true pour cascade
+    console.log(`🗑️ Suppression flux RSS: ${id} (cascade=${!!deleteArticles})`);
+
+    if (deleteArticles === 'true') {
+      const { error: articlesErr } = await supabaseService.supabase
+        .from('articles')
+        .delete()
+        .eq('feed_id', id);
+      if (articlesErr) {
+        console.warn('⚠️ Erreur suppression articles liés:', articlesErr.message);
+      }
+    }
+
+    const { error } = await supabaseService.supabase
+      .from('rss_feeds')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+
+    res.json({ success: true, message: 'Flux RSS supprimé' });
+  } catch (error) {
+    console.error('❌ Erreur suppression flux RSS:', error);
+    res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+  }
+});
+
 // Endpoint pour synchroniser manuellement tous les flux RSS
 app.post('/api/admin/rss-feeds/sync-all', requireAdmin, async (req, res) => {
   try {
