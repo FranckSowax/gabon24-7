@@ -173,20 +173,113 @@ UPDATE rss_feeds SET url = 'https://www.rfi.fr/fr/tag/gabon/rss', updated_at = N
 --   WHERE name ILIKE '%Gabon Télévision%' AND url LIKE '%rss.app%';
 
 -- ---------------------------------------------------------------------
--- PAGES FACEBOOK — pas de flux RSS natif
+-- PAGES FACEBOOK → URLs RSSHub (auto-hébergé)
 -- ---------------------------------------------------------------------
--- Facebook ne fournit pas de RSS. 3 options :
---   1. Garder rss.app (renouveler l'abonnement)
---   2. Self-host RSSHub (https://docs.rsshub.app) → gratuit, container Docker
---   3. Désactiver ces flux temporairement (cette migration met `inactive`)
+-- Prérequis : RSSHub doit être déployé sur Railway. Voir le guide :
+--   docs/RSSHUB_DEPLOYMENT.md
 --
--- On désactive toutes les pages Facebook qui pointent encore vers rss.app
--- pour éviter qu'elles spam les logs avec des 402. Tu pourras les
--- réactiver depuis l'admin une fois rss.app renouvelé ou RSSHub installé.
+-- ⚠️ AVANT D'EXÉCUTER : remplace partout `__RSSHUB_HOST__` par ton
+-- domaine Railway (ex: https://rsshub-production-xxxx.up.railway.app)
+-- en faisant un Find & Replace dans ce fichier.
+--
+-- Si tu utilises ACCESS_KEY (recommandé), remplace aussi `__KEY_PARAM__`
+-- par `?key=ta_clef_32_chars`. Sinon, supprime simplement `__KEY_PARAM__`
+-- (remplace par chaîne vide).
+--
+-- Pattern d'URL final attendu (exemple) :
+--   https://rsshub-prod-xxx.up.railway.app/facebook/page/presidencegouvga?key=8f3a91c7...
 
+-- Présidence
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/presidencegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%présidence%';
+
+-- Ministère de la Communication
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/communicationgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%communication%';
+
+-- Ministère de l'Agriculture
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/agriculturegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%agriculture%';
+
+-- Ministère de l'Économie Numérique
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/numeriquegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND (name ILIKE '%numérique%' OR name ILIKE '%numerique%');
+
+-- Ministère de l'Éducation Nationale
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/educationgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%éducation%';
+
+-- Ministère de l'Enseignement Supérieur
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/esupgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%enseignement supérieur%';
+
+-- Ministère de l'Industrie
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/ministereindustriegabon__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%industrie%';
+
+-- Ministère de l'Intérieur
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/interieurgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%intérieur%';
+
+-- Ministère de la Justice
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/justicegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%justice%';
+
+-- Ministère des Mines
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/minesgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%mines%';
+
+-- Ministère des Transports
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/transportsgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%transports%';
+
+-- Ministère des Travaux Publics
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/equipementgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND (name ILIKE '%travaux publics%' OR name ILIKE '%équipement%');
+
+-- Ministère du Commerce
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/commercepmepmigouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%commerce%';
+
+-- Ministère du Pétrole
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/petrolegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%pétrole%';
+
+-- Ministère du Tourisme
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/tourismegouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND name ILIKE '%tourisme%';
+
+-- Ministère de l'Énergie / Eau
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/eaugouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND (name ILIKE '%énergie%' OR name ILIKE '%energie%');
+
+-- Ministère du Logement / Habitat
+UPDATE rss_feeds SET url = '__RSSHUB_HOST__/facebook/page/habitatgouvga__KEY_PARAM__',
+    status = 'active', last_error = NULL, updated_at = NOW()
+  WHERE url LIKE '%rss.app%' AND (name ILIKE '%logement%' OR name ILIKE '%habitat%');
+
+-- Filet de sécurité : tout flux rss.app Facebook restant qu'on n'a pas
+-- explicitement remappé ci-dessus → désactivé avec message clair. À
+-- traiter manuellement via /admin/rss-monitoring après inspection.
 UPDATE rss_feeds
 SET status = 'inactive',
-    last_error = 'Désactivé automatiquement : RSS Facebook indisponible. Renouveler rss.app ou installer RSSHub.',
+    last_error = 'Flux Facebook non mappé vers RSSHub. Ajouter manuellement via /admin/rss-monitoring.',
     updated_at = NOW()
 WHERE url LIKE '%rss.app%'
   AND (name ILIKE '%facebook%' OR name ILIKE '%minist%');
