@@ -1490,7 +1490,7 @@ app.get('/api/archives/articles', async (req, res) => {
         id,
         title,
         summary,
-        ai_summary,
+        summary_ai,
         url,
         normalized_url,
         image_urls,
@@ -1629,7 +1629,7 @@ app.get('/api/articles/all', async (req, res) => {
         id,
         title,
         summary,
-        ai_summary,
+        summary_ai,
         url,
         image_urls,
         author,
@@ -2446,7 +2446,7 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', yesterday.toISOString())
       .order('view_count', { ascending: false, nullsFirst: false })
@@ -2460,7 +2460,7 @@ app.get('/api/stats/trending/daily/views', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -2522,7 +2522,7 @@ app.get('/api/stats/trending/weekly/views', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', lastWeek.toISOString())
       .order('view_count', { ascending: false, nullsFirst: false })
@@ -2536,7 +2536,7 @@ app.get('/api/stats/trending/weekly/views', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -2598,7 +2598,7 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, is_premium, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', startOfMonth.toISOString())
       .order('view_count', { ascending: false, nullsFirst: false })
@@ -2612,7 +2612,7 @@ app.get('/api/stats/trending/monthly/views', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -2674,7 +2674,7 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', yesterday.toISOString())
       .order('share_count', { ascending: false, nullsFirst: false })
@@ -2688,7 +2688,7 @@ app.get('/api/stats/trending/daily/shares', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -2751,7 +2751,7 @@ app.get('/api/stats/trending/weekly/shares', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', lastWeek.toISOString())
       .order('share_count', { ascending: false, nullsFirst: false })
@@ -2765,7 +2765,7 @@ app.get('/api/stats/trending/weekly/shares', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -2828,7 +2828,7 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, ai_summary, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
+      .select('id, title, summary, summary_ai, category, published_at, image_url, image_urls, source, url, view_count, share_count, author')
       .eq('is_published', true)
       .gte('published_at', startOfMonth.toISOString())
       .order('share_count', { ascending: false, nullsFirst: false })
@@ -2842,7 +2842,7 @@ app.get('/api/stats/trending/monthly/shares', async (req, res) => {
     const transformedArticles = (articles || []).map((article) => ({
       id: article.id,
       title: article.title,
-      summary: article.ai_summary || article.summary || 'Résumé non disponible.',
+      summary: article.summary_ai || article.summary || 'Résumé non disponible.',
       url: article.url,
       imageUrl: article.image_url || null,
       image_url: article.image_url || null,
@@ -5321,7 +5321,7 @@ app.post('/api/campaigns', requireAuth, async (req, res) => {
           external_id: `sponsored-${data.id}`,
           title: article_title,
           summary: article_summary || article_subtitle || 'Article sponsorisé',
-          ai_summary: article_summary || article_subtitle,
+          summary_ai: article_summary || article_subtitle,
           content: article_content,
           url: redirect_url,
           author: article_author || 'Équipe Gabon Insight',

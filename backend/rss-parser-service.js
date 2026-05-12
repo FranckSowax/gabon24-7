@@ -426,7 +426,7 @@ class RSSParserService {
             external_id: item.guid || item.link || articleId,
             title: item.title || 'Sans titre',
             summary: cleanedContent || 'Résumé non disponible',
-            ai_summary: aiSummary,
+            summary_ai: aiSummary,
             content: item.content || item.description || '',
             url: item.link || '',
             author: item.creator || item['dc:creator'] || 'Rédaction',
@@ -434,8 +434,9 @@ class RSSParserService {
             language: 'fr',
             category: feed.category || 'Actualités',
             keywords: keywords,
-            sentiment: sentimentAnalysis.sentiment,
-            sentiment_confidence: sentimentAnalysis.confidence,
+            sentiment_score: sentimentAnalysis.sentiment === 'positif' ? 0.8
+              : sentimentAnalysis.sentiment === 'négatif' ? -0.8
+              : 0,
             read_time_minutes: this.calculateReadTimeMinutes(cleanedContent),
             image_url: mainImageUrl,
             is_trending: false,
@@ -640,7 +641,7 @@ class RSSParserService {
       filteredArticles = filteredArticles.filter(a => 
         (a.title && a.title.toLowerCase().includes(searchLower)) ||
         (a.summary && a.summary.toLowerCase().includes(searchLower)) ||
-        (a.ai_summary && a.ai_summary.toLowerCase().includes(searchLower))
+        (a.summary_ai && a.summary_ai.toLowerCase().includes(searchLower))
       );
     }
 
