@@ -79,6 +79,98 @@ router.post('/trigger', requireAdmin, validateBody(triggerSchema), async (req, r
   }
 });
 
+// Diagnostic public : compare WHAPI_CHANNEL_ID configuré vs channels accessibles via le token
+// Sécurisé par CRON_SECRET en query (?key=...)
+router.get('/diagnose', async (req, res) => {
+  try {
+    const providedKey = req.query.key;
+    const validKeys = [
+      process.env.CRON_SECRET,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ].filter(Boolean);
+    if (!providedKey || !validKeys.includes(providedKey)) {
+      return res.status(401).json({ success: false, error: 'key requis (?key=CRON_SECRET)' });
+    }
+
+    const channelId = process.env.WHAPI_CHANNEL_ID || null;
+    const mask = (id) => id ? `…${String(id).slice(-15)}` : null;
+
+    const result = await whapiService.getChannels();
+
+    const channels = (result.channels || []).map(c => ({
+      id: c.id,
+      id_masked: mask(c.id),
+      name: c.name || c.title || '(sans nom)',
+      role: c.role || null,
+      matches_configured: c.id === channelId,
+    }));
+    const match = channels.find(c => c.matches_configured);
+
+    res.json({
+      success: true,
+      configured_channel_id: channelId,
+      configured_channel_id_masked: mask(channelId),
+      configured_match_found: !!match,
+      available_channels_count: channels.length,
+      available_channels: channels,
+      diagnosis: !channelId
+        ? 'WHAPI_CHANNEL_ID NON CONFIGURÉ dans Railway env'
+        : !match
+          ? `WHAPI_CHANNEL_ID configuré (${mask(channelId)}) ne correspond à AUCUN channel accessible — corriger l'env Railway`
+          : `OK : channel "${match.name}" reconnu et accessible`,
+    });
+  } catch (error) {
+    console.error('Erreur diagnose WhatsApp:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Test direct : envoie un message simple à un channel donné en argument (debug)
+// POST /test-channel?key=CRON_SECRET   body: { channelId: "...", message: "..." }
+router.post('/test-channel', async (req, res) => {
+  try {
+    const providedKey = req.query.key;
+    const validKeys = [
+      process.env.CRON_SECRET,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ].filter(Boolean);
+    if (!providedKey || !validKeys.includes(providedKey)) {
+      return res.status(401).json({ success: false, error: 'key requis (?key=CRON_SECRET)' });
+    }
+
+    const channelId = req.body.channelId || process.env.WHAPI_CHANNEL_ID;
+    const message = req.body.message || '🧪 Test Gabon Insight — la chaîne est de retour !';
+
+    if (!channelId) return res.status(400).json({ success: false, error: 'channelId requis (body ou env)' });
+
+    const axios = require('axios');
+    const resp = await axios.post(
+      'https://gate.whapi.cloud/messages/text',
+      { to: channelId, body: message, typing_time: 0 },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.WHAPI_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    res.json({
+      success: true,
+      channelId,
+      whapi_response: resp.data,
+    });
+  } catch (error) {
+    console.error('Erreur test-channel:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: error.message,
+      whapi_error: error.response?.data,
+    });
+  }
+});
+
 // Test: envoyer un carrousel avec les derniers articles (admin ou cron secret)
 router.post('/test-carousel', async (req, res) => {
   try {
