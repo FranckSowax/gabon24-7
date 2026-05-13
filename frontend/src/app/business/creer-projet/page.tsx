@@ -13,6 +13,8 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import AIGenerationModal from '@/components/business/AIGenerationModal'
 import TransitionSlide from '@/components/business/TransitionSlide'
+import BcegScoreBadge, { BcegBreakdown, BcegScoreColor } from '@/components/bceg/BcegScoreBadge'
+import BcegSimulator from '@/components/bceg/BcegSimulator'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -135,6 +137,35 @@ export default function CreerProjetPage() {
     success_metrics: '',
     risks: ''
   })
+
+  // BCEG Score temps réel (Phase 2)
+  const [bcegScore, setBcegScore] = useState<{ score: number; color: BcegScoreColor; breakdown?: BcegBreakdown; advice?: { axis: string; tip: string }[]; loading: boolean }>({
+    score: 0,
+    color: 'red',
+    loading: true,
+  })
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try {
+        setBcegScore(s => ({ ...s, loading: true }))
+        const res = await fetch(`${API_URL}/api/bceg/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ step: currentStep, ...formData }),
+        })
+        const json = await res.json()
+        if (json?.success) {
+          setBcegScore({ score: json.score, color: json.color, breakdown: json.breakdown, advice: json.advice, loading: false })
+        } else {
+          setBcegScore(s => ({ ...s, loading: false }))
+        }
+      } catch {
+        setBcegScore(s => ({ ...s, loading: false }))
+      }
+    }, 600)
+    return () => clearTimeout(t)
+  }, [formData, currentStep])
 
   const handleInputChange = (field: keyof ProjectFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -413,6 +444,25 @@ export default function CreerProjetPage() {
                 className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all text-sm"
               />
             </div>
+
+            {/* Simulateur BCEG en direct (Phase 2) */}
+            <div className="mt-2">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl p-1">
+                <BcegSimulator
+                  initialMontant={
+                    // Parser une éventuelle valeur déjà saisie
+                    Number((formData.funding_needed || '').replace(/\D/g, '')) || 5_000_000
+                  }
+                  initialApportPct={20}
+                  initialDureeMois={24}
+                  initialType="entreprise"
+                  compact
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-600 italic">
+                💡 Joue avec les sliders pour voir comment ton crédit BCEG s'adapte à ton apport et ta durée — l'apport conseillé est de <strong>20 %</strong>.
+              </p>
+            </div>
           </div>
         )
 
@@ -674,6 +724,26 @@ export default function CreerProjetPage() {
                 <h2 className="text-xl font-bold text-gray-900 mb-1">{currentStepData.title}</h2>
                 <p className="text-sm text-gray-600 mb-3">{currentStepData.subtitle}</p>
                 <p className="text-xs text-gray-600">Étape {currentStep} sur {STEPS.length}</p>
+              </div>
+
+              {/* BCEG Score temps réel (Phase 2) */}
+              <div className="mt-4 bg-slate-900/85 backdrop-blur border border-amber-300/20 rounded-2xl p-4 shadow-xl sticky top-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🏦</span>
+                  <h3 className="text-sm font-bold text-white">Bancabilité BCEG</h3>
+                </div>
+                <BcegScoreBadge
+                  score={bcegScore.score}
+                  color={bcegScore.color}
+                  breakdown={bcegScore.breakdown}
+                  advice={bcegScore.advice}
+                  size="lg"
+                  showBreakdown
+                  loading={bcegScore.loading}
+                />
+                <p className="mt-3 text-[10px] text-white/50 leading-relaxed">
+                  Ce score évolue à chaque champ rempli — vise <strong className="text-emerald-300">70+ </strong>pour soumettre à la BCEG.
+                </p>
               </div>
             </div>
 
