@@ -236,13 +236,17 @@ class SupabaseService {
     try {
       const { data, error } = await this.supabase
         .from('articles')
-        .insert([article])
+        .upsert([article], { onConflict: 'feed_id,external_id', ignoreDuplicates: true })
         .select();
 
       if (error) throw error;
-      return data[0];
+      // Si l'article existait déjà, upsert+ignoreDuplicates retourne un array vide
+      return data?.[0] || null;
     } catch (error) {
-      console.error('Erreur ajout article:', error);
+      // Silencieux pour les doublons (code Postgres 23505) — comportement normal de la dédup RSS
+      if (error?.code !== '23505') {
+        console.error('Erreur ajout article:', error);
+      }
       throw error;
     }
   }
