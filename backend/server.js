@@ -5014,6 +5014,10 @@ app.use('/api/pricing', cacheControl('public', 600, 1800), pricingRouter);  // P
 const bcegRouter = require('./routes/bceg');
 app.use('/api/bceg', bcegRouter);
 
+// Routes Flip Ad (animation pub sur carte profil sidebar)
+const flipAdRouter = require('./routes/flip-ad');
+app.use('/api/flip-ad', flipAdRouter);
+
 // ============================================
 // 🎵 TIKTOK TRENDING - ENDPOINT
 // ============================================

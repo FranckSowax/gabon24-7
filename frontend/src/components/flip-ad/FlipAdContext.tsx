@@ -42,10 +42,43 @@ interface FlipAdContextValue {
 
 const FlipAdContext = createContext<FlipAdContextValue | null>(null)
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 export function FlipAdProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [config] = useState<FlipAdConfig>(DEFAULT_CONFIG)
+  const [config, setConfig] = useState<FlipAdConfig>(DEFAULT_CONFIG)
   const [flipped, setFlipped] = useState(false)
+
+  // Fetch config publique au mount (cache 60s côté CDN)
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/flip-ad`, { cache: 'no-store' })
+        const json = await res.json()
+        if (!alive) return
+        if (json?.success && json.config) {
+          const c = json.config
+          setConfig({
+            enabled: !!c.enabled,
+            durationMs: c.duration_ms || 4000,
+            imageUrl: c.image_url || DEFAULT_CONFIG.imageUrl,
+            title: c.title || DEFAULT_CONFIG.title,
+            subtitle: c.subtitle || DEFAULT_CONFIG.subtitle,
+            ctaLabel: c.cta_label || DEFAULT_CONFIG.ctaLabel,
+            backgroundCss: c.background_css || DEFAULT_CONFIG.backgroundCss,
+            redirectMode: c.redirect_mode || 'after_flip',
+          })
+        } else if (json?.success && !json.config) {
+          // Pas de config active → désactivé
+          setConfig({ ...DEFAULT_CONFIG, enabled: false })
+        }
+      } catch {
+        // garde le DEFAULT_CONFIG en cas d'erreur réseau
+      }
+    })()
+    return () => { alive = false }
+  }, [])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingHrefRef = useRef<string | null>(null)
 
