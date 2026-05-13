@@ -518,7 +518,12 @@ export default function MesProjetsPage() {
 
   const fetchProjectActions = async (projectId: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/project-actions/${projectId}`)
+      const { supabase: sb } = await import('@/lib/auth')
+      const { data: { session } } = await sb.auth.getSession()
+      const token = session?.access_token
+      const response = await fetch(`${API_URL}/api/project-actions/${projectId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       const data = await response.json()
       if (data.success) {
         setProjectActions(prev => ({
@@ -709,9 +714,15 @@ export default function MesProjetsPage() {
   const markActionCompleted = async (projectId: string, actionType: string, referenceId?: string) => {
     if (!user?.id) return
     try {
+      const { supabase: sb } = await import('@/lib/auth')
+      const { data: { session } } = await sb.auth.getSession()
+      const token = session?.access_token
       const response = await fetch(`${API_URL}/api/project-actions/complete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           projectId,
           userId: user.id,

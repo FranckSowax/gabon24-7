@@ -5,6 +5,17 @@
 
 import { trackProjectAction } from './project-tracking'
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  try {
+    const { supabase } = await import('@/lib/auth')
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  } catch {}
+  return headers
+}
+
 interface ActionTrackerContext {
   userId: string
   projectId?: string | null
@@ -196,11 +207,13 @@ export async function checkActionExists(
 ): Promise<boolean> {
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-    const response = await fetch(`${API_URL}/api/project-actions/${projectId}`)
+    const response = await fetch(`${API_URL}/api/project-actions/${projectId}`, {
+      headers: await authHeaders(),
+    })
     const data = await response.json()
 
     if (data.success && data.actions) {
-      const exists = data.actions.some((a: any) => 
+      const exists = data.actions.some((a: any) =>
         a.action_type === actionType && a.action_status === 'completed'
       )
       return exists
@@ -221,7 +234,9 @@ export async function getProjectActionsSummary(projectId: string): Promise<{
 }> {
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-    const response = await fetch(`${API_URL}/api/project-actions/${projectId}`)
+    const response = await fetch(`${API_URL}/api/project-actions/${projectId}`, {
+      headers: await authHeaders(),
+    })
     const data = await response.json()
 
     const summary: { [key: string]: 'done' | 'pending' | 'none' } = {

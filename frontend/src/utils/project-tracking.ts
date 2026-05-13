@@ -14,9 +14,18 @@ interface TrackActionParams {
 
 export async function trackProjectAction(params: TrackActionParams): Promise<boolean> {
   try {
+    let token: string | undefined
+    try {
+      const { supabase } = await import('@/lib/auth')
+      const { data } = await supabase.auth.getSession()
+      token = data.session?.access_token
+    } catch {}
     const response = await fetch(`${API_URL}/api/project-actions/track`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(params)
     })
 
