@@ -204,7 +204,8 @@ const QUICK_ACTIONS = [
   {
     id: 'business-plan',
     title: 'Ébauche de Business Plan',
-    description: '📊 Plan complet en 10 parties adapté au Gabon',
+    description: 'Document de référence demandé par la BCEG. Structure votre projet en 10 sections : marché, finances, équipe, marketing, etc.',
+    useCase: "Ex : générez un business plan d'élevage de poulets de chair à Owendo prêt à présenter à votre conseiller.",
     icon: FileText,
     color: 'from-[#697357] to-[#4d553e]',
     credits: 50
@@ -212,7 +213,8 @@ const QUICK_ACTIONS = [
   {
     id: 'generate-letter',
     title: 'Générer un courrier',
-    description: '✉️ Courrier professionnel adapté au destinataire',
+    description: 'Lettre professionnelle adaptée au destinataire et au contexte de votre projet — ton, formules, mise en page.',
+    useCase: 'Ex : rédigez une demande de partenariat à un fournisseur de matériel agricole.',
     icon: Mail,
     color: 'from-[#8a9576] to-[#697357]',
     credits: 15
@@ -220,7 +222,8 @@ const QUICK_ACTIONS = [
   {
     id: 'pitch-deck',
     title: 'Pitch investisseur',
-    description: '🎤 Présentation percutante pour lever des fonds',
+    description: 'Présentation percutante en 10 slides pour convaincre la BCEG ou des investisseurs privés.',
+    useCase: 'Ex : préparez votre pitch de 5 minutes pour le comité de crédit BCEG.',
     icon: TrendingUp,
     color: 'from-[#697357] to-[#4d553e]',
     credits: 30,
@@ -229,7 +232,8 @@ const QUICK_ACTIONS = [
   {
     id: 'swot-analysis',
     title: 'Analyse SWOT',
-    description: '🔍 Forces, faiblesses, opportunités et menaces',
+    description: 'Identifiez forces, faiblesses, opportunités et menaces pour anticiper les risques.',
+    useCase: "Ex : repérez les 3 menaces principales sur votre marché et préparez vos contre-mesures.",
     icon: Target,
     color: 'from-[#8a9576] to-[#697357]',
     credits: 20,
@@ -238,7 +242,8 @@ const QUICK_ACTIONS = [
   {
     id: 'skill-test',
     title: 'Test de compétences',
-    description: '🎯 Évaluez vos forces et faiblesses',
+    description: 'Évaluez vos forces et faiblesses face aux exigences de votre projet — utile pour le dossier BCEG.',
+    useCase: 'Ex : vérifiez si vous maîtrisez la gestion comptable avant de lancer votre boutique.',
     icon: Award,
     color: 'from-[#697357] to-[#4d553e]',
     credits: 20
@@ -246,7 +251,8 @@ const QUICK_ACTIONS = [
   {
     id: 'custom-training',
     title: 'Formation sur mesure',
-    description: '🎓 Formation personnalisée selon vos besoins',
+    description: 'Programme de formation personnalisé pour combler les compétences qui vous manquent.',
+    useCase: 'Ex : formez-vous en 7 jours sur la fiscalité PME gabonaise avant le rendez-vous BCEG.',
     icon: GraduationCap,
     color: 'from-[#8a9576] to-[#697357]',
     credits: 50
@@ -254,7 +260,8 @@ const QUICK_ACTIONS = [
   {
     id: 'legal-checklist',
     title: 'Formalités juridiques',
-    description: '⚖️ Checklist création d\'entreprise au Gabon',
+    description: 'Checklist complète pour créer votre entreprise au Gabon (RCCM, NIF, CNSS, statuts…).',
+    useCase: 'Ex : suivez les 12 étapes pour obtenir votre RCCM en 3 semaines.',
     icon: CheckCircle,
     color: 'from-[#697357] to-[#4d553e]',
     credits: 15,
@@ -263,7 +270,8 @@ const QUICK_ACTIONS = [
   {
     id: 'financial-projection',
     title: 'Projections financières',
-    description: '💰 Prévisions de revenus sur 3 ans',
+    description: 'Prévisions chiffrées sur 3 ans : revenus, charges, marges, point mort. Essentiel pour le dossier BCEG.',
+    useCase: 'Ex : simulez le chiffre d\'affaires de votre boulangerie sur 36 mois pour prouver la rentabilité.',
     icon: DollarSign,
     color: 'from-[#8a9576] to-[#697357]',
     credits: 35,
@@ -2037,31 +2045,31 @@ export default function MesProjetsPage() {
 
     return (
       <div className="space-y-6 relative">
-        {/* Arrière-plan avec dégradé bleu-violet */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 rounded-3xl -z-10"></div>
-        
-        {/* Header - Design Moderne avec dégradé */}
+        {/* Header BCEG vert */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 shadow-lg"
+          className="relative overflow-hidden bg-gradient-to-br from-[#697357] to-[#4d553e] rounded-2xl p-6 sm:p-8 shadow-lg shadow-[#697357]/20 text-white"
         >
-          <div className="flex items-start justify-between">
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">Actions IA Disponibles</h1>
-              <p className="text-blue-50 text-lg">
-                Générez du contenu professionnel avec l'intelligence artificielle
+              <div className="text-[11px] uppercase tracking-wider font-bold opacity-80 mb-1">
+                Outils IA · Powered by Gabon Insight
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">Boostez votre projet avec l'IA</h1>
+              <p className="text-sm sm:text-base opacity-85 max-w-xl">
+                Chaque outil produit un livrable concret que vous pouvez ajouter à votre dossier BCEG.
               </p>
             </div>
-            <div className="flex items-center gap-6 text-sm">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-slate-900">{completedActions}</div>
-                <div className="text-blue-100 mt-1">Complétées</div>
+            <div className="flex items-center gap-4 sm:gap-6 text-sm shrink-0">
+              <div className="text-center bg-white/10 backdrop-blur rounded-xl px-3 py-2 border border-white/15">
+                <div className="text-2xl font-bold">{completedActions}</div>
+                <div className="text-[10px] uppercase tracking-wider opacity-75 mt-0.5">Complétées</div>
               </div>
-              <div className="w-px h-12 bg-white/30"></div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-slate-900">{projectActionsData.length}</div>
-                <div className="text-blue-100 mt-1">Lancées</div>
+              <div className="text-center bg-white/10 backdrop-blur rounded-xl px-3 py-2 border border-white/15">
+                <div className="text-2xl font-bold">{projectActionsData.length}</div>
+                <div className="text-[10px] uppercase tracking-wider opacity-75 mt-0.5">Lancées</div>
               </div>
             </div>
           </div>
@@ -2082,14 +2090,14 @@ export default function MesProjetsPage() {
                 transition={{ delay: idx * 0.1 }}
                 className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all border border-gray-100 group relative overflow-hidden"
               >
-                {/* Dégradé bleu-violet en arrière-plan au hover */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-indigo-500/0 group-hover:from-blue-500/5 group-hover:via-purple-500/5 group-hover:to-indigo-500/5 transition-all duration-500 rounded-2xl"></div>
-                
+                {/* Halo vert BCEG au hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#697357]/0 to-[#4d553e]/0 group-hover:from-[#697357]/5 group-hover:to-[#4d553e]/5 transition-all duration-500 rounded-2xl"></div>
+
                 <div className="relative z-10">
                   {/* Header avec icône et badge */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-14 h-14 bg-gradient-to-br ${(action as any).comingSoon ? 'from-gray-400 to-gray-500' : 'from-blue-500 to-purple-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-7 h-7 text-slate-900" />
+                    <div className={`w-14 h-14 bg-gradient-to-br ${(action as any).comingSoon ? 'from-slate-300 to-slate-400' : 'from-[#697357] to-[#4d553e]'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-7 h-7 text-white" />
                     </div>
                     {(action as any).comingSoon ? (
                       <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
@@ -2105,13 +2113,20 @@ export default function MesProjetsPage() {
                   </div>
 
                   {/* Titre et description */}
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{action.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4 min-h-[40px]">
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{action.title}</h3>
+                  <p className="text-slate-600 text-sm leading-relaxed mb-3 min-h-[40px]">
                     {action.description}
                   </p>
 
+                  {/* Exemple d'usage */}
+                  {(action as any).useCase && (
+                    <div className="text-[11px] italic leading-relaxed rounded-lg px-3 py-2 mb-4 bg-amber-50/70 text-amber-900 border border-amber-200/70">
+                      {(action as any).useCase}
+                    </div>
+                  )}
+
                   {/* Métadonnées */}
-                  <div className="flex items-center gap-3 mb-5 pb-5 border-b border-gray-100">
+                  <div className="flex items-center gap-3 mb-5 pb-5 border-b border-slate-100">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
                         <Zap className="w-3.5 h-3.5 text-slate-900" />
@@ -2119,7 +2134,7 @@ export default function MesProjetsPage() {
                       <span className="text-sm font-semibold text-gray-700">{action.credits} crédits</span>
                     </div>
                     {actionCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full font-medium">
+                      <div className="flex items-center gap-1.5 text-xs text-[#697357] bg-[#697357]/10 px-2.5 py-1 rounded-full font-medium">
                         <span>Utilisé {actionCount}×</span>
                       </div>
                     )}
@@ -2142,8 +2157,8 @@ export default function MesProjetsPage() {
                     disabled={(action as any).comingSoon}
                     className={`w-full py-3 font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
                       (action as any).comingSoon
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-slate-900 hover:shadow-lg group-hover:scale-[1.02]'
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-[#697357] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] text-white hover:shadow-lg shadow-[#697357]/30 group-hover:scale-[1.02]'
                     }`}
                   >
                     <span>{(action as any).comingSoon ? 'Disponible prochainement' : 'Lancer l\'action'}</span>
