@@ -248,7 +248,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
+        className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6"
       >
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Partager le Projet</h1>
         <p className="text-white/90">
@@ -261,9 +261,9 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+        className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
       >
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
           <Link className="w-5 h-5 text-blue-400" />
           Partager via lien
         </h3>
@@ -293,7 +293,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
                 type="text"
                 value={shareLink}
                 readOnly
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm truncate"
+                className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm truncate"
               />
               <button
                 onClick={handleCopyLink}
@@ -320,7 +320,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={handleShareWhatsApp}
-                className="px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition-all flex items-center justify-center gap-2"
+                className="px-4 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-5 h-5" />
                 WhatsApp
@@ -334,7 +334,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
               </button>
             </div>
 
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-slate-500 text-center">
               🔗 Ce lien expire dans 7 jours • Les invités pourront voir et commenter le projet
             </p>
           </div>
@@ -346,9 +346,9 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+        className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
       >
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
           <Users className="w-5 h-5 text-emerald-400" />
           Inviter par email
         </h3>
@@ -359,19 +359,19 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             value={collaboratorEmail}
             onChange={(e) => setCollaboratorEmail(e.target.value)}
             placeholder="email@exemple.com"
-            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
             onKeyPress={(e) => e.key === 'Enter' && handleInviteCollaborator()}
           />
           <button
             onClick={handleInviteCollaborator}
             disabled={!collaboratorEmail || !collaboratorEmail.includes('@') || isInviting}
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isInviting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
 
-        <p className="text-sm text-gray-400 mt-2">
+        <p className="text-sm text-slate-500 mt-2">
           💡 L'invité recevra un email avec un lien pour accepter l'invitation
         </p>
       </motion.div>
@@ -381,7 +381,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         <button
           onClick={() => setActiveTab('collaborators')}
           className={`px-4 py-3 font-medium transition-all relative whitespace-nowrap ${
-            activeTab === 'collaborators' ? 'text-emerald-400' : 'text-gray-400 hover:text-white'
+            activeTab === 'collaborators' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <Users className="w-5 h-5 inline mr-2" />
@@ -393,7 +393,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         <button
           onClick={() => setActiveTab('comments')}
           className={`px-4 py-3 font-medium transition-all relative whitespace-nowrap ${
-            activeTab === 'comments' ? 'text-blue-400' : 'text-gray-400 hover:text-white'
+            activeTab === 'comments' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <MessageSquare className="w-5 h-5 inline mr-2" />
@@ -405,7 +405,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         <button
           onClick={() => setActiveTab('documents')}
           className={`px-4 py-3 font-medium transition-all relative whitespace-nowrap ${
-            activeTab === 'documents' ? 'text-violet-400' : 'text-gray-400 hover:text-white'
+            activeTab === 'documents' ? 'text-violet-400' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <FileText className="w-5 h-5 inline mr-2" />
@@ -428,14 +428,14 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
               {collaborators.map((collab: any) => (
                 <div
                   key={collab.id}
-                  className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-white/10"
+                  className="flex items-center justify-between p-4 bg-white shadow-sm rounded-xl border border-slate-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#697357] to-[#4d553e] flex items-center justify-center">
                       <User className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <div className="text-white font-semibold">{collab.collaborator_email}</div>
+                      <div className="text-slate-900 font-semibold">{collab.collaborator_email}</div>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span className={`px-2 py-0.5 rounded-full ${
                           collab.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
@@ -464,11 +464,11 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-white/10 text-center"
+              className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center"
             >
               <Users className="w-16 h-16 text-emerald-400 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-white mb-2">Aucun collaborateur</h3>
-              <p className="text-gray-400">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun collaborateur</h3>
+              <p className="text-slate-500">
                 Invitez des collaborateurs pour travailler ensemble sur ce projet
               </p>
             </motion.div>
@@ -482,9 +482,9 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+            className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
           >
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-blue-400" />
               Ajouter un commentaire
             </h3>
@@ -492,7 +492,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Partagez vos idées, suggestions ou questions..."
-              className="w-full h-32 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+              className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
             />
             <button
               onClick={handleAddComment}
@@ -502,7 +502,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
               {isAddingComment ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               {isAddingComment ? 'Envoi...' : 'Publier le commentaire'}
             </button>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-slate-500 mt-2">
               💡 Les commentaires sont ajoutés automatiquement au contexte du projet
             </p>
           </motion.div>
@@ -515,7 +515,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#697357] to-[#4d553e] flex items-center justify-center flex-shrink-0">
@@ -523,7 +523,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-white font-semibold">{comment.user_name || comment.user_email}</span>
+                        <span className="text-slate-900 font-semibold">{comment.user_name || comment.user_email}</span>
                         <span className="text-xs text-gray-500">
                           {new Date(comment.created_at).toLocaleDateString('fr-FR', {
                             day: 'numeric',
@@ -543,11 +543,11 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-white/10 text-center"
+              className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center"
             >
               <MessageSquare className="w-16 h-16 text-blue-400 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-white mb-2">Aucun commentaire</h3>
-              <p className="text-gray-400">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun commentaire</h3>
+              <p className="text-slate-500">
                 Soyez le premier à commenter ce projet
               </p>
             </motion.div>
@@ -561,7 +561,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+            className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -588,7 +588,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-violet-500/50 transition-all"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-[#697357]/40 transition-all"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 flex items-center justify-center flex-shrink-0">
@@ -611,11 +611,11 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-8 border border-white/10 text-center"
+              className="bg-white shadow-sm rounded-xl p-8 border border-slate-200 text-center"
             >
               <FileText className="w-16 h-16 text-violet-400 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-white mb-2">Aucun document</h3>
-              <p className="text-gray-400">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document</h3>
+              <p className="text-slate-500">
                 Les collaborateurs peuvent ajouter des documents pour enrichir le projet
               </p>
             </motion.div>

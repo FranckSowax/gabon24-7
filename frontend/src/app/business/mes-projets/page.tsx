@@ -1653,10 +1653,10 @@ export default function MesProjetsPage() {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 break-words">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
                 {selectedProject.proposition_titre}
               </h1>
-              <p className="text-slate-900/90 text-base sm:text-lg break-words">
+              <p className="text-white/90 text-base sm:text-lg break-words">
                 {selectedProject.proposition_description}
               </p>
             </div>
@@ -1668,21 +1668,21 @@ export default function MesProjetsPage() {
               }`}>
                 {selectedProject.proposition_score_faisabilite}%
               </div>
-              <div className="text-sm text-slate-900/80">Faisabilité</div>
+              <div className="text-sm text-white/80">Faisabilité</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-slate-900/70 mb-1">Secteur</div>
+              <div className="text-xs text-white/70 mb-1">Secteur</div>
               <div className="text-slate-900 font-semibold">{selectedProject.secteur_selectionne}</div>
             </div>
             <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-slate-900/70 mb-1">Budget</div>
+              <div className="text-xs text-white/70 mb-1">Budget</div>
               <div className="text-slate-900 font-semibold">{selectedProject.budget_selectionne}</div>
             </div>
             <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-slate-900/70 mb-1">Phase</div>
+              <div className="text-xs text-white/70 mb-1">Phase</div>
               <div className="text-slate-900 font-semibold capitalize">{selectedProject.current_phase || 'Idée'}</div>
             </div>
           </div>
@@ -1693,7 +1693,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <FileText className="w-6 h-6 text-purple-400" />
@@ -1709,7 +1709,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Target className="w-6 h-6 text-blue-400" />
@@ -1726,7 +1726,7 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+            className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
           >
             <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Rocket className="w-6 h-6 text-orange-400" />
@@ -1754,7 +1754,7 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+            className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
           >
             <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Star className="w-6 h-6 text-yellow-400" />
@@ -1818,7 +1818,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <User className="w-7 h-7 text-green-400" />
@@ -1946,7 +1946,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <Newspaper className="w-7 h-7 text-blue-400" />
@@ -2034,8 +2034,8 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Contexte Utilisateur</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-3xl font-bold text-white mb-2">Contexte Utilisateur</h1>
+          <p className="text-white/90">
             Vos compétences, situation et disponibilité pour ce projet
           </p>
         </motion.div>
@@ -2048,7 +2048,7 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+              className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-[#697357] to-[#4d553e] flex items-center justify-center flex-shrink-0">
@@ -2068,7 +2068,7 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+              className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
@@ -2088,7 +2088,7 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+              className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-[#8a9576] to-[#697357] flex items-center justify-center flex-shrink-0">
@@ -2108,7 +2108,7 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+              className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center flex-shrink-0">
@@ -2129,7 +2129,7 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+            className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
@@ -2156,7 +2156,7 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+            className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-red-500 to-orange-600 flex items-center justify-center flex-shrink-0">
@@ -2175,7 +2175,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
@@ -2197,7 +2197,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <User className="w-16 h-16 text-green-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Contexte non renseigné</h3>
@@ -2556,11 +2556,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Contexte & Bibliothèque</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Contexte & Bibliothèque</h1>
+          <p className="text-white/90">
             Contexte cumulé utilisable pour toutes les actions IA du projet
           </p>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-900/80 text-sm">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-white/80 text-sm">
             <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{contexteTotal.documents}</div>
               <div className="text-xs">Documents</div>
@@ -2657,7 +2657,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+            className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-3 mb-6">
               <Database className="w-8 h-8 text-orange-400" />
@@ -2780,7 +2780,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-orange-500/30 transition-all cursor-pointer"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-orange-500/30 transition-all cursor-pointer"
                   onClick={() => setSelectedDocument(doc as any)}
                 >
                   <div className="flex items-start gap-4 mb-4">
@@ -2852,7 +2852,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <FileText className="w-16 h-16 text-orange-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document</h3>
@@ -2867,7 +2867,7 @@ export default function MesProjetsPage() {
         {contexteActiveTab === 'notes' && (
           <div className="space-y-4">
             {/* Formulaire ajout note */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200">
+            <div className="bg-white shadow-sm rounded-xl p-6 border border-slate-200">
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
@@ -2892,7 +2892,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
                 >
                   {editingNoteId === note.id ? (
                     <div>
@@ -2947,7 +2947,7 @@ export default function MesProjetsPage() {
                 </motion.div>
               ))
             ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
+              <div className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center">
                 <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
                 <p className="text-slate-500">
@@ -3037,7 +3037,7 @@ export default function MesProjetsPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-slate-300 transition-all"
+                    className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-slate-300 transition-all"
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-xl ${eventInfo.bgColor} flex items-center justify-center flex-shrink-0`}>
@@ -3073,7 +3073,7 @@ export default function MesProjetsPage() {
               })}
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
+            <div className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center">
               <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
               <p className="text-slate-500">
@@ -3098,13 +3098,13 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Formations Personnalisées</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Formations Personnalisées</h1>
+          <p className="text-white/90">
             Parcours de formation adaptés à votre projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{formations.length} formation{formations.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -3118,7 +3118,7 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-blue-500/30 transition-all cursor-pointer"
+                className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-blue-500/30 transition-all cursor-pointer"
                 onClick={() => setSelectedDocument(formation)}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -3167,7 +3167,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <GraduationCap className="w-16 h-16 text-blue-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune formation</h3>
@@ -3191,13 +3191,13 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Tests de Compétences</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Tests de Compétences</h1>
+          <p className="text-white/90">
             Évaluations de vos compétences pour ce projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{tests.length} test{tests.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -3211,7 +3211,7 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-purple-500/30 transition-all cursor-pointer"
+                className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-purple-500/30 transition-all cursor-pointer"
                 onClick={() => setSelectedDocument(test)}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -3260,7 +3260,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <Award className="w-16 h-16 text-purple-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun test</h3>
@@ -3304,11 +3304,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Documents Générés</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-3xl font-bold text-white mb-2">Documents Générés</h1>
+          <p className="text-white/90">
             Tous les documents créés par l'IA pour votre projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{projectDocs.length} document{projectDocs.length > 1 ? 's' : ''}</span>
             <span>•</span>
             <span>{Object.keys(docsByType).length} type{Object.keys(docsByType).length > 1 ? 's' : ''}</span>
@@ -3328,7 +3328,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
+                  className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
                 >
                   <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${typeInfo.color} flex items-center justify-center`}>
@@ -3377,7 +3377,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <FileText className="w-16 h-16 text-orange-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document</h3>
@@ -3409,13 +3409,13 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Journal du Projet</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Journal du Projet</h1>
+          <p className="text-white/90">
             Historique automatique et notes personnelles
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{timeline.length} événements</span>
             <span>•</span>
             <span>{notes.length} notes</span>
@@ -3470,7 +3470,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
@@ -3488,7 +3488,7 @@ export default function MesProjetsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
+            <div className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center">
               <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
               <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
               <p className="text-slate-500">
@@ -3499,7 +3499,7 @@ export default function MesProjetsPage() {
         ) : (
           <div className="space-y-4">
             {/* Formulaire ajout note */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200">
+            <div className="bg-white shadow-sm rounded-xl p-6 border border-slate-200">
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
@@ -3524,7 +3524,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+                  className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
                 >
                   {editingNoteId === note.id ? (
                     <div>
@@ -3579,7 +3579,7 @@ export default function MesProjetsPage() {
                 </motion.div>
               ))
             ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
+              <div className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center">
                 <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
                 <p className="text-slate-500">
@@ -3632,13 +3632,13 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-2xl p-6"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-2xl p-6 text-white"
         >
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Historique du Projet</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-3xl font-bold text-white mb-2">Historique du Projet</h1>
+          <p className="text-white/90">
             Timeline chronologique de toutes les activités
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{timeline.length} événement{timeline.length > 1 ? 's' : ''}</span>
             {timeline.length > 0 && (
               <>
@@ -3676,7 +3676,7 @@ export default function MesProjetsPage() {
                     </div>
 
                     {/* Contenu */}
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-colors">
+                    <div className="bg-white shadow-sm rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-colors">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="text-slate-900 font-semibold">
                           {entry.title || 'Événement'}
@@ -3726,7 +3726,7 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
@@ -3774,13 +3774,13 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-2xl p-6"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-2xl p-6 text-white"
         >
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Notes Personnelles</h1>
-          <p className="text-slate-900/90">
+          <h1 className="text-3xl font-bold text-white mb-2">Notes Personnelles</h1>
+          <p className="text-white/90">
             Gardez une trace de vos idées et réflexions sur ce projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
             <span>{notes.length} note{notes.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -3790,7 +3790,7 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
+          className="bg-white shadow-sm rounded-xl p-6 border border-slate-200"
         >
           <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Edit2 className="w-5 h-5 text-pink-400" />
@@ -3840,7 +3840,7 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (idx + 2) * 0.05 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-pink-500/30 transition-colors"
+                className="bg-white shadow-sm rounded-xl p-6 border border-slate-200 hover:border-pink-500/30 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -3889,7 +3889,7 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
+            className="bg-white shadow-sm rounded-2xl p-8 border border-slate-200 text-center"
           >
             <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
