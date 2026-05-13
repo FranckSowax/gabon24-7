@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Coins,
   Rss,
+  Building2,
   Loader2,
   ShieldAlert,
   LogOut
@@ -85,6 +86,7 @@ export default function AdminLayout({
     { name: 'Sondages', href: '/admin/sondages', icon: BarChart3 },
     { name: 'Veille RSS', href: '/admin/veille', icon: Eye },
     { name: 'Flux RSS', href: '/admin/rss-monitoring', icon: Rss },
+    { name: 'BCEG Project', href: '/admin/bceg', icon: Building2, badge: 'NEW' },
     { name: 'Feedbacks', href: '/admin/feedbacks', icon: MessageSquare },
     { name: 'Tarification', href: '/admin/tarification', icon: Coins },
     { name: 'Jeu Quiz', href: '/admin/jeu', icon: Gamepad2, badge: 'NEW' },

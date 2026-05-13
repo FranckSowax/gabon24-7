@@ -11,7 +11,7 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const supabase = supabaseService.supabase;
 
@@ -315,6 +315,277 @@ router.get('/leaderboard', async (_req, res) => {
     leaderboard: [],
     note: 'Phase 5 — leaderboard public à implémenter',
   });
+});
+
+// =====================================================================
+// POST /api/bceg/submit — créer une soumission BCEG (user)
+// =====================================================================
+router.post('/submit', requireAuth, async (req, res) => {
+  try {
+    const {
+      project_id = null,
+      simulation_id = null,
+      montant_demande,
+      bceg_score = null,
+      pdf_url = null,
+    } = req.body || {};
+
+    if (!montant_demande || montant_demande <= 0) {
+      return res.status(400).json({ success: false, error: 'montant_demande requis (> 0)' });
+    }
+
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .insert({
+        project_id,
+        user_id: req.user.id,
+        simulation_id,
+        status: 'submitted',
+        montant_demande,
+        bceg_score,
+        pdf_url,
+        submitted_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, submission: data });
+  } catch (error) {
+    console.error('Erreur /api/bceg/submit:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// GET /api/bceg/my-submissions — soumissions de l'user
+// =====================================================================
+router.get('/my-submissions', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .select('*, saved_projects(article_title, proposition_titre)')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ success: true, submissions: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// =====================================================================
+// ROUTES ADMIN — dashboard BCEG
+// =====================================================================
+// =====================================================================
+
+// GET /api/bceg/admin/submissions — toutes les soumissions (Kanban)
+router.get('/admin/submissions', requireAdmin, async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = supabase
+      .from('bceg_submissions')
+      .select(`
+        *,
+        saved_projects(article_title, proposition_titre, secteur_selectionne, problematique_centrale, proposition_description),
+        bceg_simulations(montant_demande, apport_personnel, apport_pct, duree_mois, mensualite, total_a_rembourser, type, taux_annuel)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+
+    let submissions = data || [];
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.toLowerCase();
+      submissions = submissions.filter(s =>
+        (s.saved_projects?.article_title || '').toLowerCase().includes(q) ||
+        (s.saved_projects?.proposition_titre || '').toLowerCase().includes(q) ||
+        (s.bceg_reference || '').toLowerCase().includes(q)
+      );
+    }
+
+    res.json({ success: true, submissions });
+  } catch (error) {
+    console.error('Erreur /admin/submissions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bceg/admin/submissions/:id — détail complet d'une soumission
+router.get('/admin/submissions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .select(`
+        *,
+        saved_projects(*),
+        bceg_simulations(*)
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+
+    // Récupérer le dernier BCEG Score lié au projet
+    let lastScore = null;
+    if (data?.project_id) {
+      const { data: scoreData } = await supabase
+        .from('bceg_scores')
+        .select('*')
+        .eq('project_id', data.project_id)
+        .order('computed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      lastScore = scoreData;
+    }
+
+    res.json({ success: true, submission: data, last_score: lastScore });
+  } catch (error) {
+    console.error('Erreur /admin/submissions/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/bceg/admin/submissions/:id/status — changer statut + notes
+router.patch('/admin/submissions/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, admin_notes, bceg_reference } = req.body || {};
+
+    const valid = ['draft', 'submitted', 'in_review', 'accepted', 'rejected'];
+    if (!status || !valid.includes(status)) {
+      return res.status(400).json({ success: false, error: `status doit être l'un de ${valid.join(', ')}` });
+    }
+
+    const update = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (admin_notes !== undefined) update.admin_notes = admin_notes;
+    if (bceg_reference !== undefined) update.bceg_reference = bceg_reference;
+    if (status === 'accepted' || status === 'rejected') {
+      update.decision_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // TODO Phase 4 bis : envoyer notification WhatsApp à l'user
+    // (via whapiService.sendWhatsAppMessage si le user a un phone)
+    // Pour l'instant on log juste
+    console.log(`📋 Submission ${id} → ${status} (admin: ${req.user.id})`);
+
+    res.json({ success: true, submission: data });
+  } catch (error) {
+    console.error('Erreur PATCH /admin/submissions/:id/status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bceg/admin/stats — stats globales pour le header dashboard
+router.get('/admin/stats', requireAdmin, async (_req, res) => {
+  try {
+    const [allRes, draftRes, subRes, reviewRes, accRes, rejRes, montants, scoreAcc] = await Promise.all([
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }),
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }).eq('status', 'in_review'),
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }).eq('status', 'accepted'),
+      supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+      supabase.from('bceg_submissions').select('montant_demande').not('montant_demande', 'is', null),
+      supabase.from('bceg_submissions').select('bceg_score').eq('status', 'accepted').not('bceg_score', 'is', null),
+    ]);
+
+    const total = allRes?.count || 0;
+    const accepted = accRes?.count || 0;
+    const rejected = rejRes?.count || 0;
+    const decided = accepted + rejected;
+    const totalFunded = (montants?.data || [])
+      .filter(r => r.montant_demande)
+      .reduce((sum, r) => sum + Number(r.montant_demande), 0);
+
+    const scores = (scoreAcc?.data || []).map(s => s.bceg_score).filter(Boolean);
+    const avgAcceptedScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+    res.json({
+      success: true,
+      stats: {
+        total,
+        by_status: {
+          draft: draftRes?.count || 0,
+          submitted: subRes?.count || 0,
+          in_review: reviewRes?.count || 0,
+          accepted,
+          rejected,
+        },
+        acceptance_rate: decided ? Math.round((accepted / decided) * 100) : null,
+        total_funded_xaf: totalFunded,
+        avg_accepted_score: avgAcceptedScore,
+      },
+    });
+  } catch (error) {
+    console.error('Erreur /admin/stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bceg/admin/export — export CSV pour BCEG
+router.get('/admin/export', requireAdmin, async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .select(`
+        id, status, montant_demande, bceg_score, bceg_reference,
+        submitted_at, decision_at, created_at,
+        saved_projects(article_title, proposition_titre, secteur_selectionne, problematique_centrale),
+        bceg_simulations(apport_personnel, apport_pct, duree_mois, mensualite, type)
+      `)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const rows = data || [];
+    const header = [
+      'ID', 'Statut', 'Référence BCEG', 'Titre projet', 'Article source', 'Secteur',
+      'Montant demandé (XAF)', 'Apport (XAF)', 'Apport %', 'Durée mois', 'Mensualité (XAF)',
+      'Type', 'BCEG Score', 'Soumis le', 'Décision le', 'Créé le',
+    ];
+    const escapeCsv = (v) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const lines = [header.join(',')];
+    rows.forEach(r => {
+      const p = r.saved_projects || {};
+      const s = r.bceg_simulations || {};
+      lines.push([
+        r.id, r.status, r.bceg_reference,
+        p.proposition_titre, p.article_title, p.secteur_selectionne,
+        r.montant_demande, s.apport_personnel, s.apport_pct, s.duree_mois, s.mensualite,
+        s.type, r.bceg_score,
+        r.submitted_at, r.decision_at, r.created_at,
+      ].map(escapeCsv).join(','));
+    });
+
+    const csv = lines.join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="bceg-submissions-${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Erreur /admin/export:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 module.exports = router;
