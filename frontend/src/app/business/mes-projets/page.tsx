@@ -1345,6 +1345,7 @@ export default function MesProjetsPage() {
             documents={projectDocuments[selectedProject.id] || []}
             timeline={projectTimeline[selectedProject.id] || []}
             notes={projectNotes[selectedProject.id] || []}
+            onNavigateSection={(s) => setActiveSection(s)}
           />
         )
 
