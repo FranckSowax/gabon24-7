@@ -2,7 +2,9 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ChevronRight, X, Trash2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ChevronRight, X, Trash2, RefreshCw, Sparkles, Building2 } from 'lucide-react'
+
+const BCEG_LOGO = '/646710125_122187790628463229_813105913342150168_n.jpg'
 
 interface Section {
   id: string
@@ -41,150 +43,195 @@ export default function ProjectSidebar({
   isDeleting = false,
   isRestarting = false
 }: ProjectSidebarProps) {
-  
+
+  const progressPct = completionStats
+    ? Math.min(100, Math.round((completionStats.actions / 10) * 100))
+    : 0
+
   return (
-    <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 border-r border-white/10 overflow-y-auto">
-      <div className="p-6 space-y-6">
-        {/* Header avec bouton retour et fermeture mobile */}
+    <div className="w-full h-full bg-white border-r border-slate-200 overflow-y-auto">
+      <div className="p-5 space-y-5">
+
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+            className="flex items-center gap-2 text-slate-500 hover:text-[#4d553e] transition-colors group text-sm"
           >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Retour aux projets</span>
           </button>
-          
-          {/* Bouton fermeture mobile uniquement */}
           <button
             onClick={onBack}
-            className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="Fermer"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
-        
-        <div>
-          
-          <h2 className="text-2xl font-bold text-white mb-2 line-clamp-2">
-            {projectTitle}
-          </h2>
-          
-          {completionStats && (
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              <span>{completionStats.actions} actions</span>
-              <span>•</span>
-              <span>{completionStats.documents} docs</span>
-              <span>•</span>
-              <span>{completionStats.notes} notes</span>
+
+        {/* Bandeau BCEG — La banque vous accompagne */}
+        <div className="rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] p-5 text-white relative overflow-hidden shadow-lg shadow-[#4d553e]/20">
+          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3">
+              <img src={BCEG_LOGO} alt="BCEG" className="w-7 h-7 rounded-full ring-2 ring-white/40" />
+              <span className="text-[10px] uppercase tracking-wider font-bold opacity-90">BCEG Project</span>
             </div>
-          )}
+            <h2 className="text-base font-bold leading-tight line-clamp-2 mb-1">
+              {projectTitle}
+            </h2>
+            <p className="text-xs opacity-80 mb-4 leading-relaxed">
+              Nous vous accompagnons vers le financement de votre projet.
+            </p>
+            <div>
+              <div className="flex items-center justify-between text-[11px] mb-1.5">
+                <span className="opacity-80">Progression vers le financement</span>
+                <span className="font-bold">{progressPct}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPct}%` }}
+                  className="h-full bg-gradient-to-r from-amber-300 to-amber-200"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Navigation par sections */}
-        <nav className="space-y-2">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Navigation
+        {completionStats && (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <StatPill value={completionStats.actions} label="Actions" />
+            <StatPill value={completionStats.documents} label="Docs" />
+            <StatPill value={completionStats.notes} label="Notes" />
           </div>
-          
+        )}
+
+        <nav className="space-y-1.5">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+            Votre parcours
+          </div>
+
           {sections.map((section) => {
             const Icon = section.icon
             const isActive = activeSection === section.id
-            
+            const isFinance = section.id === 'financement'
+
             return (
               <motion.button
                 key={section.id}
                 onClick={() => onSectionChange(section.id)}
-                whileHover={{ x: 4 }}
+                whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
                 className={`
-                  w-full flex items-center justify-between p-4 rounded-xl transition-all
-                  ${isActive 
-                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border-2 border-purple-500/50' 
-                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                  w-full flex items-center justify-between p-3 rounded-xl transition-all text-left
+                  ${isActive
+                    ? isFinance
+                      ? 'bg-gradient-to-r from-[#4d553e] to-[#3a4030] text-white shadow-md shadow-[#4d553e]/20'
+                      : 'bg-[#4d553e]/10 border border-[#4d553e]/30'
+                    : isFinance
+                      ? 'bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                      : 'bg-white border border-slate-200 hover:bg-slate-50'
                   }
                 `}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className={`
-                    w-10 h-10 rounded-lg flex items-center justify-center
-                    ${isActive ? 'bg-purple-500/30' : 'bg-white/5'}
+                    w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+                    ${isActive
+                      ? isFinance ? 'bg-white/15' : 'bg-[#4d553e]/20'
+                      : isFinance ? 'bg-amber-200/60' : 'bg-slate-100'
+                    }
                   `}>
-                    <Icon className={`w-5 h-5 ${isActive ? section.color : 'text-gray-400'}`} />
+                    <Icon className={`w-4 h-4 ${
+                      isActive
+                        ? isFinance ? 'text-white' : 'text-[#4d553e]'
+                        : isFinance ? 'text-amber-700' : 'text-slate-500'
+                    }`} />
                   </div>
-                  
-                  <div className="text-left">
-                    <div className={`font-semibold ${isActive ? 'text-white' : 'text-gray-300'}`}>
+
+                  <div className="min-w-0">
+                    <div className={`text-sm font-semibold truncate ${
+                      isActive
+                        ? isFinance ? 'text-white' : 'text-[#4d553e]'
+                        : 'text-slate-800'
+                    }`}>
                       {section.title}
+                      {isFinance && !isActive && (
+                        <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider text-amber-700">★</span>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className={`text-[11px] truncate ${
+                      isActive
+                        ? isFinance ? 'text-white/70' : 'text-slate-600'
+                        : 'text-slate-500'
+                    }`}>
                       {section.description}
                     </div>
                   </div>
                 </div>
-                
+
                 {isActive && (
-                  <ChevronRight className="w-5 h-5 text-purple-400" />
+                  <ChevronRight className={`w-4 h-4 shrink-0 ml-1 ${isFinance ? 'text-white' : 'text-[#4d553e]'}`} />
                 )}
               </motion.button>
             )
           })}
         </nav>
 
-        {/* Indicateur de progression (optionnel) */}
-        {completionStats && (
-          <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-xl p-4 border border-purple-500/20">
-            <div className="text-sm text-gray-400 mb-2">Progression</div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, (completionStats.actions / 10) * 100)}%` }}
-                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500"
-                />
-              </div>
-              <div className="text-sm font-bold text-purple-400">
-                {Math.min(100, Math.round((completionStats.actions / 10) * 100))}%
-              </div>
+        {activeSection !== 'financement' && sections.some(s => s.id === 'financement') && (
+          <motion.button
+            onClick={() => onSectionChange('financement')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-[#4d553e] to-[#3a4030] hover:from-[#3a4030] hover:to-[#2c3324] text-white font-bold text-sm shadow-lg shadow-[#4d553e]/30 transition-all"
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Demander un financement</span>
+            <Sparkles className="w-4 h-4 opacity-70" />
+          </motion.button>
+        )}
+
+        {(onRestartAnalysis || onDeleteProject) && (
+          <div className="pt-3 border-t border-slate-200 space-y-2">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
+              Outils
             </div>
+
+            {onRestartAnalysis && (
+              <button
+                onClick={onRestartAnalysis}
+                disabled={isRestarting}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRestarting ? 'animate-spin' : ''}`} />
+                <span>{isRestarting ? 'En cours…' : "Relancer l'analyse"}</span>
+              </button>
+            )}
+
+            {onDeleteProject && (
+              <button
+                onClick={onDeleteProject}
+                disabled={isDeleting}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs transition-all disabled:opacity-50"
+              >
+                <Trash2 className={`w-3.5 h-3.5 ${isDeleting ? 'animate-pulse' : ''}`} />
+                <span>{isDeleting ? 'Suppression…' : 'Supprimer le projet'}</span>
+              </button>
+            )}
           </div>
         )}
 
-        {/* Actions du projet */}
-        <div className="space-y-3">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Actions
-          </div>
-
-          {/* Bouton Relancer l'analyse */}
-          {onRestartAnalysis && (
-            <motion.button
-              onClick={onRestartAnalysis}
-              disabled={isRestarting}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRestarting ? 'animate-spin' : ''}`} />
-              <span>{isRestarting ? 'Relance en cours...' : 'Relancer l\'analyse'}</span>
-            </motion.button>
-          )}
-
-          {/* Bouton Supprimer le projet */}
-          {onDeleteProject && (
-            <motion.button
-              onClick={onDeleteProject}
-              disabled={isDeleting}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Trash2 className={`w-4 h-4 ${isDeleting ? 'animate-pulse' : ''}`} />
-              <span>{isDeleting ? 'Suppression...' : 'Supprimer le projet'}</span>
-            </motion.button>
-          )}
-        </div>
       </div>
+    </div>
+  )
+}
+
+function StatPill({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-1">
+      <div className="text-lg font-bold text-[#4d553e]">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
     </div>
   )
 }

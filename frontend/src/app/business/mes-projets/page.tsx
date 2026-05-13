@@ -6,6 +6,7 @@ import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronD
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import BcegBackdrop from '@/components/bceg/BcegBackdrop'
+import BcegFinanceSection from '@/components/business/BcegFinanceSection'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 import { useAuth } from '@/contexts/AuthContext'
@@ -76,51 +77,58 @@ interface ProjectNote {
 const PROJECT_SECTIONS = [
   {
     id: 'dashboard',
-    title: 'Vue d\'ensemble',
+    title: 'Mon tableau de bord',
     icon: LayoutDashboard,
-    color: 'text-blue-400',
-    description: 'Résumé du projet'
+    color: 'text-[#4d553e]',
+    description: 'Vue d\'ensemble du projet'
   },
   {
-    id: 'overview',
-    title: 'Informations Complètes',
-    icon: Target,
-    color: 'text-orange-400',
-    description: 'Projet et contexte'
+    id: 'financement',
+    title: 'Financement BCEG',
+    icon: Building2,
+    color: 'text-[#4d553e]',
+    description: 'Préparer mon dossier de crédit'
   },
   {
     id: 'plan-action',
     title: 'Plan d\'Action',
     icon: Briefcase,
-    color: 'text-emerald-400',
-    description: 'Roadmap du projet'
+    color: 'text-[#4d553e]',
+    description: '10 étapes pour réussir'
   },
   {
     id: 'actions',
-    title: 'Actions IA',
+    title: 'Outils IA',
     icon: Zap,
-    color: 'text-yellow-400',
-    description: 'Générations et outils IA'
+    color: 'text-[#4d553e]',
+    description: 'Business plan, formations…'
   },
   {
     id: 'contexte',
-    title: 'Contexte & Bibliothèque',
+    title: 'Mes documents',
     icon: FileText,
-    color: 'text-orange-400',
-    description: 'Contexte cumulé pour IA'
+    color: 'text-[#4d553e]',
+    description: 'Contexte, notes & timeline'
   },
   {
     id: 'conseiller',
     title: 'Conseiller IA',
     icon: MessageSquare,
-    color: 'text-cyan-400',
-    description: 'Assistant intelligent'
+    color: 'text-[#4d553e]',
+    description: 'Posez vos questions'
+  },
+  {
+    id: 'overview',
+    title: 'Détails du projet',
+    icon: Target,
+    color: 'text-[#4d553e]',
+    description: 'Informations complètes'
   },
   {
     id: 'collaboration',
     title: 'Collaboration',
     icon: Users,
-    color: 'text-emerald-400',
+    color: 'text-[#4d553e]',
     description: 'Partager le projet'
   }
 ]
@@ -1339,7 +1347,17 @@ export default function MesProjetsPage() {
             notes={projectNotes[selectedProject.id] || []}
           />
         )
-      
+
+      case 'financement':
+        return (
+          <BcegFinanceSection
+            project={selectedProject}
+            actions={projectActions[selectedProject.id] || []}
+            documents={projectDocuments[selectedProject.id] || []}
+            onNavigateSection={(s) => setActiveSection(s)}
+          />
+        )
+
       case 'overview':
         return renderOverviewSection()
       
@@ -1373,7 +1391,7 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
+          className="bg-gradient-to-r from-[#4d553e] to-[#3a4030] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
             <div className="flex-1">
@@ -2271,7 +2289,7 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
+          className="bg-gradient-to-r from-[#4d553e] to-[#3a4030] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Contexte & Bibliothèque</h1>
           <p className="text-slate-900/90">

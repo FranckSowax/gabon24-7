@@ -42,7 +42,7 @@ export default function ProjectDashboard({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
+        className="bg-gradient-to-r from-[#4d553e] to-[#3a4030] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg shadow-[#4d553e]/20"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
           <div className="flex-1">
