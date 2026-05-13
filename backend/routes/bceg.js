@@ -12,8 +12,10 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { generateBcegDossier } = require('../services/bcegPdfService');
 
 const supabase = supabaseService.supabase;
+const BCEG_TARGET_EMAIL = process.env.BCEG_TARGET_EMAIL || 'commercial@bceg.ga';
 
 // =====================================================================
 // HELPERS — calculs financiers et scoring
@@ -584,6 +586,220 @@ router.get('/admin/export', requireAdmin, async (_req, res) => {
     res.send(csv);
   } catch (error) {
     console.error('Erreur /admin/export:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// POST /api/bceg/generate-dossier — preview PDF d'un projet (sans soumettre)
+// =====================================================================
+router.post('/generate-dossier', requireAuth, async (req, res) => {
+  try {
+    const { project_id, simulation_id } = req.body || {};
+    if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
+
+    const [{ data: project }, { data: simulation }, { data: scoreData }] = await Promise.all([
+      supabase.from('saved_projects').select('*').eq('id', project_id).single(),
+      simulation_id
+        ? supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single()
+        : Promise.resolve({ data: null }),
+      supabase.from('bceg_scores').select('*').eq('project_id', project_id).order('computed_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    if (!project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
+    if (project.user_id && project.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    const pdf = await generateBcegDossier({
+      submission: {
+        id: null,
+        status: 'draft',
+        montant_demande: simulation?.montant_demande || null,
+        bceg_score: scoreData?.score ?? null,
+        bceg_reference: null,
+        created_at: new Date().toISOString(),
+      },
+      project,
+      simulation,
+      score: scoreData,
+      userInfo: { email: req.user.email },
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="dossier-bceg-${project_id.slice(0,8)}.pdf"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('Erreur /generate-dossier:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// POST /api/bceg/submit-full — soumission complète : PDF + email BCEG + DB
+// =====================================================================
+router.post('/submit-full', requireAuth, async (req, res) => {
+  try {
+    const { project_id, simulation_id } = req.body || {};
+    if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
+
+    // 1. Charger projet + sim + score
+    const [{ data: project }, { data: simulation }, { data: scoreData }] = await Promise.all([
+      supabase.from('saved_projects').select('*').eq('id', project_id).single(),
+      simulation_id
+        ? supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single()
+        : Promise.resolve({ data: null }),
+      supabase.from('bceg_scores').select('*').eq('project_id', project_id).order('computed_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (!project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
+    if (project.user_id && project.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    const montant_demande = simulation?.montant_demande || null;
+    if (!montant_demande) {
+      return res.status(400).json({ success: false, error: 'Une simulation BCEG est requise avant de soumettre' });
+    }
+
+    // 2. Créer la submission DB (status submitted)
+    const { data: submission, error: subErr } = await supabase
+      .from('bceg_submissions')
+      .insert({
+        project_id,
+        user_id: req.user.id,
+        simulation_id: simulation?.id || null,
+        status: 'submitted',
+        montant_demande,
+        bceg_score: scoreData?.score ?? null,
+        submitted_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    if (subErr) throw subErr;
+
+    // 3. Générer le PDF
+    const pdfBuffer = await generateBcegDossier({
+      submission,
+      project,
+      simulation,
+      score: scoreData,
+      userInfo: { email: req.user.email },
+    });
+
+    // 4. Envoyer l'email à BCEG via SendGrid (best-effort, non bloquant)
+    let emailStatus = 'skipped';
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        const sgMail = require('@sendgrid/mail');
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        await sgMail.send({
+          to: BCEG_TARGET_EMAIL,
+          from: process.env.SENDGRID_FROM_EMAIL || 'noreply@gabon-insight.com',
+          replyTo: req.user.email,
+          subject: `[Gabon Insight × BCEG] Nouveau dossier de financement — ${project.proposition_titre || project.article_title || 'Projet'}`,
+          text: `Nouveau dossier soumis via Gabon Insight.\n\n` +
+                `Titre: ${project.proposition_titre || 'N/A'}\n` +
+                `Secteur: ${project.secteur_selectionne || 'N/A'}\n` +
+                `Montant demandé: ${new Intl.NumberFormat('fr-FR').format(montant_demande)} XAF\n` +
+                `BCEG Score: ${scoreData?.score ?? 'N/A'}/100\n` +
+                `Contact porteur de projet: ${req.user.email}\n\n` +
+                `Le dossier complet est en pièce jointe. Vous pouvez répondre directement à cet email pour échanger avec le porteur de projet.\n\n` +
+                `Référence Gabon Insight: ${submission.id}`,
+          html: `
+            <div style="font-family: -apple-system, sans-serif; max-width: 600px; padding: 20px;">
+              <h2 style="color: #f59e0b;">🏦 Nouveau dossier BCEG Project</h2>
+              <p>Un nouveau dossier de financement a été soumis via Gabon Insight.</p>
+              <table style="border-collapse: collapse; margin: 16px 0;">
+                <tr><td style="padding: 6px; color: #64748b;">Titre :</td><td style="padding: 6px; font-weight: 600;">${project.proposition_titre || 'N/A'}</td></tr>
+                <tr><td style="padding: 6px; color: #64748b;">Secteur :</td><td style="padding: 6px;">${project.secteur_selectionne || 'N/A'}</td></tr>
+                <tr><td style="padding: 6px; color: #64748b;">Montant :</td><td style="padding: 6px; font-weight: 600; color: #f59e0b;">${new Intl.NumberFormat('fr-FR').format(montant_demande)} XAF</td></tr>
+                <tr><td style="padding: 6px; color: #64748b;">BCEG Score :</td><td style="padding: 6px;">${scoreData?.score ?? 'N/A'}/100</td></tr>
+                <tr><td style="padding: 6px; color: #64748b;">Porteur :</td><td style="padding: 6px;">${req.user.email}</td></tr>
+              </table>
+              <p style="background: #fef3c7; padding: 12px; border-radius: 6px;">📎 Dossier PDF complet en pièce jointe.</p>
+              <p style="color: #64748b; font-size: 12px;">Réf. Gabon Insight : <code>${submission.id}</code></p>
+            </div>
+          `,
+          attachments: [{
+            content: pdfBuffer.toString('base64'),
+            filename: `dossier-bceg-${submission.id.slice(0, 8)}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment',
+          }],
+        });
+        emailStatus = 'sent';
+      } catch (mailErr) {
+        console.error('⚠️ Email BCEG échoué (non bloquant):', mailErr.message);
+        emailStatus = 'failed';
+      }
+    }
+
+    res.json({
+      success: true,
+      submission,
+      email_status: emailStatus,
+      pdf_size_bytes: pdfBuffer.length,
+    });
+  } catch (error) {
+    console.error('Erreur /submit-full:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// POST /api/bceg/mentor-chat — Chatbot "Conseiller BCEG" (Gemini)
+// =====================================================================
+router.post('/mentor-chat', requireAuth, async (req, res) => {
+  try {
+    const { message, history = [], project_context = null } = req.body || {};
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'message requis' });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ success: false, error: 'Service Gemini non configuré' });
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    const systemPrompt = `Tu es le Conseiller BCEG virtuel de l'application Gabon Insight.
+Tu aides un entrepreneur gabonais à préparer un dossier de financement bancaire pour la BCEG
+(Banque pour le Commerce et l'Entrepreneuriat du Gabon), banque dédiée aux PME/PMI gabonaises.
+
+Ton rôle :
+- Donner des conseils concrets pour rendre un projet "bancable" (viabilité financière, secteur prioritaire, capacité de remboursement, complétude du dossier)
+- Expliquer les critères BCEG (taux dès 5 % via programmes CATR et FAMAD, apport recommandé 20 %)
+- Aider à formuler un pitch convaincant
+- Rester bienveillant, encourageant, et adapté au contexte gabonais
+
+Règles :
+- Réponses concises (max 3 paragraphes)
+- Utilise des exemples concrets gabonais quand pertinent
+- Pas de promesse de financement — uniquement des conseils
+- Si l'user pose une question hors sujet (politique, religion, sport…), recentre poliment
+
+${project_context ? `\nContexte du projet de l'utilisateur :\n${JSON.stringify(project_context, null, 2)}` : ''}`;
+
+    const chatHistory = (Array.isArray(history) ? history : [])
+      .slice(-8)
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: String(m.content || '').slice(0, 2000) }],
+      }));
+
+    const chat = model.startChat({
+      history: chatHistory,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    });
+    const result = await chat.sendMessage(message.slice(0, 2000));
+    const reply = result.response.text();
+
+    res.json({ success: true, reply });
+  } catch (error) {
+    console.error('Erreur /mentor-chat:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

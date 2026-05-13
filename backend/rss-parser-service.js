@@ -458,8 +458,9 @@ class RSSParserService {
             }
             
           } catch (dbError) {
-            if (dbError.message && dbError.message.includes('duplicate')) {
-              console.log(`⚠️ Article déjà existant: ${article.title}`);
+            // Doublons (23505) silencieux — dédup RSS normale
+            if (dbError?.code === '23505' || (dbError?.message && dbError.message.includes('duplicate'))) {
+              // silent
             } else {
               console.error(`❌ Erreur sauvegarde article:`, dbError);
             }
