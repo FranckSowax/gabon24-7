@@ -497,7 +497,7 @@ export default function CreerProjetPage() {
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${option.color} flex items-center justify-center mb-2 mx-auto`}>
-                      <option.icon className="w-5 h-5 text-white" />
+                      <option.icon className="w-5 h-5 text-slate-900" />
                     </div>
                     <div className="font-semibold text-gray-900">{option.label}</div>
                     <div className="text-xs text-gray-500">{option.desc}</div>
@@ -507,7 +507,7 @@ export default function CreerProjetPage() {
                         animate={{ scale: 1 }}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-white" />
+                        <CheckCircle2 className="w-4 h-4 text-slate-900" />
                       </motion.div>
                     )}
                   </motion.button>
@@ -541,7 +541,7 @@ export default function CreerProjetPage() {
                     whileTap={{ scale: 0.95 }}
                     className={`px-3 py-2 rounded-full font-medium text-sm transition-all flex items-center gap-1.5 ${
                       formData.key_skills.includes(skill)
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-slate-900 shadow-lg'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -583,7 +583,7 @@ export default function CreerProjetPage() {
                     whileHover={{ y: -2 }}
                     className={`relative p-3 rounded-xl text-center transition-all ${
                       formData.timeline === option.value
-                        ? 'bg-blue-500 text-white shadow-lg'
+                        ? 'bg-blue-500 text-slate-900 shadow-lg'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -673,8 +673,8 @@ export default function CreerProjetPage() {
 
   return (
     <div className="min-h-screen relative">
-      <BcegBackdrop opacity={0.45} />
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-indigo-900/80 via-purple-900/75 to-pink-900/80">
+      <BcegBackdrop opacity={0.5} />
+      <div className="relative z-10">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
       
       <div className="flex">
@@ -684,7 +684,7 @@ export default function CreerProjetPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Progression collée au header */}
           <div className="py-2">
-            <div className="bg-white/10 backdrop-blur-sm rounded-full h-1.5 overflow-hidden">
+            <div className="bg-white/90 backdrop-blur-sm rounded-full h-1.5 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
@@ -699,10 +699,10 @@ export default function CreerProjetPage() {
                   onClick={() => setCurrentStep(step.id)}
                   className={`flex items-center gap-1 transition-all ${
                     step.id === currentStep 
-                      ? 'text-white scale-105' 
+                      ? 'text-slate-900 scale-105' 
                       : step.id < currentStep
                       ? 'text-green-400'
-                      : 'text-white/40'
+                      : 'text-slate-900/40'
                   }`}
                 >
                   {step.id < currentStep ? (
@@ -724,7 +724,7 @@ export default function CreerProjetPage() {
             <div className="hidden lg:block lg:col-span-1">
               <div className={`${currentStepData.bgColor} rounded-2xl p-5 border ${currentStepData.borderColor} shadow-xl`}>
                 <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${currentStepData.color} flex items-center justify-center mb-4 shadow-lg`}>
-                  <currentStepData.icon className="w-7 h-7 text-white" />
+                  <currentStepData.icon className="w-7 h-7 text-slate-900" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">{currentStepData.title}</h2>
                 <p className="text-sm text-gray-600 mb-3">{currentStepData.subtitle}</p>
@@ -735,7 +735,7 @@ export default function CreerProjetPage() {
               <div className="mt-4 bg-slate-900/85 backdrop-blur border border-amber-300/20 rounded-2xl p-4 shadow-xl sticky top-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">🏦</span>
-                  <h3 className="text-sm font-bold text-white">Bancabilité BCEG</h3>
+                  <h3 className="text-sm font-bold text-slate-900">Bancabilité BCEG</h3>
                 </div>
                 <BcegScoreBadge
                   score={bcegScore.score}
@@ -746,7 +746,7 @@ export default function CreerProjetPage() {
                   showBreakdown
                   loading={bcegScore.loading}
                 />
-                <p className="mt-3 text-[10px] text-white/50 leading-relaxed">
+                <p className="mt-3 text-[10px] text-slate-900/50 leading-relaxed">
                   Ce score évolue à chaque champ rempli — vise <strong className="text-emerald-300">70+ </strong>pour soumettre à la BCEG.
                 </p>
               </div>
@@ -784,12 +784,12 @@ export default function CreerProjetPage() {
                     )}
 
                     {currentStep < 5 ? (
-                      <button onClick={handleNext} className={`flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r ${currentStepData.color} text-white font-bold rounded-lg hover:shadow-lg transition-all hover:scale-105`}>
+                      <button onClick={handleNext} className={`flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r ${currentStepData.color} text-slate-900 font-bold rounded-lg hover:shadow-lg transition-all hover:scale-105`}>
                         <span>Suivant</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     ) : (
-                      <button onClick={handleSubmit} disabled={isGenerating} className="flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-lg hover:shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <button onClick={handleSubmit} disabled={isGenerating} className="flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-slate-900 font-bold rounded-lg hover:shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
                         {isGenerating ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Génération...</span></>) : (<><Rocket className="w-5 h-5" /><span>Générer mon Projet</span></>)}
                       </button>
                     )}

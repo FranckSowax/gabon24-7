@@ -978,8 +978,8 @@ export default function BusinessAnalyzerPage() {
 
   return (
     <div className="min-h-screen relative">
-      <BcegBackdrop opacity={0.45} />
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-900/80 via-purple-900/75 to-slate-900/80">
+      <BcegBackdrop opacity={0.5} />
+      <div className="relative z-10">
       <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />
 
       <div className="flex">
@@ -997,15 +997,15 @@ export default function BusinessAnalyzerPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center mb-12"
             >
-              <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 hidden lg:block">
+              <h1 className="text-4xl md:text-6xl font-bold text-slate-900 mb-4 hidden lg:block">
                 <span className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] bg-clip-text text-transparent">
                   Analyseur Business IA
                 </span>
               </h1>
-              <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              <p className="text-xl text-slate-700 max-w-3xl mx-auto">
                 Sélectionnez un article gabonais et découvrez les opportunités business enrichies par notre IA MCP
               </p>
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-sm text-slate-500 mt-2">
                 ✨ Analyse IA optimisée - Version 2.2 - Fonctions corrigées
               </p>
             </motion.div>
@@ -1016,13 +1016,13 @@ export default function BusinessAnalyzerPage() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20"
+            className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border border-slate-300"
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                <Sparkles className="w-6 h-6 text-white" />
+                <Sparkles className="w-6 h-6 text-slate-900" />
               </div>
-              <h2 className="text-2xl font-bold text-white">Articles Récents</h2>
+              <h2 className="text-2xl font-bold text-slate-900">Articles Récents</h2>
             </div>
 
             <div className="space-y-4 max-h-[800px] overflow-y-auto">
@@ -1033,7 +1033,7 @@ export default function BusinessAnalyzerPage() {
                   className={`p-4 rounded-xl border cursor-pointer transition-all ${
                     selectedArticle?.id === article.id
                       ? 'bg-gradient-to-r from-[#6a7556]/20 to-[#4d553e]/20 border-[#6a7556]'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      : 'bg-white/85 border-slate-200 hover:bg-white/90'
                   }`}
                   onClick={() => handleSelectArticle(article)}
                 >
@@ -1071,12 +1071,12 @@ export default function BusinessAnalyzerPage() {
                                 if (fallback) fallback.classList.remove('hidden')
                               }}
                             />
-                            <div className="hidden w-full h-full rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center border border-white/10">
+                            <div className="hidden w-full h-full rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center border border-slate-200">
                               <Sparkles className="w-8 h-8 text-blue-400" />
                             </div>
                           </>
                         ) : (
-                          <div className="w-full h-full rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center border border-white/10">
+                          <div className="w-full h-full rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center border border-slate-200">
                             <Sparkles className="w-8 h-8 text-blue-400" />
                           </div>
                         )
@@ -1086,7 +1086,7 @@ export default function BusinessAnalyzerPage() {
                     {/* Contenu article */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="font-semibold text-white line-clamp-2 flex-1">
+                        <h3 className="font-semibold text-slate-900 line-clamp-2 flex-1">
                           {article.title}
                         </h3>
                         <a
@@ -1094,13 +1094,13 @@ export default function BusinessAnalyzerPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-lg transition-colors group"
+                          className="flex-shrink-0 p-1.5 hover:bg-white/90 rounded-lg transition-colors group"
                           title="Lire l'article complet"
                         >
-                          <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-[#a8b794]" />
+                          <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-[#a8b794]" />
                         </a>
                       </div>
-                      <p className="text-gray-300 text-sm line-clamp-2 mb-3">
+                      <p className="text-slate-700 text-sm line-clamp-2 mb-3">
                         {article.summary}
                       </p>
                       <div className="flex items-center justify-between gap-2">
@@ -1110,7 +1110,7 @@ export default function BusinessAnalyzerPage() {
                             <span className="text-xs font-medium text-blue-300">{article.source}</span>
                           </div>
                         )}
-                        <span className="text-xs text-gray-400 ml-auto">{new Date(article.published_at).toLocaleDateString('fr-FR')}</span>
+                        <span className="text-xs text-slate-500 ml-auto">{new Date(article.published_at).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </div>
                   </div>
@@ -1123,15 +1123,15 @@ export default function BusinessAnalyzerPage() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20"
+            className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border border-slate-300"
           >
             {!selectedArticle && (
               <div className="text-center py-12">
-                <Lightbulb className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <Lightbulb className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">
                   Sélectionnez un article
                 </h3>
-                <p className="text-gray-300">
+                <p className="text-slate-700">
                   Choisissez un article pour découvrir les opportunités business qu'il révèle
                 </p>
               </div>
@@ -1140,10 +1140,10 @@ export default function BusinessAnalyzerPage() {
             {selectedArticle && isLoading && (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">
                   Analyse en cours...
                 </h3>
-                <p className="text-gray-300">
+                <p className="text-slate-700">
                   Notre IA analyse l'article pour identifier les opportunités
                 </p>
               </div>
@@ -1169,16 +1169,16 @@ export default function BusinessAnalyzerPage() {
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg">
-                      <Target className="w-5 h-5 text-white" />
+                      <Target className="w-5 h-5 text-slate-900" />
                     </div>
-                    <h3 className="text-xl font-bold text-white">Analyse Contextuelle</h3>
+                    <h3 className="text-xl font-bold text-slate-900">Analyse Contextuelle</h3>
                   </div>
                   
-                  <div className="bg-white/5 rounded-xl p-4 mb-4">
-                    <p className="text-gray-300 mb-3">
+                  <div className="bg-white/85 rounded-xl p-4 mb-4">
+                    <p className="text-slate-700 mb-3">
                       Nous avons analysé des opportunités à travers cette problématique :
                     </p>
-                    <p className="text-white font-medium bg-gradient-to-r from-[#6a7556]/20 to-[#4d553e]/20 p-3 rounded-lg border border-[#6a7556]/30">
+                    <p className="text-slate-900 font-medium bg-gradient-to-r from-[#6a7556]/20 to-[#4d553e]/20 p-3 rounded-lg border border-[#6a7556]/30">
                       {analysis?.analyse_contextuelle?.problematique_centrale || 'Problématique non disponible'}
                     </p>
                   </div>
@@ -1189,7 +1189,7 @@ export default function BusinessAnalyzerPage() {
                 {/* Secteurs d'opportunités */}
                 {!selectedSecteur ? (
                   <div>
-                    <h4 className="text-lg font-semibold text-white mb-4">
+                    <h4 className="text-lg font-semibold text-slate-900 mb-4">
                       Secteurs d'activité identifiés pour entreprendre :
                     </h4>
                     <div className="space-y-3">
@@ -1198,7 +1198,7 @@ export default function BusinessAnalyzerPage() {
                           {/* Mobile card → ouvre le modal */}
                           <motion.div
                             whileHover={{ scale: 1.02 }}
-                            className="md:hidden p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 cursor-pointer transition-all"
+                            className="md:hidden p-4 bg-white/85 rounded-xl border border-slate-200 hover:bg-white/90 cursor-pointer transition-all"
                             onClick={() => {
                               // États mobiles séparés
                               setMobileSelectedSecteur(secteur)
@@ -1210,17 +1210,17 @@ export default function BusinessAnalyzerPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <h5 className="font-semibold text-white mb-1">{secteur.nom}</h5>
-                                <p className="text-gray-300 text-sm">{secteur.description}</p>
+                                <h5 className="font-semibold text-slate-900 mb-1">{secteur.nom}</h5>
+                                <p className="text-slate-700 text-sm">{secteur.description}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-[#a8b794] font-bold">
                                   {secteur.score_potentiel}/10
                                 </div>
-                                <ArrowRight className="w-5 h-5 text-gray-400" />
+                                <ArrowRight className="w-5 h-5 text-slate-500" />
                               </div>
                             </div>
-                            <div className="mt-2 text-sm text-white/60">
+                            <div className="mt-2 text-sm text-slate-900/60">
                               Appuyer pour générer 3 idées de projets concrètes
                             </div>
                           </motion.div>
@@ -1228,19 +1228,19 @@ export default function BusinessAnalyzerPage() {
                           {/* Desktop card → workflow inline conservé */}
                           <motion.div
                             whileHover={{ scale: 1.02 }}
-                            className="hidden md:block p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 cursor-pointer transition-all"
+                            className="hidden md:block p-4 bg-white/85 rounded-xl border border-slate-200 hover:bg-white/90 cursor-pointer transition-all"
                             onClick={() => handleSelectSecteur(secteur)}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <h5 className="font-semibold text-white mb-1">{secteur.nom}</h5>
-                                <p className="text-gray-300 text-sm">{secteur.description}</p>
+                                <h5 className="font-semibold text-slate-900 mb-1">{secteur.nom}</h5>
+                                <p className="text-slate-700 text-sm">{secteur.description}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-[#a8b794] font-bold">
                                   {secteur.score_potentiel}/10
                                 </div>
-                                <ArrowRight className="w-5 h-5 text-gray-400" />
+                                <ArrowRight className="w-5 h-5 text-slate-500" />
                               </div>
                             </div>
                           </motion.div>
@@ -1252,12 +1252,12 @@ export default function BusinessAnalyzerPage() {
                   isDesktop ? (
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-white">
+                      <h4 className="text-lg font-semibold text-slate-900">
                         Secteur sélectionné : {selectedSecteur.nom}
                       </h4>
                       <button
                         onClick={() => setSelectedSecteur(null)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-slate-500 hover:text-slate-900 transition-colors"
                       >
                         ← Retour
                       </button>
@@ -1288,8 +1288,8 @@ export default function BusinessAnalyzerPage() {
                     />
 
                     <div className="mb-4">
-                      <h5 className="text-white font-semibold mb-1">🎯 Personnalisez votre contexte</h5>
-                      <p className="text-gray-300 text-sm">Renseignez votre profil pour adapter les propositions à votre situation.</p>
+                      <h5 className="text-slate-900 font-semibold mb-1">🎯 Personnalisez votre contexte</h5>
+                      <p className="text-slate-700 text-sm">Renseignez votre profil pour adapter les propositions à votre situation.</p>
                     </div>
                     <PersonalizationFormInline
                       budgetOptions={budgetLevels as any}
@@ -1332,12 +1332,12 @@ export default function BusinessAnalyzerPage() {
                   isDesktop ? (
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-white">
+                      <h4 className="text-lg font-semibold text-slate-900">
                         Propositions pour {selectedSecteur.nom}
                       </h4>
                       <button
                         onClick={() => setSelectedBudget(null)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-slate-500 hover:text-slate-900 transition-colors"
                       >
                         ← Retour
                       </button>
@@ -1346,7 +1346,7 @@ export default function BusinessAnalyzerPage() {
                     {isLoadingProposals ? (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
-                        <p className="text-gray-300">Génération des propositions...</p>
+                        <p className="text-slate-700">Génération des propositions...</p>
                       </div>
                     ) : (
                       <>
@@ -1357,23 +1357,23 @@ export default function BusinessAnalyzerPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="p-4 bg-white/5 rounded-xl border border-white/10"
+                            className="p-4 bg-white/85 rounded-xl border border-slate-200"
                           >
                             <div className="flex items-start justify-between mb-3">
-                              <h5 className="font-semibold text-white">{proposal.titre}</h5>
+                              <h5 className="font-semibold text-slate-900">{proposal.titre}</h5>
                               <div className="text-[#a8b794] font-bold text-sm">
                                 {proposal.score_faisabilite}%
                               </div>
                             </div>
                             
-                            <p className="text-gray-300 text-sm mb-4 line-clamp-3">
+                            <p className="text-slate-700 text-sm mb-4 line-clamp-3">
                               {proposal.description}
                             </p>
                             
                             <div className="mb-4">
                               {proposal.premiers_investissements && (
                                 <div className="mb-3">
-                                  <p className="text-gray-400 text-xs mb-2">Premiers investissements :</p>
+                                  <p className="text-slate-500 text-xs mb-2">Premiers investissements :</p>
                                   {(() => {
                                     const val: any = proposal.premiers_investissements as any
                                     // Fonction pour supprimer les montants XAF
@@ -1389,7 +1389,7 @@ export default function BusinessAnalyzerPage() {
                                           .filter(Boolean)
                                     if (items.length > 1) {
                                       return (
-                                        <ul className="text-white text-sm space-y-2 pl-4">
+                                        <ul className="text-slate-900 text-sm space-y-2 pl-4">
                                           {items.map((it, i) => (
                                             <li key={i} className="flex items-start gap-2">
                                               <span className="text-[#a8b794] mt-1.5 flex-shrink-0">•</span>
@@ -1400,27 +1400,27 @@ export default function BusinessAnalyzerPage() {
                                       )
                                     }
                                     return (
-                                      <p className="text-white font-medium text-sm">{removeAmounts(String(val))}</p>
+                                      <p className="text-slate-900 font-medium text-sm">{removeAmounts(String(val))}</p>
                                     )
                                   })()}
                                 </div>
                               )}
                               {proposal.delai_lancement && (
                                 <div>
-                                  <p className="text-gray-400 text-xs mb-1">Délai de lancement</p>
-                                  <p className="text-white font-medium">{proposal.delai_lancement}</p>
+                                  <p className="text-slate-500 text-xs mb-1">Délai de lancement</p>
+                                  <p className="text-slate-900 font-medium">{proposal.delai_lancement}</p>
                                 </div>
                               )}
                             </div>
                             
                             {proposal.avantages && proposal.avantages.length > 0 && (
                               <div className="mb-4">
-                                <p className="text-gray-400 text-xs mb-2">Avantages :</p>
+                                <p className="text-slate-500 text-xs mb-2">Avantages :</p>
                                 <div className="space-y-2">
                                   {proposal.avantages.slice(0, 2).map((avantage: string, i: number) => (
                                     <div key={i} className="flex items-start gap-2">
                                       <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                                      <p className="text-gray-300 text-sm leading-relaxed">{avantage}</p>
+                                      <p className="text-slate-700 text-sm leading-relaxed">{avantage}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -1433,8 +1433,8 @@ export default function BusinessAnalyzerPage() {
                                 disabled={savingProjects.has(index)}
                                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                                   savedProjects.has(index)
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-white/10 text-white hover:bg-white/20'
+                                    ? 'bg-green-600 text-slate-900'
+                                    : 'bg-white/90 text-slate-900 hover:bg-white/20'
                                 }`}
                               >
                                 {savingProjects.has(index) ? (
@@ -1466,8 +1466,8 @@ export default function BusinessAnalyzerPage() {
                                 disabled={!savedProjects.has(index)}
                                 className={`flex-1 py-2 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
                                   savedProjects.has(index)
-                                    ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black hover:from-[#3a4030] hover:to-[#2c3324]'
-                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white hover:from-[#3a4030] hover:to-[#2c3324]'
+                                    : 'bg-gray-600 text-slate-500 cursor-not-allowed'
                                 }`}
                                 title={!savedProjects.has(index) ? 'Sauvegardez d\'abord le projet' : 'Accéder au projet'}
                               >
@@ -1505,7 +1505,7 @@ export default function BusinessAnalyzerPage() {
           >
             <button
               onClick={() => router.push(`/business/analyzer/analysis?aid=${encodeURIComponent(selectedArticle.id)}`)}
-              className={"w-full py-3 px-4 rounded-xl text-black font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4d553e] bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#3a4030] hover:to-[#2c3324] shadow-[#4d553e]/40"}
+              className={"w-full py-3 px-4 rounded-xl text-white font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4d553e] bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#3a4030] hover:to-[#2c3324] shadow-[#4d553e]/40"}
               aria-label={'Analyser cet article'}
             >
               Analyser cet article
@@ -1519,13 +1519,13 @@ export default function BusinessAnalyzerPage() {
         {showMobileProposalModal && mobileSelectedSecteur && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:hidden">
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowMobileProposalModal(false)} />
-            <div className="relative w-full sm:w-[640px] max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-slate-900 border border-white/10 shadow-2xl">
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <div className="flex items-center gap-2 text-white/90">
+            <div className="relative w-full sm:w-[640px] max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-slate-900 border border-slate-200 shadow-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <div className="flex items-center gap-2 text-slate-900/90">
                   <Lightbulb className="w-5 h-5 text-[#a8b794]" />
                   <span className="font-semibold">{mobileSelectedSecteur.nom}</span>
                 </div>
-                <button aria-label="Fermer" onClick={() => setShowMobileProposalModal(false)} className="text-white/70 hover:text-white">
+                <button aria-label="Fermer" onClick={() => setShowMobileProposalModal(false)} className="text-slate-900/70 hover:text-slate-900">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1558,7 +1558,7 @@ export default function BusinessAnalyzerPage() {
                           }}
                         />
 
-                        <div className="text-white/90 font-medium mb-4">Personnalisez votre contexte</div>
+                        <div className="text-slate-900/90 font-medium mb-4">Personnalisez votre contexte</div>
                         <PersonalizationFormInline
                           budgetOptions={budgetLevels as any}
                           onSubmit={handleMobilePersonalizationSubmit}
@@ -1570,7 +1570,7 @@ export default function BusinessAnalyzerPage() {
                     {mobileIsLoadingProposals && (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
-                        <div className="text-white/90">Génération des propositions...</div>
+                        <div className="text-slate-900/90">Génération des propositions...</div>
                       </div>
                     )}
                   </>
@@ -1582,23 +1582,23 @@ export default function BusinessAnalyzerPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="p-4 bg-white/5 rounded-xl border border-white/10"
+                        className="p-4 bg-white/85 rounded-xl border border-slate-200"
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <h5 className="font-semibold text-white">{proposal.titre}</h5>
+                          <h5 className="font-semibold text-slate-900">{proposal.titre}</h5>
                           <div className="text-[#a8b794] font-bold text-sm">
                             {proposal.score_faisabilite}%
                           </div>
                         </div>
                         
-                        <p className="text-gray-300 text-sm mb-4 line-clamp-3">
+                        <p className="text-slate-700 text-sm mb-4 line-clamp-3">
                           {proposal.description}
                         </p>
                         
                         <div className="mb-4">
                           {proposal.premiers_investissements && (
                             <div className="mb-3">
-                              <p className="text-gray-400 text-xs mb-2">Premiers investissements :</p>
+                              <p className="text-slate-500 text-xs mb-2">Premiers investissements :</p>
                               {(() => {
                                 const val: any = proposal.premiers_investissements as any
                                 // Fonction pour supprimer les montants XAF
@@ -1614,7 +1614,7 @@ export default function BusinessAnalyzerPage() {
                                       .filter(Boolean)
                                 if (items.length > 1) {
                                   return (
-                                    <ul className="text-white text-sm space-y-2 pl-4">
+                                    <ul className="text-slate-900 text-sm space-y-2 pl-4">
                                       {items.map((it, i) => (
                                         <li key={i} className="flex items-start gap-2">
                                           <span className="text-[#a8b794] mt-1.5 flex-shrink-0">•</span>
@@ -1625,27 +1625,27 @@ export default function BusinessAnalyzerPage() {
                                   )
                                 }
                                 return (
-                                  <p className="text-white font-medium text-sm">{removeAmounts(String(val))}</p>
+                                  <p className="text-slate-900 font-medium text-sm">{removeAmounts(String(val))}</p>
                                 )
                               })()}
                             </div>
                           )}
                           {proposal.delai_lancement && (
                             <div>
-                              <p className="text-gray-400 text-xs mb-1">Délai de lancement</p>
-                              <p className="text-white font-medium">{proposal.delai_lancement}</p>
+                              <p className="text-slate-500 text-xs mb-1">Délai de lancement</p>
+                              <p className="text-slate-900 font-medium">{proposal.delai_lancement}</p>
                             </div>
                           )}
                         </div>
                         
                         {proposal.avantages && proposal.avantages.length > 0 && (
                           <div className="mb-4">
-                            <p className="text-gray-400 text-xs mb-2">Avantages :</p>
+                            <p className="text-slate-500 text-xs mb-2">Avantages :</p>
                             <div className="space-y-2">
                               {proposal.avantages.slice(0, 2).map((avantage: string, i: number) => (
                                 <div key={i} className="flex items-start gap-2">
                                   <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                                  <p className="text-gray-300 text-sm leading-relaxed">{avantage}</p>
+                                  <p className="text-slate-700 text-sm leading-relaxed">{avantage}</p>
                                 </div>
                               ))}
                             </div>
@@ -1658,8 +1658,8 @@ export default function BusinessAnalyzerPage() {
                             disabled={savingProjects.has(index)}
                             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                               savedProjects.has(index)
-                                ? 'bg-green-600 text-white'
-                                : 'bg-white/10 text-white hover:bg-white/20'
+                                ? 'bg-green-600 text-slate-900'
+                                : 'bg-white/90 text-slate-900 hover:bg-white/20'
                             }`}
                           >
                             {savingProjects.has(index) ? (
@@ -1691,8 +1691,8 @@ export default function BusinessAnalyzerPage() {
                             disabled={!savedProjects.has(index)}
                             className={`flex-1 py-2 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
                               savedProjects.has(index)
-                                ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black hover:from-[#3a4030] hover:to-[#2c3324]'
-                                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white hover:from-[#3a4030] hover:to-[#2c3324]'
+                                : 'bg-gray-600 text-slate-500 cursor-not-allowed'
                             }`}
                             title={!savedProjects.has(index) ? 'Sauvegardez d\'abord le projet' : 'Accéder au projet'}
                           >
@@ -1716,10 +1716,10 @@ export default function BusinessAnalyzerPage() {
           <div className="absolute inset-0 bg-black/50" onClick={() => user && setShowWhatsAppGuide(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-white" />
+              <Sparkles className="w-7 h-7 text-slate-900" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Analyseur Business IA</h2>
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-slate-500 text-sm mb-6">
               Transformez cet article en projet business avec notre IA
             </p>
 
@@ -1734,7 +1734,7 @@ export default function BusinessAnalyzerPage() {
                   <div className="text-sm font-medium text-gray-900">
                     {user ? 'Connecte' : 'Connectez-vous'}
                   </div>
-                  {!user && <div className="text-xs text-gray-500">Gratuit, en 30 secondes</div>}
+                  {!user && <div className="text-xs text-slate-500">Gratuit, en 30 secondes</div>}
                 </div>
               </div>
 
@@ -1742,7 +1742,7 @@ export default function BusinessAnalyzerPage() {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                   creditBalance !== null && creditBalance >= 15
                     ? 'bg-green-100 text-green-600'
-                    : user ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'
+                    : user ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-slate-500'
                 }`}>
                   {creditBalance !== null && creditBalance >= 15 ? '\u2713' : '2'}
                 </div>
@@ -1752,15 +1752,15 @@ export default function BusinessAnalyzerPage() {
                       ? `${creditBalance} credits disponibles`
                       : 'Rechargez vos credits'}
                   </div>
-                  <div className="text-xs text-gray-500">L&apos;analyse coute 15 credits</div>
+                  <div className="text-xs text-slate-500">L&apos;analyse coute 15 credits</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                <div className="w-8 h-8 rounded-full bg-gray-100 text-slate-500 flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
                 <div>
                   <div className="text-sm font-medium text-gray-900">Lancez l&apos;analyse</div>
-                  <div className="text-xs text-gray-500">Business plan, budget, strategie</div>
+                  <div className="text-xs text-slate-500">Business plan, budget, strategie</div>
                 </div>
               </div>
             </div>
@@ -1792,7 +1792,7 @@ export default function BusinessAnalyzerPage() {
             )}
 
             {user && (
-              <button onClick={() => setShowWhatsAppGuide(false)} className="mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setShowWhatsAppGuide(false)} className="mt-3 text-sm text-slate-500 hover:text-gray-600 transition-colors">
                 Fermer
               </button>
             )}
@@ -1858,11 +1858,11 @@ export default function BusinessAnalyzerPage() {
       {/* Modal de sauvegarde de contexte */}
       {showSaveContextModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-white/10">
-            <h3 className="text-xl font-bold text-white mb-4">💾 Sauvegarder ce contexte</h3>
+          <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-slate-200">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">💾 Sauvegarder ce contexte</h3>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Nom du contexte
               </label>
               <input
@@ -1870,7 +1870,7 @@ export default function BusinessAnalyzerPage() {
                 value={contextName}
                 onChange={(e) => setContextName(e.target.value)}
                 placeholder="Ex: Profil Entrepreneur Tech"
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#4d553e]"
+                className="w-full px-4 py-2 bg-white/85 border border-slate-200 rounded-lg text-slate-900 placeholder-gray-500 focus:outline-none focus:border-[#4d553e]"
                 maxLength={50}
               />
             </div>
@@ -1881,7 +1881,7 @@ export default function BusinessAnalyzerPage() {
                   setShowSaveContextModal(false)
                   setContextName('')
                 }}
-                className="flex-1 px-4 py-2 bg-white/5 text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="flex-1 px-4 py-2 bg-white/85 text-slate-900 rounded-lg hover:bg-white/90 transition-colors"
               >
                 Annuler
               </button>

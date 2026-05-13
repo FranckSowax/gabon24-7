@@ -1095,7 +1095,7 @@ export default function MesProjetsPage() {
 
     // Ouvrir le modal
     setCurrentActionName('Test de Compétences')
-    setCurrentActionIcon(<GraduationCap className="w-6 h-6 text-white" />)
+    setCurrentActionIcon(<GraduationCap className="w-6 h-6 text-slate-900" />)
     setCurrentActionCredits(CREDIT_COSTS['skill-test'] || 30)
     setAiModalStatus('generating')
     setAiModalProgress(0)
@@ -1212,7 +1212,7 @@ export default function MesProjetsPage() {
 
     // Ouvrir le modal
     setCurrentActionName('Formation Personnalisée')
-    setCurrentActionIcon(<Rocket className="w-6 h-6 text-white" />)
+    setCurrentActionIcon(<Rocket className="w-6 h-6 text-slate-900" />)
     setCurrentActionCredits(CREDIT_COSTS['custom-training'] || 50)
     setAiModalStatus('generating')
     setAiModalProgress(0)
@@ -1377,10 +1377,10 @@ export default function MesProjetsPage() {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 break-words">
                 {selectedProject.proposition_titre}
               </h1>
-              <p className="text-white/90 text-base sm:text-lg break-words">
+              <p className="text-slate-900/90 text-base sm:text-lg break-words">
                 {selectedProject.proposition_description}
               </p>
             </div>
@@ -1392,22 +1392,22 @@ export default function MesProjetsPage() {
               }`}>
                 {selectedProject.proposition_score_faisabilite}%
               </div>
-              <div className="text-sm text-white/80">Faisabilité</div>
+              <div className="text-sm text-slate-900/80">Faisabilité</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-white/70 mb-1">Secteur</div>
-              <div className="text-white font-semibold">{selectedProject.secteur_selectionne}</div>
+            <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
+              <div className="text-xs text-slate-900/70 mb-1">Secteur</div>
+              <div className="text-slate-900 font-semibold">{selectedProject.secteur_selectionne}</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-white/70 mb-1">Budget</div>
-              <div className="text-white font-semibold">{selectedProject.budget_selectionne}</div>
+            <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
+              <div className="text-xs text-slate-900/70 mb-1">Budget</div>
+              <div className="text-slate-900 font-semibold">{selectedProject.budget_selectionne}</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-              <div className="text-xs text-white/70 mb-1">Phase</div>
-              <div className="text-white font-semibold capitalize">{selectedProject.current_phase || 'Idée'}</div>
+            <div className="bg-white/90 rounded-lg p-3 backdrop-blur-sm">
+              <div className="text-xs text-slate-900/70 mb-1">Phase</div>
+              <div className="text-slate-900 font-semibold capitalize">{selectedProject.current_phase || 'Idée'}</div>
             </div>
           </div>
         </motion.div>
@@ -1417,13 +1417,13 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
         >
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <FileText className="w-6 h-6 text-purple-400" />
             Description du Projet
           </h2>
-          <p className="text-gray-300 leading-relaxed">
+          <p className="text-slate-700 leading-relaxed">
             {selectedProject.proposition_description || 'Aucune description disponible pour ce projet.'}
           </p>
         </motion.div>
@@ -1433,13 +1433,13 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
         >
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Target className="w-6 h-6 text-blue-400" />
             Problématique Centrale
           </h2>
-          <p className="text-gray-300 leading-relaxed">
+          <p className="text-slate-700 leading-relaxed">
             {selectedProject.problematique_centrale}
           </p>
         </motion.div>
@@ -1450,9 +1450,9 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
           >
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Rocket className="w-6 h-6 text-orange-400" />
               Actions Immédiates Recommandées
             </h2>
@@ -1460,12 +1460,12 @@ export default function MesProjetsPage() {
               {selectedProject.proposition_actions_immediates.map((action: string, idx: number) => (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                  className="flex items-start gap-3 p-4 bg-white/85 rounded-lg border border-slate-200 hover:bg-white/90 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                     <span className="text-orange-400 font-bold">{idx + 1}</span>
                   </div>
-                  <p className="text-gray-300 flex-1">{action}</p>
+                  <p className="text-slate-700 flex-1">{action}</p>
                 </div>
               ))}
             </div>
@@ -1478,9 +1478,9 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
           >
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Star className="w-6 h-6 text-yellow-400" />
               Avantages Concurrentiels
             </h2>
@@ -1491,7 +1491,7 @@ export default function MesProjetsPage() {
                   className="flex items-start gap-3 p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg border border-yellow-500/20"
                 >
                   <CheckCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-gray-300 text-sm">{avantage}</p>
+                  <p className="text-slate-700 text-sm">{avantage}</p>
                 </div>
               ))}
             </div>
@@ -1505,18 +1505,18 @@ export default function MesProjetsPage() {
           transition={{ delay: 0.5 }}
           className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20"
         >
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <ExternalLink className="w-6 h-6 text-blue-400" />
             Article Source
           </h2>
           <div className="space-y-3">
             <div>
-              <div className="text-sm text-gray-400 mb-1">Titre</div>
-              <div className="text-white font-medium">{selectedProject.article_title}</div>
+              <div className="text-sm text-slate-500 mb-1">Titre</div>
+              <div className="text-slate-900 font-medium">{selectedProject.article_title}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-400 mb-1">Résumé</div>
-              <p className="text-gray-300 text-sm">{selectedProject.article_summary}</p>
+              <div className="text-sm text-slate-500 mb-1">Résumé</div>
+              <p className="text-slate-700 text-sm">{selectedProject.article_summary}</p>
             </div>
             {selectedProject.article_url ? (
               <a
@@ -1542,9 +1542,9 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
         >
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <User className="w-7 h-7 text-green-400" />
             Contexte Utilisateur
           </h2>
@@ -1553,14 +1553,14 @@ export default function MesProjetsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Situation */}
             {selectedProject.user_context?.situation && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <div className="bg-white/85 rounded-xl p-4 border border-slate-200">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                    <User className="w-6 h-6 text-white" />
+                    <User className="w-6 h-6 text-slate-900" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-1">Situation</h3>
-                    <p className="text-white font-medium">{selectedProject.user_context.situation}</p>
+                    <h3 className="text-sm font-semibold text-slate-500 mb-1">Situation</h3>
+                    <p className="text-slate-900 font-medium">{selectedProject.user_context.situation}</p>
                   </div>
                 </div>
               </div>
@@ -1568,14 +1568,14 @@ export default function MesProjetsPage() {
 
             {/* Disponibilité */}
             {selectedProject.user_context?.disponibilite && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <div className="bg-white/85 rounded-xl p-4 border border-slate-200">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-6 h-6 text-white" />
+                    <Clock className="w-6 h-6 text-slate-900" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-1">Disponibilité</h3>
-                    <p className="text-white font-medium">{selectedProject.user_context.disponibilite}</p>
+                    <h3 className="text-sm font-semibold text-slate-500 mb-1">Disponibilité</h3>
+                    <p className="text-slate-900 font-medium">{selectedProject.user_context.disponibilite}</p>
                   </div>
                 </div>
               </div>
@@ -1583,14 +1583,14 @@ export default function MesProjetsPage() {
 
             {/* Expérience */}
             {selectedProject.user_context?.experience_entrepreneuriale && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <div className="bg-white/85 rounded-xl p-4 border border-slate-200">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-6 h-6 text-white" />
+                    <Briefcase className="w-6 h-6 text-slate-900" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-1">Expérience Entrepreneuriale</h3>
-                    <p className="text-white font-medium">{selectedProject.user_context.experience_entrepreneuriale}</p>
+                    <h3 className="text-sm font-semibold text-slate-500 mb-1">Expérience Entrepreneuriale</h3>
+                    <p className="text-slate-900 font-medium">{selectedProject.user_context.experience_entrepreneuriale}</p>
                   </div>
                 </div>
               </div>
@@ -1598,14 +1598,14 @@ export default function MesProjetsPage() {
 
             {/* Objectif délai */}
             {selectedProject.user_context?.objectif_delai && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <div className="bg-white/85 rounded-xl p-4 border border-slate-200">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                    <Target className="w-6 h-6 text-white" />
+                    <Target className="w-6 h-6 text-slate-900" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-1">Objectif de Lancement</h3>
-                    <p className="text-white font-medium">{selectedProject.user_context.objectif_delai}</p>
+                    <h3 className="text-sm font-semibold text-slate-500 mb-1">Objectif de Lancement</h3>
+                    <p className="text-slate-900 font-medium">{selectedProject.user_context.objectif_delai}</p>
                   </div>
                 </div>
               </div>
@@ -1615,7 +1615,7 @@ export default function MesProjetsPage() {
           {/* Compétences */}
           {selectedProject.user_context?.competences && selectedProject.user_context.competences.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <Star className="w-5 h-5 text-green-400" />
                 Compétences
               </h3>
@@ -1634,28 +1634,28 @@ export default function MesProjetsPage() {
 
           {/* Contraintes */}
           {selectedProject.user_context?.contraintes && (
-            <div className="mt-6 bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="mt-6 bg-white/85 rounded-xl p-4 border border-slate-200">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-red-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-6 h-6 text-white" />
+                  <AlertCircle className="w-6 h-6 text-slate-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-1">Contraintes</h3>
-                  <p className="text-white font-medium">{selectedProject.user_context.contraintes}</p>
+                  <h3 className="text-sm font-semibold text-slate-500 mb-1">Contraintes</h3>
+                  <p className="text-slate-900 font-medium">{selectedProject.user_context.contraintes}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Budget */}
-          <div className="mt-6 bg-white/5 rounded-xl p-4 border border-white/10">
+          <div className="mt-6 bg-white/85 rounded-xl p-4 border border-slate-200">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="w-6 h-6 text-white" />
+                <DollarSign className="w-6 h-6 text-slate-900" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-400 mb-1">Budget de Démarrage</h3>
-                <p className="text-white font-medium text-lg">
+                <h3 className="text-sm font-semibold text-slate-500 mb-1">Budget de Démarrage</h3>
+                <p className="text-slate-900 font-medium text-lg">
                   {selectedProject.budget_selectionne && selectedProject.budget_selectionne !== 'Non spécifié' 
                     ? selectedProject.budget_selectionne 
                     : <span className="text-gray-500 italic">Non spécifié</span>}
@@ -1670,20 +1670,20 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
         >
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <Newspaper className="w-7 h-7 text-blue-400" />
             Articles Similaires
           </h2>
-          <p className="text-gray-400 text-sm mb-4">
+          <p className="text-slate-500 text-sm mb-4">
             Articles de notre base de données traitant du même sujet ou de la même problématique
           </p>
 
           {loadingSimilarArticles ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-              <span className="ml-3 text-gray-400">Recherche d'articles similaires...</span>
+              <span className="ml-3 text-slate-500">Recherche d'articles similaires...</span>
             </div>
           ) : similarArticles.length > 0 ? (
             <div className="space-y-3">
@@ -1696,17 +1696,17 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 hover:border-blue-500/50 transition-all group"
+                  className="flex items-start gap-4 p-4 bg-white/85 rounded-xl border border-slate-200 hover:bg-white/90 hover:border-blue-500/50 transition-all group"
                 >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                    <Newspaper className="w-5 h-5 text-white" />
+                    <Newspaper className="w-5 h-5 text-slate-900" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-medium mb-1 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                    <h3 className="text-slate-900 font-medium mb-1 line-clamp-2 group-hover:text-blue-400 transition-colors">
                       {article.title}
                     </h3>
                     {article.summary && (
-                      <p className="text-gray-400 text-sm line-clamp-2 mb-2">
+                      <p className="text-slate-500 text-sm line-clamp-2 mb-2">
                         {article.summary}
                       </p>
                     )}
@@ -1717,7 +1717,7 @@ export default function MesProjetsPage() {
                         </span>
                       )}
                       {article.source && (
-                        <span className="px-2 py-1 bg-white/5 rounded-full">
+                        <span className="px-2 py-1 bg-white/85 rounded-full">
                           {article.source}
                         </span>
                       )}
@@ -1758,8 +1758,8 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-white mb-2">Contexte Utilisateur</h1>
-          <p className="text-white/90">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Contexte Utilisateur</h1>
+          <p className="text-slate-900/90">
             Vos compétences, situation et disponibilité pour ce projet
           </p>
         </motion.div>
@@ -1772,15 +1772,15 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                  <User className="w-6 h-6 text-white" />
+                  <User className="w-6 h-6 text-slate-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-1">Situation</h3>
-                  <p className="text-white font-medium">{context.situation}</p>
+                  <h3 className="text-sm font-semibold text-slate-500 mb-1">Situation</h3>
+                  <p className="text-slate-900 font-medium">{context.situation}</p>
                 </div>
               </div>
             </motion.div>
@@ -1792,15 +1792,15 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-6 h-6 text-white" />
+                  <Clock className="w-6 h-6 text-slate-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-1">Disponibilité</h3>
-                  <p className="text-white font-medium">{context.disponibilite}</p>
+                  <h3 className="text-sm font-semibold text-slate-500 mb-1">Disponibilité</h3>
+                  <p className="text-slate-900 font-medium">{context.disponibilite}</p>
                 </div>
               </div>
             </motion.div>
@@ -1812,15 +1812,15 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                  <Briefcase className="w-6 h-6 text-white" />
+                  <Briefcase className="w-6 h-6 text-slate-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-1">Expérience Entrepreneuriale</h3>
-                  <p className="text-white font-medium">{context.experience_entrepreneuriale}</p>
+                  <h3 className="text-sm font-semibold text-slate-500 mb-1">Expérience Entrepreneuriale</h3>
+                  <p className="text-slate-900 font-medium">{context.experience_entrepreneuriale}</p>
                 </div>
               </div>
             </motion.div>
@@ -1832,15 +1832,15 @@ export default function MesProjetsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                  <Target className="w-6 h-6 text-white" />
+                  <Target className="w-6 h-6 text-slate-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-1">Objectif de Lancement</h3>
-                  <p className="text-white font-medium">{context.objectif_delai}</p>
+                  <h3 className="text-sm font-semibold text-slate-500 mb-1">Objectif de Lancement</h3>
+                  <p className="text-slate-900 font-medium">{context.objectif_delai}</p>
                 </div>
               </div>
             </motion.div>
@@ -1853,13 +1853,13 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center">
-                <Star className="w-6 h-6 text-white" />
+                <Star className="w-6 h-6 text-slate-900" />
               </div>
-              <h3 className="text-xl font-bold text-white">Compétences</h3>
+              <h3 className="text-xl font-bold text-slate-900">Compétences</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {context.competences.map((comp: string, idx: number) => (
@@ -1880,15 +1880,15 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-red-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="w-6 h-6 text-white" />
+                <AlertCircle className="w-6 h-6 text-slate-900" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-400 mb-1">Contraintes</h3>
-                <p className="text-white font-medium">{context.contraintes}</p>
+                <h3 className="text-sm font-semibold text-slate-500 mb-1">Contraintes</h3>
+                <p className="text-slate-900 font-medium">{context.contraintes}</p>
               </div>
             </div>
           </motion.div>
@@ -1899,15 +1899,15 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-              <DollarSign className="w-6 h-6 text-white" />
+              <DollarSign className="w-6 h-6 text-slate-900" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-400 mb-1">Budget de Démarrage</h3>
-              <p className="text-white font-medium text-lg">
+              <h3 className="text-sm font-semibold text-slate-500 mb-1">Budget de Démarrage</h3>
+              <p className="text-slate-900 font-medium text-lg">
                 {selectedProject.budget_selectionne && selectedProject.budget_selectionne !== 'Non spécifié' 
                   ? selectedProject.budget_selectionne 
                   : <span className="text-gray-500 italic">Non spécifié</span>}
@@ -1921,11 +1921,11 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <User className="w-16 h-16 text-green-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Contexte non renseigné</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Contexte non renseigné</h3>
+            <p className="text-slate-500">
               Les informations de contexte utilisateur n'ont pas été collectées pour ce projet
             </p>
           </motion.div>
@@ -1973,19 +1973,19 @@ export default function MesProjetsPage() {
         >
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Actions IA Disponibles</h1>
+              <h1 className="text-3xl font-bold text-slate-900 mb-2">Actions IA Disponibles</h1>
               <p className="text-blue-50 text-lg">
                 Générez du contenu professionnel avec l'intelligence artificielle
               </p>
             </div>
             <div className="flex items-center gap-6 text-sm">
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">{completedActions}</div>
+                <div className="text-3xl font-bold text-slate-900">{completedActions}</div>
                 <div className="text-blue-100 mt-1">Complétées</div>
               </div>
               <div className="w-px h-12 bg-white/30"></div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">{projectActionsData.length}</div>
+                <div className="text-3xl font-bold text-slate-900">{projectActionsData.length}</div>
                 <div className="text-blue-100 mt-1">Lancées</div>
               </div>
             </div>
@@ -2014,7 +2014,7 @@ export default function MesProjetsPage() {
                   {/* Header avec icône et badge */}
                   <div className="flex items-start justify-between mb-4">
                     <div className={`w-14 h-14 bg-gradient-to-br ${(action as any).comingSoon ? 'from-gray-400 to-gray-500' : 'from-blue-500 to-purple-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-7 h-7 text-white" />
+                      <Icon className="w-7 h-7 text-slate-900" />
                     </div>
                     {(action as any).comingSoon ? (
                       <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
@@ -2039,7 +2039,7 @@ export default function MesProjetsPage() {
                   <div className="flex items-center gap-3 mb-5 pb-5 border-b border-gray-100">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-                        <Zap className="w-3.5 h-3.5 text-white" />
+                        <Zap className="w-3.5 h-3.5 text-slate-900" />
                       </div>
                       <span className="text-sm font-semibold text-gray-700">{action.credits} crédits</span>
                     </div>
@@ -2068,7 +2068,7 @@ export default function MesProjetsPage() {
                     className={`w-full py-3 font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
                       (action as any).comingSoon
                         ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white hover:shadow-lg group-hover:scale-[1.02]'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-slate-900 hover:shadow-lg group-hover:scale-[1.02]'
                     }`}
                   >
                     <span>{(action as any).comingSoon ? 'Disponible prochainement' : 'Lancer l\'action'}</span>
@@ -2198,7 +2198,7 @@ export default function MesProjetsPage() {
             className="bg-gray-50 rounded-xl p-12 border border-gray-200 text-center"
           >
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-8 h-8 text-gray-400" />
+              <Zap className="w-8 h-8 text-slate-500" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune action lancée</h3>
             <p className="text-gray-600">
@@ -2273,24 +2273,24 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Contexte & Bibliothèque</h1>
-          <p className="text-white/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Contexte & Bibliothèque</h1>
+          <p className="text-slate-900/90">
             Contexte cumulé utilisable pour toutes les actions IA du projet
           </p>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-white/80 text-sm">
-            <div className="bg-white/10 rounded-lg p-3">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-900/80 text-sm">
+            <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{contexteTotal.documents}</div>
               <div className="text-xs">Documents</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-3">
+            <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{contexteTotal.notes}</div>
               <div className="text-xs">Notes</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-3">
+            <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{contexteTotal.evenements}</div>
               <div className="text-xs">Événements</div>
             </div>
-            <div className="bg-white/10 rounded-lg p-3">
+            <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{Math.round(contexteTotal.mots / 1000)}k</div>
               <div className="text-xs">Mots</div>
             </div>
@@ -2298,13 +2298,13 @@ export default function MesProjetsPage() {
         </motion.div>
 
         {/* Tabs Navigation */}
-        <div className="flex gap-2 border-b border-white/10 overflow-x-auto">
+        <div className="flex gap-2 border-b border-slate-200 overflow-x-auto">
           <button
             onClick={() => setContexteActiveTab('contexte')}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'contexte'
                 ? 'text-orange-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <Database className="w-5 h-5 inline mr-2" />
@@ -2321,7 +2321,7 @@ export default function MesProjetsPage() {
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'documents'
                 ? 'text-blue-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <FileText className="w-5 h-5 inline mr-2" />
@@ -2338,7 +2338,7 @@ export default function MesProjetsPage() {
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'notes'
                 ? 'text-pink-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <StickyNote className="w-5 h-5 inline mr-2" />
@@ -2355,7 +2355,7 @@ export default function MesProjetsPage() {
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'timeline'
                 ? 'text-indigo-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <Clock className="w-5 h-5 inline mr-2" />
@@ -2374,24 +2374,24 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
           >
             <div className="flex items-center gap-3 mb-6">
               <Database className="w-8 h-8 text-orange-400" />
               <div>
-                <h2 className="text-2xl font-bold text-white">Contexte Cumulé du Projet</h2>
-                <p className="text-gray-400 text-sm">Toutes les informations disponibles pour alimenter l'IA</p>
+                <h2 className="text-2xl font-bold text-slate-900">Contexte Cumulé du Projet</h2>
+                <p className="text-slate-500 text-sm">Toutes les informations disponibles pour alimenter l'IA</p>
               </div>
             </div>
 
             <div className="space-y-4">
               {/* Résumé projet */}
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+              <div className="bg-white/85 rounded-lg p-4 border border-slate-200">
+                <h3 className="text-slate-900 font-semibold mb-2 flex items-center gap-2">
                   <Target className="w-5 h-5 text-green-400" />
                   Informations du Projet
                 </h3>
-                <div className="space-y-2 text-sm text-gray-300">
+                <div className="space-y-2 text-sm text-slate-700">
                   <p><strong>Titre:</strong> {selectedProject.proposition_titre}</p>
                   <p><strong>Secteur:</strong> {selectedProject.secteur_selectionne}</p>
                   <p><strong>Budget:</strong> {selectedProject.budget_selectionne}</p>
@@ -2403,14 +2403,14 @@ export default function MesProjetsPage() {
 
               {/* Documents disponibles */}
               {allDocs.length > 0 && (
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-white/85 rounded-lg p-4 border border-slate-200">
+                  <h3 className="text-slate-900 font-semibold mb-3 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-400" />
                     Documents Générés ({allDocs.length})
                   </h3>
                   <div className="space-y-2">
                     {allDocs.map(doc => (
-                      <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-300">
+                      <div key={doc.id} className="flex items-center gap-2 text-sm text-slate-700">
                         <CheckCircle className="w-4 h-4 text-green-400" />
                         <span>{doc.title}</span>
                         <span className="text-xs text-gray-500">({getActionLabel(doc.document_type)})</span>
@@ -2422,14 +2422,14 @@ export default function MesProjetsPage() {
 
               {/* Notes disponibles */}
               {notes.length > 0 && (
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-white/85 rounded-lg p-4 border border-slate-200">
+                  <h3 className="text-slate-900 font-semibold mb-3 flex items-center gap-2">
                     <StickyNote className="w-5 h-5 text-pink-400" />
                     Notes Personnelles ({notes.length})
                   </h3>
                   <div className="space-y-2">
                     {notes.slice(0, 5).map(note => (
-                      <div key={note.id} className="text-sm text-gray-300 bg-white/5 rounded p-2">
+                      <div key={note.id} className="text-sm text-slate-700 bg-white/85 rounded p-2">
                         {note.note_content.substring(0, 100)}{note.note_content.length > 100 ? '...' : ''}
                       </div>
                     ))}
@@ -2442,21 +2442,21 @@ export default function MesProjetsPage() {
 
               {/* Statistiques */}
               <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-lg p-4 border border-orange-500/30">
-                <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <h3 className="text-slate-900 font-semibold mb-3 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-orange-400" />
                   Utilisation pour Actions IA
                 </h3>
-                <p className="text-gray-300 text-sm mb-3">
+                <p className="text-slate-700 text-sm mb-3">
                   Ce contexte cumulé sera automatiquement utilisé pour améliorer la qualité et la pertinence de toutes les actions IA futures du projet.
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-white/10 rounded p-2">
+                  <div className="bg-white/90 rounded p-2">
                     <div className="text-orange-400 font-bold">{contexteTotal.mots.toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">Mots disponibles</div>
+                    <div className="text-xs text-slate-500">Mots disponibles</div>
                   </div>
-                  <div className="bg-white/10 rounded p-2">
+                  <div className="bg-white/90 rounded p-2">
                     <div className="text-orange-400 font-bold">{contexteTotal.documents + contexteTotal.notes}</div>
-                    <div className="text-xs text-gray-400">Sources de données</div>
+                    <div className="text-xs text-slate-500">Sources de données</div>
                   </div>
                 </div>
               </div>
@@ -2474,8 +2474,8 @@ export default function MesProjetsPage() {
                   onClick={() => setBibliothequeFilter(filter.id)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     bibliothequeFilter === filter.id
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
+                      ? 'bg-orange-500 text-slate-900'
+                      : 'bg-slate-800 text-slate-500 hover:bg-slate-700'
                   }`}
                 >
                   {filter.label} ({filter.count})
@@ -2497,7 +2497,7 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-orange-500/30 transition-all cursor-pointer"
+                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-orange-500/30 transition-all cursor-pointer"
                   onClick={() => setSelectedDocument(doc as any)}
                 >
                   <div className="flex items-start gap-4 mb-4">
@@ -2505,16 +2505,16 @@ export default function MesProjetsPage() {
                       <span className="text-2xl">{docIcon}</span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">{doc.title}</h3>
-                      <p className="text-xs text-gray-400">
+                      <h3 className="text-lg font-bold text-slate-900 mb-1 line-clamp-2">{doc.title}</h3>
+                      <p className="text-xs text-slate-500">
                         {new Date(doc.created_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
-                    <ExternalLink className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <ExternalLink className="w-5 h-5 text-slate-500 flex-shrink-0" />
                   </div>
 
                   {doc.content && (
-                    <p className="text-gray-300 text-sm line-clamp-2 mb-3">
+                    <p className="text-slate-700 text-sm line-clamp-2 mb-3">
                       {doc.content.substring(0, 150)}...
                     </p>
                   )}
@@ -2569,11 +2569,11 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <FileText className="w-16 h-16 text-orange-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucun document</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document</h3>
+            <p className="text-slate-500">
               Générez du contenu depuis l'onglet Actions IA
             </p>
           </motion.div>
@@ -2584,18 +2584,18 @@ export default function MesProjetsPage() {
         {contexteActiveTab === 'notes' && (
           <div className="space-y-4">
             {/* Formulaire ajout note */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200">
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Ajouter une note personnelle..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
+                className="w-full bg-white/85 border border-slate-200 rounded-lg p-4 text-slate-900 placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
                 rows={3}
               />
               <button
                 onClick={() => handleAddNote(selectedProject.id)}
                 disabled={!newNote.trim() || isAddingNote}
-                className="mt-3 px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-3 px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-slate-900 font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAddingNote ? 'Ajout...' : 'Ajouter la note'}
               </button>
@@ -2609,26 +2609,26 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
                 >
                   {editingNoteId === note.id ? (
                     <div>
                       <textarea
                         value={editingNoteContent}
                         onChange={(e) => setEditingNoteContent(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white resize-none mb-3"
+                        className="w-full bg-white/85 border border-slate-200 rounded-lg p-4 text-slate-900 resize-none mb-3"
                         rows={3}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdateNote(selectedProject.id, note.id)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                          className="px-4 py-2 bg-green-500 text-slate-900 rounded-lg hover:bg-green-600"
                         >
                           Sauvegarder
                         </button>
                         <button
                           onClick={() => setEditingNoteId(null)}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                          className="px-4 py-2 bg-gray-600 text-slate-900 rounded-lg hover:bg-gray-700"
                         >
                           Annuler
                         </button>
@@ -2637,7 +2637,7 @@ export default function MesProjetsPage() {
                   ) : (
                     <div>
                       <div className="flex items-start justify-between mb-3">
-                        <p className="text-gray-300 flex-1">{note.note_content}</p>
+                        <p className="text-slate-700 flex-1">{note.note_content}</p>
                         <div className="flex gap-2 ml-4">
                           <button
                             onClick={() => {
@@ -2664,10 +2664,10 @@ export default function MesProjetsPage() {
                 </motion.div>
               ))
             ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
                 <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-bold text-white mb-2">Aucune note</h3>
-                <p className="text-gray-400">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
+                <p className="text-slate-500">
                   Ajoutez des notes pour enrichir le contexte du projet
                 </p>
               </div>
@@ -2754,7 +2754,7 @@ export default function MesProjetsPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-white/20 transition-all"
+                    className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-slate-300 transition-all"
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-xl ${eventInfo.bgColor} flex items-center justify-center flex-shrink-0`}>
@@ -2762,12 +2762,12 @@ export default function MesProjetsPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-white font-bold text-lg">{eventInfo.title}</h3>
+                          <h3 className="text-slate-900 font-bold text-lg">{eventInfo.title}</h3>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${eventInfo.bgColor} ${eventInfo.color}`}>
                             {event.event_type.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <p className="text-gray-300 text-sm mb-3 leading-relaxed">
+                        <p className="text-slate-700 text-sm mb-3 leading-relaxed">
                           {event.event_description}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -2790,10 +2790,10 @@ export default function MesProjetsPage() {
               })}
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
               <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-white mb-2">Aucun historique</h3>
-              <p className="text-gray-400">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
+              <p className="text-slate-500">
                 L'historique de vos actions apparaîtra ici
               </p>
             </div>
@@ -2817,11 +2817,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Formations Personnalisées</h1>
-          <p className="text-white/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Formations Personnalisées</h1>
+          <p className="text-slate-900/90">
             Parcours de formation adaptés à votre projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{formations.length} formation{formations.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -2835,17 +2835,17 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-blue-500/30 transition-all cursor-pointer"
+                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-blue-500/30 transition-all cursor-pointer"
                 onClick={() => setSelectedDocument(formation)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="w-6 h-6 text-white" />
+                      <GraduationCap className="w-6 h-6 text-slate-900" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">{formation.title}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 className="text-xl font-bold text-slate-900 mb-1">{formation.title}</h3>
+                      <p className="text-sm text-slate-500">
                         {new Date(formation.created_at).toLocaleDateString('fr-FR', {
                           day: 'numeric',
                           month: 'long',
@@ -2854,11 +2854,11 @@ export default function MesProjetsPage() {
                       </p>
                     </div>
                   </div>
-                  <ExternalLink className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <ExternalLink className="w-5 h-5 text-slate-500 flex-shrink-0" />
                 </div>
 
                 {formation.content && (
-                  <p className="text-gray-300 text-sm line-clamp-3 mb-4">
+                  <p className="text-slate-700 text-sm line-clamp-3 mb-4">
                     {formation.content.substring(0, 200)}...
                   </p>
                 )}
@@ -2884,11 +2884,11 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <GraduationCap className="w-16 h-16 text-blue-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucune formation</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune formation</h3>
+            <p className="text-slate-500">
               Générez une formation personnalisée depuis l'onglet Actions IA
             </p>
           </motion.div>
@@ -2910,11 +2910,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Tests de Compétences</h1>
-          <p className="text-white/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Tests de Compétences</h1>
+          <p className="text-slate-900/90">
             Évaluations de vos compétences pour ce projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{tests.length} test{tests.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -2928,17 +2928,17 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-purple-500/30 transition-all cursor-pointer"
                 onClick={() => setSelectedDocument(test)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-purple-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                      <Award className="w-6 h-6 text-white" />
+                      <Award className="w-6 h-6 text-slate-900" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">{test.title}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 className="text-xl font-bold text-slate-900 mb-1">{test.title}</h3>
+                      <p className="text-sm text-slate-500">
                         {new Date(test.created_at).toLocaleDateString('fr-FR', {
                           day: 'numeric',
                           month: 'long',
@@ -2947,11 +2947,11 @@ export default function MesProjetsPage() {
                       </p>
                     </div>
                   </div>
-                  <ExternalLink className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <ExternalLink className="w-5 h-5 text-slate-500 flex-shrink-0" />
                 </div>
 
                 {test.content && (
-                  <p className="text-gray-300 text-sm line-clamp-3 mb-4">
+                  <p className="text-slate-700 text-sm line-clamp-3 mb-4">
                     {test.content.substring(0, 200)}...
                   </p>
                 )}
@@ -2977,11 +2977,11 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <Award className="w-16 h-16 text-purple-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucun test</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun test</h3>
+            <p className="text-slate-500">
               Générez un test de compétences depuis l'onglet Actions IA
             </p>
           </motion.div>
@@ -3021,11 +3021,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-white mb-2">Documents Générés</h1>
-          <p className="text-white/90">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Documents Générés</h1>
+          <p className="text-slate-900/90">
             Tous les documents créés par l'IA pour votre projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{projectDocs.length} document{projectDocs.length > 1 ? 's' : ''}</span>
             <span>•</span>
             <span>{Object.keys(docsByType).length} type{Object.keys(docsByType).length > 1 ? 's' : ''}</span>
@@ -3045,32 +3045,32 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-white/10"
+                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-200"
                 >
-                  <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${typeInfo.color} flex items-center justify-center`}>
-                      <Icon className="w-5 h-5 text-white" />
+                      <Icon className="w-5 h-5 text-slate-900" />
                     </div>
                     {typeInfo.name}
-                    <span className="text-sm text-gray-400 ml-2">({docs.length})</span>
+                    <span className="text-sm text-slate-500 ml-2">({docs.length})</span>
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {docs.map((doc: any) => (
                       <div
                         key={doc.id}
-                        className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+                        className="p-4 bg-white/85 rounded-lg border border-slate-200 hover:bg-white/90 transition-colors cursor-pointer"
                         onClick={() => setSelectedDocument(doc)}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-white font-medium line-clamp-2 flex-1">
+                          <h3 className="text-slate-900 font-medium line-clamp-2 flex-1">
                             {doc.title || 'Document sans titre'}
                           </h3>
-                          <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                          <ExternalLink className="w-4 h-4 text-slate-500 flex-shrink-0 ml-2" />
                         </div>
                         
                         {doc.content && (
-                          <p className="text-gray-400 text-sm line-clamp-2 mb-3">
+                          <p className="text-slate-500 text-sm line-clamp-2 mb-3">
                             {doc.content.substring(0, 100)}...
                           </p>
                         )}
@@ -3094,16 +3094,16 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <FileText className="w-16 h-16 text-orange-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucun document</h3>
-            <p className="text-gray-400 mb-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document</h3>
+            <p className="text-slate-500 mb-6">
               Générez du contenu avec les actions IA pour créer vos premiers documents
             </p>
             <button
               onClick={() => setActiveSection('actions')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-slate-900 font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-all"
             >
               <Zap className="w-5 h-5" />
               Voir les actions IA
@@ -3128,11 +3128,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl sm:rounded-2xl p-4 sm:p-6"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Journal du Projet</h1>
-          <p className="text-white/90">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Journal du Projet</h1>
+          <p className="text-slate-900/90">
             Historique automatique et notes personnelles
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{timeline.length} événements</span>
             <span>•</span>
             <span>{notes.length} notes</span>
@@ -3140,13 +3140,13 @@ export default function MesProjetsPage() {
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-white/10">
+        <div className="flex gap-2 border-b border-slate-200">
           <button
             onClick={() => setActiveTab('timeline')}
             className={`px-6 py-3 font-medium transition-all relative ${
               activeTab === 'timeline'
                 ? 'text-indigo-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <Clock className="w-5 h-5 inline mr-2" />
@@ -3163,7 +3163,7 @@ export default function MesProjetsPage() {
             className={`px-6 py-3 font-medium transition-all relative ${
               activeTab === 'notes'
                 ? 'text-pink-400'
-                : 'text-gray-400 hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <StickyNote className="w-5 h-5 inline mr-2" />
@@ -3187,15 +3187,15 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
                 >
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
                       <Clock className="w-5 h-5 text-indigo-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-white font-semibold mb-1">{event.event_type}</h3>
-                      <p className="text-gray-300 text-sm mb-2">{event.event_description}</p>
+                      <h3 className="text-slate-900 font-semibold mb-1">{event.event_type}</h3>
+                      <p className="text-slate-700 text-sm mb-2">{event.event_description}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(event.created_at).toLocaleString('fr-FR')}
                       </p>
@@ -3205,10 +3205,10 @@ export default function MesProjetsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
               <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-white mb-2">Aucun historique</h3>
-              <p className="text-gray-400">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
+              <p className="text-slate-500">
                 L'historique de vos actions apparaîtra ici
               </p>
             </div>
@@ -3216,18 +3216,18 @@ export default function MesProjetsPage() {
         ) : (
           <div className="space-y-4">
             {/* Formulaire ajout note */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200">
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Ajouter une note personnelle..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
+                className="w-full bg-white/85 border border-slate-200 rounded-lg p-4 text-slate-900 placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
                 rows={3}
               />
               <button
                 onClick={() => handleAddNote(selectedProject.id)}
                 disabled={!newNote.trim() || isAddingNote}
-                className="mt-3 px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-3 px-6 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-slate-900 font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAddingNote ? 'Ajout...' : 'Ajouter la note'}
               </button>
@@ -3241,26 +3241,26 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+                  className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
                 >
                   {editingNoteId === note.id ? (
                     <div>
                       <textarea
                         value={editingNoteContent}
                         onChange={(e) => setEditingNoteContent(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white resize-none mb-3"
+                        className="w-full bg-white/85 border border-slate-200 rounded-lg p-4 text-slate-900 resize-none mb-3"
                         rows={3}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdateNote(selectedProject.id, note.id)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                          className="px-4 py-2 bg-green-500 text-slate-900 rounded-lg hover:bg-green-600"
                         >
                           Sauvegarder
                         </button>
                         <button
                           onClick={() => setEditingNoteId(null)}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                          className="px-4 py-2 bg-gray-600 text-slate-900 rounded-lg hover:bg-gray-700"
                         >
                           Annuler
                         </button>
@@ -3268,7 +3268,7 @@ export default function MesProjetsPage() {
                     </div>
                   ) : (
                     <div>
-                      <p className="text-gray-300 mb-3 whitespace-pre-wrap">{note.note_content}</p>
+                      <p className="text-slate-700 mb-3 whitespace-pre-wrap">{note.note_content}</p>
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-gray-500">
                           {new Date(note.created_at).toLocaleString('fr-FR')}
@@ -3279,13 +3279,13 @@ export default function MesProjetsPage() {
                               setEditingNoteId(note.id)
                               setEditingNoteContent(note.note_content)
                             }}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 hover:bg-white/90 rounded-lg transition-colors"
                           >
                             <Edit2 className="w-4 h-4 text-blue-400" />
                           </button>
                           <button
                             onClick={() => handleDeleteNote(selectedProject.id, note.id)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 hover:bg-white/90 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
@@ -3296,10 +3296,10 @@ export default function MesProjetsPage() {
                 </motion.div>
               ))
             ) : (
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center">
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center">
                 <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-bold text-white mb-2">Aucune note</h3>
-                <p className="text-gray-400">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
+                <p className="text-slate-500">
                   Ajoutez votre première note ci-dessus
                 </p>
               </div>
@@ -3338,7 +3338,7 @@ export default function MesProjetsPage() {
         'conversation_ai': 'text-indigo-400 bg-indigo-500/20',
         'context_updated': 'text-orange-400 bg-orange-500/20',
         'note_added': 'text-yellow-400 bg-yellow-500/20',
-        'default': 'text-gray-400 bg-gray-500/20'
+        'default': 'text-slate-500 bg-gray-500/20'
       }
       return colors[type] || colors.default
     }
@@ -3351,11 +3351,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-white mb-2">Historique du Projet</h1>
-          <p className="text-white/90">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Historique du Projet</h1>
+          <p className="text-slate-900/90">
             Timeline chronologique de toutes les activités
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{timeline.length} événement{timeline.length > 1 ? 's' : ''}</span>
             {timeline.length > 0 && (
               <>
@@ -3393,12 +3393,12 @@ export default function MesProjetsPage() {
                     </div>
 
                     {/* Contenu */}
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 border border-white/10 hover:border-white/20 transition-colors">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 border border-slate-200 hover:border-slate-300 transition-colors">
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-white font-semibold">
+                        <h3 className="text-slate-900 font-semibold">
                           {entry.title || 'Événement'}
                         </h3>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-slate-500">
                           {new Date(entry.created_at).toLocaleTimeString('fr-FR', {
                             hour: '2-digit',
                             minute: '2-digit'
@@ -3407,7 +3407,7 @@ export default function MesProjetsPage() {
                       </div>
 
                       {entry.content && (
-                        <p className="text-gray-300 text-sm mb-2 line-clamp-3">
+                        <p className="text-slate-700 text-sm mb-2 line-clamp-3">
                           {entry.content}
                         </p>
                       )}
@@ -3443,11 +3443,11 @@ export default function MesProjetsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <Clock className="w-16 h-16 text-indigo-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucun historique</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun historique</h3>
+            <p className="text-slate-500">
               L'historique de vos actions apparaîtra ici au fur et à mesure
             </p>
           </motion.div>
@@ -3493,11 +3493,11 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl p-6"
         >
-          <h1 className="text-3xl font-bold text-white mb-2">Notes Personnelles</h1>
-          <p className="text-white/90">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Notes Personnelles</h1>
+          <p className="text-slate-900/90">
             Gardez une trace de vos idées et réflexions sur ce projet
           </p>
-          <div className="mt-4 flex items-center gap-4 text-white/80 text-sm">
+          <div className="mt-4 flex items-center gap-4 text-slate-900/80 text-sm">
             <span>{notes.length} note{notes.length > 1 ? 's' : ''}</span>
           </div>
         </motion.div>
@@ -3507,9 +3507,9 @@ export default function MesProjetsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200"
         >
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Edit2 className="w-5 h-5 text-pink-400" />
             {editingNoteId ? 'Modifier la note' : 'Ajouter une note'}
           </h3>
@@ -3517,7 +3517,7 @@ export default function MesProjetsPage() {
             value={editingNoteId ? editingNoteContent : newNote}
             onChange={(e) => editingNoteId ? setEditingNoteContent(e.target.value) : setNewNote(e.target.value)}
             placeholder="Écrivez votre note ici..."
-            className="w-full h-32 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
+            className="w-full h-32 px-4 py-3 bg-white/85 border border-slate-200 rounded-lg text-slate-900 placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors resize-none"
           />
           <div className="flex items-center gap-3 mt-4">
             <button
@@ -3529,7 +3529,7 @@ export default function MesProjetsPage() {
                 }
               }}
               disabled={editingNoteId ? !editingNoteContent.trim() : !newNote.trim()}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-slate-900 font-semibold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
               {editingNoteId ? 'Mettre à jour' : 'Ajouter'}
@@ -3540,7 +3540,7 @@ export default function MesProjetsPage() {
                   setEditingNoteId(null)
                   setEditingNoteContent('')
                 }}
-                className="px-6 py-3 bg-white/5 text-gray-300 font-semibold rounded-lg hover:bg-white/10 transition-all"
+                className="px-6 py-3 bg-white/85 text-slate-700 font-semibold rounded-lg hover:bg-white/90 transition-all"
               >
                 Annuler
               </button>
@@ -3557,12 +3557,12 @@ export default function MesProjetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (idx + 2) * 0.05 }}
-                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10 hover:border-pink-500/30 transition-colors"
+                className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-200 hover:border-pink-500/30 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <StickyNote className="w-5 h-5 text-pink-400" />
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-slate-500">
                       {new Date(note.created_at).toLocaleDateString('fr-FR', {
                         day: 'numeric',
                         month: 'long',
@@ -3578,21 +3578,21 @@ export default function MesProjetsPage() {
                         setEditingNoteId(note.id)
                         setEditingNoteContent(note.note_content)
                       }}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-2 hover:bg-white/90 rounded-lg transition-colors"
                       title="Modifier"
                     >
                       <Edit2 className="w-4 h-4 text-blue-400" />
                     </button>
                     <button
                       onClick={() => handleDeleteNote(note.id, selectedProject.id)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-2 hover:bg-white/90 rounded-lg transition-colors"
                       title="Supprimer"
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-300 whitespace-pre-wrap">{note.note_content}</p>
+                <p className="text-slate-700 whitespace-pre-wrap">{note.note_content}</p>
                 {note.updated_at && note.updated_at !== note.created_at && (
                   <div className="mt-3 text-xs text-gray-500">
                     Modifiée le {new Date(note.updated_at).toLocaleDateString('fr-FR')}
@@ -3606,11 +3606,11 @@ export default function MesProjetsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-white/10 text-center"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-200 text-center"
           >
             <StickyNote className="w-16 h-16 text-pink-400 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-bold text-white mb-2">Aucune note</h3>
-            <p className="text-gray-400">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucune note</h3>
+            <p className="text-slate-500">
               Ajoutez votre première note pour garder une trace de vos idées
             </p>
           </motion.div>
@@ -3839,8 +3839,8 @@ export default function MesProjetsPage() {
 
   return (
     <div className="min-h-screen relative">
-      <BcegBackdrop opacity={0.45} />
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-900/80 via-purple-900/75 to-slate-900/80">
+      <BcegBackdrop opacity={0.5} />
+      <div className="relative z-10">
       <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />
 
       <div className="flex">
@@ -3859,12 +3859,12 @@ export default function MesProjetsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="text-center mb-8"
                 >
-                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                  <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
                     <span className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] bg-clip-text text-transparent">
                       📁 Mes Dossiers Projets
                     </span>
                   </h1>
-                  <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+                  <p className="text-xl text-slate-700 max-w-3xl mx-auto">
                     Tous vos projets d'opportunités avec historique des actions IA
                   </p>
                 </motion.div>
@@ -3876,25 +3876,25 @@ export default function MesProjetsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
                   >
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                    <div className="bg-white/90 backdrop-blur-lg rounded-xl p-4 border border-slate-300">
                       <div className="text-3xl font-bold text-yellow-400">{stats.total_projects}</div>
-                      <div className="text-gray-300 text-sm">Dossiers Total</div>
+                      <div className="text-slate-700 text-sm">Dossiers Total</div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                    <div className="bg-white/90 backdrop-blur-lg rounded-xl p-4 border border-slate-300">
                       <div className="text-3xl font-bold text-green-400">{stats.recent_projects_count}</div>
-                      <div className="text-gray-300 text-sm">Ce mois-ci</div>
+                      <div className="text-slate-700 text-sm">Ce mois-ci</div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                    <div className="bg-white/90 backdrop-blur-lg rounded-xl p-4 border border-slate-300">
                       <div className="text-3xl font-bold text-blue-400">
                         {stats.projects_by_sector ? Object.keys(stats.projects_by_sector).length : 0}
                       </div>
-                      <div className="text-gray-300 text-sm">Secteurs</div>
+                      <div className="text-slate-700 text-sm">Secteurs</div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                    <div className="bg-white/90 backdrop-blur-lg rounded-xl p-4 border border-slate-300">
                       <div className="text-3xl font-bold text-purple-400">
                         {Object.values(projectActions).reduce((sum, actions) => sum + actions.filter(a => a.action_status === 'completed').length, 0)}
                       </div>
-                      <div className="text-gray-300 text-sm">Actions</div>
+                      <div className="text-slate-700 text-sm">Actions</div>
                     </div>
                   </motion.div>
                 )}
@@ -3917,7 +3917,7 @@ export default function MesProjetsPage() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
                           whileHover={{ y: -4 }}
-                          className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden group"
+                          className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl border border-slate-300 overflow-hidden group"
                         >
                           {/* Header Card */}
                           <div className="p-5">
@@ -3932,11 +3932,11 @@ export default function MesProjetsPage() {
                             )}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white text-lg mb-2 line-clamp-2 leading-tight">
+                                <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-2 leading-tight">
                                   {project.proposition_titre}
                                 </h3>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${getBudgetColor(project.budget_selectionne)}`}>
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold text-slate-900 bg-gradient-to-r ${getBudgetColor(project.budget_selectionne)}`}>
                                     {project.secteur_selectionne}
                                   </span>
                                 </div>
@@ -3952,13 +3952,13 @@ export default function MesProjetsPage() {
                             </div>
 
                             {/* Description */}
-                            <p className="text-gray-300 text-sm mb-4 line-clamp-2 leading-relaxed">
+                            <p className="text-slate-700 text-sm mb-4 line-clamp-2 leading-relaxed">
                               {project.proposition_description}
                             </p>
 
                             {/* Problématique */}
-                            <div className="bg-white/5 rounded-lg p-3 mb-4">
-                              <p className="text-xs text-gray-400 mb-1">🎯 Problématique:</p>
+                            <div className="bg-white/85 rounded-lg p-3 mb-4">
+                              <p className="text-xs text-slate-500 mb-1">🎯 Problématique:</p>
                               <p className="text-sm text-gray-200 line-clamp-2">{project.problematique_centrale}</p>
                             </div>
 
@@ -3991,7 +3991,7 @@ export default function MesProjetsPage() {
                                         ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                                         : isRecommended
                                         ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 animate-pulse'
-                                        : 'bg-white/5 text-gray-400 border border-white/10'
+                                        : 'bg-white/85 text-slate-500 border border-slate-200'
                                     }`}
                                   >
                                     <ActionIcon className="w-3 h-3" />
@@ -4004,7 +4004,7 @@ export default function MesProjetsPage() {
                             </div>
 
                             {/* Footer avec crédits et contexte */}
-                            <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-white/10">
+                            <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-200">
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1">
                                   <Calendar className="w-3 h-3" />
@@ -4024,7 +4024,7 @@ export default function MesProjetsPage() {
                                     <span className="text-xs">{formatDate(project.context_updated_at)}</span>
                                   </div>
                                 )}
-                                <span className="text-gray-400">{completedActions} action{completedActions > 1 ? 's' : ''}</span>
+                                <span className="text-slate-500">{completedActions} action{completedActions > 1 ? 's' : ''}</span>
                               </div>
                             </div>
                           </div>
@@ -4036,7 +4036,7 @@ export default function MesProjetsPage() {
                                 e.stopPropagation()
                                 setSelectedProject(project)
                               }}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black font-semibold rounded-lg hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg group-hover:shadow-xl"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg group-hover:shadow-xl"
                             >
                               <Bookmark className="w-4 h-4" />
                               <span>Voir le Projet</span>
@@ -4053,15 +4053,15 @@ export default function MesProjetsPage() {
                     className="text-center py-16"
                   >
                     <div className="text-6xl mb-4">📂</div>
-                    <h3 className="text-2xl font-semibold text-white mb-3">
+                    <h3 className="text-2xl font-semibold text-slate-900 mb-3">
                       Aucun dossier projet
                     </h3>
-                    <p className="text-gray-300 mb-6">
+                    <p className="text-slate-700 mb-6">
                       Créez votre premier dossier depuis l'analyseur business
                     </p>
                     <button
                       onClick={() => router.push('/business/analyzer')}
-                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black font-bold rounded-xl hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white font-bold rounded-xl hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg hover:shadow-xl"
                     >
                       <Sparkles className="w-5 h-5" />
                       Analyser une opportunité
@@ -4077,7 +4077,7 @@ export default function MesProjetsPage() {
                   onClick={() => setIsMobileSidebarOpen(true)}
                   className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
                 >
-                  <Menu className="w-6 h-6 text-white" />
+                  <Menu className="w-6 h-6 text-slate-900" />
                 </button>
 
                 {/* Overlay Mobile */}
@@ -4151,7 +4151,7 @@ export default function MesProjetsPage() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-slate-300 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             >
               <div className="p-6">
                 {/* Header */}
@@ -4161,8 +4161,8 @@ export default function MesProjetsPage() {
                       {getDocumentIcon(selectedDocument.document_type || selectedDocument.type || 'default')}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">{selectedDocument.title}</h2>
-                      <p className="text-sm text-gray-400">{formatDate(selectedDocument.created_at)}</p>
+                      <h2 className="text-2xl font-bold text-slate-900">{selectedDocument.title}</h2>
+                      <p className="text-sm text-slate-500">{formatDate(selectedDocument.created_at)}</p>
                     </div>
                   </div>
                   <button
@@ -4171,7 +4171,7 @@ export default function MesProjetsPage() {
                       setShowContextForm(false)
                       setNewContext('')
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-slate-500 hover:text-slate-900 transition-colors"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -4192,7 +4192,7 @@ export default function MesProjetsPage() {
                             const tid = selectedDocument.metadata?.training_id || selectedDocument.metadata?.trainingId
                             router.push(`/training/${tid}?resume=true&projectId=${selectedProject?.id}`)
                           }}
-                          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all text-lg"
+                          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-slate-900 font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all text-lg"
                         >
                           <Play className="w-6 h-6" />
                           Reprendre la formation
@@ -4202,19 +4202,19 @@ export default function MesProjetsPage() {
                       {/* Modules de la formation */}
                       {selectedDocument.metadata?.modules && Array.isArray(selectedDocument.metadata.modules) ? (
                         <div className="space-y-3">
-                          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                             <GraduationCap className="w-5 h-5 text-purple-400" />
                             Modules de la formation ({selectedDocument.metadata.modules.length})
                           </h3>
                           {selectedDocument.metadata.modules.map((mod: any, idx: number) => (
-                            <div key={idx} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                            <div key={idx} className="bg-white/85 rounded-lg p-4 border border-slate-200">
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold flex-shrink-0">
                                   {idx + 1}
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-white">{mod.competence || mod.title}</h4>
-                                  <p className="text-sm text-gray-400 mt-1">{mod.objective || mod.description}</p>
+                                  <h4 className="font-semibold text-slate-900">{mod.competence || mod.title}</h4>
+                                  <p className="text-sm text-slate-500 mt-1">{mod.objective || mod.description}</p>
                                   <div className="flex gap-2 mt-2">
                                     {mod.priority && (
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -4243,23 +4243,23 @@ export default function MesProjetsPage() {
                         </div>
                       ) : (
                         /* Fallback: afficher le contenu texte formaté */
-                        <div className="bg-white/5 rounded-lg p-6 text-gray-300">
+                        <div className="bg-white/85 rounded-lg p-6 text-slate-700">
                           {selectedDocument.content?.split('\n').map((line: string, idx: number) => {
-                            if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold text-white mt-4 mb-2">{line.slice(2)}</h1>
-                            if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold text-white mt-4 mb-2">{line.slice(3)}</h2>
+                            if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold text-slate-900 mt-4 mb-2">{line.slice(2)}</h1>
+                            if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold text-slate-900 mt-4 mb-2">{line.slice(3)}</h2>
                             if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold text-purple-400 mt-3 mb-1">{line.slice(4)}</h3>
-                            if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-semibold text-white">{line.slice(2, -2)}</p>
-                            if (line.startsWith('- ')) return <li key={idx} className="ml-4 text-gray-300">{line.slice(2)}</li>
-                            if (line.trim() === '---') return <hr key={idx} className="border-white/10 my-4" />
+                            if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-semibold text-slate-900">{line.slice(2, -2)}</p>
+                            if (line.startsWith('- ')) return <li key={idx} className="ml-4 text-slate-700">{line.slice(2)}</li>
+                            if (line.trim() === '---') return <hr key={idx} className="border-slate-200 my-4" />
                             if (line.trim() === '') return <br key={idx} />
-                            return <p key={idx} className="text-gray-300">{line}</p>
+                            return <p key={idx} className="text-slate-700">{line}</p>
                           })}
                         </div>
                       )}
 
                       {/* Infos supplémentaires */}
                       {selectedDocument.metadata?.totalDuration && (
-                        <div className="flex items-center gap-2 text-gray-400 text-sm">
+                        <div className="flex items-center gap-2 text-slate-500 text-sm">
                           <Clock className="w-4 h-4" />
                           <span>Durée totale: {selectedDocument.metadata.totalDuration}</span>
                         </div>
@@ -4267,7 +4267,7 @@ export default function MesProjetsPage() {
                     </div>
                   ) : (
                     /* Affichage standard pour les autres documents */
-                    <div className="bg-white/5 rounded-lg p-6 text-gray-300 whitespace-pre-wrap">
+                    <div className="bg-white/85 rounded-lg p-6 text-slate-700 whitespace-pre-wrap">
                       {selectedDocument.content}
                     </div>
                   )}
@@ -4276,11 +4276,11 @@ export default function MesProjetsPage() {
                 {/* Contexte actuel */}
                 {selectedDocument.context_added && (
                   <div className="mb-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                    <h4 className="text-slate-900 font-semibold mb-2 flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-blue-400" />
                       Contexte enrichi
                     </h4>
-                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{selectedDocument.context_added}</p>
+                    <p className="text-slate-700 text-sm whitespace-pre-wrap">{selectedDocument.context_added}</p>
                   </div>
                 )}
 
@@ -4288,7 +4288,7 @@ export default function MesProjetsPage() {
                 {!showContextForm ? (
                   <button
                     onClick={() => setShowContextForm(true)}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-slate-900 font-semibold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all"
                   >
                     <Sparkles className="w-5 h-5" />
                     Ajouter du contexte et régénérer
@@ -4296,17 +4296,17 @@ export default function MesProjetsPage() {
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-white font-semibold mb-2">
+                      <label className="block text-slate-900 font-semibold mb-2">
                         Ajoutez du contexte additionnel
                       </label>
-                      <p className="text-sm text-gray-400 mb-3">
+                      <p className="text-sm text-slate-500 mb-3">
                         💡 Vos notes et commentaires seront automatiquement inclus dans le contexte
                       </p>
                       <textarea
                         value={newContext}
                         onChange={(e) => setNewContext(e.target.value)}
                         placeholder="Exemple: Ajoutez des détails sur votre situation, vos ressources disponibles, vos contraintes..."
-                        className="w-full h-32 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
+                        className="w-full h-32 px-4 py-3 bg-white/90 border border-slate-300 rounded-lg text-slate-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
                       />
                     </div>
                     <div className="flex gap-3">
@@ -4315,14 +4315,14 @@ export default function MesProjetsPage() {
                           setShowContextForm(false)
                           setNewContext('')
                         }}
-                        className="flex-1 px-6 py-3 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 transition-all border border-white/20"
+                        className="flex-1 px-6 py-3 bg-white/90 text-slate-900 font-semibold rounded-xl hover:bg-white/20 transition-all border border-slate-300"
                       >
                         Annuler
                       </button>
                       <button
                         onClick={() => selectedProject && handleAddContextToDocument(selectedDocument.id, selectedProject.id)}
                         disabled={!newContext.trim()}
-                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-slate-900 font-semibold rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="w-5 h-5" />
                         Régénérer
@@ -4377,7 +4377,7 @@ export default function MesProjetsPage() {
                   </div>
                   <button
                     onClick={() => setBusinessPlanSelectorOpen(false)}
-                    className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                    className="p-2 -mr-2 text-slate-500 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   >
                     <X className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
@@ -4399,7 +4399,7 @@ export default function MesProjetsPage() {
                         className="text-left p-3 sm:p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:shadow-lg transition-all bg-white active:scale-[0.98]"
                       >
                         <div className="flex items-start gap-2 sm:gap-3">
-                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base flex-shrink-0 ${
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-900 font-bold text-sm sm:text-base flex-shrink-0 ${
                             isCompleted ? 'bg-green-500' : 'bg-gray-300'
                           }`}>
                             {isCompleted ? '✓' : section.section}
@@ -4516,10 +4516,10 @@ export default function MesProjetsPage() {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-white/20 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+                className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-slate-300 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col"
               >
                 {/* Header */}
-                <div className="p-6 border-b border-white/20 bg-gradient-to-r from-indigo-500/20 to-purple-500/20">
+                <div className="p-6 border-b border-slate-300 bg-gradient-to-r from-indigo-500/20 to-purple-500/20">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
                       <div className="text-3xl">
@@ -4531,7 +4531,7 @@ export default function MesProjetsPage() {
                         {!['note', 'file', 'conversation_ai', 'business_plan_section', 'step_completed'].includes(selectedHistoryEntry.entry_type) && '📌'}
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-white mb-1">
+                        <h3 className="text-xl font-bold text-slate-900 mb-1">
                           {selectedHistoryEntry.title || (
                             selectedHistoryEntry.entry_type === 'note' ? 'Note' :
                             selectedHistoryEntry.entry_type === 'file' ? 'Fichier' :
@@ -4541,7 +4541,7 @@ export default function MesProjetsPage() {
                             'Entrée'
                           )}
                         </h3>
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <div className="flex items-center gap-3 text-sm text-slate-500">
                           <span>
                             {new Date(selectedHistoryEntry.created_at).toLocaleDateString('fr-FR', { 
                               day: '2-digit', 
@@ -4569,7 +4569,7 @@ export default function MesProjetsPage() {
                         setIsHistoryModalOpen(false)
                         setSelectedHistoryEntry(null)
                       }}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-slate-500 hover:text-slate-900 transition-colors"
                     >
                       <X className="w-6 h-6" />
                     </button>
@@ -4579,8 +4579,8 @@ export default function MesProjetsPage() {
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="prose prose-invert max-w-none">
-                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                      <pre className="text-gray-300 text-sm whitespace-pre-wrap font-sans">
+                    <div className="bg-white/85 rounded-lg p-4 border border-slate-200">
+                      <pre className="text-slate-700 text-sm whitespace-pre-wrap font-sans">
                         {selectedHistoryEntry.content}
                       </pre>
                     </div>
@@ -4589,12 +4589,12 @@ export default function MesProjetsPage() {
                   {/* Metadata */}
                   {selectedHistoryEntry.metadata && Object.keys(selectedHistoryEntry.metadata).length > 0 && (
                     <div className="mt-4 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                      <h4 className="text-white font-semibold mb-2 text-sm">Métadonnées</h4>
+                      <h4 className="text-slate-900 font-semibold mb-2 text-sm">Métadonnées</h4>
                       <div className="space-y-1">
                         {Object.entries(selectedHistoryEntry.metadata).map(([key, value]) => (
                           <div key={key} className="flex items-start gap-2 text-xs">
-                            <span className="text-gray-400 font-medium">{key}:</span>
-                            <span className="text-gray-300">{JSON.stringify(value)}</span>
+                            <span className="text-slate-500 font-medium">{key}:</span>
+                            <span className="text-slate-700">{JSON.stringify(value)}</span>
                           </div>
                         ))}
                       </div>
@@ -4608,7 +4608,7 @@ export default function MesProjetsPage() {
                         href={selectedHistoryEntry.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-slate-900 rounded-lg transition-colors"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Télécharger le fichier
@@ -4618,13 +4618,13 @@ export default function MesProjetsPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-white/20 bg-white/5">
+                <div className="p-4 border-t border-slate-300 bg-white/85">
                   <button
                     onClick={() => {
                       setIsHistoryModalOpen(false)
                       setSelectedHistoryEntry(null)
                     }}
-                    className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    className="w-full px-4 py-2 bg-white/90 hover:bg-white/20 text-slate-900 rounded-lg transition-colors"
                   >
                     Fermer
                   </button>

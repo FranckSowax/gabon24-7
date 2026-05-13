@@ -143,8 +143,8 @@ export default function DossierBcegPage() {
 
   return (
     <div className="min-h-screen relative">
-      <BcegBackdrop opacity={0.45} />
-      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-950/82 via-slate-900/78 to-slate-950/82 text-white">
+      <BcegBackdrop opacity={0.5} />
+      <div className="relative z-10 text-slate-900">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
 
       <div className="flex">
@@ -155,7 +155,7 @@ export default function DossierBcegPage() {
 
             <button
               onClick={() => router.push('/business/mes-projets')}
-              className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white mb-4"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-900/60 hover:text-slate-900 mb-4"
             >
               <ArrowLeft className="w-4 h-4" /> Retour à mes projets
             </button>
@@ -166,7 +166,7 @@ export default function DossierBcegPage() {
                   <Building2 className="w-3 h-3" /> Dossier BCEG
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold">Soumets ton dossier à la <span className="text-[#a8b794]">BCEG</span></h1>
-                <p className="text-sm text-white/60 mt-1">Preview ton dossier généré automatiquement, puis envoie-le à la banque en un clic.</p>
+                <p className="text-sm text-slate-900/60 mt-1">Preview ton dossier généré automatiquement, puis envoie-le à la banque en un clic.</p>
               </div>
               {score && <BcegScoreBadge score={score.score} color={score.color} size="lg" breakdown={score.breakdown} showBreakdown />}
             </div>
@@ -203,8 +203,8 @@ export default function DossierBcegPage() {
 
             <div className="grid lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2">
-                <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
+                <div className="bg-white/85 border border-slate-200 rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 bg-white/85 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-[#a8b794]" />
                       <span className="font-medium text-sm">Aperçu du dossier PDF</span>
@@ -212,14 +212,14 @@ export default function DossierBcegPage() {
                     <button
                       onClick={handleDownload}
                       disabled={!pdfBlobUrl || loadingPdf}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/10 hover:bg-white/15 disabled:opacity-40"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/90 hover:bg-white/15 disabled:opacity-40"
                     >
                       <Download className="w-3.5 h-3.5" /> Télécharger
                     </button>
                   </div>
 
                   {loadingPdf ? (
-                    <div className="flex flex-col items-center justify-center py-24 gap-3 text-white/60 text-sm">
+                    <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-900/60 text-sm">
                       <Loader2 className="w-6 h-6 animate-spin" />
                       Génération du PDF en cours…
                     </div>
@@ -227,7 +227,7 @@ export default function DossierBcegPage() {
                     <div className="flex flex-col items-center justify-center py-24 gap-3 text-red-200 text-sm">
                       <AlertCircle className="w-6 h-6" />
                       <span>{pdfError}</span>
-                      <button onClick={() => location.reload()} className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs">
+                      <button onClick={() => location.reload()} className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-slate-900 text-xs">
                         <RefreshCw className="w-3 h-3" /> Réessayer
                       </button>
                     </div>
@@ -244,16 +244,16 @@ export default function DossierBcegPage() {
 
               <div className="space-y-4">
                 <div className="bg-gradient-to-br from-[#4d553e]/15 to-[#6a7556]/10 border border-[#6a7556]/30 rounded-2xl p-5">
-                  <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
                     <Send className="w-4 h-4 text-[#a8b794]" /> Soumettre à la BCEG
                   </h3>
-                  <p className="text-xs text-white/70 mb-4 leading-relaxed">
+                  <p className="text-xs text-slate-900/70 mb-4 leading-relaxed">
                     En cliquant ci-dessous, ton dossier PDF sera envoyé directement à l'équipe BCEG par email avec ton adresse en réponse.
                   </p>
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || !pdfBlobUrl || !!submission}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#4d553e]/30"
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-900 bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#4d553e]/30"
                   >
                     {submitting ? (
                       <>
@@ -271,8 +271,8 @@ export default function DossierBcegPage() {
                   </button>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-                  <h3 className="font-bold text-white mb-3 text-sm flex items-center gap-2">
+                <div className="bg-white/85 border border-slate-200 rounded-2xl p-5">
+                  <h3 className="font-bold text-slate-900 mb-3 text-sm flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#a8b794]" /> Avant de soumettre
                   </h3>
                   <ul className="space-y-2 text-xs">
@@ -281,7 +281,7 @@ export default function DossierBcegPage() {
                     <ChecklistItem ok={!!score} label="Simulation BCEG complétée" />
                     <ChecklistItem ok={true} label="Tu peux discuter avec le Conseiller BCEG →" />
                   </ul>
-                  <p className="mt-3 text-[11px] text-white/50">
+                  <p className="mt-3 text-[11px] text-slate-900/50">
                     Astuce : clique sur le bouton 💬 en bas à droite pour discuter avec le mentor BCEG (IA).
                   </p>
                 </div>
@@ -303,9 +303,9 @@ function ChecklistItem({ ok, label }: { ok: boolean; label: string }) {
       {ok ? (
         <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
       ) : (
-        <span className="w-4 h-4 rounded-full border border-white/30 shrink-0" />
+        <span className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
       )}
-      <span className={ok ? 'text-white/90' : 'text-white/50'}>{label}</span>
+      <span className={ok ? 'text-slate-900/90' : 'text-slate-900/50'}>{label}</span>
     </li>
   )
 }
