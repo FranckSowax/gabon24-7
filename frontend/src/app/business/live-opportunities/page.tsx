@@ -76,14 +76,14 @@ export default function BcegProjectPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-10 sm:mb-14"
               >
-                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/85 backdrop-blur border border-[#4d553e]/20 shadow-sm text-slate-700 text-xs sm:text-sm mb-5">
+                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/85 backdrop-blur border border-[#697357]/20 shadow-sm text-slate-700 text-xs sm:text-sm mb-5">
                   <img
                     src={BCEG_LOGO}
                     alt="Logo BCEG"
-                    className="w-6 h-6 rounded-full object-cover ring-1 ring-[#4d553e]/40"
+                    className="w-6 h-6 rounded-full object-cover ring-1 ring-[#697357]/40"
                   />
                   <span>
-                    En partenariat avec la <span className="font-semibold text-[#4d553e]">BCEG</span>
+                    En partenariat avec la <span className="font-semibold text-[#697357]">BCEG</span>
                   </span>
                 </div>
 
@@ -111,28 +111,28 @@ export default function BcegProjectPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 + i * 0.1, type: 'spring', stiffness: 100 }}
                     whileHover={{ y: -4 }}
-                    className="group relative overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200 hover:border-[#4d553e]/40 shadow-sm hover:shadow-2xl transition-all duration-300"
+                    className="group relative overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200 hover:border-[#697357]/40 shadow-sm hover:shadow-2xl transition-all duration-300"
                   >
-                    <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-[#4d553e] opacity-0 group-hover:opacity-15 blur-3xl transition-opacity duration-500" />
+                    <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-[#697357] opacity-0 group-hover:opacity-15 blur-3xl transition-opacity duration-500" />
 
-                    <div className="h-1 w-full bg-gradient-to-r from-[#4d553e] via-[#6a7556] to-[#4d553e]" />
+                    <div className="h-1 w-full bg-gradient-to-r from-[#697357] via-[#8a9576] to-[#697357]" />
 
                     <div className="p-6 relative">
                       <div className="flex items-start justify-between mb-5">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] ring-4 ring-[#4d553e]/20 flex items-center justify-center text-white shadow-lg shadow-[#4d553e]/20">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] ring-4 ring-[#697357]/20 flex items-center justify-center text-white shadow-lg shadow-[#697357]/20">
                           {opt.icon}
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
                             {opt.label}
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white bg-[#4d553e]">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white bg-[#697357]">
                             {opt.badge}
                           </span>
                         </div>
                       </div>
 
-                      <h3 className="text-xl font-bold text-[#4d553e] mb-2">{opt.title}</h3>
+                      <h3 className="text-xl font-bold text-[#697357] mb-2">{opt.title}</h3>
 
                       <p className="text-sm text-slate-700 leading-relaxed mb-4 min-h-[60px]">
                         {opt.description}
@@ -143,10 +143,10 @@ export default function BcegProjectPage() {
                       </div>
 
                       <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                        <span className="text-sm font-semibold text-[#4d553e]">
+                        <span className="text-sm font-semibold text-[#697357]">
                           C'est parti
                         </span>
-                        <span className="w-9 h-9 rounded-full bg-[#4d553e] group-hover:bg-[#3a4030] flex items-center justify-center text-white transition-all duration-300 group-hover:translate-x-1">
+                        <span className="w-9 h-9 rounded-full bg-[#697357] group-hover:bg-[#4d553e] flex items-center justify-center text-white transition-all duration-300 group-hover:translate-x-1">
                           <ArrowRight className="w-4 h-4" />
                         </span>
                       </div>
@@ -161,7 +161,7 @@ export default function BcegProjectPage() {
                 transition={{ delay: 0.7 }}
                 className="text-center mt-10 text-xs sm:text-sm text-slate-600"
               >
-                Crédits BCEG dès <span className="font-semibold text-[#4d553e]">5 %</span> ·
+                Crédits BCEG dès <span className="font-semibold text-[#697357]">5 %</span> ·
                 Programmes CATR &amp; FAMAD · Présent dans les 9 provinces du Gabon
               </motion.div>
 

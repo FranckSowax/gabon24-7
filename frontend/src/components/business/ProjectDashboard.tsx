@@ -42,7 +42,7 @@ export default function ProjectDashboard({
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] p-6 sm:p-8 text-white shadow-lg shadow-[#4d553e]/20"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] p-6 sm:p-8 text-white shadow-lg shadow-[#697357]/20"
       >
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-300/10 blur-3xl" />
 
@@ -99,7 +99,7 @@ export default function ProjectDashboard({
             onClick={() => onNavigateSection?.('financement')}
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] p-6 text-white text-left shadow-xl shadow-[#4d553e]/30 hover:shadow-2xl transition-all"
+            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] p-6 text-white text-left shadow-xl shadow-[#697357]/30 hover:shadow-2xl transition-all"
           >
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-amber-300/10 blur-3xl" />
             <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white/5 blur-3xl" />
@@ -130,7 +130,7 @@ export default function ProjectDashboard({
 
               <div className="flex items-center justify-between pt-4 border-t border-white/15">
                 <span className="text-sm font-bold">Démarrer le parcours</span>
-                <span className="w-9 h-9 rounded-full bg-white/15 backdrop-blur flex items-center justify-center group-hover:bg-amber-300 group-hover:text-[#3a4030] transition-all">
+                <span className="w-9 h-9 rounded-full bg-white/15 backdrop-blur flex items-center justify-center group-hover:bg-amber-300 group-hover:text-[#4d553e] transition-all">
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </div>
@@ -142,14 +142,14 @@ export default function ProjectDashboard({
             onClick={() => onNavigateSection?.('outils')}
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#4d553e]/40 p-6 text-left shadow-md hover:shadow-xl transition-all"
+            className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#697357]/40 p-6 text-left shadow-md hover:shadow-xl transition-all"
           >
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[#4d553e]/5 blur-3xl group-hover:bg-[#4d553e]/10 transition-all" />
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[#697357]/5 blur-3xl group-hover:bg-[#697357]/10 transition-all" />
 
             <div className="relative">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-[#4d553e]/10 ring-1 ring-[#4d553e]/20 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-[#4d553e]" />
+                <div className="w-12 h-12 rounded-xl bg-[#697357]/10 ring-1 ring-[#697357]/20 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-[#697357]" />
                 </div>
                 <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                   Outils IA
@@ -165,14 +165,14 @@ export default function ProjectDashboard({
               </p>
 
               <ul className="space-y-1.5 text-xs text-slate-700 mb-5">
-                <li className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5 shrink-0 text-[#4d553e]" /> Business plan en 10 sections</li>
-                <li className="flex items-center gap-2"><Target className="w-3.5 h-3.5 shrink-0 text-[#4d553e]" /> Plan d'action détaillé</li>
-                <li className="flex items-center gap-2"><Award className="w-3.5 h-3.5 shrink-0 text-[#4d553e]" /> Tests, formations, pitch deck</li>
+                <li className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5 shrink-0 text-[#697357]" /> Business plan en 10 sections</li>
+                <li className="flex items-center gap-2"><Target className="w-3.5 h-3.5 shrink-0 text-[#697357]" /> Plan d'action détaillé</li>
+                <li className="flex items-center gap-2"><Award className="w-3.5 h-3.5 shrink-0 text-[#697357]" /> Tests, formations, pitch deck</li>
               </ul>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                <span className="text-sm font-bold text-[#4d553e]">Explorer les outils</span>
-                <span className="w-9 h-9 rounded-full bg-[#4d553e] text-white flex items-center justify-center group-hover:bg-[#3a4030] transition-all">
+                <span className="text-sm font-bold text-[#697357]">Explorer les outils</span>
+                <span className="w-9 h-9 rounded-full bg-[#697357] text-white flex items-center justify-center group-hover:bg-[#4d553e] transition-all">
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </div>
@@ -223,7 +223,7 @@ function StatChip({ icon: Icon, label, value, hint }: { icon: any; label: string
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
       <div className="flex items-center justify-between mb-1">
-        <Icon className="w-4 h-4 text-[#4d553e]" />
+        <Icon className="w-4 h-4 text-[#697357]" />
         <div className="text-xl font-bold text-slate-900">{value}</div>
       </div>
       <div className="text-xs font-semibold text-slate-700">{label}</div>

@@ -81,7 +81,7 @@ const FINANCE_SECTIONS = [
     id: 'financement',
     title: 'Vue du dossier',
     icon: Building2,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Checklist + BCEG Score'
   },
 ]
@@ -92,49 +92,49 @@ const WORKSHOP_SECTIONS = [
     id: 'outils',
     title: 'Tous les modules',
     icon: Sparkles,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: "Vue d'ensemble"
   },
   {
     id: 'actions',
     title: 'Outils IA',
     icon: Zap,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Business plan, formations…'
   },
   {
     id: 'plan-action',
     title: "Plan d'Action",
     icon: Briefcase,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: '10 étapes pour réussir'
   },
   {
     id: 'contexte',
     title: 'Mes documents',
     icon: FileText,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Contexte, notes, timeline'
   },
   {
     id: 'conseiller',
     title: 'Conseiller IA',
     icon: MessageSquare,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Posez vos questions'
   },
   {
     id: 'overview',
     title: 'Détails du projet',
     icon: Target,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Informations complètes'
   },
   {
     id: 'collaboration',
     title: 'Collaboration',
     icon: Users,
-    color: 'text-[#4d553e]',
+    color: 'text-[#697357]',
     description: 'Partager le projet'
   }
 ]
@@ -146,6 +146,24 @@ function computeSidebarMode(activeSection: string): 'dashboard' | 'finance' | 'w
   if (FINANCE_KEYS.includes(activeSection)) return 'finance'
   if (WORKSHOP_KEYS.includes(activeSection)) return 'workshop'
   return 'dashboard'
+}
+
+// Palette BCEG pour badges secteur — beige / gris / noir + vert sombre.
+// Auto-contraste : fond sombre → texte blanc, fond clair → texte sombre.
+const SECTOR_CHIPS = [
+  { bg: 'bg-[#3a4030]', text: 'text-white' },         // vert sombre BCEG
+  { bg: 'bg-[#d6c9a9]', text: 'text-[#3a4030]' },     // beige
+  { bg: 'bg-slate-700',  text: 'text-white' },         // gris foncé
+  { bg: 'bg-[#e9e2cd]', text: 'text-slate-900' },     // beige clair
+  { bg: 'bg-[#697357]', text: 'text-white' },         // vert BCEG
+  { bg: 'bg-slate-200',  text: 'text-slate-900' },     // gris clair
+]
+
+function getSecteurChip(secteur?: string): { bg: string; text: string } {
+  if (!secteur) return SECTOR_CHIPS[0]
+  let h = 0
+  for (let i = 0; i < secteur.length; i++) h = (h * 31 + secteur.charCodeAt(i)) >>> 0
+  return SECTOR_CHIPS[h % SECTOR_CHIPS.length]
 }
 
 // Fonction pour traduire les noms d'actions
@@ -175,7 +193,7 @@ const QUICK_ACTIONS = [
     title: 'Ébauche de Business Plan',
     description: '📊 Plan complet en 10 parties adapté au Gabon',
     icon: FileText,
-    color: 'from-[#4d553e] to-[#3a4030]',
+    color: 'from-[#697357] to-[#4d553e]',
     credits: 50
   },
   {
@@ -183,7 +201,7 @@ const QUICK_ACTIONS = [
     title: 'Générer un courrier',
     description: '✉️ Courrier professionnel adapté au destinataire',
     icon: Mail,
-    color: 'from-[#6a7556] to-[#4d553e]',
+    color: 'from-[#8a9576] to-[#697357]',
     credits: 15
   },
   {
@@ -191,7 +209,7 @@ const QUICK_ACTIONS = [
     title: 'Pitch investisseur',
     description: '🎤 Présentation percutante pour lever des fonds',
     icon: TrendingUp,
-    color: 'from-[#4d553e] to-[#3a4030]',
+    color: 'from-[#697357] to-[#4d553e]',
     credits: 30,
     comingSoon: true
   },
@@ -200,7 +218,7 @@ const QUICK_ACTIONS = [
     title: 'Analyse SWOT',
     description: '🔍 Forces, faiblesses, opportunités et menaces',
     icon: Target,
-    color: 'from-[#6a7556] to-[#4d553e]',
+    color: 'from-[#8a9576] to-[#697357]',
     credits: 20,
     comingSoon: true
   },
@@ -209,7 +227,7 @@ const QUICK_ACTIONS = [
     title: 'Test de compétences',
     description: '🎯 Évaluez vos forces et faiblesses',
     icon: Award,
-    color: 'from-[#4d553e] to-[#3a4030]',
+    color: 'from-[#697357] to-[#4d553e]',
     credits: 20
   },
   {
@@ -217,7 +235,7 @@ const QUICK_ACTIONS = [
     title: 'Formation sur mesure',
     description: '🎓 Formation personnalisée selon vos besoins',
     icon: GraduationCap,
-    color: 'from-[#6a7556] to-[#4d553e]',
+    color: 'from-[#8a9576] to-[#697357]',
     credits: 50
   },
   {
@@ -225,7 +243,7 @@ const QUICK_ACTIONS = [
     title: 'Formalités juridiques',
     description: '⚖️ Checklist création d\'entreprise au Gabon',
     icon: CheckCircle,
-    color: 'from-[#4d553e] to-[#3a4030]',
+    color: 'from-[#697357] to-[#4d553e]',
     credits: 15,
     comingSoon: true
   },
@@ -234,7 +252,7 @@ const QUICK_ACTIONS = [
     title: 'Projections financières',
     description: '💰 Prévisions de revenus sur 3 ans',
     icon: DollarSign,
-    color: 'from-[#6a7556] to-[#4d553e]',
+    color: 'from-[#8a9576] to-[#697357]',
     credits: 35,
     comingSoon: true
   }
@@ -1417,7 +1435,7 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#4d553e] to-[#3a4030] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
             <div className="flex-1">
@@ -2315,7 +2333,7 @@ export default function MesProjetsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#4d553e] to-[#3a4030] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
+          className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Contexte & Bibliothèque</h1>
           <p className="text-slate-900/90">
@@ -3855,8 +3873,8 @@ export default function MesProjetsPage() {
       <div className="flex items-center justify-center min-h-screen relative">
         <BcegBackdrop opacity={0.45} />
         <div className="relative z-10 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#4d553e] mx-auto mb-4"></div>
-          <p className="text-[#4d553e] text-lg font-semibold">Chargement des projets...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#697357] mx-auto mb-4"></div>
+          <p className="text-[#697357] text-lg font-semibold">Chargement des projets...</p>
         </div>
       </div>
     )
@@ -3867,12 +3885,12 @@ export default function MesProjetsPage() {
       <div className="flex items-center justify-center min-h-screen relative">
         <BcegBackdrop opacity={0.45} />
         <div className="relative z-10 text-center">
-          <AlertCircle className="w-16 h-16 text-[#4d553e] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-[#4d553e] mb-4">Connexion requise</h2>
+          <AlertCircle className="w-16 h-16 text-[#697357] mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-[#697357] mb-4">Connexion requise</h2>
           <p className="text-slate-700 mb-6">Veuillez vous connecter pour voir vos projets</p>
           <button
             onClick={() => router.push('/auth/signin')}
-            className="px-6 py-3 bg-[#4d553e] text-white font-semibold rounded-lg hover:bg-[#3a4030] transition-all"
+            className="px-6 py-3 bg-[#697357] text-white font-semibold rounded-lg hover:bg-[#4d553e] transition-all"
           >
             Se connecter
           </button>
@@ -3904,7 +3922,7 @@ export default function MesProjetsPage() {
                   className="text-center mb-8"
                 >
                   <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-                    <span className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-[#8a9576] to-[#697357] bg-clip-text text-transparent">
                       📁 Mes Dossiers Projets
                     </span>
                   </h1>
@@ -3980,9 +3998,14 @@ export default function MesProjetsPage() {
                                   {project.proposition_titre}
                                 </h3>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold text-slate-900 bg-gradient-to-r ${getBudgetColor(project.budget_selectionne)}`}>
-                                    {project.secteur_selectionne}
-                                  </span>
+                                  {(() => {
+                                    const chip = getSecteurChip(project.secteur_selectionne)
+                                    return (
+                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${chip.bg} ${chip.text}`}>
+                                        {project.secteur_selectionne}
+                                      </span>
+                                    )
+                                  })()}
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-1 ml-3">
@@ -4080,7 +4103,7 @@ export default function MesProjetsPage() {
                                 e.stopPropagation()
                                 setSelectedProject(project)
                               }}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg group-hover:shadow-xl"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8a9576] to-[#697357] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all shadow-lg group-hover:shadow-xl"
                             >
                               <Bookmark className="w-4 h-4" />
                               <span>Voir le Projet</span>
@@ -4105,7 +4128,7 @@ export default function MesProjetsPage() {
                     </p>
                     <button
                       onClick={() => router.push('/business/analyzer')}
-                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white font-bold rounded-xl hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#8a9576] to-[#697357] text-white font-bold rounded-xl hover:from-[#4d553e] hover:to-[#3a4030] transition-all shadow-lg hover:shadow-xl"
                     >
                       <Sparkles className="w-5 h-5" />
                       Analyser une opportunité
@@ -4119,7 +4142,7 @@ export default function MesProjetsPage() {
                 {/* Bouton Hamburger Mobile */}
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-[#6a7556] to-[#4d553e] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+                  className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-[#8a9576] to-[#697357] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
                 >
                   <Menu className="w-6 h-6 text-slate-900" />
                 </button>

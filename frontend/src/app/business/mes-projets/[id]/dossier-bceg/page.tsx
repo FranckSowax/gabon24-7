@@ -162,7 +162,7 @@ export default function DossierBcegPage() {
 
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4d553e]/20 border border-[#6a7556]/40 text-[#a8b794] text-xs mb-2">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#697357]/20 border border-[#8a9576]/40 text-[#a8b794] text-xs mb-2">
                   <Building2 className="w-3 h-3" /> Dossier BCEG
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold">Soumets ton dossier à la <span className="text-[#a8b794]">BCEG</span></h1>
@@ -243,7 +243,7 @@ export default function DossierBcegPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-[#4d553e]/15 to-[#6a7556]/10 border border-[#6a7556]/30 rounded-2xl p-5">
+                <div className="bg-gradient-to-br from-[#697357]/15 to-[#8a9576]/10 border border-[#8a9576]/30 rounded-2xl p-5">
                   <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
                     <Send className="w-4 h-4 text-[#a8b794]" /> Soumettre à la BCEG
                   </h3>
@@ -253,7 +253,7 @@ export default function DossierBcegPage() {
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || !pdfBlobUrl || !!submission}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-900 bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#4d553e]/30"
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-900 bg-gradient-to-r from-[#8a9576] to-[#697357] hover:from-[#697357] hover:to-[#4d553e] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#697357]/30"
                   >
                     {submitting ? (
                       <>

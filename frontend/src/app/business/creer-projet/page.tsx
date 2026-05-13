@@ -196,8 +196,8 @@ export default function CreerProjetPage() {
       <div className="min-h-screen relative flex items-center justify-center">
         <BcegBackdrop opacity={0.45} />
         <div className="relative z-10 text-center">
-          <Loader2 className="w-12 h-12 text-[#4d553e] animate-spin mx-auto mb-4" />
-          <p className="text-[#4d553e] text-lg font-semibold">Vérification de votre connexion...</p>
+          <Loader2 className="w-12 h-12 text-[#697357] animate-spin mx-auto mb-4" />
+          <p className="text-[#697357] text-lg font-semibold">Vérification de votre connexion...</p>
         </div>
       </div>
     )
@@ -209,8 +209,8 @@ export default function CreerProjetPage() {
       <div className="min-h-screen relative flex items-center justify-center">
         <BcegBackdrop opacity={0.45} />
         <div className="relative z-10 text-center">
-          <Loader2 className="w-12 h-12 text-[#4d553e] animate-spin mx-auto mb-4" />
-          <p className="text-[#4d553e] text-lg font-semibold">Redirection vers la page de connexion...</p>
+          <Loader2 className="w-12 h-12 text-[#697357] animate-spin mx-auto mb-4" />
+          <p className="text-[#697357] text-lg font-semibold">Redirection vers la page de connexion...</p>
         </div>
       </div>
     )
@@ -311,7 +311,7 @@ export default function CreerProjetPage() {
                 value={formData.project_idea}
                 onChange={(e) => handleInputChange('project_idea', e.target.value)}
                 placeholder="Ex: Créer une plateforme de livraison de repas gabonais à Libreville..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -323,7 +323,7 @@ export default function CreerProjetPage() {
                 value={formData.project_vision}
                 onChange={(e) => handleInputChange('project_vision', e.target.value)}
                 placeholder="Ex: Devenir le leader de la livraison de repas au Gabon d'ici 3 ans..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -335,7 +335,7 @@ export default function CreerProjetPage() {
                 value={formData.problem_solving}
                 onChange={(e) => handleInputChange('problem_solving', e.target.value)}
                 placeholder="Ex: Difficulté à trouver des repas de qualité livrés rapidement..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none text-sm"
               />
             </div>
           </div>
@@ -622,7 +622,7 @@ export default function CreerProjetPage() {
                 value={formData.short_term_goals}
                 onChange={(e) => handleInputChange('short_term_goals', e.target.value)}
                 placeholder="Ex: Lancer MVP, acquérir 100 premiers clients, partenariats avec 10 restaurants..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -634,7 +634,7 @@ export default function CreerProjetPage() {
                 value={formData.long_term_goals}
                 onChange={(e) => handleInputChange('long_term_goals', e.target.value)}
                 placeholder="Ex: 10,000 utilisateurs actifs, expansion à Port-Gentil, rentabilité..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -646,7 +646,7 @@ export default function CreerProjetPage() {
                 value={formData.success_metrics}
                 onChange={(e) => handleInputChange('success_metrics', e.target.value)}
                 placeholder="Ex: Nombre de commandes/mois, taux de satisfaction client, chiffre d'affaires..."
-                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none"
+                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none"
               />
             </div>
 
@@ -658,7 +658,7 @@ export default function CreerProjetPage() {
                 value={formData.risks}
                 onChange={(e) => handleInputChange('risks', e.target.value)}
                 placeholder="Ex: Concurrence forte, coûts logistiques élevés, adoption lente..."
-                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none"
+                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#697357] focus:ring-2 focus:ring-[#697357]/20 transition-all resize-none"
               />
             </div>
           </div>
@@ -689,7 +689,7 @@ export default function CreerProjetPage() {
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.5 }}
-                className="h-full bg-gradient-to-r from-[#4d553e] via-[#6a7556] to-[#4d553e]"
+                className="h-full bg-gradient-to-r from-[#697357] via-[#8a9576] to-[#697357]"
               />
             </div>
             <div className="flex justify-between mt-2 px-1">

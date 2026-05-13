@@ -68,7 +68,7 @@ export default function ProjectSidebar({
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-slate-500 hover:text-[#4d553e] transition-colors group text-sm"
+            className="flex items-center gap-2 text-slate-500 hover:text-[#697357] transition-colors group text-sm"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Retour aux projets</span>
@@ -87,8 +87,8 @@ export default function ProjectSidebar({
           isDashboard
             ? 'bg-gradient-to-br from-slate-700 to-slate-800 shadow-slate-800/20'
             : isFinance
-              ? 'bg-gradient-to-br from-[#4d553e] to-[#3a4030] shadow-[#4d553e]/30'
-              : 'bg-gradient-to-br from-[#4d553e] to-[#3a4030] shadow-[#4d553e]/20'
+              ? 'bg-gradient-to-br from-[#697357] to-[#4d553e] shadow-[#697357]/30'
+              : 'bg-gradient-to-br from-[#697357] to-[#4d553e] shadow-[#697357]/20'
         }`}>
           <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
@@ -143,7 +143,7 @@ export default function ProjectSidebar({
             <LayoutDashboard className="w-5 h-5 mx-auto text-slate-400 mb-1.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
               Cliquez sur l'une des deux cartes à droite pour ouvrir la
-              <span className="font-bold text-[#4d553e]"> sidebar de fonctions</span> correspondante.
+              <span className="font-bold text-[#697357]"> sidebar de fonctions</span> correspondante.
             </p>
           </div>
         )}
@@ -174,12 +174,12 @@ export default function ProjectSidebar({
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`
                         w-9 h-9 rounded-lg flex items-center justify-center shrink-0
-                        ${isActive ? 'bg-[#4d553e]/20' : 'bg-slate-100'}
+                        ${isActive ? 'bg-[#697357]/20' : 'bg-slate-100'}
                       `}>
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#4d553e]' : 'text-slate-500'}`} />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#697357]' : 'text-slate-500'}`} />
                       </div>
                       <div className="min-w-0">
-                        <div className={`text-sm font-semibold truncate ${isActive ? 'text-[#4d553e]' : 'text-slate-800'}`}>
+                        <div className={`text-sm font-semibold truncate ${isActive ? 'text-[#697357]' : 'text-slate-800'}`}>
                           {section.title}
                         </div>
                         <div className={`text-[11px] truncate ${isActive ? 'text-slate-600' : 'text-slate-500'}`}>
@@ -190,7 +190,7 @@ export default function ProjectSidebar({
                     {isExternal ? (
                       <ArrowUpRight className="w-4 h-4 shrink-0 ml-1 text-slate-400" />
                     ) : isActive ? (
-                      <ChevronRight className="w-4 h-4 shrink-0 ml-1 text-[#4d553e]" />
+                      <ChevronRight className="w-4 h-4 shrink-0 ml-1 text-[#697357]" />
                     ) : null}
                   </>
                 )
@@ -217,7 +217,7 @@ export default function ProjectSidebar({
                     className={`
                       w-full flex items-center justify-between p-3 rounded-xl transition-all text-left
                       ${isActive
-                        ? 'bg-[#4d553e]/10 border border-[#4d553e]/30'
+                        ? 'bg-[#697357]/10 border border-[#697357]/30'
                         : 'bg-white border border-slate-200 hover:bg-slate-50'
                       }
                     `}
@@ -236,7 +236,7 @@ export default function ProjectSidebar({
             href={`/business/mes-projets/${projectId}/dossier-bceg`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-[#4d553e] to-[#3a4030] hover:from-[#3a4030] hover:to-[#2c3324] text-white font-bold text-sm shadow-lg shadow-[#4d553e]/30 transition-all"
+            className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-[#697357] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] text-white font-bold text-sm shadow-lg shadow-[#697357]/30 transition-all"
           >
             <Building2 className="w-4 h-4" />
             <span>Soumettre à la BCEG</span>
@@ -282,7 +282,7 @@ export default function ProjectSidebar({
 function StatPill({ value, label }: { value: number; label: string }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-1">
-      <div className="text-lg font-bold text-[#4d553e]">{value}</div>
+      <div className="text-lg font-bold text-[#697357]">{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
     </div>
   )

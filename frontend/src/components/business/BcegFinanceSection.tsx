@@ -109,7 +109,7 @@ export default function BcegFinanceSection({
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4d553e] via-[#3a4030] to-[#2c3324] p-6 sm:p-8 text-white shadow-xl shadow-[#4d553e]/30"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#697357] via-[#4d553e] to-[#3a4030] p-6 sm:p-8 text-white shadow-xl shadow-[#697357]/30"
       >
         <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-amber-300/10 blur-3xl" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-white/5 blur-3xl" />
@@ -146,7 +146,7 @@ export default function BcegFinanceSection({
         <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm">
           <div className="p-5 border-b border-slate-200 flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-[#4d553e] text-lg flex items-center gap-2">
+              <h2 className="font-bold text-[#697357] text-lg flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5" />
                 Pièces requises pour le dossier
               </h2>
@@ -154,7 +154,7 @@ export default function BcegFinanceSection({
                 Cochez chaque étape — la BCEG attend ces éléments pour étudier votre demande.
               </p>
             </div>
-            <span className="text-sm font-bold text-[#4d553e] px-3 py-1 rounded-full bg-[#4d553e]/10">
+            <span className="text-sm font-bold text-[#697357] px-3 py-1 rounded-full bg-[#697357]/10">
               {doneCount}/{checklist.length}
             </span>
           </div>
@@ -185,7 +185,7 @@ export default function BcegFinanceSection({
                         else if (item.key === 'plan_action') onNavigateSection?.('plan-action')
                         else onNavigateSection?.('contexte')
                       }}
-                      className="shrink-0 text-xs font-semibold text-[#4d553e] hover:text-[#3a4030] flex items-center gap-1"
+                      className="shrink-0 text-xs font-semibold text-[#697357] hover:text-[#4d553e] flex items-center gap-1"
                     >
                       Ajouter <ArrowRight className="w-3 h-3" />
                     </button>
@@ -198,13 +198,13 @@ export default function BcegFinanceSection({
 
         <div className="space-y-4">
           <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
-            <h3 className="font-bold text-[#4d553e] flex items-center gap-2 mb-3">
+            <h3 className="font-bold text-[#697357] flex items-center gap-2 mb-3">
               <Award className="w-4 h-4" />
               Votre BCEG Score™
             </h3>
             {loadingScore ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-6 h-6 animate-spin text-[#4d553e]" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#697357]" />
               </div>
             ) : score ? (
               <>
@@ -229,7 +229,7 @@ export default function BcegFinanceSection({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleSubmitDossier}
-            className="w-full flex flex-col items-center gap-1 p-5 rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] hover:from-[#3a4030] hover:to-[#2c3324] text-white font-bold shadow-lg shadow-[#4d553e]/30 transition-all"
+            className="w-full flex flex-col items-center gap-1 p-5 rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] text-white font-bold shadow-lg shadow-[#697357]/30 transition-all"
           >
             <Send className="w-5 h-5" />
             <span className="text-base">Soumettre à la BCEG</span>
@@ -261,7 +261,7 @@ export default function BcegFinanceSection({
 
       <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div className="p-5 border-b border-slate-200">
-          <h2 className="font-bold text-[#4d553e] text-lg flex items-center gap-2">
+          <h2 className="font-bold text-[#697357] text-lg flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />
             Prochaines étapes recommandées
           </h2>
@@ -298,7 +298,7 @@ export default function BcegFinanceSection({
       </div>
 
       <div className="text-center text-xs text-slate-500 px-4 max-w-2xl mx-auto leading-relaxed">
-        <Building2 className="inline w-3.5 h-3.5 mr-1 text-[#4d553e]" />
+        <Building2 className="inline w-3.5 h-3.5 mr-1 text-[#697357]" />
         Vos informations sont partagées de manière sécurisée avec la BCEG uniquement après votre validation explicite via le bouton « Soumettre à la BCEG ».
       </div>
     </div>
@@ -327,16 +327,16 @@ function NextStep({
     >
       <div className="flex items-center gap-2 mb-2">
         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
-          done ? 'bg-emerald-100 text-emerald-700' : 'bg-[#4d553e]/10 text-[#4d553e]'
+          done ? 'bg-emerald-100 text-emerald-700' : 'bg-[#697357]/10 text-[#697357]'
         }`}>
           {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : n}
         </span>
-        <Icon className={`w-4 h-4 ${done ? 'text-emerald-600' : 'text-[#4d553e]'}`} />
+        <Icon className={`w-4 h-4 ${done ? 'text-emerald-600' : 'text-[#697357]'}`} />
       </div>
       <div className="font-bold text-slate-900 text-sm mb-0.5">{title}</div>
       <div className="text-xs text-slate-500 mb-3 line-clamp-1">{desc}</div>
       <span className={`inline-flex items-center gap-1 text-xs font-semibold ${
-        done ? 'text-emerald-600' : 'text-[#4d553e] group-hover:gap-2 transition-all'
+        done ? 'text-emerald-600' : 'text-[#697357] group-hover:gap-2 transition-all'
       }`}>
         {done ? 'Validé' : cta} <ArrowRight className="w-3 h-3" />
       </span>
@@ -366,13 +366,13 @@ function EncouragementBanner({ completionPct, score }: { completionPct: number; 
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-3 p-4 rounded-2xl bg-[#4d553e]/5 border border-[#4d553e]/20"
+      className="flex items-start gap-3 p-4 rounded-2xl bg-[#697357]/5 border border-[#697357]/20"
     >
-      <div className="shrink-0 w-10 h-10 rounded-xl bg-[#4d553e]/10 text-[#4d553e] flex items-center justify-center">
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-[#697357]/10 text-[#697357] flex items-center justify-center">
         {icon}
       </div>
       <div className="min-w-0">
-        <div className="font-bold text-[#4d553e]">{title}</div>
+        <div className="font-bold text-[#697357]">{title}</div>
         <div className="text-sm text-slate-700 mt-0.5">{body}</div>
       </div>
     </motion.div>

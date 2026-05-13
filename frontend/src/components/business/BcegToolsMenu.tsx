@@ -145,7 +145,7 @@ export default function BcegToolsMenu({
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-[#4d553e]/10 border border-[#4d553e]/20 text-[#4d553e] text-xs font-bold mb-3">
+        <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-[#697357]/10 border border-[#697357]/20 text-[#697357] text-xs font-bold mb-3">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Boîte à outils projet</span>
         </div>
@@ -174,8 +174,8 @@ export default function BcegToolsMenu({
               whileTap={{ scale: 0.99 }}
               className={`group relative overflow-hidden rounded-2xl text-left p-6 transition-all ${
                 mod.primary
-                  ? 'bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white shadow-xl shadow-[#4d553e]/30 hover:shadow-2xl'
-                  : 'bg-white border border-slate-200 hover:border-[#4d553e]/40 shadow-md hover:shadow-xl'
+                  ? 'bg-gradient-to-br from-[#697357] to-[#4d553e] text-white shadow-xl shadow-[#697357]/30 hover:shadow-2xl'
+                  : 'bg-white border border-slate-200 hover:border-[#697357]/40 shadow-md hover:shadow-xl'
               }`}
             >
               {mod.primary && (
@@ -187,7 +187,7 @@ export default function BcegToolsMenu({
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ring-1 ${
                     mod.primary
                       ? 'bg-white/15 backdrop-blur text-amber-200 ring-white/20'
-                      : 'bg-[#4d553e]/10 text-[#4d553e] ring-[#4d553e]/20'
+                      : 'bg-[#697357]/10 text-[#697357] ring-[#697357]/20'
                   }`}>
                     <Icon className="w-6 h-6" />
                   </div>
@@ -195,7 +195,7 @@ export default function BcegToolsMenu({
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
                       mod.primary
                         ? 'bg-amber-300/20 text-amber-100 ring-1 ring-amber-300/30'
-                        : 'bg-[#4d553e]/10 text-[#4d553e]'
+                        : 'bg-[#697357]/10 text-[#697357]'
                     }`}>
                       {hint}
                     </span>
@@ -213,7 +213,7 @@ export default function BcegToolsMenu({
                   {mod.bullets.map((b, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                        mod.primary ? 'text-amber-200' : 'text-[#4d553e]'
+                        mod.primary ? 'text-amber-200' : 'text-[#697357]'
                       }`} />
                       <span>{b}</span>
                     </li>
@@ -231,13 +231,13 @@ export default function BcegToolsMenu({
                 <div className={`flex items-center justify-between pt-4 border-t ${
                   mod.primary ? 'border-white/15' : 'border-slate-100'
                 }`}>
-                  <span className={`text-sm font-bold ${mod.primary ? 'text-white' : 'text-[#4d553e]'}`}>
+                  <span className={`text-sm font-bold ${mod.primary ? 'text-white' : 'text-[#697357]'}`}>
                     {mod.cta}
                   </span>
                   <span className={`w-9 h-9 rounded-full flex items-center justify-center transition-all group-hover:translate-x-0.5 ${
                     mod.primary
-                      ? 'bg-white/15 backdrop-blur text-white group-hover:bg-amber-300 group-hover:text-[#3a4030]'
-                      : 'bg-[#4d553e] text-white group-hover:bg-[#3a4030]'
+                      ? 'bg-white/15 backdrop-blur text-white group-hover:bg-amber-300 group-hover:text-[#4d553e]'
+                      : 'bg-[#697357] text-white group-hover:bg-[#4d553e]'
                   }`}>
                     <ArrowRight className="w-4 h-4" />
                   </span>
