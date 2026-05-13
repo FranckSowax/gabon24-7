@@ -96,7 +96,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
       <div>
         <div className="bg-gray-800 rounded-full h-2">
           <div
-            className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all"
+            className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] h-2 rounded-full transition-all"
             style={{ width: `${(step / totalSteps) * 100}%` }}
           />
         </div>
@@ -107,7 +107,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
       {step === 1 && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <User className="w-4 h-4" /> Votre situation
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -127,7 +127,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
           </div>
 
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <Briefcase className="w-4 h-4" /> Votre expérience entrepreneuriale
             </label>
             <div className="space-y-2">
@@ -156,7 +156,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
       {step === 2 && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <GraduationCap className="w-4 h-4" /> Vos compétences (multi-sélection)
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -183,7 +183,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
       {step === 3 && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <Clock className="w-4 h-4" /> Votre disponibilité
             </label>
             <div className="space-y-2">
@@ -208,7 +208,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
           </div>
 
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <Target className="w-4 h-4" /> Délai de lancement souhaité
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -233,7 +233,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
       {step === 4 && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
           <div>
-            <label className="block text-white font-medium mb-3 flex items-center gap-2">
+            <label className="block text-[#4d553e] font-bold mb-3 flex items-center gap-2">
               <DollarSign className="w-4 h-4" /> Budget de démarrage (principal)
             </label>
             <div className="grid grid-cols-1 gap-4">
@@ -244,7 +244,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
                   <div
                     key={level.id}
                     onClick={() => setForm(prev => ({ ...prev, budget_principal: level.id }))}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selected ? 'bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selected ? 'bg-gradient-to-r from-[#4d553e]/20 to-[#6a7556]/20 border-[#4d553e]' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`p-3 bg-gradient-to-r ${level.color || 'from-slate-600 to-slate-700'} rounded-lg`}>
@@ -321,7 +321,7 @@ export default function PersonalizationFormInline({ budgetOptions, onSubmit, isL
           <button
             type="submit"
             disabled={!canNext() || isLoading}
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-white rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Génération...' : '✨ Générer mes propositions'}
           </button>

@@ -1019,8 +1019,8 @@ export default function BusinessAnalyzerPage() {
             className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border border-slate-300"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                <Sparkles className="w-6 h-6 text-slate-900" />
+              <div className="p-2 bg-gradient-to-r from-[#6a7556] to-[#4d553e] rounded-lg">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900">Articles Récents</h2>
             </div>
@@ -1106,8 +1106,8 @@ export default function BusinessAnalyzerPage() {
                       <div className="flex items-center justify-between gap-2">
                         {article.source && (
                           <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                            <span className="text-xs font-medium text-blue-300">{article.source}</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#4d553e]"></div>
+                            <span className="text-xs font-medium text-[#4d553e]">{article.source}</span>
                           </div>
                         )}
                         <span className="text-xs text-slate-500 ml-auto">{new Date(article.published_at).toLocaleDateString('fr-FR')}</span>
@@ -1168,8 +1168,8 @@ export default function BusinessAnalyzerPage() {
                 {/* Analyse contextuelle */}
                 <div>
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg">
-                      <Target className="w-5 h-5 text-slate-900" />
+                    <div className="p-2 bg-gradient-to-r from-[#6a7556] to-[#4d553e] rounded-lg">
+                      <Target className="w-5 h-5 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-slate-900">Analyse Contextuelle</h3>
                   </div>
