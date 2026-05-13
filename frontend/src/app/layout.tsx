@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import React from 'react'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { FlipAdProvider } from '@/components/flip-ad/FlipAdContext'
 import { ToastProvider } from '@/components/ui/Toaster'
 import { CreditAlertProvider } from '@/contexts/CreditAlertContext'
 import { QueryProvider } from '@/providers/QueryProvider'
@@ -134,7 +135,9 @@ export default function RootLayout({
             <AuthProvider>
               <CreditAlertProvider>
                 <ModalProvider>
-                  {children}
+                  <FlipAdProvider>
+                    {children}
+                  </FlipAdProvider>
                 </ModalProvider>
               </CreditAlertProvider>
             </AuthProvider>

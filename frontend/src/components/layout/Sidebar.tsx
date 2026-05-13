@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useModal } from '@/contexts/ModalContext'
 import { useRouter, usePathname } from 'next/navigation'
 import { Lock } from 'lucide-react'
+import FlipProfileCard from '@/components/flip-ad/FlipProfileCard'
+import { useFlipAd } from '@/components/flip-ad/FlipAdContext'
 
 interface SidebarProps {
   isMobileOpen?: boolean
@@ -17,6 +19,13 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   const { openSubscriptionModal } = useModal()
   const router = useRouter()
   const pathname = usePathname()
+  const { triggerFlip } = useFlipAd()
+
+  const handleBusinessClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault()
+    if (onMobileClose) onMobileClose()
+    triggerFlip(href)
+  }
   const [isClient, setIsClient] = React.useState(false)
   const [showCredit, setShowCredit] = React.useState(false)
   const [isSigningOut, setIsSigningOut] = React.useState(false)
@@ -210,6 +219,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
           
           {/* Widget Profil Moderne avec Authentification */}
           <div className="mb-6">
+            <FlipProfileCard>
             <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-4 shadow-lg">
               {/* Infos utilisateur */}
               <div className="mb-3">
@@ -296,6 +306,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
                 )}
               </div>
             </div>
+            </FlipProfileCard>
           </div>
 
           {/* Menu Navigation */}
@@ -342,9 +353,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
             <div className="space-y-2">
               <a
                 href="/business/live-opportunities"
-                onClick={() => {
-                  if (onMobileClose) onMobileClose();
-                }}
+                onClick={(e) => handleBusinessClick(e, '/business/live-opportunities')}
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-semibold bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <span>🏦</span>
@@ -352,9 +361,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               </a>
               <a
                 href="/business/creer-projet"
-                onClick={() => {
-                  if (onMobileClose) onMobileClose();
-                }}
+                onClick={(e) => handleBusinessClick(e, '/business/creer-projet')}
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <span>🚀</span>
@@ -362,9 +369,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               </a>
               <a
                 href="/business/mes-projets"
-                onClick={() => {
-                  if (onMobileClose) onMobileClose();
-                }}
+                onClick={(e) => handleBusinessClick(e, '/business/mes-projets')}
                 className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <span>📁</span>
