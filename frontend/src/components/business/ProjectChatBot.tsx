@@ -170,17 +170,17 @@ export default function ProjectChatBot({
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
-              className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-white/20"
+              className="bg-white border rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl border border-slate-200"
             >
               {/* Header */}
-              <div className="p-4 border-b border-white/20 flex items-center justify-between bg-gradient-to-r from-purple-500/20 to-violet-500/20">
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-[#697357] to-[#4d553e] text-white">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center p-2">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center p-2">
                     <img src="/logo-gabon-insight.png" alt="Gabon Insight" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-lg">Gabon Insight</h3>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-white/80">
                       Conseiller IA pour votre projet
                     </p>
                   </div>
@@ -193,14 +193,14 @@ export default function ProjectChatBot({
                     {messages.length === 0 && (
                       <div className="text-center py-12">
                         <div className="text-6xl mb-4">🤖</div>
-                        <h4 className="text-lg font-bold text-white mb-2">
+                        <h4 className="text-lg font-bold text-slate-900 mb-2">
                           Commencez la conversation
                         </h4>
-                        <p className="text-gray-400 text-sm mb-3">
+                        <p className="text-slate-500 text-sm mb-3">
                           Posez toutes vos questions sur votre projet
                         </p>
                         <div className="max-w-md mx-auto p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                          <p className="text-xs text-blue-300">
+                          <p className="text-xs text-[#697357]">
                             💡 L'assistant a accès à tout le contexte : documents, historique, notes, plan d'action
                           </p>
                         </div>
@@ -213,17 +213,17 @@ export default function ProjectChatBot({
                         className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         {msg.role === 'assistant' && (
-                          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 p-1">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 p-1">
                             <img src="/logo-gabon-insight.png" alt="Gabon Insight" className="w-full h-full object-contain" />
                           </div>
                         )}
                         
-                        <div className={`max-w-[80%] ${msg.role === 'user' ? 'bg-purple-500' : 'bg-white/10'} rounded-2xl px-4 py-3`}>
-                          <p className="text-white text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <div className={`max-w-[80%] ${msg.role === 'user' ? 'bg-[#697357]' : 'bg-slate-100'} rounded-2xl px-4 py-3`}>
+                          <p className={`text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'text-white' : 'text-slate-900'}`}>{msg.content}</p>
                         </div>
 
                         {msg.role === 'user' && (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#8a9576] to-[#697357] flex items-center justify-center flex-shrink-0">
                             <User className="w-5 h-5 text-white" />
                           </div>
                         )}
@@ -232,14 +232,14 @@ export default function ProjectChatBot({
 
                     {isSending && (
                       <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center p-1">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center p-1">
                           <img src="/logo-gabon-insight.png" alt="Gabon Insight" className="w-full h-full object-contain" />
                         </div>
-                        <div className="bg-white/10 rounded-2xl px-4 py-3">
+                        <div className="bg-slate-100 rounded-2xl px-4 py-3">
                           <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <div className="w-2 h-2 bg-[#697357] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-[#697357] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-[#697357] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                           </div>
                         </div>
                       </div>
@@ -249,7 +249,7 @@ export default function ProjectChatBot({
                   </div>
 
                   {/* Input */}
-                  <div className="p-4 border-t border-white/20 bg-white/5">
+                  <div className="p-4 border-t border-slate-200 bg-slate-50">
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -257,18 +257,18 @@ export default function ProjectChatBot({
                         onChange={(e) => setInputMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                         placeholder="Posez votre question..."
-                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#697357]"
                         disabled={isSending}
                       />
                       <button
                         onClick={handleSendMessage}
                         disabled={!inputMessage.trim() || isSending}
-                        className="px-4 py-3 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl hover:from-purple-600 hover:to-violet-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white rounded-xl hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="w-5 h-5" />
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-gray-400 text-center">
+                    <p className="mt-2 text-xs text-slate-500 text-center">
                       Gabon Insight • Conseiller IA intelligent
                     </p>
                   </div>
