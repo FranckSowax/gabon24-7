@@ -161,13 +161,18 @@ export default function BcegFinanceSection({
           <ul className="divide-y divide-slate-100">
             {checklist.map((item) => {
               const Icon = item.icon
+              const onClick = () => onNavigateSection?.(`fin-${item.key}`)
               return (
-                <li key={item.key} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                <li
+                  key={item.key}
+                  onClick={onClick}
+                  className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
                       item.ok ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
                     }`}>
-                      {item.ok ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <div className={`text-sm font-semibold truncate ${item.ok ? 'text-emerald-700' : 'text-slate-800'}`}>
@@ -178,17 +183,11 @@ export default function BcegFinanceSection({
                       </div>
                     </div>
                   </div>
-                  {!item.ok && (
-                    <button
-                      onClick={() => {
-                        if (item.key === 'business_plan') onNavigateSection?.('actions')
-                        else if (item.key === 'plan_action') onNavigateSection?.('plan-action')
-                        else onNavigateSection?.('contexte')
-                      }}
-                      className="shrink-0 text-xs font-semibold text-[#697357] hover:text-[#4d553e] flex items-center gap-1"
-                    >
-                      Ajouter <ArrowRight className="w-3 h-3" />
-                    </button>
+                  {/* Check si présent, cercle vide sinon */}
+                  {item.ok ? (
+                    <CheckCircle2 className="shrink-0 w-6 h-6 text-emerald-600" />
+                  ) : (
+                    <div className="shrink-0 w-6 h-6 rounded-full border-2 border-slate-300" />
                   )}
                 </li>
               )

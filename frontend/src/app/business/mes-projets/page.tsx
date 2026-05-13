@@ -77,7 +77,21 @@ interface ProjectNote {
 }
 
 // Définition des 6 pièces requises BCEG (sert pour sidebar finance + render des sections)
+// Ordre stratégique : Plan d'action avant Business Plan (le plan structure le BP).
 const FINANCE_DOC_TYPES: DocTypeDef[] = [
+  {
+    key: 'plan_action',
+    label: "Plan d'action détaillé",
+    bcegPurpose: "Roadmap des 10 prochaines étapes — montre à la BCEG la maturité opérationnelle du projet. Structure votre business plan.",
+    rules: [
+      'Liste claire des actions avec échéances',
+      'Budget estimatif par étape',
+      'Indicateurs de succès (KPIs) mesurables',
+    ],
+    acceptedFormats: ['PDF', 'DOC', 'DOCX', 'XLS', 'XLSX'],
+    maxSizeMb: 5,
+    required: true,
+  },
   {
     key: 'business_plan',
     label: 'Business Plan',
@@ -128,19 +142,6 @@ const FINANCE_DOC_TYPES: DocTypeDef[] = [
     ],
     acceptedFormats: ['PDF', 'JPG', 'PNG'],
     maxSizeMb: 3,
-    required: true,
-  },
-  {
-    key: 'plan_action',
-    label: "Plan d'action détaillé",
-    bcegPurpose: 'Roadmap des 10 prochaines étapes — montre à la BCEG la maturité opérationnelle du projet.',
-    rules: [
-      'Liste claire des actions avec échéances',
-      'Budget estimatif par étape',
-      "Indicateurs de succès (KPIs) mesurables",
-    ],
-    acceptedFormats: ['PDF', 'DOC', 'DOCX', 'XLS', 'XLSX'],
-    maxSizeMb: 5,
     required: true,
   },
   {
@@ -1565,11 +1566,60 @@ export default function MesProjetsPage() {
           const docKey = activeSection.slice(4)
           const docType = FINANCE_DOC_TYPES.find(d => d.key === docKey)
           if (!docType) return null
+
+          // Pour Business Plan et Plan d'action : offrir aussi l'option "Créer avec IA"
+          const projectActionsData = projectActions[selectedProject.id] || []
+          let aiOption: any = undefined
+
+          if (docKey === 'business_plan') {
+            const bpActions = projectActionsData.filter(a =>
+              a.action_type === 'business-plan' || a.action_type === 'business-plan-section'
+            )
+            const completed = bpActions.some(a => a.action_status === 'completed')
+            const inProgress = bpActions.length > 0 && !completed
+            const progressPct = bpActions.length > 0
+              ? Math.min(100, (bpActions.length / 10) * 100)
+              : 0
+            aiOption = {
+              label: 'Démarrer le Business Plan',
+              credits: 50,
+              description: 'Construction guidée en 10 sections : marché, équipe, finances… Vous pouvez arrêter, reprendre, revenir en arrière pour modifier (chaque modification recoûte des crédits).',
+              progressPct: inProgress ? progressPct : (completed ? 100 : 0),
+              completed,
+              onStart: () => {
+                setActiveSection('actions')
+                setBusinessPlanSelectorOpen(true)
+              },
+              onResume: () => {
+                setActiveSection('actions')
+                setBusinessPlanSelectorOpen(true)
+              },
+            }
+          } else if (docKey === 'plan_action') {
+            const paActions = projectActionsData.filter(a => a.action_type === 'action-plan')
+            const completed = paActions.some(a => a.action_status === 'completed')
+            const inProgress = paActions.length > 0 && !completed
+            aiOption = {
+              label: "Démarrer le Plan d'Action",
+              credits: 25,
+              description: 'Construction étape par étape de votre roadmap : 10 actions concrètes avec budget, échéances et KPIs. Vous pouvez reprendre où vous en êtes ou modifier (recoûte des crédits).',
+              progressPct: completed ? 100 : (inProgress ? 50 : 0),
+              completed,
+              onStart: () => {
+                setActiveSection('plan-action')
+              },
+              onResume: () => {
+                setActiveSection('plan-action')
+              },
+            }
+          }
+
           return (
             <BcegDocSection
               projectId={selectedProject.id}
               docType={docType}
               documents={bcegDocs}
+              aiOption={aiOption}
               onChange={() => setBcegDocsRefreshKey(k => k + 1)}
             />
           )
@@ -4350,9 +4400,21 @@ export default function MesProjetsPage() {
                         }}
                         financeProgressPct={(() => {
                           const required = FINANCE_DOC_TYPES.filter(d => d.required)
-                          const uniqueUploaded = new Set(bcegDocs.map((d: any) => d.doc_type)).size
+                          const uploadedKeys = new Set(bcegDocs.map((d: any) => d.doc_type))
+                          const acts = projectActions[selectedProject.id] || []
+                          // Compte aussi les docs générés via IA comme "présents"
+                          if (acts.some(a =>
+                            (a.action_type === 'business-plan' || a.action_type === 'business-plan-section')
+                            && a.action_status === 'completed'
+                          )) uploadedKeys.add('business_plan')
+                          if (acts.some(a => a.action_type === 'action-plan' && a.action_status === 'completed')) {
+                            uploadedKeys.add('plan_action')
+                          }
+                          const requiredKeys = new Set(required.map(d => d.key))
+                          let count = 0
+                          Array.from(uploadedKeys).forEach(k => { if (requiredKeys.has(k as string)) count++ })
                           const total = required.length
-                          return total > 0 ? (uniqueUploaded / total) * 100 : 0
+                          return total > 0 ? (count / total) * 100 : 0
                         })()}
                         onDeleteProject={() => hookDeleteProject(selectedProject.id)}
                         onRestartAnalysis={() => restartAnalysis(selectedProject.id)}

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, AlertCircle, Trash2, Loader2,
-  ShieldCheck, Eye, Clock, Building2
+  ShieldCheck, Eye, Clock, Building2, Sparkles, Zap, ArrowRight
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
@@ -41,10 +41,29 @@ interface UploadedDoc {
   created_at: string
 }
 
+interface AiGenerateOption {
+  /** Libellé du CTA (ex: "Démarrer le Business Plan") */
+  label: string
+  /** Coût en crédits (token) */
+  credits: number
+  /** Description courte du workflow */
+  description: string
+  /** Si le document est en cours de génération (progression % 0-100) */
+  progressPct?: number
+  /** Si le doc IA est finalisé/validé */
+  completed?: boolean
+  /** Callback : démarrer ou reprendre la génération */
+  onStart: () => void
+  /** Callback : si en cours, ouvrir pour modifier/continuer */
+  onResume?: () => void
+}
+
 interface BcegDocSectionProps {
   projectId: string
   docType: DocTypeDef
   documents?: UploadedDoc[]
+  /** Si fourni : affiche aussi l'option "Créer avec l'IA" (pour business_plan et plan_action) */
+  aiOption?: AiGenerateOption
   onChange?: () => void
 }
 
@@ -54,6 +73,7 @@ export default function BcegDocSection({
   projectId,
   docType,
   documents = [],
+  aiOption,
   onChange,
 }: BcegDocSectionProps) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -190,6 +210,99 @@ export default function BcegDocSection({
           </div>
         </div>
       </div>
+
+      {/* Si IA-générable : 2 options (Télécharger / Créer avec IA) */}
+      {aiOption && !hasUploaded && (
+        <div>
+          <h3 className="text-sm font-bold text-slate-700 mb-3 px-1">
+            Comment souhaitez-vous fournir ce document ?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Option A — Créer avec IA */}
+            <button
+              onClick={aiOption.completed ? aiOption.onResume || aiOption.onStart : aiOption.onStart}
+              className="group relative overflow-hidden text-left rounded-2xl p-5 bg-gradient-to-br from-[#697357] to-[#4d553e] text-white shadow-lg shadow-[#697357]/30 hover:shadow-xl transition-all"
+            >
+              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-amber-300/10 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-amber-200" />
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-amber-300/20 text-amber-100 ring-1 ring-amber-300/30">
+                    ★ Recommandé
+                  </span>
+                </div>
+                <h4 className="text-base font-bold mb-1">Créer avec l'IA</h4>
+                <p className="text-xs opacity-90 mb-3 leading-relaxed">
+                  {aiOption.description}
+                </p>
+
+                {typeof aiOption.progressPct === 'number' && aiOption.progressPct > 0 && !aiOption.completed && (
+                  <div className="mb-3 pb-3 border-b border-white/15">
+                    <div className="flex items-center justify-between text-[10px] mb-1">
+                      <span className="opacity-80">Avancement du document</span>
+                      <span className="font-bold">{Math.round(aiOption.progressPct)}%</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/15 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-300 to-amber-200"
+                        style={{ width: `${Math.min(100, aiOption.progressPct)}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] opacity-75 mt-1">
+                      Vous pouvez arrêter et reprendre à tout moment.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-white/15">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Zap className="w-3.5 h-3.5 text-amber-200" />
+                    <span className="font-bold">{aiOption.credits} crédits</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold">
+                    {aiOption.completed
+                      ? 'Modifier le document'
+                      : aiOption.progressPct
+                        ? 'Reprendre'
+                        : aiOption.label}
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </div>
+              </div>
+            </button>
+
+            {/* Option B — Télécharger */}
+            <button
+              onClick={handleSelectFile}
+              className="group relative overflow-hidden text-left rounded-2xl p-5 bg-white border border-slate-200 hover:border-[#697357]/40 shadow-md hover:shadow-xl transition-all"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-[#697357]/10 text-[#697357] ring-1 ring-[#697357]/20 flex items-center justify-center">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  Si déjà rédigé
+                </span>
+              </div>
+              <h4 className="text-base font-bold text-slate-900 mb-1">Téléverser un fichier existant</h4>
+              <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                Vous avez déjà rédigé ce document ? Téléversez-le directement ({docType.acceptedFormats.join(', ')}).
+              </p>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="text-[11px] text-slate-500">
+                  Gratuit — 0 crédit
+                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#697357]">
+                  Choisir un fichier
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl bg-white border border-slate-200 p-5">
         <h3 className="font-bold text-[#697357] text-sm flex items-center gap-2 mb-3">
