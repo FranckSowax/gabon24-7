@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import BcegScoreBadge from '@/components/bceg/BcegScoreBadge'
 import BcegMentorChat from '@/components/bceg/BcegMentorChat'
 
@@ -141,7 +142,9 @@ export default function DossierBcegPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen relative">
+      <BcegBackdrop opacity={0.45} />
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-950/82 via-slate-900/78 to-slate-950/82 text-white">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
 
       <div className="flex">
@@ -159,10 +162,10 @@ export default function DossierBcegPage() {
 
             <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs mb-2">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4d553e]/20 border border-[#6a7556]/40 text-[#a8b794] text-xs mb-2">
                   <Building2 className="w-3 h-3" /> Dossier BCEG
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold">Soumets ton dossier à la <span className="text-amber-300">BCEG</span></h1>
+                <h1 className="text-2xl sm:text-3xl font-bold">Soumets ton dossier à la <span className="text-[#a8b794]">BCEG</span></h1>
                 <p className="text-sm text-white/60 mt-1">Preview ton dossier généré automatiquement, puis envoie-le à la banque en un clic.</p>
               </div>
               {score && <BcegScoreBadge score={score.score} color={score.color} size="lg" breakdown={score.breakdown} showBreakdown />}
@@ -203,7 +206,7 @@ export default function DossierBcegPage() {
                 <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-amber-300" />
+                      <FileText className="w-4 h-4 text-[#a8b794]" />
                       <span className="font-medium text-sm">Aperçu du dossier PDF</span>
                     </div>
                     <button
@@ -240,9 +243,9 @@ export default function DossierBcegPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-300/30 rounded-2xl p-5">
+                <div className="bg-gradient-to-br from-[#4d553e]/15 to-[#6a7556]/10 border border-[#6a7556]/30 rounded-2xl p-5">
                   <h3 className="font-bold text-white mb-2 flex items-center gap-2">
-                    <Send className="w-4 h-4 text-amber-300" /> Soumettre à la BCEG
+                    <Send className="w-4 h-4 text-[#a8b794]" /> Soumettre à la BCEG
                   </h3>
                   <p className="text-xs text-white/70 mb-4 leading-relaxed">
                     En cliquant ci-dessous, ton dossier PDF sera envoyé directement à l'équipe BCEG par email avec ton adresse en réponse.
@@ -250,7 +253,7 @@ export default function DossierBcegPage() {
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || !pdfBlobUrl || !!submission}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-300 to-orange-400 hover:from-amber-400 hover:to-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#4d553e]/30"
                   >
                     {submitting ? (
                       <>
@@ -270,7 +273,7 @@ export default function DossierBcegPage() {
 
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                   <h3 className="font-bold text-white mb-3 text-sm flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-300" /> Avant de soumettre
+                    <Sparkles className="w-4 h-4 text-[#a8b794]" /> Avant de soumettre
                   </h3>
                   <ul className="space-y-2 text-xs">
                     <ChecklistItem ok={!!score && score.score >= 70} label="BCEG Score ≥ 70" />
@@ -289,6 +292,7 @@ export default function DossierBcegPage() {
       </div>
 
       <BcegMentorChat projectContext={{ project_id: projectId, score: score?.score }} />
+      </div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 import { useAuth } from '@/contexts/AuthContext'
@@ -3807,10 +3808,11 @@ export default function MesProjetsPage() {
 
   if (authLoading || projectsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Chargement des projets...</p>
+      <div className="flex items-center justify-center min-h-screen relative">
+        <BcegBackdrop opacity={0.45} />
+        <div className="relative z-10 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#4d553e] mx-auto mb-4"></div>
+          <p className="text-[#4d553e] text-lg font-semibold">Chargement des projets...</p>
         </div>
       </div>
     )
@@ -3818,14 +3820,15 @@ export default function MesProjetsPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-4">Connexion requise</h2>
-          <p className="text-gray-300 mb-6">Veuillez vous connecter pour voir vos projets</p>
+      <div className="flex items-center justify-center min-h-screen relative">
+        <BcegBackdrop opacity={0.45} />
+        <div className="relative z-10 text-center">
+          <AlertCircle className="w-16 h-16 text-[#4d553e] mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-[#4d553e] mb-4">Connexion requise</h2>
+          <p className="text-slate-700 mb-6">Veuillez vous connecter pour voir vos projets</p>
           <button
             onClick={() => router.push('/auth/signin')}
-            className="px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-all"
+            className="px-6 py-3 bg-[#4d553e] text-white font-semibold rounded-lg hover:bg-[#3a4030] transition-all"
           >
             Se connecter
           </button>
@@ -3835,7 +3838,9 @@ export default function MesProjetsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen relative">
+      <BcegBackdrop opacity={0.45} />
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-900/80 via-purple-900/75 to-slate-900/80">
       <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />
 
       <div className="flex">
@@ -3855,7 +3860,7 @@ export default function MesProjetsPage() {
                   className="text-center mb-8"
                 >
                   <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                    <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] bg-clip-text text-transparent">
                       📁 Mes Dossiers Projets
                     </span>
                   </h1>
@@ -4031,7 +4036,7 @@ export default function MesProjetsPage() {
                                 e.stopPropagation()
                                 setSelectedProject(project)
                               }}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg group-hover:shadow-xl"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black font-semibold rounded-lg hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg group-hover:shadow-xl"
                             >
                               <Bookmark className="w-4 h-4" />
                               <span>Voir le Projet</span>
@@ -4056,7 +4061,7 @@ export default function MesProjetsPage() {
                     </p>
                     <button
                       onClick={() => router.push('/business/analyzer')}
-                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black font-bold rounded-xl hover:from-[#3a4030] hover:to-[#2c3324] transition-all shadow-lg hover:shadow-xl"
                     >
                       <Sparkles className="w-5 h-5" />
                       Analyser une opportunité
@@ -4696,6 +4701,7 @@ export default function MesProjetsPage() {
         onClose={() => setShowOnboarding(false)}
         onDontShowAgain={handleDontShowOnboardingAgain}
       />
+      </div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import AIGenerationModal from '@/components/business/AIGenerationModal'
 import TransitionSlide from '@/components/business/TransitionSlide'
 import BcegScoreBadge, { BcegBreakdown, BcegScoreColor } from '@/components/bceg/BcegScoreBadge'
@@ -192,10 +193,11 @@ export default function CreerProjetPage() {
   // Afficher un loader pendant la vérification d'authentification
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg">Vérification de votre connexion...</p>
+      <div className="min-h-screen relative flex items-center justify-center">
+        <BcegBackdrop opacity={0.45} />
+        <div className="relative z-10 text-center">
+          <Loader2 className="w-12 h-12 text-[#4d553e] animate-spin mx-auto mb-4" />
+          <p className="text-[#4d553e] text-lg font-semibold">Vérification de votre connexion...</p>
         </div>
       </div>
     )
@@ -204,10 +206,11 @@ export default function CreerProjetPage() {
   // Si pas connecté (après chargement), afficher un message (avant redirection)
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg">Redirection vers la page de connexion...</p>
+      <div className="min-h-screen relative flex items-center justify-center">
+        <BcegBackdrop opacity={0.45} />
+        <div className="relative z-10 text-center">
+          <Loader2 className="w-12 h-12 text-[#4d553e] animate-spin mx-auto mb-4" />
+          <p className="text-[#4d553e] text-lg font-semibold">Redirection vers la page de connexion...</p>
         </div>
       </div>
     )
@@ -308,7 +311,7 @@ export default function CreerProjetPage() {
                 value={formData.project_idea}
                 onChange={(e) => handleInputChange('project_idea', e.target.value)}
                 placeholder="Ex: Créer une plateforme de livraison de repas gabonais à Libreville..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -320,7 +323,7 @@ export default function CreerProjetPage() {
                 value={formData.project_vision}
                 onChange={(e) => handleInputChange('project_vision', e.target.value)}
                 placeholder="Ex: Devenir le leader de la livraison de repas au Gabon d'ici 3 ans..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -332,7 +335,7 @@ export default function CreerProjetPage() {
                 value={formData.problem_solving}
                 onChange={(e) => handleInputChange('problem_solving', e.target.value)}
                 placeholder="Ex: Difficulté à trouver des repas de qualité livrés rapidement..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
               />
             </div>
           </div>
@@ -619,7 +622,7 @@ export default function CreerProjetPage() {
                 value={formData.short_term_goals}
                 onChange={(e) => handleInputChange('short_term_goals', e.target.value)}
                 placeholder="Ex: Lancer MVP, acquérir 100 premiers clients, partenariats avec 10 restaurants..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -631,7 +634,7 @@ export default function CreerProjetPage() {
                 value={formData.long_term_goals}
                 onChange={(e) => handleInputChange('long_term_goals', e.target.value)}
                 placeholder="Ex: 10,000 utilisateurs actifs, expansion à Port-Gentil, rentabilité..."
-                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all resize-none text-sm"
+                className="w-full h-24 px-3 py-2 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none text-sm"
               />
             </div>
 
@@ -643,7 +646,7 @@ export default function CreerProjetPage() {
                 value={formData.success_metrics}
                 onChange={(e) => handleInputChange('success_metrics', e.target.value)}
                 placeholder="Ex: Nombre de commandes/mois, taux de satisfaction client, chiffre d'affaires..."
-                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all resize-none"
+                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none"
               />
             </div>
 
@@ -655,7 +658,7 @@ export default function CreerProjetPage() {
                 value={formData.risks}
                 onChange={(e) => handleInputChange('risks', e.target.value)}
                 placeholder="Ex: Concurrence forte, coûts logistiques élevés, adoption lente..."
-                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all resize-none"
+                className="w-full h-24 px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4d553e] focus:ring-2 focus:ring-[#4d553e]/20 transition-all resize-none"
               />
             </div>
           </div>
@@ -669,7 +672,9 @@ export default function CreerProjetPage() {
   const progress = (currentStep / STEPS.length) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <div className="min-h-screen relative">
+      <BcegBackdrop opacity={0.45} />
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-indigo-900/80 via-purple-900/75 to-pink-900/80">
       <Header onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
       
       <div className="flex">
@@ -684,7 +689,7 @@ export default function CreerProjetPage() {
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.5 }}
-                className="h-full bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500"
+                className="h-full bg-gradient-to-r from-[#4d553e] via-[#6a7556] to-[#4d553e]"
               />
             </div>
             <div className="flex justify-between mt-2 px-1">
@@ -816,6 +821,7 @@ export default function CreerProjetPage() {
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   )
 }

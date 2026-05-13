@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, TrendingUp, Clock, Target, ArrowRight, Lightbulb, DollarSign, Users, AlertCircle, Building2, Zap, Wallet, Star, CheckCircle, Menu, ChevronLeft, ChevronRight, Bookmark, ChevronDown, Save, ExternalLink, X } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import EnrichmentDisplay from '@/components/business/EnrichmentDisplay'
 import { useOpportunityEnrichment } from '@/hooks/useOpportunityEnrichment'
 import PersonalizationFormInline from '@/components/forms/PersonalizationFormInline'
@@ -965,17 +966,20 @@ export default function BusinessAnalyzerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-xl">Chargement des articles...</p>
+      <div className="min-h-screen relative flex items-center justify-center">
+        <BcegBackdrop opacity={0.45} />
+        <div className="relative z-10 text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#4d553e] mx-auto mb-4"></div>
+          <p className="text-[#4d553e] text-xl font-semibold">Chargement des articles...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen relative">
+      <BcegBackdrop opacity={0.45} />
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-slate-900/80 via-purple-900/75 to-slate-900/80">
       <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />
 
       <div className="flex">
@@ -994,7 +998,7 @@ export default function BusinessAnalyzerPage() {
               className="text-center mb-12"
             >
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 hidden lg:block">
-                <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#6a7556] to-[#4d553e] bg-clip-text text-transparent">
                   Analyseur Business IA
                 </span>
               </h1>
@@ -1028,7 +1032,7 @@ export default function BusinessAnalyzerPage() {
                   whileHover={{ scale: 1.02 }}
                   className={`p-4 rounded-xl border cursor-pointer transition-all ${
                     selectedArticle?.id === article.id
-                      ? 'bg-gradient-to-r from-yellow-400/20 to-orange-500/20 border-yellow-400'
+                      ? 'bg-gradient-to-r from-[#6a7556]/20 to-[#4d553e]/20 border-[#6a7556]'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}
                   onClick={() => handleSelectArticle(article)}
@@ -1093,7 +1097,7 @@ export default function BusinessAnalyzerPage() {
                           className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-lg transition-colors group"
                           title="Lire l'article complet"
                         >
-                          <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-yellow-400" />
+                          <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-[#a8b794]" />
                         </a>
                       </div>
                       <p className="text-gray-300 text-sm line-clamp-2 mb-3">
@@ -1135,7 +1139,7 @@ export default function BusinessAnalyzerPage() {
 
             {selectedArticle && isLoading && (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Analyse en cours...
                 </h3>
@@ -1151,7 +1155,7 @@ export default function BusinessAnalyzerPage() {
                 <div className="hidden lg:flex">
                   <button
                     onClick={() => handleAnalyzeArticle(selectedArticle)}
-                    className="inline-flex items-center justify-center py-3 px-4 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-400 hover:from-orange-600 hover:to-yellow-500 text-black font-semibold shadow-lg shadow-orange-500/30 transition-all"
+                    className="inline-flex items-center justify-center py-3 px-4 rounded-lg bg-gradient-to-r from-[#4d553e] to-[#6a7556] hover:from-[#3a4030] hover:to-[#4d553e] text-black font-semibold shadow-lg shadow-[#4d553e]/40 transition-all"
                   >
                     Analyser cet article
                   </button>
@@ -1174,7 +1178,7 @@ export default function BusinessAnalyzerPage() {
                     <p className="text-gray-300 mb-3">
                       Nous avons analysé des opportunités à travers cette problématique :
                     </p>
-                    <p className="text-white font-medium bg-gradient-to-r from-yellow-400/20 to-orange-500/20 p-3 rounded-lg border border-yellow-400/30">
+                    <p className="text-white font-medium bg-gradient-to-r from-[#6a7556]/20 to-[#4d553e]/20 p-3 rounded-lg border border-[#6a7556]/30">
                       {analysis?.analyse_contextuelle?.problematique_centrale || 'Problématique non disponible'}
                     </p>
                   </div>
@@ -1210,7 +1214,7 @@ export default function BusinessAnalyzerPage() {
                                 <p className="text-gray-300 text-sm">{secteur.description}</p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="text-yellow-400 font-bold">
+                                <div className="text-[#a8b794] font-bold">
                                   {secteur.score_potentiel}/10
                                 </div>
                                 <ArrowRight className="w-5 h-5 text-gray-400" />
@@ -1233,7 +1237,7 @@ export default function BusinessAnalyzerPage() {
                                 <p className="text-gray-300 text-sm">{secteur.description}</p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="text-yellow-400 font-bold">
+                                <div className="text-[#a8b794] font-bold">
                                   {secteur.score_potentiel}/10
                                 </div>
                                 <ArrowRight className="w-5 h-5 text-gray-400" />
@@ -1341,7 +1345,7 @@ export default function BusinessAnalyzerPage() {
                     
                     {isLoadingProposals ? (
                       <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
                         <p className="text-gray-300">Génération des propositions...</p>
                       </div>
                     ) : (
@@ -1357,7 +1361,7 @@ export default function BusinessAnalyzerPage() {
                           >
                             <div className="flex items-start justify-between mb-3">
                               <h5 className="font-semibold text-white">{proposal.titre}</h5>
-                              <div className="text-yellow-400 font-bold text-sm">
+                              <div className="text-[#a8b794] font-bold text-sm">
                                 {proposal.score_faisabilite}%
                               </div>
                             </div>
@@ -1388,7 +1392,7 @@ export default function BusinessAnalyzerPage() {
                                         <ul className="text-white text-sm space-y-2 pl-4">
                                           {items.map((it, i) => (
                                             <li key={i} className="flex items-start gap-2">
-                                              <span className="text-yellow-400 mt-1.5 flex-shrink-0">•</span>
+                                              <span className="text-[#a8b794] mt-1.5 flex-shrink-0">•</span>
                                               <span>{it}</span>
                                             </li>
                                           ))}
@@ -1462,7 +1466,7 @@ export default function BusinessAnalyzerPage() {
                                 disabled={!savedProjects.has(index)}
                                 className={`flex-1 py-2 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
                                   savedProjects.has(index)
-                                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600'
+                                    ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black hover:from-[#3a4030] hover:to-[#2c3324]'
                                     : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                                 }`}
                                 title={!savedProjects.has(index) ? 'Sauvegardez d\'abord le projet' : 'Accéder au projet'}
@@ -1501,7 +1505,7 @@ export default function BusinessAnalyzerPage() {
           >
             <button
               onClick={() => router.push(`/business/analyzer/analysis?aid=${encodeURIComponent(selectedArticle.id)}`)}
-              className={"w-full py-3 px-4 rounded-xl text-black font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-300 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-orange-500/30"}
+              className={"w-full py-3 px-4 rounded-xl text-black font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-[#4d553e] bg-gradient-to-r from-[#6a7556] to-[#4d553e] hover:from-[#3a4030] hover:to-[#2c3324] shadow-[#4d553e]/40"}
               aria-label={'Analyser cet article'}
             >
               Analyser cet article
@@ -1518,7 +1522,7 @@ export default function BusinessAnalyzerPage() {
             <div className="relative w-full sm:w-[640px] max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-slate-900 border border-white/10 shadow-2xl">
               <div className="flex items-center justify-between p-4 border-b border-white/10">
                 <div className="flex items-center gap-2 text-white/90">
-                  <Lightbulb className="w-5 h-5 text-yellow-400" />
+                  <Lightbulb className="w-5 h-5 text-[#a8b794]" />
                   <span className="font-semibold">{mobileSelectedSecteur.nom}</span>
                 </div>
                 <button aria-label="Fermer" onClick={() => setShowMobileProposalModal(false)} className="text-white/70 hover:text-white">
@@ -1565,7 +1569,7 @@ export default function BusinessAnalyzerPage() {
                     )}
                     {mobileIsLoadingProposals && (
                       <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#6a7556] mx-auto mb-4"></div>
                         <div className="text-white/90">Génération des propositions...</div>
                       </div>
                     )}
@@ -1582,7 +1586,7 @@ export default function BusinessAnalyzerPage() {
                       >
                         <div className="flex items-start justify-between mb-3">
                           <h5 className="font-semibold text-white">{proposal.titre}</h5>
-                          <div className="text-yellow-400 font-bold text-sm">
+                          <div className="text-[#a8b794] font-bold text-sm">
                             {proposal.score_faisabilite}%
                           </div>
                         </div>
@@ -1613,7 +1617,7 @@ export default function BusinessAnalyzerPage() {
                                     <ul className="text-white text-sm space-y-2 pl-4">
                                       {items.map((it, i) => (
                                         <li key={i} className="flex items-start gap-2">
-                                          <span className="text-yellow-400 mt-1.5 flex-shrink-0">•</span>
+                                          <span className="text-[#a8b794] mt-1.5 flex-shrink-0">•</span>
                                           <span>{it}</span>
                                         </li>
                                       ))}
@@ -1687,7 +1691,7 @@ export default function BusinessAnalyzerPage() {
                             disabled={!savedProjects.has(index)}
                             className={`flex-1 py-2 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
                               savedProjects.has(index)
-                                ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-black hover:from-yellow-500 hover:to-orange-600'
+                                ? 'bg-gradient-to-r from-[#6a7556] to-[#4d553e] text-black hover:from-[#3a4030] hover:to-[#2c3324]'
                                 : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                             }`}
                             title={!savedProjects.has(index) ? 'Sauvegardez d\'abord le projet' : 'Accéder au projet'}
@@ -1767,21 +1771,21 @@ export default function BusinessAnalyzerPage() {
                   const currentUrl = window.location.pathname + window.location.search
                   window.location.href = `/auth/signin?redirectTo=${encodeURIComponent(currentUrl)}`
                 }}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#4d553e] to-[#3a4030] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
               >
                 Se connecter
               </button>
             ) : creditBalance !== null && creditBalance < 15 ? (
               <button
                 onClick={() => { setShowWhatsAppGuide(false); setShowTopUpModal(true) }}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#4d553e] to-[#3a4030] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
               >
                 Recharger mes credits
               </button>
             ) : (
               <button
                 onClick={() => setShowWhatsAppGuide(false)}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#4d553e] to-[#3a4030] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
               >
                 Commencer l&apos;analyse
               </button>
@@ -1866,7 +1870,7 @@ export default function BusinessAnalyzerPage() {
                 value={contextName}
                 onChange={(e) => setContextName(e.target.value)}
                 placeholder="Ex: Profil Entrepreneur Tech"
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#4d553e]"
                 maxLength={50}
               />
             </div>
@@ -1884,7 +1888,7 @@ export default function BusinessAnalyzerPage() {
               <button
                 onClick={handleSaveContext}
                 disabled={savingContext || !contextName.trim()}
-                className="flex-1 px-4 py-2 bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-[#4d553e] text-white font-semibold rounded-lg hover:bg-[#3a4030] transition-colors disabled:opacity-50"
               >
                 {savingContext ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
@@ -1892,6 +1896,7 @@ export default function BusinessAnalyzerPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
