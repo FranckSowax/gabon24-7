@@ -461,6 +461,7 @@ export default function MesProjetsPage() {
   const [activeSection, setActiveSection] = useState<string>('dashboard') // dashboard, overview, context, actions, documents, timeline, notes
   const [bcegDocs, setBcegDocs] = useState<any[]>([])
   const [bcegDocsRefreshKey, setBcegDocsRefreshKey] = useState(0)
+  const [showDocUploadModal, setShowDocUploadModal] = useState(false)
   // État pour le drawer mobile
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   // États pour les actions du projet
@@ -2556,10 +2557,21 @@ export default function MesProjetsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Contexte & Bibliothèque</h1>
-          <p className="text-white/90">
-            Contexte cumulé utilisable pour toutes les actions IA du projet
-          </p>
+          <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Contexte & Bibliothèque</h1>
+              <p className="text-white/90">
+                Contexte cumulé utilisable pour toutes les actions IA du projet
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDocUploadModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#4d553e] hover:bg-amber-50 font-bold text-sm shadow-md transition-all"
+            >
+              <Upload className="w-4 h-4" />
+              Téléverser un document
+            </button>
+          </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-white/80 text-sm">
             <div className="bg-white/90 rounded-lg p-3">
               <div className="text-2xl font-bold">{contexteTotal.documents}</div>
@@ -2586,7 +2598,7 @@ export default function MesProjetsPage() {
             onClick={() => setContexteActiveTab('contexte')}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'contexte'
-                ? 'text-orange-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -2595,7 +2607,7 @@ export default function MesProjetsPage() {
             {contexteActiveTab === 'contexte' && (
               <motion.div
                 layoutId="contexteTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -2603,7 +2615,7 @@ export default function MesProjetsPage() {
             onClick={() => setContexteActiveTab('documents')}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'documents'
-                ? 'text-blue-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -2612,7 +2624,7 @@ export default function MesProjetsPage() {
             {contexteActiveTab === 'documents' && (
               <motion.div
                 layoutId="contexteTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -2620,7 +2632,7 @@ export default function MesProjetsPage() {
             onClick={() => setContexteActiveTab('notes')}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'notes'
-                ? 'text-pink-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -2629,7 +2641,7 @@ export default function MesProjetsPage() {
             {contexteActiveTab === 'notes' && (
               <motion.div
                 layoutId="contexteTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -2637,7 +2649,7 @@ export default function MesProjetsPage() {
             onClick={() => setContexteActiveTab('timeline')}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               contexteActiveTab === 'timeline'
-                ? 'text-indigo-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -2646,7 +2658,7 @@ export default function MesProjetsPage() {
             {contexteActiveTab === 'timeline' && (
               <motion.div
                 layoutId="contexteTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -3428,7 +3440,7 @@ export default function MesProjetsPage() {
             onClick={() => setActiveTab('timeline')}
             className={`px-6 py-3 font-medium transition-all relative ${
               activeTab === 'timeline'
-                ? 'text-indigo-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -3437,7 +3449,7 @@ export default function MesProjetsPage() {
             {activeTab === 'timeline' && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -3445,7 +3457,7 @@ export default function MesProjetsPage() {
             onClick={() => setActiveTab('notes')}
             className={`px-6 py-3 font-medium transition-all relative ${
               activeTab === 'notes'
-                ? 'text-pink-400'
+                ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -3454,7 +3466,7 @@ export default function MesProjetsPage() {
             {activeTab === 'notes' && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
               />
             )}
           </button>
@@ -5030,6 +5042,21 @@ export default function MesProjetsPage() {
         onClose={() => setShowOnboarding(false)}
         onDontShowAgain={handleDontShowOnboardingAgain}
       />
+
+      {/* Upload d'un document externe pour la bibliothèque */}
+      {selectedProject && user && (
+        <DocumentUploadModal
+          isOpen={showDocUploadModal}
+          onClose={() => setShowDocUploadModal(false)}
+          projectId={selectedProject.id}
+          userId={user.id}
+          userEmail={user.email || ''}
+          onSuccess={() => {
+            hookFetchDocuments(selectedProject.id)
+            setShowDocUploadModal(false)
+          }}
+        />
+      )}
       </div>
     </div>
   )
