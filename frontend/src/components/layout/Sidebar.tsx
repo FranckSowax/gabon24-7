@@ -345,10 +345,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
                 onClick={() => {
                   if (onMobileClose) onMobileClose();
                 }}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 bg-clip-text text-transparent animate-pulse rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-semibold bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <span>🤖</span>
-                <span>Opportunités IA</span>
+                <span>🏦</span>
+                <span>BCEG Project</span>
               </a>
               <a
                 href="/business/creer-projet"

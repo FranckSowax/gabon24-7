@@ -1,12 +1,12 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Opportunités d\'Investissement au Gabon — Business & Projets',
-  description: 'Découvrez les meilleures opportunités d\'investissement et de business au Gabon. Projets, idées d\'entreprise et analyses de marché générés par IA à partir de l\'actualité gabonaise.',
+  title: 'BCEG Project — Du projet à un financement BCEG en 5 étapes',
+  description: 'Transforme une actualité gabonaise en projet ficelé prêt à être financé par la BCEG. IA d\'analyse, simulation de crédit BCEG, dossier de financement généré automatiquement.',
   alternates: { canonical: '/business/live-opportunities' },
   openGraph: {
-    title: 'Opportunités d\'Investissement au Gabon — Business & Projets',
-    description: 'Les meilleures opportunités d\'investissement et de business au Gabon.',
+    title: 'BCEG Project — Financement entrepreneurial au Gabon',
+    description: 'De l\'idée au financement BCEG en 5 étapes : analyse IA, plan d\'action, simulation crédit, dossier soumission. En partenariat avec la BCEG.',
     url: '/business/live-opportunities',
   },
 }
