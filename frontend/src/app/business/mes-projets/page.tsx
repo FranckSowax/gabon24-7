@@ -4089,11 +4089,11 @@ export default function MesProjetsPage() {
               </>
             ) : (
               /* Vue détaillée avec layout 1/3 - 2/3 */
-              <div className="fixed left-0 lg:left-64 right-0 top-16 bottom-0 flex flex-col lg:flex-row bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+              <div className="fixed left-0 lg:left-64 right-0 top-16 bottom-0 flex flex-col lg:flex-row bg-gradient-to-b from-white via-slate-50 to-white">
                 {/* Bouton Hamburger Mobile */}
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+                  className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-[#6a7556] to-[#4d553e] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
                 >
                   <Menu className="w-6 h-6 text-slate-900" />
                 </button>
