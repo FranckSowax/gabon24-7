@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import BcegFinanceSection from '@/components/business/BcegFinanceSection'
+import BcegToolsMenu from '@/components/business/BcegToolsMenu'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 import { useAuth } from '@/contexts/AuthContext'
@@ -160,7 +161,7 @@ const QUICK_ACTIONS = [
     title: 'Ébauche de Business Plan',
     description: '📊 Plan complet en 10 parties adapté au Gabon',
     icon: FileText,
-    color: 'from-green-500 to-emerald-600',
+    color: 'from-[#4d553e] to-[#3a4030]',
     credits: 50
   },
   {
@@ -168,7 +169,7 @@ const QUICK_ACTIONS = [
     title: 'Générer un courrier',
     description: '✉️ Courrier professionnel adapté au destinataire',
     icon: Mail,
-    color: 'from-blue-500 to-cyan-600',
+    color: 'from-[#6a7556] to-[#4d553e]',
     credits: 15
   },
   {
@@ -176,7 +177,7 @@ const QUICK_ACTIONS = [
     title: 'Pitch investisseur',
     description: '🎤 Présentation percutante pour lever des fonds',
     icon: TrendingUp,
-    color: 'from-indigo-500 to-purple-600',
+    color: 'from-[#4d553e] to-[#3a4030]',
     credits: 30,
     comingSoon: true
   },
@@ -185,7 +186,7 @@ const QUICK_ACTIONS = [
     title: 'Analyse SWOT',
     description: '🔍 Forces, faiblesses, opportunités et menaces',
     icon: Target,
-    color: 'from-teal-500 to-cyan-600',
+    color: 'from-[#6a7556] to-[#4d553e]',
     credits: 20,
     comingSoon: true
   },
@@ -194,7 +195,7 @@ const QUICK_ACTIONS = [
     title: 'Test de compétences',
     description: '🎯 Évaluez vos forces et faiblesses',
     icon: Award,
-    color: 'from-purple-500 to-violet-600',
+    color: 'from-[#4d553e] to-[#3a4030]',
     credits: 20
   },
   {
@@ -202,7 +203,7 @@ const QUICK_ACTIONS = [
     title: 'Formation sur mesure',
     description: '🎓 Formation personnalisée selon vos besoins',
     icon: GraduationCap,
-    color: 'from-orange-500 to-red-600',
+    color: 'from-[#6a7556] to-[#4d553e]',
     credits: 50
   },
   {
@@ -210,7 +211,7 @@ const QUICK_ACTIONS = [
     title: 'Formalités juridiques',
     description: '⚖️ Checklist création d\'entreprise au Gabon',
     icon: CheckCircle,
-    color: 'from-slate-500 to-gray-600',
+    color: 'from-[#4d553e] to-[#3a4030]',
     credits: 15,
     comingSoon: true
   },
@@ -219,7 +220,7 @@ const QUICK_ACTIONS = [
     title: 'Projections financières',
     description: '💰 Prévisions de revenus sur 3 ans',
     icon: DollarSign,
-    color: 'from-amber-500 to-yellow-600',
+    color: 'from-[#6a7556] to-[#4d553e]',
     credits: 35,
     comingSoon: true
   }
@@ -1355,6 +1356,16 @@ export default function MesProjetsPage() {
             project={selectedProject}
             actions={projectActions[selectedProject.id] || []}
             documents={projectDocuments[selectedProject.id] || []}
+            onNavigateSection={(s) => setActiveSection(s)}
+          />
+        )
+
+      case 'outils':
+        return (
+          <BcegToolsMenu
+            actions={projectActions[selectedProject.id] || []}
+            documents={projectDocuments[selectedProject.id] || []}
+            notes={projectNotes[selectedProject.id] || []}
             onNavigateSection={(s) => setActiveSection(s)}
           />
         )

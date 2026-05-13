@@ -139,7 +139,7 @@ export default function ProjectDashboard({
 
           {/* Choix 2 — Continuer à développer */}
           <motion.button
-            onClick={() => onNavigateSection?.('actions')}
+            onClick={() => onNavigateSection?.('outils')}
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
             className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#4d553e]/40 p-6 text-left shadow-md hover:shadow-xl transition-all"
@@ -171,7 +171,7 @@ export default function ProjectDashboard({
               </ul>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                <span className="text-sm font-bold text-[#4d553e]">Explorer les outils IA</span>
+                <span className="text-sm font-bold text-[#4d553e]">Explorer les outils</span>
                 <span className="w-9 h-9 rounded-full bg-[#4d553e] text-white flex items-center justify-center group-hover:bg-[#3a4030] transition-all">
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </span>
