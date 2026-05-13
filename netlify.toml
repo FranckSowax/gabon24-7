@@ -79,6 +79,10 @@
 [functions."scheduled-subscription-lifecycle"]
   schedule = "0 7 * * *"
 
+# BCEG sector-match - toutes les heures (alertes WhatsApp opportunités par secteur)
+[functions."scheduled-bceg-sector-match"]
+  schedule = "0 * * * *"
+
 # Headers de sécurité
 [[headers]]
   for = "/*"

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { ArrowRight, Building2, Sparkles, TrendingUp, Award } from 'lucide-react'
+import { ArrowRight, Building2, Sparkles, TrendingUp, Award, FileText, Folder } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 
@@ -195,6 +195,61 @@ export default function BcegProjectPage() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              </motion.section>
+
+              {/* Outils BCEG — Templates + Préparer mon dossier */}
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="max-w-5xl mx-auto mb-10"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <a
+                    href="/business/bceg-templates"
+                    className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-300/20 hover:border-amber-300/50 backdrop-blur transition-all"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-6 h-6 text-slate-950" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-white">Templates BCEG</h3>
+                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30">Validés</span>
+                        </div>
+                        <p className="text-sm text-white/70 mb-3">
+                          8 modèles de projets pré-validés par la BCEG : boulangerie, taxi, élevage, e-commerce…
+                        </p>
+                        <span className="inline-flex items-center text-sm text-amber-300 font-medium group-hover:gap-2 transition-all">
+                          Explorer les templates <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </div>
+                    </div>
+                  </a>
+                  <a
+                    href="/business/bceg-prepare"
+                    className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 border border-blue-300/20 hover:border-blue-300/50 backdrop-blur transition-all"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                        <Folder className="w-6 h-6 text-slate-950" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-white">Préparer mon dossier</h3>
+                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blue-400/20 text-blue-200 border border-blue-300/30">Pro</span>
+                        </div>
+                        <p className="text-sm text-white/70 mb-3">
+                          Documents due diligence, RDV BCEG, alertes WhatsApp sur les opportunités de ton secteur.
+                        </p>
+                        <span className="inline-flex items-center text-sm text-blue-300 font-medium group-hover:gap-2 transition-all">
+                          Préparer mon RDV BCEG <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </div>
+                    </div>
+                  </a>
                 </div>
               </motion.section>
 
