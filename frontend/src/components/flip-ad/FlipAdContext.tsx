@@ -100,12 +100,15 @@ export function FlipAdProvider({ children }: { children: React.ReactNode }) {
     pendingHrefRef.current = href || null
     setFlipped(true)
 
+    // Navigation immédiate (pas de décalage) — la pub continue à jouer
+    // dans la sidebar pendant que la nouvelle page se charge.
+    if (config.redirectMode === 'after_flip' && href) {
+      router.push(href)
+    }
+
     timerRef.current = setTimeout(() => {
       setFlipped(false)
       timerRef.current = null
-      if (config.redirectMode === 'after_flip' && pendingHrefRef.current) {
-        router.push(pendingHrefRef.current)
-      }
       pendingHrefRef.current = null
     }, config.durationMs)
   }, [config, router])

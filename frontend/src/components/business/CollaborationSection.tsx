@@ -272,7 +272,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
           <button
             onClick={handleGenerateShareLink}
             disabled={isGeneratingLink}
-            className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-4 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isGeneratingLink ? (
               <>
@@ -497,7 +497,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             <button
               onClick={handleAddComment}
               disabled={!newComment.trim() || isAddingComment}
-              className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="mt-4 px-6 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isAddingComment ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               {isAddingComment ? 'Envoi...' : 'Publier le commentaire'}
@@ -518,7 +518,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
                   className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-white/10"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#697357] to-[#4d553e] flex items-center justify-center flex-shrink-0">
                       <User className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1">
