@@ -35,6 +35,18 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label = 'Opérati
   }
 }
 
+// Helper: get Supabase auth headers (Bearer token)
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  try {
+    const { supabase } = await import('@/lib/auth')
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  } catch {}
+  return headers
+}
+
 // Helper: fetch + json with abort-based timeout
 async function fetchJsonWithTimeout(url: string, options: RequestInit, ms: number, label = 'Opération') {
   const controller = new AbortController()
@@ -365,7 +377,7 @@ export default function BusinessAnalyzerPage() {
       // Utiliser la nouvelle route generate-proposals (compatible Netlify)
       const response = await fetch(`${API_URL}/api/opportunities/generate-proposals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           userId: user?.id || null,
           secteur: selectedSecteur.nom,
@@ -423,10 +435,10 @@ export default function BusinessAnalyzerPage() {
       const budgetRange = budgetLevels.find(b => b.id === (userContext.budget_principal || ''))?.range || userContext.budget_principal
       
       console.log('📱 Mobile: Génération propositions pour', mobileSelectedSecteur.nom, 'avec budget', budgetRange)
-      
+
       const response = await fetch(`${API_URL}/api/opportunities/generate-proposals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           userId: user?.id || null,
           secteur: mobileSelectedSecteur.nom,
@@ -814,9 +826,7 @@ export default function BusinessAnalyzerPage() {
 
       const { res, json } = await fetchJsonWithTimeout(`${API_URL}/api/opportunities/analyze`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await authHeaders(),
         body: JSON.stringify({
           article: {
             title: article.title,
@@ -931,9 +941,7 @@ export default function BusinessAnalyzerPage() {
     try {
       const response = await fetch(`${API_URL}/api/opportunities/generate-by-budget`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await authHeaders(),
         body: JSON.stringify({
           secteur: selectedSecteur.nom,
           budget: budgetLevels.find(b => b.id === budgetLevel)?.range || budgetLevel,
