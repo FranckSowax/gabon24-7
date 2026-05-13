@@ -462,6 +462,18 @@ export default function MesProjetsPage() {
   const [bcegDocs, setBcegDocs] = useState<any[]>([])
   const [bcegDocsRefreshKey, setBcegDocsRefreshKey] = useState(0)
   const [showDocUploadModal, setShowDocUploadModal] = useState(false)
+
+  // Helper : change de section + ouvre le drawer sur mobile quand on entre
+  // dans un mode (finance/workshop) pour rendre la navigation visible.
+  const goToSection = (section: string) => {
+    setActiveSection(section)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      const mode = computeSidebarMode(section)
+      if (mode !== 'dashboard') {
+        setIsMobileSidebarOpen(true)
+      }
+    }
+  }
   // État pour le drawer mobile
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   // États pour les actions du projet
@@ -1530,7 +1542,7 @@ export default function MesProjetsPage() {
             documents={projectDocuments[selectedProject.id] || []}
             timeline={projectTimeline[selectedProject.id] || []}
             notes={projectNotes[selectedProject.id] || []}
-            onNavigateSection={(s) => setActiveSection(s)}
+            onNavigateSection={(s) => goToSection(s)}
           />
         )
 
@@ -1540,7 +1552,7 @@ export default function MesProjetsPage() {
             project={selectedProject}
             actions={projectActions[selectedProject.id] || []}
             documents={projectDocuments[selectedProject.id] || []}
-            onNavigateSection={(s) => setActiveSection(s)}
+            onNavigateSection={(s) => goToSection(s)}
           />
         )
 
@@ -1550,7 +1562,7 @@ export default function MesProjetsPage() {
             actions={projectActions[selectedProject.id] || []}
             documents={projectDocuments[selectedProject.id] || []}
             notes={projectNotes[selectedProject.id] || []}
-            onNavigateSection={(s) => setActiveSection(s)}
+            onNavigateSection={(s) => goToSection(s)}
           />
         )
 
@@ -4372,12 +4384,14 @@ export default function MesProjetsPage() {
             ) : (
               /* Vue détaillée avec layout 1/3 - 2/3 */
               <div className="fixed left-0 lg:left-64 right-0 top-16 bottom-0 flex flex-col lg:flex-row bg-gradient-to-b from-white via-slate-50 to-white">
-                {/* Bouton Hamburger Mobile */}
+                {/* Bouton Hamburger Mobile — "Menu des modes" plus visible */}
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="lg:hidden fixed top-20 left-4 z-50 w-12 h-12 bg-gradient-to-r from-[#8a9576] to-[#697357] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+                  className="lg:hidden fixed top-20 left-3 z-50 flex items-center gap-2 pl-3 pr-4 py-2.5 bg-gradient-to-r from-[#697357] to-[#4d553e] rounded-full shadow-xl shadow-[#697357]/40 active:scale-95 transition-all ring-2 ring-white"
+                  aria-label="Ouvrir le menu des modes"
                 >
-                  <Menu className="w-6 h-6 text-slate-900" />
+                  <Menu className="w-5 h-5 text-white" />
+                  <span className="text-white text-xs font-bold">Menu</span>
                 </button>
 
                 {/* Overlay Mobile */}
