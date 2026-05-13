@@ -1,77 +1,71 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { ArrowRight, Building2, Sparkles, TrendingUp, Award, FileText, Folder } from 'lucide-react'
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import { ArrowRight, Sparkles, PlusCircle, FolderOpen } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 
-type Level = {
-  id: number
-  emoji: string
-  title: string
-  pitch: string
-  badge: string
-  accent: string
-}
-
 const BCEG_LOGO = '/646710125_122187790628463229_813105913342150168_n.jpg'
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-interface BcegStats {
-  projects_count: number
-  bceg_accepted_count: number
-  total_funded_billions: number
+type StartOption = {
+  id: number
+  href: string
+  label: string
+  title: string
+  description: string
+  highlight: string
+  icon: React.ReactNode
+  accent: string
+  iconBg: string
+  iconRing: string
+  badge: string
 }
 
-const levels: Level[] = [
-  { id: 1, emoji: '🔍', title: 'Découvrir', pitch: 'Lis un article → l\'IA détecte 3 secteurs porteurs', badge: 'Explorateur', accent: 'from-blue-500 to-cyan-500' },
-  { id: 2, emoji: '💡', title: 'Idéer', pitch: 'Choisis 1 idée → pitch + cible + revenus générés', badge: 'Visionnaire', accent: 'from-purple-500 to-fuchsia-500' },
-  { id: 3, emoji: '🛠️', title: 'Structurer', pitch: 'Plan d\'action 10 étapes + budget + KPIs', badge: 'Bâtisseur', accent: 'from-amber-500 to-orange-500' },
-  { id: 4, emoji: '📊', title: 'Simuler BCEG', pitch: 'Le budget devient un crédit BCEG simulé en temps réel', badge: 'Stratège', accent: 'from-emerald-500 to-teal-500' },
-  { id: 5, emoji: '🚀', title: 'Soumettre BCEG', pitch: 'Dossier complet généré → envoyé à BCEG en 1 clic', badge: 'Entrepreneur BCEG', accent: 'from-rose-500 to-red-500' },
+const options: StartOption[] = [
+  {
+    id: 1,
+    href: '/business/analyzer',
+    label: 'Option 1',
+    title: 'Analyser un article',
+    description: "Notre IA détecte des opportunités de business local dans l'actualité gabonaise.",
+    highlight: "Idéal si tu cherches l'inspiration",
+    icon: <Sparkles className="w-6 h-6" />,
+    accent: 'from-amber-500 to-orange-500',
+    iconBg: 'from-amber-400 to-orange-500',
+    iconRing: 'ring-amber-300/40',
+    badge: 'IA',
+  },
+  {
+    id: 2,
+    href: '/business/creer-projet',
+    label: 'Option 2',
+    title: 'Démarrer à zéro',
+    description: 'Tu as déjà une idée ? Construis ton projet étape par étape avec le wizard guidé.',
+    highlight: 'Si tu sais déjà quoi entreprendre',
+    icon: <PlusCircle className="w-6 h-6" />,
+    accent: 'from-emerald-500 to-teal-500',
+    iconBg: 'from-emerald-400 to-teal-500',
+    iconRing: 'ring-emerald-300/40',
+    badge: 'Nouveau',
+  },
+  {
+    id: 3,
+    href: '/business/mes-projets',
+    label: 'Option 3',
+    title: 'Mes projets',
+    description: 'Reprends un projet existant, consulte son BCEG Score™ et finalise son dossier.',
+    highlight: "Continuer où tu t'es arrêté",
+    icon: <FolderOpen className="w-6 h-6" />,
+    accent: 'from-blue-500 to-cyan-500',
+    iconBg: 'from-blue-400 to-cyan-500',
+    iconRing: 'ring-blue-300/40',
+    badge: 'En cours',
+  },
 ]
-
-// Compteur animé (mock data Phase 1 — à brancher sur Supabase en Phase 2)
-function StatCounter({ value, decimals = 0, suffix = '', label, icon }: { value: number; decimals?: number; suffix?: string; label: string; icon: React.ReactNode }) {
-  const mv = useMotionValue(0)
-  const rounded = useTransform(mv, (v) => decimals ? v.toFixed(decimals) : Math.round(v).toLocaleString('fr-FR'))
-  useEffect(() => {
-    const ctrl = animate(mv, value, { duration: 2, ease: 'easeOut' })
-    return ctrl.stop
-  }, [value, mv])
-  return (
-    <div className="flex flex-col items-center gap-1 px-4">
-      <div className="flex items-center gap-2 text-white">
-        {icon}
-        <motion.span className="text-2xl sm:text-3xl font-bold tabular-nums">{rounded}</motion.span>
-        {suffix && <span className="text-xl sm:text-2xl font-bold">{suffix}</span>}
-      </div>
-      <span className="text-xs sm:text-sm text-white/70 text-center">{label}</span>
-    </div>
-  )
-}
 
 export default function BcegProjectPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  // Fallback values jusqu'à ce que /api/bceg/stats réponde
-  const [stats, setStats] = useState<BcegStats>({ projects_count: 1247, bceg_accepted_count: 38, total_funded_billions: 12.4 })
-
-  useEffect(() => {
-    let alive = true
-    fetch(`${API}/api/bceg/stats`)
-      .then(r => r.ok ? r.json() : null)
-      .then(json => {
-        if (!alive || !json?.success || !json.stats) return
-        setStats({
-          projects_count: json.stats.projects_count ?? 0,
-          bceg_accepted_count: json.stats.bceg_accepted_count ?? 0,
-          total_funded_billions: json.stats.total_funded_billions ?? 0,
-        })
-      })
-      .catch(() => {})
-    return () => { alive = false }
-  }, [])
 
   return (
     <div className="min-h-screen relative">
@@ -81,10 +75,12 @@ export default function BcegProjectPage() {
         style={{ backgroundImage: `url('/imgi_5_back3.png')` }}
         aria-hidden="true"
       />
-      {/* Overlay sombre pour lisibilité */}
-      <div className="fixed inset-0 z-0 bg-gradient-to-b from-slate-950/85 via-slate-950/70 to-slate-950/90" aria-hidden="true" />
+      {/* Overlay BLANC semi-transparent (remplace l'overlay sombre) */}
+      <div
+        className="fixed inset-0 z-0 bg-gradient-to-b from-white/85 via-white/80 to-white/90 backdrop-blur-sm"
+        aria-hidden="true"
+      />
 
-      {/* Contenu */}
       <div className="relative z-10">
         <Header onMobileMenuToggle={() => setIsSidebarOpen(true)} />
 
@@ -95,214 +91,118 @@ export default function BcegProjectPage() {
           />
 
           <div className="flex-1 lg:ml-64 lg:mr-80 min-w-0">
-            <main className="w-full px-3 sm:px-4 lg:px-8 py-6 sm:py-10 lg:py-12">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14 max-w-5xl mx-auto">
 
-              {/* Hero */}
+              {/* Hero minimal */}
               <motion.section
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-10 sm:mb-14"
               >
-                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/15 text-white/90 text-xs sm:text-sm mb-5">
-                  <img src={BCEG_LOGO} alt="Logo BCEG" className="w-7 h-7 rounded-full object-cover ring-1 ring-white/30" />
-                  <span>En partenariat avec la <span className="font-semibold text-amber-200">BCEG</span> — Banque pour le Commerce et l'Entrepreneuriat du Gabon</span>
+                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/80 backdrop-blur border border-slate-200 shadow-sm text-slate-700 text-xs sm:text-sm mb-5">
+                  <img
+                    src={BCEG_LOGO}
+                    alt="Logo BCEG"
+                    className="w-6 h-6 rounded-full object-cover ring-1 ring-amber-300/50"
+                  />
+                  <span>
+                    En partenariat avec la <span className="font-semibold text-amber-700">BCEG</span>
+                  </span>
                 </div>
 
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight">
-                  BCEG <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-300 bg-clip-text text-transparent">Project</span>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-3 leading-tight">
+                  BCEG{' '}
+                  <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
+                    Project
+                  </span>
                 </h1>
 
-                <p className="text-base sm:text-lg lg:text-2xl text-white/85 max-w-3xl mx-auto px-4 mb-6">
-                  Du projet à un <span className="font-semibold text-amber-300">financement BCEG</span> en{' '}
-                  <span className="font-semibold text-amber-300">5 étapes</span>.
+                <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
+                  Comment veux-tu démarrer ton projet ?
                 </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4">
-                  <button
-                    onClick={() => window.location.href = '/business/analyzer'}
-                    className="group inline-flex items-center justify-center w-full sm:w-auto px-7 py-3.5 text-base sm:text-lg font-semibold text-slate-950 bg-gradient-to-r from-amber-300 to-orange-400 rounded-xl hover:from-amber-400 hover:to-orange-500 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-amber-500/20"
-                  >
-                    <Sparkles className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
-                    Démarrer mon projet
-                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <a
-                    href="/business/mes-projets"
-                    className="inline-flex items-center justify-center w-full sm:w-auto px-7 py-3.5 text-base sm:text-lg font-medium text-white bg-white/10 hover:bg-white/15 backdrop-blur border border-white/20 rounded-xl transition-colors"
-                  >
-                    Mes projets
-                  </a>
-                </div>
               </motion.section>
 
-              {/* Stats compteurs */}
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="mb-12 sm:mb-16"
-              >
-                <div className="max-w-4xl mx-auto bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 py-5 sm:py-6 px-4 flex flex-wrap items-center justify-around gap-y-4 divide-x divide-white/10">
-                  <StatCounter value={stats.projects_count} label="projets ficelés" icon={<Sparkles className="w-5 h-5 text-amber-300" />} />
-                  <StatCounter value={stats.bceg_accepted_count} label="dossiers BCEG acceptés" icon={<Award className="w-5 h-5 text-emerald-300" />} />
-                  <StatCounter value={stats.total_funded_billions} decimals={1} suffix=" Mrd FCFA" label="financés cette année" icon={<TrendingUp className="w-5 h-5 text-orange-300" />} />
-                </div>
-              </motion.section>
-
-              {/* 5 Levels — parcours gamifié */}
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="mb-12"
-              >
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-                    Ton parcours en 5 niveaux
-                  </h2>
-                  <p className="text-white/70 text-sm sm:text-base">
-                    Avance pas à pas, débloque un badge à chaque étape
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 max-w-6xl mx-auto">
-                  {levels.map((lvl, i) => (
-                    <motion.div
-                      key={lvl.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 + i * 0.08 }}
-                      className="group relative overflow-hidden rounded-2xl p-5 bg-white/5 backdrop-blur-md border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all cursor-default"
-                    >
-                      {/* Accent gradient en background au hover */}
-                      <div className={`absolute inset-0 opacity-0 group-hover:opacity-15 bg-gradient-to-br ${lvl.accent} transition-opacity duration-300`} />
-
-                      <div className="relative">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-3xl sm:text-4xl">{lvl.emoji}</span>
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/15">
-                            Niveau {lvl.id}
-                          </span>
-                        </div>
-                        <h3 className="text-lg sm:text-xl font-bold text-white mb-1">{lvl.title}</h3>
-                        <p className="text-xs sm:text-sm text-white/70 mb-4 min-h-[40px]">
-                          {lvl.pitch}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <Award className="w-3.5 h-3.5 text-amber-300" />
-                          <span className="text-amber-200/90">Badge "{lvl.badge}"</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.section>
-
-              {/* Outils BCEG — Templates + Préparer mon dossier */}
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
-                className="max-w-5xl mx-auto mb-10"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <a
-                    href="/business/bceg-templates"
-                    className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-300/20 hover:border-amber-300/50 backdrop-blur transition-all"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-6 h-6 text-slate-950" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-bold text-white">Templates BCEG</h3>
-                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30">Validés</span>
-                        </div>
-                        <p className="text-sm text-white/70 mb-3">
-                          8 modèles de projets pré-validés par la BCEG : boulangerie, taxi, élevage, e-commerce…
-                        </p>
-                        <span className="inline-flex items-center text-sm text-amber-300 font-medium group-hover:gap-2 transition-all">
-                          Explorer les templates <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                  <a
-                    href="/business/bceg-prepare"
-                    className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 border border-blue-300/20 hover:border-blue-300/50 backdrop-blur transition-all"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                        <Folder className="w-6 h-6 text-slate-950" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-bold text-white">Préparer mon dossier</h3>
-                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blue-400/20 text-blue-200 border border-blue-300/30">Pro</span>
-                        </div>
-                        <p className="text-sm text-white/70 mb-3">
-                          Documents due diligence, RDV BCEG, alertes WhatsApp sur les opportunités de ton secteur.
-                        </p>
-                        <span className="inline-flex items-center text-sm text-blue-300 font-medium group-hover:gap-2 transition-all">
-                          Préparer mon RDV BCEG <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                </div>
-              </motion.section>
-
-              {/* Pourquoi BCEG ? */}
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="max-w-5xl mx-auto mb-10"
-              >
-                <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-300/15 rounded-2xl p-6 sm:p-8 backdrop-blur">
-                  <div className="flex items-center gap-3 mb-4">
-                    <img src={BCEG_LOGO} alt="Logo BCEG" className="w-12 h-12 rounded-xl object-cover ring-1 ring-amber-300/40 shadow-md" />
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">Pourquoi BCEG ?</h2>
-                      <p className="text-xs sm:text-sm text-white/60">Banque pour le Commerce et l'Entrepreneuriat du Gabon</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base">
-                    <div>
-                      <div className="text-2xl mb-1">💰</div>
-                      <div className="font-semibold text-white mb-1">Crédits dès 5 %</div>
-                      <p className="text-white/70 text-sm">Taux subventionné via les programmes CATR et FAMAD pour entrepreneurs gabonais.</p>
-                    </div>
-                    <div>
-                      <div className="text-2xl mb-1">🇬🇦</div>
-                      <div className="font-semibold text-white mb-1">Banque locale</div>
-                      <p className="text-white/70 text-sm">Présence dans les 9 provinces du Gabon, accompagnement de proximité.</p>
-                    </div>
-                    <div>
-                      <div className="text-2xl mb-1">🤝</div>
-                      <div className="font-semibold text-white mb-1">Dédiée PME</div>
-                      <p className="text-white/70 text-sm">Premier acteur bancaire pour PME, PMI, professionnels et particuliers.</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.section>
-
-              {/* CTA bas */}
+              {/* 3 cards modernes */}
               <motion.section
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.85 }}
-                className="text-center pb-6"
+                transition={{ delay: 0.15 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-5"
               >
-                <button
-                  onClick={() => window.location.href = '/business/analyzer'}
-                  className="group inline-flex items-center gap-2 px-6 py-3 text-base font-semibold text-white bg-white/10 hover:bg-white/15 backdrop-blur border border-white/20 rounded-xl transition-all"
-                >
-                  Lancer l'analyse IA d'un article
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
+                {options.map((opt, i) => (
+                  <motion.a
+                    key={opt.id}
+                    href={opt.href}
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + i * 0.1, type: 'spring', stiffness: 100 }}
+                    whileHover={{ y: -4 }}
+                    className="group relative overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-2xl transition-all duration-300"
+                  >
+                    {/* Halo gradient au hover */}
+                    <div
+                      className={`absolute -top-20 -right-20 w-48 h-48 rounded-full bg-gradient-to-br ${opt.accent} opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500`}
+                    />
+
+                    {/* Top accent line */}
+                    <div className={`h-1 w-full bg-gradient-to-r ${opt.accent}`} />
+
+                    <div className="p-6 relative">
+                      <div className="flex items-start justify-between mb-5">
+                        <div
+                          className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${opt.iconBg} ring-4 ${opt.iconRing} flex items-center justify-center text-white shadow-lg shadow-slate-900/10`}
+                        >
+                          {opt.icon}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                            {opt.label}
+                          </span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold text-white bg-gradient-to-r ${opt.accent}`}
+                          >
+                            {opt.badge}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">{opt.title}</h3>
+
+                      <p className="text-sm text-slate-600 leading-relaxed mb-4 min-h-[60px]">
+                        {opt.description}
+                      </p>
+
+                      <div className="text-xs text-slate-500 italic mb-5">
+                        💡 {opt.highlight}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                        <span
+                          className={`text-sm font-semibold bg-gradient-to-r ${opt.accent} bg-clip-text text-transparent`}
+                        >
+                          C'est parti
+                        </span>
+                        <span
+                          className={`w-9 h-9 rounded-full bg-gradient-to-br ${opt.accent} flex items-center justify-center text-white transition-transform duration-300 group-hover:translate-x-1`}
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </motion.a>
+                ))}
               </motion.section>
+
+              {/* Footer note discret */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+                className="text-center mt-10 text-xs sm:text-sm text-slate-500"
+              >
+                Crédits BCEG dès <span className="font-semibold text-amber-700">5 %</span> ·
+                Programmes CATR &amp; FAMAD · Présent dans les 9 provinces du Gabon
+              </motion.div>
 
             </main>
           </div>
