@@ -804,4 +804,398 @@ ${project_context ? `\nContexte du projet de l'utilisateur :\n${JSON.stringify(p
   }
 });
 
+// =====================================================================
+// =====================================================================
+// PHASE 6 — Templates, RDV, Due Diligence
+// =====================================================================
+// =====================================================================
+
+router.get('/templates', async (req, res) => {
+  try {
+    const { sector } = req.query;
+    let q = supabase.from('bceg_templates').select('*').eq('status', 'published').order('usage_count', { ascending: false });
+    if (sector) q = q.eq('sector', sector);
+    const { data, error } = await q;
+    if (error) throw error;
+    res.json({ success: true, templates: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/templates/:slug', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_templates')
+      .select('*')
+      .eq('slug', req.params.slug)
+      .eq('status', 'published')
+      .single();
+    if (error) throw error;
+    supabase.from('bceg_templates')
+      .update({ usage_count: (data?.usage_count || 0) + 1 })
+      .eq('id', data.id)
+      .then(() => {})
+      .then(null, () => {});
+    res.json({ success: true, template: data });
+  } catch (error) {
+    res.status(404).json({ success: false, error: 'Template non trouvé' });
+  }
+});
+
+router.post('/appointments', requireAuth, async (req, res) => {
+  try {
+    const { project_id, submission_id, appointment_date, appointment_time, topic, user_name, user_phone } = req.body || {};
+    if (!appointment_date || !appointment_time) {
+      return res.status(400).json({ success: false, error: 'appointment_date et appointment_time requis' });
+    }
+    const { data, error } = await supabase
+      .from('bceg_appointments')
+      .insert({
+        user_id: req.user.id,
+        user_email: req.user.email,
+        user_name,
+        user_phone,
+        project_id,
+        submission_id,
+        appointment_date,
+        appointment_time,
+        topic,
+        status: 'requested',
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, appointment: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/appointments/mine', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_appointments')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('appointment_date', { ascending: true });
+    if (error) throw error;
+    res.json({ success: true, appointments: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/admin/appointments', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let q = supabase.from('bceg_appointments').select('*').order('appointment_date', { ascending: true });
+    if (status) q = q.eq('status', status);
+    const { data, error } = await q;
+    if (error) throw error;
+    res.json({ success: true, appointments: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch('/admin/appointments/:id', requireAdmin, async (req, res) => {
+  try {
+    const update = { ...req.body, updated_at: new Date().toISOString() };
+    const { data, error } = await supabase
+      .from('bceg_appointments')
+      .update(update)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, appointment: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/due-diligence/sign-upload', requireAuth, async (req, res) => {
+  try {
+    const { doc_type, file_name } = req.body || {};
+    if (!doc_type || !file_name) {
+      return res.status(400).json({ success: false, error: 'doc_type et file_name requis' });
+    }
+    const safeName = String(file_name).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${req.user.id}/${doc_type}-${Date.now()}-${safeName}`;
+    const { data, error } = await supabase.storage
+      .from('due-diligence')
+      .createSignedUploadUrl(path);
+    if (error) throw error;
+    res.json({ success: true, ...data, path });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/due-diligence', requireAuth, async (req, res) => {
+  try {
+    const { doc_type, file_url, file_name, file_size, mime_type, project_id, submission_id } = req.body || {};
+    if (!doc_type || !file_url) return res.status(400).json({ success: false, error: 'doc_type et file_url requis' });
+    const { data, error } = await supabase
+      .from('due_diligence_documents')
+      .insert({
+        user_id: req.user.id,
+        project_id,
+        submission_id,
+        doc_type,
+        file_url,
+        file_name,
+        file_size,
+        mime_type,
+        verification_status: 'pending',
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, document: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/due-diligence/mine', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('due_diligence_documents')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ success: true, documents: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/due-diligence/:id', requireAuth, async (req, res) => {
+  try {
+    const { data: doc } = await supabase.from('due_diligence_documents').select('*').eq('id', req.params.id).eq('user_id', req.user.id).single();
+    if (!doc) return res.status(404).json({ success: false, error: 'Document non trouvé' });
+    if (doc.file_url) {
+      const m = String(doc.file_url).match(/due-diligence\/(.+)$/);
+      if (m) await supabase.storage.from('due-diligence').remove([m[1]]).then(() => {}, () => {});
+    }
+    await supabase.from('due_diligence_documents').delete().eq('id', req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch('/admin/due-diligence/:id', requireAdmin, async (req, res) => {
+  try {
+    const update = {
+      ...req.body,
+      verified_by: req.user.id,
+      verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('due_diligence_documents')
+      .update(update)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, document: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// =====================================================================
+// PHASE 7 — Sponsoring + Sector matching
+// =====================================================================
+// =====================================================================
+
+router.get('/admin/sponsorships', requireAdmin, async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_sponsorships')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ success: true, sponsorships: data || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/admin/sponsorships', requireAdmin, async (req, res) => {
+  try {
+    const { campaign_name, description, credits_offered, total_budget, target_sectors, ends_at, status } = req.body || {};
+    if (!campaign_name || !credits_offered || !total_budget) {
+      return res.status(400).json({ success: false, error: 'campaign_name, credits_offered, total_budget requis' });
+    }
+    const { data, error } = await supabase
+      .from('bceg_sponsorships')
+      .insert({
+        campaign_name,
+        description,
+        credits_offered,
+        total_budget,
+        target_sectors,
+        ends_at,
+        status: status || 'active',
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, sponsorship: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/admin/sponsorships/:id/grant', requireAdmin, async (req, res) => {
+  try {
+    const { user_id, reason } = req.body || {};
+    if (!user_id) return res.status(400).json({ success: false, error: 'user_id requis' });
+    const { data: campaign } = await supabase.from('bceg_sponsorships').select('*').eq('id', req.params.id).single();
+    if (!campaign) return res.status(404).json({ success: false, error: 'Campagne non trouvée' });
+    if (campaign.status !== 'active') return res.status(400).json({ success: false, error: 'Campagne non active' });
+    if (campaign.credits_used + campaign.credits_offered > campaign.total_budget) {
+      return res.status(400).json({ success: false, error: 'Budget de la campagne épuisé' });
+    }
+
+    const { data, error } = await supabase
+      .from('bceg_sponsorship_grants')
+      .insert({
+        sponsorship_id: req.params.id,
+        user_id,
+        credits_granted: campaign.credits_offered,
+        reason,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    await supabase
+      .from('bceg_sponsorships')
+      .update({ credits_used: campaign.credits_used + campaign.credits_offered })
+      .eq('id', req.params.id);
+
+    res.json({ success: true, grant: data });
+  } catch (error) {
+    if (error?.code === '23505') {
+      return res.status(409).json({ success: false, error: 'User déjà sponsorisé sur cette campagne' });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/sector-preferences', requireAuth, async (req, res) => {
+  try {
+    const { sectors = [], whatsapp_phone, notify_via_whatsapp = true, notify_via_email = false } = req.body || {};
+    const { data, error } = await supabase
+      .from('user_sector_preferences')
+      .upsert({
+        user_id: req.user.id,
+        sectors,
+        whatsapp_phone,
+        notify_via_whatsapp,
+        notify_via_email,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, preferences: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/sector-preferences', requireAuth, async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('user_sector_preferences')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    res.json({ success: true, preferences: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/cron/sector-match', async (req, res) => {
+  try {
+    const key = req.query.key || req.headers['x-cron-secret'];
+    const valid = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(Boolean);
+    if (!key || !valid.includes(key)) {
+      return res.status(401).json({ success: false, error: 'unauthorized' });
+    }
+
+    const { data: prefs } = await supabase
+      .from('user_sector_preferences')
+      .select('*')
+      .eq('notify_via_whatsapp', true)
+      .not('whatsapp_phone', 'is', null);
+
+    if (!prefs || prefs.length === 0) {
+      return res.json({ success: true, sent: 0, message: 'Aucun user avec préfs WhatsApp' });
+    }
+
+    const sinceIso = new Date(Date.now() - 3600 * 1000).toISOString();
+    const { data: recentArticles } = await supabase
+      .from('articles')
+      .select('id, title, category, summary_ai, url, source')
+      .gte('created_at', sinceIso)
+      .not('summary_ai', 'is', null);
+
+    if (!recentArticles || recentArticles.length === 0) {
+      return res.json({ success: true, sent: 0, message: 'Aucun article récent' });
+    }
+
+    let sentCount = 0;
+    let whapiService = null;
+    try { whapiService = require('../services/whapiService'); } catch { /* ignore */ }
+
+    for (const pref of prefs) {
+      const userSectors = (pref.sectors || []).map(s => String(s).toLowerCase());
+      if (userSectors.length === 0) continue;
+
+      for (const article of recentArticles) {
+        const haystack = `${article.title || ''} ${article.category || ''} ${article.summary_ai || ''}`.toLowerCase();
+        const matched = userSectors.find(s => haystack.includes(s));
+        if (!matched) continue;
+
+        const { data: existing } = await supabase
+          .from('user_sector_matches_sent')
+          .select('id')
+          .eq('user_id', pref.user_id)
+          .eq('article_id', article.id)
+          .maybeSingle();
+        if (existing) continue;
+
+        if (whapiService?.sendWhatsAppMessage && pref.whatsapp_phone) {
+          const msg = `🔔 *Opportunité dans ton secteur "${matched}"*\n\n📰 ${article.title}\n\n${(article.summary_ai || '').slice(0, 200)}…\n\n👉 ${article.url || ''}\n\n_Reçue via Gabon Insight × BCEG_`;
+          try {
+            const r = await whapiService.sendWhatsAppMessage(pref.whatsapp_phone, msg);
+            if (r?.success) {
+              await supabase.from('user_sector_matches_sent').insert({
+                user_id: pref.user_id, article_id: article.id, matched_sector: matched,
+              });
+              sentCount++;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    res.json({ success: true, sent: sentCount, users_checked: prefs.length, articles_checked: recentArticles.length });
+  } catch (error) {
+    console.error('Erreur /cron/sector-match:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
