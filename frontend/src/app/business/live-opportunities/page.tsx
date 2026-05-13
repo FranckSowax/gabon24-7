@@ -15,6 +15,8 @@ type Level = {
   accent: string
 }
 
+const BCEG_LOGO = '/646710125_122187790628463229_813105913342150168_n.jpg'
+
 const levels: Level[] = [
   { id: 1, emoji: '🔍', title: 'Découvrir', pitch: 'Lis un article → l\'IA détecte 3 secteurs porteurs', badge: 'Explorateur', accent: 'from-blue-500 to-cyan-500' },
   { id: 2, emoji: '💡', title: 'Idéer', pitch: 'Choisis 1 idée → pitch + cible + revenus générés', badge: 'Visionnaire', accent: 'from-purple-500 to-fuchsia-500' },
@@ -76,9 +78,9 @@ export default function BcegProjectPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-10 sm:mb-14"
               >
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-white/90 text-xs sm:text-sm mb-5">
-                  <Building2 className="w-4 h-4" />
-                  <span>En partenariat avec la BCEG — Banque pour le Commerce et l'Entrepreneuriat du Gabon</span>
+                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/15 text-white/90 text-xs sm:text-sm mb-5">
+                  <img src={BCEG_LOGO} alt="Logo BCEG" className="w-7 h-7 rounded-full object-cover ring-1 ring-white/30" />
+                  <span>En partenariat avec la <span className="font-semibold text-amber-200">BCEG</span> — Banque pour le Commerce et l'Entrepreneuriat du Gabon</span>
                 </div>
 
                 <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight">
@@ -179,9 +181,12 @@ export default function BcegProjectPage() {
                 className="max-w-5xl mx-auto mb-10"
               >
                 <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-300/15 rounded-2xl p-6 sm:p-8 backdrop-blur">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Building2 className="w-6 h-6 text-amber-300" />
-                    <h2 className="text-xl sm:text-2xl font-bold text-white">Pourquoi BCEG ?</h2>
+                  <div className="flex items-center gap-3 mb-4">
+                    <img src={BCEG_LOGO} alt="Logo BCEG" className="w-12 h-12 rounded-xl object-cover ring-1 ring-amber-300/40 shadow-md" />
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">Pourquoi BCEG ?</h2>
+                      <p className="text-xs sm:text-sm text-white/60">Banque pour le Commerce et l'Entrepreneuriat du Gabon</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base">
                     <div>
