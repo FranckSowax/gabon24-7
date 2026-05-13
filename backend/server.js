@@ -5010,6 +5010,10 @@ app.use('/api/tldr', tldrRouter);
 const pricingRouter = require('./routes/pricing');
 app.use('/api/pricing', cacheControl('public', 600, 1800), pricingRouter);  // Pricing: 10min cache
 
+// Routes BCEG Project (Phase 2: score, simulator, stats)
+const bcegRouter = require('./routes/bceg');
+app.use('/api/bceg', bcegRouter);
+
 // ============================================
 // 🎵 TIKTOK TRENDING - ENDPOINT
 // ============================================

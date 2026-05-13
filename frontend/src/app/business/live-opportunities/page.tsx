@@ -16,6 +16,13 @@ type Level = {
 }
 
 const BCEG_LOGO = '/646710125_122187790628463229_813105913342150168_n.jpg'
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+interface BcegStats {
+  projects_count: number
+  bceg_accepted_count: number
+  total_funded_billions: number
+}
 
 const levels: Level[] = [
   { id: 1, emoji: '🔍', title: 'Découvrir', pitch: 'Lis un article → l\'IA détecte 3 secteurs porteurs', badge: 'Explorateur', accent: 'from-blue-500 to-cyan-500' },
@@ -47,6 +54,24 @@ function StatCounter({ value, decimals = 0, suffix = '', label, icon }: { value:
 
 export default function BcegProjectPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  // Fallback values jusqu'à ce que /api/bceg/stats réponde
+  const [stats, setStats] = useState<BcegStats>({ projects_count: 1247, bceg_accepted_count: 38, total_funded_billions: 12.4 })
+
+  useEffect(() => {
+    let alive = true
+    fetch(`${API}/api/bceg/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (!alive || !json?.success || !json.stats) return
+        setStats({
+          projects_count: json.stats.projects_count ?? 0,
+          bceg_accepted_count: json.stats.bceg_accepted_count ?? 0,
+          total_funded_billions: json.stats.total_funded_billions ?? 0,
+        })
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   return (
     <div className="min-h-screen relative">
@@ -118,9 +143,9 @@ export default function BcegProjectPage() {
                 className="mb-12 sm:mb-16"
               >
                 <div className="max-w-4xl mx-auto bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 py-5 sm:py-6 px-4 flex flex-wrap items-center justify-around gap-y-4 divide-x divide-white/10">
-                  <StatCounter value={1247} label="projets ficelés" icon={<Sparkles className="w-5 h-5 text-amber-300" />} />
-                  <StatCounter value={38} label="dossiers BCEG acceptés" icon={<Award className="w-5 h-5 text-emerald-300" />} />
-                  <StatCounter value={12.4} decimals={1} suffix=" Mrd FCFA" label="financés cette année" icon={<TrendingUp className="w-5 h-5 text-orange-300" />} />
+                  <StatCounter value={stats.projects_count} label="projets ficelés" icon={<Sparkles className="w-5 h-5 text-amber-300" />} />
+                  <StatCounter value={stats.bceg_accepted_count} label="dossiers BCEG acceptés" icon={<Award className="w-5 h-5 text-emerald-300" />} />
+                  <StatCounter value={stats.total_funded_billions} decimals={1} suffix=" Mrd FCFA" label="financés cette année" icon={<TrendingUp className="w-5 h-5 text-orange-300" />} />
                 </div>
               </motion.section>
 
