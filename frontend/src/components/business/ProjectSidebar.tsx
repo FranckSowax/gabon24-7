@@ -32,6 +32,8 @@ interface ProjectSidebarProps {
     documents: number
     notes: number
   }
+  /** Progression spécifique du dossier de financement (pièces uploadées vs requises) */
+  financeProgressPct?: number
   mode?: SidebarMode
   onDeleteProject?: () => void
   onRestartAnalysis?: () => void
@@ -47,6 +49,7 @@ export default function ProjectSidebar({
   projectTitle,
   projectId,
   completionStats,
+  financeProgressPct,
   mode = 'workshop',
   onDeleteProject,
   onRestartAnalysis,
@@ -54,9 +57,11 @@ export default function ProjectSidebar({
   isRestarting = false,
 }: ProjectSidebarProps) {
 
-  const progressPct = completionStats
-    ? Math.min(100, Math.round((completionStats.actions / 10) * 100))
-    : 0
+  const progressPct = typeof financeProgressPct === 'number'
+    ? Math.max(0, Math.min(100, Math.round(financeProgressPct)))
+    : completionStats
+      ? Math.min(100, Math.round((completionStats.actions / 10) * 100))
+      : 0
 
   const isDashboard = mode === 'dashboard'
   const isFinance = mode === 'finance'

@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import BcegBackdrop from '@/components/bceg/BcegBackdrop'
 import BcegFinanceSection from '@/components/business/BcegFinanceSection'
 import BcegToolsMenu from '@/components/business/BcegToolsMenu'
+import BcegDocSection, { DocTypeDef } from '@/components/business/BcegDocSection'
 import ActionPlanGenerationModal from '@/components/business/ActionPlanGenerationModal'
 import ApiErrorAlert from '@/components/common/ApiErrorAlert'
 import { useAuth } from '@/contexts/AuthContext'
@@ -75,7 +76,89 @@ interface ProjectNote {
   updated_at: string
 }
 
-// Sidebar Mode Financement : préparer le dossier BCEG
+// Définition des 6 pièces requises BCEG (sert pour sidebar finance + render des sections)
+const FINANCE_DOC_TYPES: DocTypeDef[] = [
+  {
+    key: 'business_plan',
+    label: 'Business Plan',
+    bcegPurpose: 'Document central étudié par le comité de crédit BCEG — décrit la viabilité de votre projet en 10 sections.',
+    rules: [
+      'Document complet en 10 sections (résumé, marché, équipe, finances…)',
+      'Chiffres réalistes et sourcés (étude de marché Gabon)',
+      'Cohérence avec le secteur sélectionné dans votre projet',
+    ],
+    acceptedFormats: ['PDF', 'DOC', 'DOCX'],
+    maxSizeMb: 10,
+    required: true,
+  },
+  {
+    key: 'cni',
+    label: "Pièce d'identité (CNI)",
+    bcegPurpose: "Vérification d'identité du porteur de projet conformément aux obligations KYC bancaires.",
+    rules: [
+      'Recto-verso lisible, sans reflet',
+      'CNI gabonaise en cours de validité',
+      'Photo nette, texte parfaitement lisible',
+    ],
+    acceptedFormats: ['PDF', 'JPG', 'JPEG', 'PNG'],
+    maxSizeMb: 5,
+    required: true,
+  },
+  {
+    key: 'rccm',
+    label: 'RCCM ou attestation',
+    bcegPurpose: "Justificatif d'existence légale de l'entreprise au Registre du Commerce et du Crédit Mobilier.",
+    rules: [
+      'RCCM original ou attestation d\'immatriculation',
+      "Moins de 3 mois pour l'attestation",
+      'Si entreprise non créée : joindre les statuts en projet',
+    ],
+    acceptedFormats: ['PDF', 'JPG', 'PNG'],
+    maxSizeMb: 5,
+    required: true,
+  },
+  {
+    key: 'rib',
+    label: 'RIB / Coordonnées bancaires',
+    bcegPurpose: 'Compte de réception du financement — permet à la BCEG de verser les fonds après approbation.',
+    rules: [
+      "Compte au nom du porteur de projet ou de l'entreprise",
+      'Banque domiciliée au Gabon de préférence',
+      'IBAN ou identifiant complet visible',
+    ],
+    acceptedFormats: ['PDF', 'JPG', 'PNG'],
+    maxSizeMb: 3,
+    required: true,
+  },
+  {
+    key: 'plan_action',
+    label: "Plan d'action détaillé",
+    bcegPurpose: 'Roadmap des 10 prochaines étapes — montre à la BCEG la maturité opérationnelle du projet.',
+    rules: [
+      'Liste claire des actions avec échéances',
+      'Budget estimatif par étape',
+      "Indicateurs de succès (KPIs) mesurables",
+    ],
+    acceptedFormats: ['PDF', 'DOC', 'DOCX', 'XLS', 'XLSX'],
+    maxSizeMb: 5,
+    required: true,
+  },
+  {
+    key: 'devis',
+    label: 'Devis ou justificatifs',
+    bcegPurpose: "Estimation chiffrée des besoins (équipement, local, etc.) — justifie le montant demandé.",
+    rules: [
+      'Devis fournisseurs récents (moins de 6 mois)',
+      'Cohérent avec le budget total demandé',
+      'Plusieurs devis si possible (mise en concurrence)',
+    ],
+    acceptedFormats: ['PDF', 'JPG', 'PNG'],
+    maxSizeMb: 10,
+    required: false,
+  },
+]
+
+// Sidebar Mode Financement : Vue du dossier + 6 pièces requises
 const FINANCE_SECTIONS = [
   {
     id: 'financement',
@@ -84,6 +167,13 @@ const FINANCE_SECTIONS = [
     color: 'text-[#697357]',
     description: 'Checklist + BCEG Score'
   },
+  ...FINANCE_DOC_TYPES.map(d => ({
+    id: `fin-${d.key}`,
+    title: d.label,
+    icon: FileText,
+    color: 'text-[#697357]',
+    description: d.required ? 'Pièce obligatoire' : 'Pièce complémentaire',
+  })),
 ]
 
 // Sidebar Mode Développement (outils projet)
@@ -139,7 +229,7 @@ const WORKSHOP_SECTIONS = [
   }
 ]
 
-const FINANCE_KEYS = ['financement']
+const FINANCE_KEYS = ['financement', ...FINANCE_DOC_TYPES.map(d => `fin-${d.key}`)]
 const WORKSHOP_KEYS = ['outils', 'actions', 'plan-action', 'contexte', 'conseiller', 'overview', 'collaboration']
 
 function computeSidebarMode(activeSection: string): 'dashboard' | 'finance' | 'workshop' {
@@ -157,6 +247,10 @@ function getParentSection(activeSection: string): { id: string; label: string } 
   // Sous-fonctions du hub Outils
   if (['actions', 'plan-action', 'contexte', 'conseiller', 'overview', 'collaboration'].includes(activeSection)) {
     return { id: 'outils', label: 'Tous les outils' }
+  }
+  // Sous-fonctions du dossier Financement (fin-business_plan, fin-cni, …)
+  if (activeSection.startsWith('fin-')) {
+    return { id: 'financement', label: 'Vue du dossier' }
   }
   return { id: 'dashboard', label: 'Tableau de bord' }
 }
@@ -364,6 +458,8 @@ export default function MesProjetsPage() {
   const [startTime, setStartTime] = useState<number>(0)
   // États pour la navigation par sections
   const [activeSection, setActiveSection] = useState<string>('dashboard') // dashboard, overview, context, actions, documents, timeline, notes
+  const [bcegDocs, setBcegDocs] = useState<any[]>([])
+  const [bcegDocsRefreshKey, setBcegDocsRefreshKey] = useState(0)
   // État pour le drawer mobile
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   // États pour les actions du projet
@@ -389,6 +485,28 @@ export default function MesProjetsPage() {
       }
     }
   }, [selectedProject])
+
+  // Fetch des pièces BCEG dès qu'un projet est sélectionné (et au refresh-key)
+  useEffect(() => {
+    if (!selectedProject?.id) {
+      setBcegDocs([])
+      return
+    }
+    let alive = true
+    ;(async () => {
+      try {
+        const { supabase } = await import('@/lib/auth')
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        const res = await fetch(`${API_URL}/api/bceg/due-diligence/mine?project_id=${selectedProject.id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const json = await res.json()
+        if (alive && json?.success) setBcegDocs(json.documents || [])
+      } catch {}
+    })()
+    return () => { alive = false }
+  }, [selectedProject?.id, bcegDocsRefreshKey])
 
   const handleDontShowOnboardingAgain = () => {
     // Déjà marqué comme vu, cette fonction peut rester pour compatibilité
@@ -1425,23 +1543,37 @@ export default function MesProjetsPage() {
 
       case 'overview':
         return renderOverviewSection()
-      
+
       case 'plan-action':
         return renderActionPlanSection()
-      
+
       case 'actions':
         return renderActionsSection()
-      
+
       case 'contexte':
         return renderContexteBibliothequeSection()
-      
+
       case 'conseiller':
         return renderConseillerSection()
-      
+
       case 'collaboration':
         return selectedProject ? <CollaborationSection selectedProject={selectedProject} user={user} /> : null
-      
+
       default:
+        // Sous-sections du dossier financement : fin-business_plan, fin-cni, …
+        if (activeSection.startsWith('fin-')) {
+          const docKey = activeSection.slice(4)
+          const docType = FINANCE_DOC_TYPES.find(d => d.key === docKey)
+          if (!docType) return null
+          return (
+            <BcegDocSection
+              projectId={selectedProject.id}
+              docType={docType}
+              documents={bcegDocs}
+              onChange={() => setBcegDocsRefreshKey(k => k + 1)}
+            />
+          )
+        }
         return null
     }
   }
@@ -4216,6 +4348,12 @@ export default function MesProjetsPage() {
                           documents: projectDocuments[selectedProject.id]?.length || 0,
                           notes: projectNotes[selectedProject.id]?.length || 0
                         }}
+                        financeProgressPct={(() => {
+                          const required = FINANCE_DOC_TYPES.filter(d => d.required)
+                          const uniqueUploaded = new Set(bcegDocs.map((d: any) => d.doc_type)).size
+                          const total = required.length
+                          return total > 0 ? (uniqueUploaded / total) * 100 : 0
+                        })()}
                         onDeleteProject={() => hookDeleteProject(selectedProject.id)}
                         onRestartAnalysis={() => restartAnalysis(selectedProject.id)}
                         isDeleting={isDeleting}

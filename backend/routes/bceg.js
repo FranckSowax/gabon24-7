@@ -961,11 +961,14 @@ router.post('/due-diligence', requireAuth, async (req, res) => {
 
 router.get('/due-diligence/mine', requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('due_diligence_documents')
       .select('*')
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false });
+      .eq('user_id', req.user.id);
+    if (req.query.project_id) {
+      query = query.eq('project_id', req.query.project_id);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     res.json({ success: true, documents: data || [] });
   } catch (error) {
