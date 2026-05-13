@@ -2,7 +2,10 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ChevronRight, X, Trash2, RefreshCw, Sparkles, Building2 } from 'lucide-react'
+import {
+  ArrowLeft, ChevronRight, X, Trash2, RefreshCw, Sparkles, Building2, Home,
+  LayoutDashboard, ArrowUpRight
+} from 'lucide-react'
 
 const BCEG_LOGO = '/646710125_122187790628463229_813105913342150168_n.jpg'
 
@@ -12,7 +15,10 @@ interface Section {
   icon: any
   color: string
   description: string
+  href?: string
 }
+
+type SidebarMode = 'dashboard' | 'finance' | 'workshop'
 
 interface ProjectSidebarProps {
   sections: Section[]
@@ -20,11 +26,13 @@ interface ProjectSidebarProps {
   onSectionChange: (sectionId: string) => void
   onBack: () => void
   projectTitle: string
+  projectId?: string
   completionStats?: {
     actions: number
     documents: number
     notes: number
   }
+  mode?: SidebarMode
   onDeleteProject?: () => void
   onRestartAnalysis?: () => void
   isDeleting?: boolean
@@ -37,16 +45,21 @@ export default function ProjectSidebar({
   onSectionChange,
   onBack,
   projectTitle,
+  projectId,
   completionStats,
+  mode = 'workshop',
   onDeleteProject,
   onRestartAnalysis,
   isDeleting = false,
-  isRestarting = false
+  isRestarting = false,
 }: ProjectSidebarProps) {
 
   const progressPct = completionStats
     ? Math.min(100, Math.round((completionStats.actions / 10) * 100))
     : 0
+
+  const isDashboard = mode === 'dashboard'
+  const isFinance = mode === 'finance'
 
   return (
     <div className="w-full h-full bg-white border-r border-slate-200 overflow-y-auto">
@@ -69,20 +82,37 @@ export default function ProjectSidebar({
           </button>
         </div>
 
-        {/* Bandeau BCEG — La banque vous accompagne */}
-        <div className="rounded-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030] p-5 text-white relative overflow-hidden shadow-lg shadow-[#4d553e]/20">
+        {/* Hero BCEG (toujours présent) — accent différent selon le mode */}
+        <div className={`rounded-2xl p-5 text-white relative overflow-hidden shadow-lg ${
+          isDashboard
+            ? 'bg-gradient-to-br from-slate-700 to-slate-800 shadow-slate-800/20'
+            : isFinance
+              ? 'bg-gradient-to-br from-[#4d553e] to-[#3a4030] shadow-[#4d553e]/30'
+              : 'bg-gradient-to-br from-[#4d553e] to-[#3a4030] shadow-[#4d553e]/20'
+        }`}>
           <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <div className="flex items-center gap-2 mb-3">
               <img src={BCEG_LOGO} alt="BCEG" className="w-7 h-7 rounded-full ring-2 ring-white/40" />
-              <span className="text-[10px] uppercase tracking-wider font-bold opacity-90">BCEG Project</span>
+              <span className="text-[10px] uppercase tracking-wider font-bold opacity-90">
+                {isDashboard ? 'BCEG Project' : isFinance ? 'Mode financement' : 'Mode développement'}
+              </span>
             </div>
             <h2 className="text-base font-bold leading-tight line-clamp-2 mb-1">
               {projectTitle}
             </h2>
-            <p className="text-xs opacity-80 mb-4 leading-relaxed">
-              Nous vous accompagnons vers le financement de votre projet.
-            </p>
+            {!isDashboard && (
+              <p className="text-xs opacity-80 mb-4 leading-relaxed">
+                {isFinance
+                  ? 'Préparons votre dossier pour la BCEG.'
+                  : 'Construisons votre projet pièce par pièce.'}
+              </p>
+            )}
+            {isDashboard && (
+              <p className="text-xs opacity-80 mb-4 leading-relaxed">
+                Choisissez votre mode dans la zone principale.
+              </p>
+            )}
             <div>
               <div className="flex items-center justify-between text-[11px] mb-1.5">
                 <span className="opacity-80">Progression vers le financement</span>
@@ -107,89 +137,111 @@ export default function ProjectSidebar({
           </div>
         )}
 
-        <nav className="space-y-1.5">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
-            Votre parcours
+        {/* MODE DASHBOARD — sidebar épurée : juste un message + retour */}
+        {isDashboard && (
+          <div className="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-4 text-center">
+            <LayoutDashboard className="w-5 h-5 mx-auto text-slate-400 mb-1.5" />
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Cliquez sur l'une des deux cartes à droite pour ouvrir la
+              <span className="font-bold text-[#4d553e]"> sidebar de fonctions</span> correspondante.
+            </p>
           </div>
+        )}
 
-          {sections.map((section) => {
-            const Icon = section.icon
-            const isActive = activeSection === section.id
-            const isFinance = section.id === 'financement'
+        {/* MODE FINANCE / WORKSHOP — nav avec sections + retour dashboard */}
+        {!isDashboard && (
+          <>
+            <button
+              onClick={() => onSectionChange('dashboard')}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium transition-all border border-slate-200"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>Tableau de bord</span>
+            </button>
 
-            return (
-              <motion.button
-                key={section.id}
-                onClick={() => onSectionChange(section.id)}
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                className={`
-                  w-full flex items-center justify-between p-3 rounded-xl transition-all text-left
-                  ${isActive
-                    ? isFinance
-                      ? 'bg-gradient-to-r from-[#4d553e] to-[#3a4030] text-white shadow-md shadow-[#4d553e]/20'
-                      : 'bg-[#4d553e]/10 border border-[#4d553e]/30'
-                    : isFinance
-                      ? 'bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                      : 'bg-white border border-slate-200 hover:bg-slate-50'
-                  }
-                `}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`
-                    w-9 h-9 rounded-lg flex items-center justify-center shrink-0
-                    ${isActive
-                      ? isFinance ? 'bg-white/15' : 'bg-[#4d553e]/20'
-                      : isFinance ? 'bg-amber-200/60' : 'bg-slate-100'
-                    }
-                  `}>
-                    <Icon className={`w-4 h-4 ${
-                      isActive
-                        ? isFinance ? 'text-white' : 'text-[#4d553e]'
-                        : isFinance ? 'text-amber-700' : 'text-slate-500'
-                    }`} />
-                  </div>
+            <nav className="space-y-1.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                {isFinance ? 'Mon dossier de financement' : 'Mes outils projet'}
+              </div>
 
-                  <div className="min-w-0">
-                    <div className={`text-sm font-semibold truncate ${
-                      isActive
-                        ? isFinance ? 'text-white' : 'text-[#4d553e]'
-                        : 'text-slate-800'
-                    }`}>
-                      {section.title}
-                      {isFinance && !isActive && (
-                        <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider text-amber-700">★</span>
-                      )}
+              {sections.map((section) => {
+                const Icon = section.icon
+                const isActive = activeSection === section.id
+                const isExternal = !!section.href
+
+                const inner = (
+                  <>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`
+                        w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+                        ${isActive ? 'bg-[#4d553e]/20' : 'bg-slate-100'}
+                      `}>
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-[#4d553e]' : 'text-slate-500'}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`text-sm font-semibold truncate ${isActive ? 'text-[#4d553e]' : 'text-slate-800'}`}>
+                          {section.title}
+                        </div>
+                        <div className={`text-[11px] truncate ${isActive ? 'text-slate-600' : 'text-slate-500'}`}>
+                          {section.description}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`text-[11px] truncate ${
-                      isActive
-                        ? isFinance ? 'text-white/70' : 'text-slate-600'
-                        : 'text-slate-500'
-                    }`}>
-                      {section.description}
-                    </div>
-                  </div>
-                </div>
+                    {isExternal ? (
+                      <ArrowUpRight className="w-4 h-4 shrink-0 ml-1 text-slate-400" />
+                    ) : isActive ? (
+                      <ChevronRight className="w-4 h-4 shrink-0 ml-1 text-[#4d553e]" />
+                    ) : null}
+                  </>
+                )
 
-                {isActive && (
-                  <ChevronRight className={`w-4 h-4 shrink-0 ml-1 ${isFinance ? 'text-white' : 'text-[#4d553e]'}`} />
-                )}
-              </motion.button>
-            )
-          })}
-        </nav>
+                if (isExternal) {
+                  return (
+                    <motion.a
+                      key={section.id}
+                      href={section.href}
+                      whileHover={{ x: 2 }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-all text-left"
+                    >
+                      {inner}
+                    </motion.a>
+                  )
+                }
 
-        {activeSection !== 'financement' && sections.some(s => s.id === 'financement') && (
-          <motion.button
-            onClick={() => onSectionChange('financement')}
+                return (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => onSectionChange(section.id)}
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`
+                      w-full flex items-center justify-between p-3 rounded-xl transition-all text-left
+                      ${isActive
+                        ? 'bg-[#4d553e]/10 border border-[#4d553e]/30'
+                        : 'bg-white border border-slate-200 hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    {inner}
+                  </motion.button>
+                )
+              })}
+            </nav>
+          </>
+        )}
+
+        {/* CTA Soumettre BCEG en mode finance */}
+        {isFinance && projectId && (
+          <motion.a
+            href={`/business/mes-projets/${projectId}/dossier-bceg`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-[#4d553e] to-[#3a4030] hover:from-[#3a4030] hover:to-[#2c3324] text-white font-bold text-sm shadow-lg shadow-[#4d553e]/30 transition-all"
           >
             <Building2 className="w-4 h-4" />
-            <span>Demander un financement</span>
+            <span>Soumettre à la BCEG</span>
             <Sparkles className="w-4 h-4 opacity-70" />
-          </motion.button>
+          </motion.a>
         )}
 
         {(onRestartAnalysis || onDeleteProject) && (

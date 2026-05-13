@@ -75,27 +75,25 @@ interface ProjectNote {
   updated_at: string
 }
 
-const PROJECT_SECTIONS = [
-  {
-    id: 'dashboard',
-    title: 'Mon tableau de bord',
-    icon: LayoutDashboard,
-    color: 'text-[#4d553e]',
-    description: 'Vue d\'ensemble du projet'
-  },
+// Sidebar Mode Financement : préparer le dossier BCEG
+const FINANCE_SECTIONS = [
   {
     id: 'financement',
-    title: 'Financement BCEG',
+    title: 'Vue du dossier',
     icon: Building2,
     color: 'text-[#4d553e]',
-    description: 'Préparer mon dossier de crédit'
+    description: 'Checklist + BCEG Score'
   },
+]
+
+// Sidebar Mode Développement (outils projet)
+const WORKSHOP_SECTIONS = [
   {
-    id: 'plan-action',
-    title: 'Plan d\'Action',
-    icon: Briefcase,
+    id: 'outils',
+    title: 'Tous les modules',
+    icon: Sparkles,
     color: 'text-[#4d553e]',
-    description: '10 étapes pour réussir'
+    description: "Vue d'ensemble"
   },
   {
     id: 'actions',
@@ -105,11 +103,18 @@ const PROJECT_SECTIONS = [
     description: 'Business plan, formations…'
   },
   {
+    id: 'plan-action',
+    title: "Plan d'Action",
+    icon: Briefcase,
+    color: 'text-[#4d553e]',
+    description: '10 étapes pour réussir'
+  },
+  {
     id: 'contexte',
     title: 'Mes documents',
     icon: FileText,
     color: 'text-[#4d553e]',
-    description: 'Contexte, notes & timeline'
+    description: 'Contexte, notes, timeline'
   },
   {
     id: 'conseiller',
@@ -133,6 +138,15 @@ const PROJECT_SECTIONS = [
     description: 'Partager le projet'
   }
 ]
+
+const FINANCE_KEYS = ['financement']
+const WORKSHOP_KEYS = ['outils', 'actions', 'plan-action', 'contexte', 'conseiller', 'overview', 'collaboration']
+
+function computeSidebarMode(activeSection: string): 'dashboard' | 'finance' | 'workshop' {
+  if (FINANCE_KEYS.includes(activeSection)) return 'finance'
+  if (WORKSHOP_KEYS.includes(activeSection)) return 'workshop'
+  return 'dashboard'
+}
 
 // Fonction pour traduire les noms d'actions
 const getActionLabel = (actionType: string | undefined | null): string => {
@@ -4125,29 +4139,39 @@ export default function MesProjetsPage() {
                   transform transition-transform duration-300 ease-in-out
                   ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 `}>
-                  <ProjectSidebar
-                    sections={PROJECT_SECTIONS}
-                    activeSection={activeSection}
-                    onSectionChange={(section) => {
-                      setActiveSection(section)
-                      setIsMobileSidebarOpen(false) // Fermer le drawer après sélection sur mobile
-                    }}
-                    onBack={() => {
-                      setSelectedProject(null)
-                      setActiveSection('dashboard')
-                      setIsMobileSidebarOpen(false)
-                    }}
-                    projectTitle={selectedProject.proposition_titre}
-                    completionStats={{
-                      actions: projectActions[selectedProject.id]?.filter(a => a.action_status === 'completed').length || 0,
-                      documents: projectDocuments[selectedProject.id]?.length || 0,
-                      notes: projectNotes[selectedProject.id]?.length || 0
-                    }}
-                    onDeleteProject={() => hookDeleteProject(selectedProject.id)}
-                    onRestartAnalysis={() => restartAnalysis(selectedProject.id)}
-                    isDeleting={isDeleting}
-                    isRestarting={isRestarting}
-                  />
+                  {(() => {
+                    const sidebarMode = computeSidebarMode(activeSection)
+                    const sidebarSections = sidebarMode === 'finance' ? FINANCE_SECTIONS
+                      : sidebarMode === 'workshop' ? WORKSHOP_SECTIONS
+                      : []
+                    return (
+                      <ProjectSidebar
+                        sections={sidebarSections}
+                        mode={sidebarMode}
+                        activeSection={activeSection}
+                        projectId={selectedProject.id}
+                        onSectionChange={(section) => {
+                          setActiveSection(section)
+                          setIsMobileSidebarOpen(false)
+                        }}
+                        onBack={() => {
+                          setSelectedProject(null)
+                          setActiveSection('dashboard')
+                          setIsMobileSidebarOpen(false)
+                        }}
+                        projectTitle={selectedProject.proposition_titre}
+                        completionStats={{
+                          actions: projectActions[selectedProject.id]?.filter(a => a.action_status === 'completed').length || 0,
+                          documents: projectDocuments[selectedProject.id]?.length || 0,
+                          notes: projectNotes[selectedProject.id]?.length || 0
+                        }}
+                        onDeleteProject={() => hookDeleteProject(selectedProject.id)}
+                        onRestartAnalysis={() => restartAnalysis(selectedProject.id)}
+                        isDeleting={isDeleting}
+                        isRestarting={isRestarting}
+                      />
+                    )
+                  })()}
                 </div>
 
                 {/* Contenu Principal - Responsive avec scroll */}
