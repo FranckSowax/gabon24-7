@@ -148,6 +148,19 @@ function computeSidebarMode(activeSection: string): 'dashboard' | 'finance' | 'w
   return 'dashboard'
 }
 
+// Hiérarchie des sections — sert au bouton "Retour" contextualisé
+function getParentSection(activeSection: string): { id: string; label: string } | null {
+  if (activeSection === 'dashboard') return null
+  if (activeSection === 'financement' || activeSection === 'outils') {
+    return { id: 'dashboard', label: 'Tableau de bord' }
+  }
+  // Sous-fonctions du hub Outils
+  if (['actions', 'plan-action', 'contexte', 'conseiller', 'overview', 'collaboration'].includes(activeSection)) {
+    return { id: 'outils', label: 'Tous les outils' }
+  }
+  return { id: 'dashboard', label: 'Tableau de bord' }
+}
+
 // Palette BCEG pour badges secteur — beige / gris / noir + vert sombre.
 // Auto-contraste : fond sombre → texte blanc, fond clair → texte sombre.
 const SECTOR_CHIPS = [
@@ -4200,6 +4213,19 @@ export default function MesProjetsPage() {
                 {/* Contenu Principal - Responsive avec scroll */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden">
                   <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 pb-20">
+                    {(() => {
+                      const parent = getParentSection(activeSection)
+                      if (!parent) return null
+                      return (
+                        <button
+                          onClick={() => setActiveSection(parent.id)}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#697357] mb-4 px-3 py-1.5 rounded-lg hover:bg-white/70 border border-transparent hover:border-slate-200 transition-all"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          <span>Retour à {parent.label}</span>
+                        </button>
+                      )
+                    })()}
                     {renderSectionContent()}
                   </div>
                 </div>
