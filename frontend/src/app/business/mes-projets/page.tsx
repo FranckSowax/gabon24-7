@@ -4268,16 +4268,10 @@ export default function MesProjetsPage() {
                               {project.proposition_description}
                             </p>
 
-                            {/* Problématique */}
-                            <div className="bg-white/85 rounded-lg p-3 mb-4">
-                              <p className="text-xs text-slate-500 mb-1">🎯 Problématique:</p>
-                              <p className="text-sm text-gray-200 line-clamp-2">{project.problematique_centrale}</p>
-                            </div>
-
                             {/* Progress Bar */}
                             {project.plan_action_steps && project.plan_action_steps.length > 0 && (
                               <div className="mb-4">
-                                <ProgressBar 
+                                <ProgressBar
                                   progress={project.progress_percentage || 0}
                                   totalSteps={project.plan_action_steps.length}
                                   completedSteps={project.plan_action_steps.filter((s: any) => s.status === 'completed').length}
@@ -4286,34 +4280,6 @@ export default function MesProjetsPage() {
                                 />
                               </div>
                             )}
-
-                            {/* Actions Status */}
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-                              {QUICK_ACTIONS.slice(0, 4).map(action => {
-                                const status = getActionStatus(project.id, action.id)
-                                const ActionIcon = action.icon
-                                const isRecommended = isActionRecommended(project.id, action.id)
-                                return (
-                                  <div
-                                    key={action.id}
-                                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                      status === 'done' 
-                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                        : status === 'pending'
-                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                        : isRecommended
-                                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 animate-pulse'
-                                        : 'bg-white/85 text-slate-500 border border-slate-200'
-                                    }`}
-                                  >
-                                    <ActionIcon className="w-3 h-3" />
-                                    <span className="truncate">{action.title.split(' ')[0]}</span>
-                                    {status === 'done' && <span>✓</span>}
-                                    {isRecommended && status !== 'done' && <span>🎯</span>}
-                                  </div>
-                                )
-                              })}
-                            </div>
 
                             {/* Footer avec crédits et contexte */}
                             <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-200">
