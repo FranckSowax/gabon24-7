@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gabon Insight × BCEG — Partenariat de financement PME</title>
+<meta name="description" content="Gabon Insight transforme l'actualité économique gabonaise en pipeline de dossiers de financement qualifiés pour la BCEG : business plan, plan d'action et BCEG Score™ déjà établis." />
+<style>
+  :root {
+    --bceg: #697357;
+    --bceg-dark: #4d553e;
+    --bceg-darker: #3a4030;
+    --bceg-light: #8a9576;
+    --amber: #f59e0b;
+    --amber-soft: #fef3c7;
+    --beige: #e9e2cd;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-500: #64748b;
+    --slate-700: #334155;
+    --slate-900: #0f172a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--slate-900);
+    line-height: 1.6;
+    background: var(--slate-50);
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 80px 0; }
+  h1, h2, h3, h4 { line-height: 1.2; }
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 800; }
+  h3 { font-size: 1.25rem; font-weight: 700; }
+  p { color: var(--slate-700); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    background: rgba(105,115,87,0.1);
+    color: var(--bceg);
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+    border: 1px solid rgba(105,115,87,0.2);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 100%);
+    color: white; font-weight: 700; text-decoration: none;
+    box-shadow: 0 10px 30px -10px rgba(105,115,87,0.5);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 15px 35px -10px rgba(105,115,87,0.6); }
+  .btn-secondary {
+    background: white; color: var(--bceg);
+    border: 2px solid rgba(105,115,87,0.2);
+    box-shadow: none;
+  }
+  .btn-secondary:hover { background: rgba(105,115,87,0.05); border-color: var(--bceg); }
+
+  /* === HERO === */
+  .hero {
+    background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 50%, var(--bceg-darker) 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+    padding: 80px 0;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -100px; right: -100px;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: rgba(245,158,11,0.1); filter: blur(80px);
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -100px; left: -100px;
+    width: 350px; height: 350px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); filter: blur(80px);
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+    position: relative; z-index: 1;
+  }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+    padding: 8px 16px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 24px;
+  }
+  .hero-badge img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+  .hero h1 { color: white; margin-bottom: 20px; }
+  .hero h1 .accent { color: #fcd34d; }
+  .hero-subtitle { font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 32px; line-height: 1.6; }
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-illustration {
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 24px; padding: 32px;
+    position: relative;
+  }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stat-card {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 16px; padding: 20px;
+  }
+  .stat-value { font-size: 2.5rem; font-weight: 900; color: #fcd34d; line-height: 1; }
+  .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); margin-top: 8px; }
+  .stat-hint { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+  /* === SECTIONS === */
+  .section-head { text-align: center; margin-bottom: 60px; }
+  .section-head h2 { color: var(--slate-900); margin: 16px 0; }
+  .section-head p { font-size: 1.125rem; max-width: 700px; margin: 0 auto; }
+
+  /* === PROBLEM/SOLUTION === */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 800px) { .compare-grid { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: white; border-radius: 20px; padding: 32px;
+    border: 1px solid var(--slate-200); box-shadow: 0 4px 20px -8px rgba(0,0,0,0.05);
+  }
+  .compare-card.bad { border-left: 4px solid #ef4444; }
+  .compare-card.good { border-left: 4px solid var(--bceg); }
+  .compare-card h3 { margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .compare-card.bad h3 { color: #b91c1c; }
+  .compare-card.good h3 { color: var(--bceg); }
+  .compare-card ul { list-style: none; }
+  .compare-card li { padding: 8px 0; padding-left: 28px; position: relative; color: var(--slate-700); }
+  .compare-card.bad li::before { content: '✗'; position: absolute; left: 0; color: #ef4444; font-weight: 700; }
+  .compare-card.good li::before { content: '✓'; position: absolute; left: 0; color: var(--bceg); font-weight: 700; }
+
+  /* === FEATURES GRID === */
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;
+  }
+  .feature-card {
+    background: white; border-radius: 20px; padding: 28px;
+    border: 1px solid var(--slate-200);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 40px -15px rgba(105,115,87,0.2);
+    border-color: rgba(105,115,87,0.3);
+  }
+  .feature-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(105,115,87,0.1), rgba(138,149,118,0.1));
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--bceg); margin-bottom: 16px;
+    font-size: 28px;
+  }
+  .feature-card h3 { margin-bottom: 8px; color: var(--slate-900); }
+  .feature-card p { font-size: 14px; }
+
+  /* === FUNNEL === */
+  .funnel-section {
+    background: linear-gradient(180deg, white 0%, var(--slate-100) 100%);
+  }
+  .funnel { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 800px; margin: 0 auto; }
+  .funnel-step {
+    width: 100%; background: white; border-radius: 16px; padding: 24px;
+    border: 1px solid var(--slate-200);
+    display: grid; grid-template-columns: 60px 1fr auto; gap: 20px; align-items: center;
+    transition: all 0.2s;
+  }
+  .funnel-step:hover { border-color: var(--bceg); transform: translateX(4px); }
+  .funnel-num {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--bceg), var(--bceg-dark));
+    color: white; font-weight: 900; font-size: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .funnel-step h4 { font-size: 1rem; margin-bottom: 4px; color: var(--slate-900); }
+  .funnel-step p { font-size: 14px; color: var(--slate-500); }
+  .funnel-step .badge-mini {
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(245,158,11,0.15); color: #b45309;
+    font-size: 11px; font-weight: 700;
+  }
+  .funnel-arrow {
+    width: 2px; height: 24px; background: linear-gradient(to bottom, var(--bceg), transparent);
+  }
+
+  /* === SPONSORING === */
+  .sponsoring-card {
+    background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 100%);
+    color: white; border-radius: 28px; padding: 56px 48px;
+    position: relative; overflow: hidden;
+  }
+  .sponsoring-card::before {
+    content: ''; position: absolute; top: -80px; right: -80px;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: rgba(245,158,11,0.15); filter: blur(60px);
+  }
+  .sponsoring-grid {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: 2fr 3fr; gap: 48px; align-items: center;
+  }
+  @media (max-width: 800px) { .sponsoring-grid { grid-template-columns: 1fr; } }
+  .sponsoring-card h2 { color: white; }
+  .sponsoring-card p { color: rgba(255,255,255,0.85); }
+  .channel-list { display: grid; gap: 12px; margin-top: 24px; }
+  .channel {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 12px;
+    backdrop-filter: blur(10px);
+  }
+  .channel-icon { font-size: 24px; }
+  .channel-text strong { display: block; margin-bottom: 2px; }
+  .channel-text small { color: rgba(255,255,255,0.7); font-size: 12px; }
+
+  /* === KPI BAR === */
+  .kpis-bar {
+    background: white; border-radius: 24px; padding: 40px;
+    border: 1px solid var(--slate-200);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 32px;
+    text-align: center;
+    box-shadow: 0 4px 30px -10px rgba(0,0,0,0.05);
+  }
+  .kpi-item { border-right: 1px solid var(--slate-200); padding: 0 16px; }
+  .kpi-item:last-child { border-right: none; }
+  @media (max-width: 800px) { .kpi-item { border-right: none; border-bottom: 1px solid var(--slate-200); padding-bottom: 16px; } }
+  .kpi-value {
+    font-size: 2.5rem; font-weight: 900; color: var(--bceg);
+    line-height: 1;
+  }
+  .kpi-value .unit { font-size: 1rem; color: var(--slate-500); margin-left: 4px; }
+  .kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--slate-500); margin-top: 8px; }
+
+  /* === BENEFITS TABLE === */
+  .benefits-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+  }
+  .benefit-card {
+    background: white; border-radius: 18px; padding: 28px;
+    border: 1px solid var(--slate-200); position: relative;
+    border-top: 4px solid var(--bceg);
+  }
+  .benefit-card h4 { color: var(--bceg); margin-bottom: 12px; font-size: 1.125rem; }
+  .benefit-card .number {
+    position: absolute; top: -16px; right: 20px;
+    background: var(--bceg); color: white; width: 36px; height: 36px;
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 14px;
+  }
+
+  /* === CTA FINAL === */
+  .cta-final {
+    background: linear-gradient(135deg, var(--bceg-darker) 0%, var(--bceg-dark) 100%);
+    color: white; text-align: center; padding: 80px 24px;
+    border-radius: 32px;
+  }
+  .cta-final h2 { color: white; margin-bottom: 16px; }
+  .cta-final p { color: rgba(255,255,255,0.85); font-size: 1.125rem; margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .cta-final .btn { background: #fcd34d; color: var(--bceg-darker); box-shadow: 0 10px 30px -10px rgba(252,211,77,0.5); }
+  .cta-final .btn:hover { background: #fbbf24; }
+
+  /* === FOOTER === */
+  footer {
+    background: var(--slate-900); color: rgba(255,255,255,0.7);
+    text-align: center; padding: 40px 24px; font-size: 13px;
+  }
+  footer a { color: #fcd34d; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-up { animation: fadeUp 0.6s ease forwards; }
+
+  /* Print */
+  @media print {
+    .hero, .sponsoring-card, .cta-final { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { padding: 40px 0; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-badge">
+          <img src="/646710125_122187790628463229_813105913342150168_n.jpg" alt="Logo BCEG" />
+          <span>Gabon Insight × BCEG</span>
+        </div>
+        <h1>
+          Un pipeline de <span class="accent">dossiers qualifiés</span> pour le financement PME au Gabon
+        </h1>
+        <p class="hero-subtitle">
+          Notre plateforme transforme l'actualité économique gabonaise et l'IA en demandes de crédit
+          structurées avec <strong>Business Plan, Plan d'Action et BCEG Score™ déjà établis</strong>.
+          La BCEG reçoit des dossiers prêts à l'analyse, pas des intentions vagues.
+        </p>
+        <div class="hero-ctas">
+          <a href="#partenariat" class="btn">Voir le partenariat</a>
+          <a href="https://gaboninsight.com/business/live-opportunities" class="btn btn-secondary">Tester la plateforme</a>
+        </div>
+      </div>
+      <div class="hero-illustration">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-value">1 247</div>
+            <div class="stat-label">Projets ficelés</div>
+            <div class="stat-hint">cumul plateforme</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">100 %</div>
+            <div class="stat-label">Avec Business Plan</div>
+            <div class="stat-hint">généré par l'IA</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">5 %</div>
+            <div class="stat-label">Taux subventionné</div>
+            <div class="stat-hint">CATR / FAMAD</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">9</div>
+            <div class="stat-label">Provinces couvertes</div>
+            <div class="stat-hint">Gabon entier</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARAISON -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Le problème · La solution</div>
+      <h2>L'instruction des dossiers PME consomme 80 % de votre temps commercial</h2>
+      <p>Gabon Insight livre des dossiers <strong>déjà structurés</strong>, pré-scorés et conformes au format BCEG.</p>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card bad">
+        <h3>❌ Aujourd'hui sans Gabon Insight</h3>
+        <ul>
+          <li>Dossiers reçus à l'agence sur papier ou WhatsApp</li>
+          <li>Pas de business plan ou plan d'action structuré</li>
+          <li>Chiffres approximatifs, secteur flou, budget oral</li>
+          <li>Conseillers passent du temps à reformuler le projet</li>
+          <li>Taux de transformation faible (rejet pour dossier incomplet)</li>
+          <li>Pas de scoring préalable de la bancabilité</li>
+        </ul>
+      </div>
+      <div class="compare-card good">
+        <h3>✅ Avec le pipeline Gabon Insight</h3>
+        <ul>
+          <li>Dossiers PDF reçus par email, prêts à l'analyse</li>
+          <li>Business Plan en 10 sections + Plan d'action 10 étapes</li>
+          <li>Simulation BCEG (montant, apport 20 %, durée, mensualité)</li>
+          <li>BCEG Score™ 0-100 calculé en temps réel</li>
+          <li>Pièces obligatoires uploadées (CNI, RCCM, RIB, devis)</li>
+          <li>Conformité ADPVPD Gabon, données chiffrées et tracées</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 FEATURES -->
+<section style="background: var(--slate-100);">
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Comment ça marche</div>
+      <h2>6 fonctions qui produisent des dossiers prêts à financer</h2>
+      <p>Toutes propulsées par l'IA, accessibles aux entrepreneurs gabonais — particuliers comme PME.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📰</div>
+        <h3>Analyse d'article</h3>
+        <p>L'IA détecte les opportunités business cachées dans l'actualité gabonaise (nouvelles routes, ouvertures de marché, appels d'offres).</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚀</div>
+        <h3>Création de projet</h3>
+        <p>Wizard 3 étapes (idée, modèle, objectifs). 10 questions pour structurer une opportunité concrète à partir de zéro.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Business Plan IA</h3>
+        <p>Génère un BP complet en 10 sections (marché, équipe, finances) adapté au Gabon — pièce maîtresse exigée par le comité de crédit BCEG.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Plan d'action 10 étapes</h3>
+        <p>Roadmap concrète avec échéances, budget par étape et KPIs mesurables. Montre la maturité opérationnelle du projet.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>Simulateur BCEG</h3>
+        <p>L'entrepreneur joue avec montant / apport / durée et voit sa mensualité en direct. Apport conseillé 20 %, taux 5 % CATR.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📈</div>
+        <h3>BCEG Score™ temps réel</h3>
+        <p>Score de bancabilité 0-100 sur 4 axes (viabilité, secteur, capacité, complétude). L'utilisateur sait s'il est prêt à soumettre.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FUNNEL -->
+<section class="funnel-section">
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Le parcours utilisateur</div>
+      <h2>Du clic à la demande de crédit en 30 minutes</h2>
+      <p>Un parcours guidé qui transforme un visiteur en dossier prêt à instruire pour la BCEG.</p>
+    </div>
+
+    <div class="funnel">
+      <div class="funnel-step">
+        <div class="funnel-num">1</div>
+        <div>
+          <h4>Découverte d'une opportunité</h4>
+          <p>L'utilisateur lit un article sur l'actualité gabonaise OU démarre directement avec son idée.</p>
+        </div>
+        <span class="badge-mini">~ 2 min</span>
+      </div>
+      <div class="funnel-arrow"></div>
+      <div class="funnel-step">
+        <div class="funnel-num">2</div>
+        <div>
+          <h4>Structuration via le wizard IA</h4>
+          <p>10 questions : idée, problème résolu, cible, modèle de revenus, équipe, timeline, objectifs.</p>
+        </div>
+        <span class="badge-mini">~ 5 min</span>
+      </div>
+      <div class="funnel-arrow"></div>
+      <div class="funnel-step">
+        <div class="funnel-num">3</div>
+        <div>
+          <h4>Génération Business Plan + Plan d'Action</h4>
+          <p>L'IA produit deux documents structurés. L'utilisateur peut affiner et modifier chaque section.</p>
+        </div>
+        <span class="badge-mini">~ 10 min</span>
+      </div>
+      <div class="funnel-arrow"></div>
+      <div class="funnel-step">
+        <div class="funnel-num">4</div>
+        <div>
+          <h4>Simulation BCEG + Score</h4>
+          <p>Sliders interactifs pour calibrer le montant et l'apport. Score de bancabilité affiché en direct.</p>
+        </div>
+        <span class="badge-mini">~ 3 min</span>
+      </div>
+      <div class="funnel-arrow"></div>
+      <div class="funnel-step">
+        <div class="funnel-num">5</div>
+        <div>
+          <h4>Upload des pièces (CNI, RCCM, RIB)</h4>
+          <p>Stockage Supabase chiffré, conforme à la loi gabonaise sur la protection des données (ADPVPD).</p>
+        </div>
+        <span class="badge-mini">~ 5 min</span>
+      </div>
+      <div class="funnel-arrow"></div>
+      <div class="funnel-step">
+        <div class="funnel-num">6</div>
+        <div>
+          <h4>📤 Soumission à la BCEG</h4>
+          <p>Email automatique avec PDF complet à commercial@bceg.ga. Dossier visible dans le dashboard admin BCEG (kanban + liste).</p>
+        </div>
+        <span class="badge-mini">1 clic</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SPONSORING -->
+<section>
+  <div class="container">
+    <div class="sponsoring-card">
+      <div class="sponsoring-grid">
+        <div>
+          <div class="hero-badge" style="margin-bottom: 16px;">
+            <span>🎁 Levier d'acquisition</span>
+          </div>
+          <h2>Campagnes de crédits Gabon Insight = projets garantis</h2>
+          <p style="margin-bottom: 16px;">
+            La BCEG offre des crédits Gabon Insight ciblés (par secteur, région, profil) via nos canaux
+            de diffusion. Chaque crédit consommé = un dossier structuré qui arrivera tôt ou tard
+            dans votre comité de crédit.
+          </p>
+          <p>
+            Vous décidez du <strong>budget</strong>, du <strong>secteur ciblé</strong> et de la
+            <strong>fenêtre temporelle</strong>. Nous mesurons l'impact.
+          </p>
+        </div>
+        <div>
+          <div class="channel-list">
+            <div class="channel">
+              <div class="channel-icon">📱</div>
+              <div class="channel-text">
+                <strong>Canal WhatsApp officiel</strong>
+                <small>+ de 5 000 abonnés engagés sur l'actualité économique gabonaise</small>
+              </div>
+            </div>
+            <div class="channel">
+              <div class="channel-icon">🌐</div>
+              <div class="channel-text">
+                <strong>Site Gabon Insight + sidebar app</strong>
+                <small>Banner pub configurable par campagne, ciblage par profil</small>
+              </div>
+            </div>
+            <div class="channel">
+              <div class="channel-icon">📨</div>
+              <div class="channel-text">
+                <strong>Newsletter quotidienne</strong>
+                <small>Mention BCEG comme partenaire dans chaque édition</small>
+              </div>
+            </div>
+            <div class="channel">
+              <div class="channel-icon">🎯</div>
+              <div class="channel-text">
+                <strong>Alertes sectorielles WhatsApp</strong>
+                <small>Push automatique aux entrepreneurs du secteur que vous souhaitez financer</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KPIs / IMPACT -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Impact mesurable</div>
+      <h2>Ce que le partenariat apporte concrètement à la BCEG</h2>
+    </div>
+
+    <div class="kpis-bar">
+      <div class="kpi-item">
+        <div class="kpi-value">×3</div>
+        <div class="kpi-label">Volume de dossiers qualifiés</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value">−70<span class="unit">%</span></div>
+        <div class="kpi-label">Temps d'instruction par dossier</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value">100<span class="unit">%</span></div>
+        <div class="kpi-label">Dossiers complets en entrée</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value">9</div>
+        <div class="kpi-label">Provinces couvertes</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BENEFITS / PARTENARIAT -->
+<section id="partenariat" style="background: var(--slate-100);">
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">7 avantages clés</div>
+      <h2>Pourquoi la BCEG gagne avec Gabon Insight</h2>
+      <p>Un partenariat où la plateforme assume tout l'effort d'acquisition et de structuration.</p>
+    </div>
+
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <span class="number">1</span>
+        <h4>Acquisition automatisée</h4>
+        <p>Gabon Insight prospecte et qualifie pour vous. Vos conseillers reçoivent uniquement des dossiers déjà mûrs.</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">2</span>
+        <h4>Dossiers standardisés</h4>
+        <p>Même format pour tous (PDF, BP 10 sections, simulation, score). Vos analystes gagnent un temps précieux.</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">3</span>
+        <h4>Scoring préalable</h4>
+        <p>BCEG Score™ filtre les dossiers non-bancables avant qu'ils arrivent à l'agence. Moins de rejets, plus de transformations.</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">4</span>
+        <h4>Image de modernité</h4>
+        <p>La BCEG devient la banque digital-first des entrepreneurs gabonais. Différenciation forte vs concurrents traditionnels.</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">5</span>
+        <h4>Ciblage sectoriel</h4>
+        <p>Vous choisissez où injecter votre liquidité (agriculture, BTP, tech…) via les campagnes de crédits sponsorisés.</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">6</span>
+        <h4>Données traçables</h4>
+        <p>Dashboard admin avec stats temps réel (total, taux d'acceptation, volumes financés, scores moyens, kanban + vue liste).</p>
+      </div>
+      <div class="benefit-card">
+        <span class="number">7</span>
+        <h4>Conformité ADPVPD</h4>
+        <p>Stockage Supabase chiffré, consentement explicite avant transmission. Conforme à la loi 001/2011 sur la protection des données.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section style="background: white;">
+  <div class="container">
+    <div class="cta-final">
+      <h2>Démarrons le partenariat</h2>
+      <p>
+        Un projet pilote sur 3 mois avec mesure d'impact (volume, taux de transformation, montants financés).
+        Aucun engagement de volume — uniquement un format de collaboration et une grille tarifaire à valider.
+      </p>
+      <a href="mailto:partenariats@gaboninsight.com?subject=Partenariat%20BCEG%20%C3%97%20Gabon%20Insight" class="btn">
+        ✉️ Contacter notre équipe
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Gabon Insight · <a href="https://gaboninsight.com">gaboninsight.com</a> ·
+    Plateforme d'intelligence économique et de structuration de projet pour le Gabon ·
+    En partenariat technique avec la BCEG · 2026
+  </p>
+</footer>
+
+</body>
+</html>
