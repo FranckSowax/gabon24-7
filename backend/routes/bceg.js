@@ -684,9 +684,12 @@ router.post('/submit-full', requireAuth, async (req, res) => {
       simulation = r.data;
     }
 
-    const montant_demande = simulation?.montant_demande || null;
-    if (!montant_demande) {
-      return res.status(400).json({ success: false, error: 'Une simulation BCEG est requise avant de soumettre' });
+    // Détermination du montant demandé : simulation > funding_needed du projet > NULL
+    // (Le PDF gère l'absence de simulation avec un encart d'erreur clair.)
+    let montant_demande = simulation?.montant_demande || null;
+    if (!montant_demande && project.funding_needed) {
+      const parsed = parseInt(String(project.funding_needed).replace(/\D/g, ''), 10);
+      if (parsed && parsed > 0) montant_demande = parsed;
     }
 
     // 2. Créer la submission DB (status submitted)
