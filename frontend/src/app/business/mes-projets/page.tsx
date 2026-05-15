@@ -187,6 +187,13 @@ const WORKSHOP_SECTIONS = [
     description: "Vue d'ensemble"
   },
   {
+    id: 'overview',
+    title: 'Détails du projet',
+    icon: Target,
+    color: 'text-[#697357]',
+    description: 'Informations complètes'
+  },
+  {
     id: 'actions',
     title: 'Outils IA',
     icon: Zap,
@@ -213,13 +220,6 @@ const WORKSHOP_SECTIONS = [
     icon: MessageSquare,
     color: 'text-[#697357]',
     description: 'Posez vos questions'
-  },
-  {
-    id: 'overview',
-    title: 'Détails du projet',
-    icon: Target,
-    color: 'text-[#697357]',
-    description: 'Informations complètes'
   },
   {
     id: 'collaboration',
