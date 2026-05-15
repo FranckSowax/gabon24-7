@@ -21,7 +21,7 @@ export async function middleware(req: NextRequest) {
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.railway.app wss://*.railway.app https://challenges.cloudflare.com https://www.google-analytics.com https://*.billing-easy.com https://*.billing-easy.net",
-      "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://accounts.google.com https://www.youtube.com https://*.billing-easy.net https://*.billing-easy.com",
+      "frame-src 'self' blob: https://challenges.cloudflare.com https://www.google.com https://accounts.google.com https://www.youtube.com https://*.billing-easy.net https://*.billing-easy.com",
       "media-src 'self' https://*.supabase.co https://*.railway.app blob: data:",
       "object-src 'none'",
       "base-uri 'self'",
