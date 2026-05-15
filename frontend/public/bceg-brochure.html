@@ -250,6 +250,107 @@
     font-weight: 900; font-size: 14px;
   }
 
+  /* === PRICING / MODELE === */
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 800px) { .pricing-grid { grid-template-columns: 1fr; } }
+  .pricing-card {
+    background: white; border-radius: 22px; padding: 36px;
+    border: 2px solid var(--slate-200);
+    position: relative;
+  }
+  .pricing-card.featured {
+    border-color: var(--bceg);
+    background: linear-gradient(135deg, white 0%, rgba(105,115,87,0.05) 100%);
+    box-shadow: 0 20px 40px -15px rgba(105,115,87,0.2);
+  }
+  .pricing-tag {
+    position: absolute; top: -14px; left: 24px;
+    background: var(--bceg); color: white;
+    padding: 6px 16px; border-radius: 999px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .pricing-card h3 { color: var(--slate-900); margin-bottom: 6px; }
+  .pricing-card .sub { color: var(--slate-500); font-size: 14px; margin-bottom: 20px; }
+  .pricing-card .price {
+    font-size: 2.5rem; font-weight: 900; color: var(--bceg);
+    margin-bottom: 4px; line-height: 1;
+  }
+  .pricing-card .price small { font-size: 1rem; color: var(--slate-500); font-weight: 600; margin-left: 4px; }
+  .pricing-card ul { list-style: none; margin-top: 20px; }
+  .pricing-card li {
+    padding: 8px 0; padding-left: 28px; position: relative; color: var(--slate-700); font-size: 14px;
+  }
+  .pricing-card li::before {
+    content: '✓'; position: absolute; left: 0; top: 8px;
+    color: var(--bceg); font-weight: 800;
+  }
+
+  /* === SIMULATION === */
+  .simulation {
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid var(--slate-200);
+    box-shadow: 0 10px 40px -15px rgba(0,0,0,0.1);
+  }
+  .simulation-head {
+    background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 100%);
+    color: white; padding: 32px;
+  }
+  .simulation-head h3 { color: white; font-size: 1.5rem; margin-bottom: 6px; }
+  .simulation-head p { color: rgba(255,255,255,0.85); font-size: 14px; }
+  .simulation-table { width: 100%; border-collapse: collapse; }
+  .simulation-table th {
+    background: var(--slate-100); color: var(--slate-700);
+    text-align: left; padding: 14px 20px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 2px solid var(--slate-200);
+  }
+  .simulation-table td {
+    padding: 14px 20px; border-bottom: 1px solid var(--slate-100);
+    font-size: 14px; color: var(--slate-700);
+  }
+  .simulation-table tr:last-child td { border-bottom: none; }
+  .simulation-table tr.highlight {
+    background: linear-gradient(90deg, rgba(245,158,11,0.05), rgba(105,115,87,0.05));
+  }
+  .simulation-table tr.highlight td { font-weight: 800; color: var(--bceg-dark); }
+  .simulation-table .num { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .simulation-table .green { color: var(--bceg); }
+  .simulation-table .amber { color: #b45309; }
+
+  .simulation-foot {
+    background: var(--slate-50);
+    padding: 24px 32px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+    border-top: 1px solid var(--slate-200);
+  }
+  @media (max-width: 700px) { .simulation-foot { grid-template-columns: 1fr; } }
+  .simulation-kpi {
+    text-align: center; padding: 12px;
+    background: white; border-radius: 12px; border: 1px solid var(--slate-200);
+  }
+  .simulation-kpi .v { font-size: 1.75rem; font-weight: 900; color: var(--bceg); line-height: 1; }
+  .simulation-kpi .v small { font-size: 0.9rem; color: var(--slate-500); font-weight: 600; }
+  .simulation-kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--slate-500); margin-top: 6px; }
+
+  .scenarios { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 24px; }
+  @media (max-width: 700px) { .scenarios { grid-template-columns: 1fr; } }
+  .scenario {
+    background: white; padding: 16px; border-radius: 14px;
+    border: 1px solid var(--slate-200); text-align: center;
+  }
+  .scenario.cons { border-top: 4px solid var(--slate-500); }
+  .scenario.real { border-top: 4px solid var(--bceg); }
+  .scenario.opt  { border-top: 4px solid var(--amber); }
+  .scenario .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--slate-500); }
+  .scenario .conv { font-size: 1.5rem; font-weight: 900; margin: 4px 0; }
+  .scenario .vol { font-size: 13px; color: var(--slate-700); font-weight: 600; }
+  .scenario .roi { display: inline-block; padding: 3px 10px; border-radius: 999px; margin-top: 8px; font-size: 11px; font-weight: 800; }
+  .scenario.cons .roi { background: var(--slate-100); color: var(--slate-700); }
+  .scenario.real .roi { background: rgba(105,115,87,0.15); color: var(--bceg-dark); }
+  .scenario.opt  .roi { background: rgba(245,158,11,0.15); color: #92400e; }
+
   /* === CTA FINAL === */
   .cta-final {
     background: linear-gradient(135deg, var(--bceg-darker) 0%, var(--bceg-dark) 100%);
@@ -610,6 +711,218 @@
         <h4>Conformité ADPVPD</h4>
         <p>Stockage Supabase chiffré, consentement explicite avant transmission. Conforme à la loi 001/2011 sur la protection des données.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODELE COMMERCIAL -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Notre proposition</div>
+      <h2>Un modèle gagnant-gagnant en 2 leviers</h2>
+      <p>Vous financez l'acquisition de prospects qualifiés et payez une commission de succès uniquement sur les crédits effectivement validés.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Levier 1 — Marketing -->
+      <div class="pricing-card">
+        <span class="pricing-tag">Levier 1</span>
+        <h3>📣 Financement campagne marketing</h3>
+        <p class="sub">BCEG finance la diffusion des crédits Gabon Insight à offrir aux entrepreneurs gabonais.</p>
+        <div class="price">5 000 <small>XAF / crédit offert</small></div>
+        <ul>
+          <li>Vous décidez du <strong>nombre de crédits</strong> à offrir par mois</li>
+          <li>Vous choisissez les <strong>secteurs cibles</strong> (agri, BTP, tech…)</li>
+          <li>Diffusion sur tous nos canaux (WhatsApp, site, newsletter)</li>
+          <li>Marquage BCEG visible sur chaque crédit offert</li>
+          <li>Reporting hebdomadaire sur la consommation des crédits</li>
+        </ul>
+      </div>
+
+      <!-- Levier 2 — Commission -->
+      <div class="pricing-card featured">
+        <span class="pricing-tag">Levier 2 · Succès</span>
+        <h3>💰 Commission sur crédits validés</h3>
+        <p class="sub">Vous payez uniquement quand un crédit BCEG est effectivement accordé suite à un dossier issu de notre plateforme.</p>
+        <div class="price">2 <small>% du montant validé</small></div>
+        <ul>
+          <li><strong>0 frais fixe</strong> — uniquement à la performance</li>
+          <li>Traçabilité totale : chaque dossier a un ID Gabon Insight</li>
+          <li>Facturation mensuelle sur le volume validé</li>
+          <li>Aucun engagement de volume minimum</li>
+          <li>Sortie possible avec préavis 30 jours</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULATION -->
+<section style="background: var(--slate-100);">
+  <div class="container">
+    <div class="section-head">
+      <div class="badge">Projection chiffrée</div>
+      <h2>Simulation : 1 000 personnes touchées par mois</h2>
+      <p>BCEG offre <strong>1 000 crédits de 5 000 XAF</strong> via Gabon Insight chaque mois. Hypothèses prudentes basées sur des taux marché secteur fintech Afrique.</p>
+    </div>
+
+    <div class="simulation">
+      <div class="simulation-head">
+        <h3>🎯 Entonnoir de conversion mensuel</h3>
+        <p>Scénario réaliste avec taux de conversion conservateurs.</p>
+      </div>
+
+      <table class="simulation-table">
+        <thead>
+          <tr>
+            <th>Étape</th>
+            <th>Taux</th>
+            <th>Volume</th>
+            <th>Détail</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>① Personnes touchées</strong></td>
+            <td>100 %</td>
+            <td class="num">1 000</td>
+            <td>Reçoivent l'offre de crédit GI via WhatsApp / newsletter</td>
+          </tr>
+          <tr>
+            <td>② Activent le crédit offert</td>
+            <td>40 %</td>
+            <td class="num">400</td>
+            <td>Créent un compte Gabon Insight</td>
+          </tr>
+          <tr>
+            <td>③ Démarrent un projet</td>
+            <td>50 % des activés</td>
+            <td class="num">200</td>
+            <td>Lancent le wizard ou analysent un article</td>
+          </tr>
+          <tr>
+            <td>④ Génèrent BP + Plan d'action</td>
+            <td>60 % des démarrages</td>
+            <td class="num">120</td>
+            <td>Utilisent leurs crédits pour structurer le projet</td>
+          </tr>
+          <tr>
+            <td>⑤ Soumettent à la BCEG</td>
+            <td>40 % des projets complets</td>
+            <td class="num">48</td>
+            <td>Dossier PDF complet envoyé au comité</td>
+          </tr>
+          <tr class="highlight">
+            <td><strong>⑥ Crédits validés par BCEG</strong></td>
+            <td>50 %</td>
+            <td class="num green">24</td>
+            <td>Taux d'acceptation après instruction</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="simulation-foot">
+        <div class="simulation-kpi">
+          <div class="v">24<small> dossiers/mois</small></div>
+          <div class="l">Crédits validés</div>
+        </div>
+        <div class="simulation-kpi">
+          <div class="v">72 M<small> XAF/mois</small></div>
+          <div class="l">Volume financé (3 M XAF moyen)</div>
+        </div>
+        <div class="simulation-kpi">
+          <div class="v">288</div>
+          <div class="l">Crédits / an (×12)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bilan financier -->
+    <div style="margin-top: 32px;">
+      <div class="section-head" style="margin-bottom: 24px;">
+        <h3 style="font-size: 1.5rem; color: var(--slate-900);">💵 Bilan financier mensuel pour la BCEG</h3>
+      </div>
+
+      <div class="simulation" style="overflow: visible;">
+        <table class="simulation-table">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th>Calcul</th>
+              <th>Montant (XAF / mois)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Coût campagne marketing (Levier 1)</td>
+              <td class="num">1 000 × 5 000</td>
+              <td class="num amber">5 000 000</td>
+            </tr>
+            <tr>
+              <td>Commission Gabon Insight (Levier 2)</td>
+              <td class="num">2 % × 72 M</td>
+              <td class="num amber">1 440 000</td>
+            </tr>
+            <tr class="highlight">
+              <td><strong>Total dépensé par la BCEG</strong></td>
+              <td>—</td>
+              <td class="num amber">6 440 000</td>
+            </tr>
+            <tr style="background: rgba(105,115,87,0.05);">
+              <td><strong>↪ Volume de crédits placés</strong></td>
+              <td class="num">24 × 3 M</td>
+              <td class="num green">72 000 000</td>
+            </tr>
+            <tr class="highlight">
+              <td><strong>📈 ROI BCEG</strong></td>
+              <td>Volume placé / coût total</td>
+              <td class="num green">×11,2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3 scénarios -->
+    <div style="margin-top: 32px;">
+      <h3 style="font-size: 1.25rem; text-align: center; margin-bottom: 16px; color: var(--slate-900);">
+        Et selon les hypothèses de conversion…
+      </h3>
+      <div class="scenarios">
+        <div class="scenario cons">
+          <div class="label">Conservateur</div>
+          <div class="conv">12 dossiers / mois</div>
+          <div class="vol">36 M XAF placés</div>
+          <div class="roi">ROI ×5,9</div>
+        </div>
+        <div class="scenario real">
+          <div class="label">Réaliste · Recommandé</div>
+          <div class="conv">24 dossiers / mois</div>
+          <div class="vol">72 M XAF placés</div>
+          <div class="roi">ROI ×11,2</div>
+        </div>
+        <div class="scenario opt">
+          <div class="label">Optimiste · Saison forte</div>
+          <div class="conv">40 dossiers / mois</div>
+          <div class="vol">120 M XAF placés</div>
+          <div class="roi">ROI ×18,6</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Projection annuelle -->
+    <div style="margin-top: 40px; background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 100%); color: white; border-radius: 24px; padding: 40px; text-align: center;">
+      <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; margin-bottom: 8px;">
+        Projection annuelle · scénario réaliste
+      </div>
+      <h3 style="color: white; font-size: 2.5rem; font-weight: 900; margin-bottom: 16px;">
+        288 crédits PME · <span style="color: #fcd34d;">864 M XAF</span> placés
+      </h3>
+      <p style="color: rgba(255,255,255,0.9); font-size: 1.125rem; max-width: 700px; margin: 0 auto;">
+        Pour un coût total annuel de <strong style="color: #fcd34d;">77 M XAF</strong> (60 M marketing + 17 M commission).
+        Soit un <strong style="color: #fcd34d;">ROI ×11,2</strong> en volume de crédits placés.
+      </p>
     </div>
   </div>
 </section>
