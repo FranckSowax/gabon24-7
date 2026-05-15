@@ -213,6 +213,18 @@ export default function CreerProjetPage() {
           <main className="flex-1 lg:ml-64 pt-4 pb-12 min-h-screen">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
+              {/* Badge BCEG */}
+              <div className="flex items-center justify-center gap-2 pt-3 pb-1">
+                <img
+                  src="/646710125_122187790628463229_813105913342150168_n.jpg"
+                  alt="Logo BCEG"
+                  className="w-7 h-7 rounded-lg object-cover ring-1 ring-[#697357]/30 shadow-sm"
+                />
+                <span className="text-[11px] uppercase tracking-wider font-bold text-[#697357] bg-[#697357]/10 px-2.5 py-1 rounded-full border border-[#697357]/20">
+                  Création de projet · BCEG Project
+                </span>
+              </div>
+
               {/* Barre de progression */}
               <div className="py-3">
                 <div className="bg-slate-200 rounded-full h-1.5 overflow-hidden">

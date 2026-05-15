@@ -4166,6 +4166,16 @@ export default function MesProjetsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="text-center mb-8"
                 >
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <img
+                      src="/646710125_122187790628463229_813105913342150168_n.jpg"
+                      alt="Logo BCEG"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover ring-2 ring-[#697357]/30 shadow-md"
+                    />
+                    <span className="text-xs uppercase tracking-wider font-bold text-[#697357] bg-[#697357]/10 px-3 py-1 rounded-full border border-[#697357]/20">
+                      BCEG Project
+                    </span>
+                  </div>
                   <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
                     <span className="bg-gradient-to-r from-[#8a9576] to-[#697357] bg-clip-text text-transparent">
                       📁 Mes Dossiers Projets

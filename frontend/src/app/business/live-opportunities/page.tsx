@@ -76,12 +76,16 @@ export default function BcegProjectPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-10 sm:mb-14"
               >
-                <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/85 backdrop-blur border border-[#697357]/20 shadow-sm text-slate-700 text-xs sm:text-sm mb-5">
-                  <img
-                    src={BCEG_LOGO}
-                    alt="Logo BCEG"
-                    className="w-6 h-6 rounded-full object-cover ring-1 ring-[#697357]/40"
-                  />
+                <motion.img
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                  src={BCEG_LOGO}
+                  alt="Logo BCEG"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-4 ring-[#697357]/20 shadow-xl mx-auto mb-4"
+                />
+
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/85 backdrop-blur border border-[#697357]/20 shadow-sm text-slate-700 text-xs sm:text-sm mb-5">
                   <span>
                     En partenariat avec la <span className="font-semibold text-[#697357]">BCEG</span>
                   </span>
