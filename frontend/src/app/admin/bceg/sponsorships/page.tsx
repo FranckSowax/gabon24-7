@@ -6,6 +6,7 @@ import {
   Gift, Plus, RefreshCw, X, Loader2, Award, UserPlus, Calendar,
   CheckCircle2, AlertCircle, TrendingUp
 } from 'lucide-react'
+import { BCEG_LOGO } from '@/components/bceg/BcegTheme'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -87,9 +88,11 @@ export default function AdminSponsorshipsPage() {
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-300/10 blur-3xl pointer-events-none" />
           <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center">
-                <Gift className="w-6 h-6 text-amber-200" />
-              </div>
+              <img
+                src={BCEG_LOGO}
+                alt="Logo BCEG"
+                className="w-12 h-12 rounded-xl object-cover ring-2 ring-white/40 shadow-md shrink-0"
+              />
               <div>
                 <div className="text-[11px] uppercase tracking-wider font-bold opacity-80">
                   Admin · BCEG
