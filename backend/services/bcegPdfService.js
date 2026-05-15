@@ -61,6 +61,8 @@ async function generateBcegDossier({ submission, project, simulation, score, use
       drawCoverPage(doc, { submission, project, score });
       doc.addPage();
       drawProjectSection(doc, { project });
+      drawProjectProfileSection(doc, { project });
+      doc.addPage();
       drawSimulationSection(doc, { simulation, submission });
       doc.addPage();
       drawActionPlanSection(doc, { project });
@@ -161,12 +163,81 @@ function drawProjectSection(doc, { project }) {
   doc.moveDown(0.5);
 }
 
+// Dump tous les champs disponibles du projet en mode "profil détaillé"
+function drawProjectProfileSection(doc, { project }) {
+  doc.moveDown(0.6);
+  drawSectionTitle(doc, 'PROFIL DÉTAILLÉ DU PROJET');
+
+  // Mapping label → liste de clés possibles (compat avec différents schémas)
+  const FIELDS = [
+    ['Idée du projet', ['project_idea', 'idea']],
+    ['Vision long terme', ['project_vision', 'long_term_vision']],
+    ['Problème résolu', ['problem_solving', 'problematique_centrale']],
+    ['Public cible / Audience', ['target_audience', 'audience_cible']],
+    ['Valeur unique / Différenciation', ['unique_value', 'unique_value_prop']],
+    ['Modèle de revenus', ['revenue_model', 'modele_revenus']],
+    ['Stratégie de prix', ['pricing_strategy']],
+    ['Structure de coûts', ['cost_structure']],
+    ['Financement nécessaire', ['funding_needed', 'budget_selectionne']],
+    ['Taille du marché', ['market_size']],
+    ['Concurrents identifiés', ['competitors']],
+    ['Taille de l\'équipe', ['team_size']],
+    ['Compétences clés', ['key_skills']],
+    ['Calendrier de lancement', ['timeline']],
+    ['Localisation', ['location']],
+    ['Objectifs à 6 mois', ['short_term_goals', 'objectifs_court_terme']],
+    ['Objectifs à 1-3 ans', ['long_term_goals', 'objectifs_long_terme']],
+    ['Indicateurs de succès', ['success_metrics']],
+    ['Risques identifiés', ['risks']],
+    ['Acteurs impactés', ['acteurs_impactes']],
+  ];
+
+  const rows = [];
+  for (const [label, keys] of FIELDS) {
+    for (const k of keys) {
+      const v = project?.[k];
+      if (v !== null && v !== undefined && v !== '' && (!Array.isArray(v) || v.length > 0)) {
+        const display = Array.isArray(v)
+          ? v.map(x => typeof x === 'string' ? x : (x?.titre || x?.label || x?.name || JSON.stringify(x))).join(', ')
+          : String(v);
+        rows.push([label, display]);
+        break;
+      }
+    }
+  }
+
+  if (rows.length === 0) {
+    doc.fillColor(COLORS.warn).font('Helvetica-Oblique').fontSize(10)
+      .text('⚠ Aucun détail projet renseigné. Complétez le wizard de création de projet pour enrichir ce dossier.');
+    doc.moveDown(0.5);
+    return;
+  }
+
+  rows.forEach(([label, value]) => {
+    drawSubsection(doc, label);
+    drawParagraph(doc, value);
+    doc.moveDown(0.2);
+  });
+}
+
 function drawSimulationSection(doc, { simulation, submission }) {
   doc.moveDown(1);
   drawSectionTitle(doc, 'SIMULATION DE CRÉDIT BCEG');
 
   const W = doc.page.width;
   const M = doc.page.margins.left;
+
+  // Si pas de simulation, afficher un encart d'erreur visible
+  if (!simulation || (!simulation.mensualite && !simulation.montant_demande)) {
+    doc.roundedRect(M, doc.y, W - 2 * M, 80, 8).fillAndStroke('#fef2f2', COLORS.warn);
+    const startY = doc.y + 14;
+    doc.fillColor(COLORS.warn).font('Helvetica-Bold').fontSize(12)
+      .text('⚠ Aucune simulation BCEG enregistrée', M + 15, startY);
+    doc.fillColor(COLORS.text).font('Helvetica').fontSize(9.5)
+      .text('Pour enrichir votre dossier, lancez une simulation BCEG depuis l\'application (étape 2 du wizard de création de projet) avant de soumettre.', M + 15, startY + 18, { width: W - 2 * M - 30 });
+    doc.y = doc.y + 90;
+    return;
+  }
 
   const recapY = doc.y;
   doc.roundedRect(M, recapY, W - 2 * M, 90, 8).fillAndStroke('#f8fafc', COLORS.border);

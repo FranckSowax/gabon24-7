@@ -598,17 +598,31 @@ router.post('/generate-dossier', requireAuth, async (req, res) => {
     const { project_id, simulation_id } = req.body || {};
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
 
-    const [{ data: project }, { data: simulation }, { data: scoreData }] = await Promise.all([
+    const [{ data: project }, { data: scoreData }] = await Promise.all([
       supabase.from('saved_projects').select('*').eq('id', project_id).single(),
-      simulation_id
-        ? supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single()
-        : Promise.resolve({ data: null }),
       supabase.from('bceg_scores').select('*').eq('project_id', project_id).order('computed_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (!project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
     if (project.user_id && project.user_id !== req.user.id) {
       return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    // Auto-fetch la dernière simulation du projet si pas d'id explicite
+    let simulation = null;
+    if (simulation_id) {
+      const r = await supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single();
+      simulation = r.data;
+    } else {
+      const r = await supabase
+        .from('bceg_simulations')
+        .select('*')
+        .eq('project_id', project_id)
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      simulation = r.data;
     }
 
     const pdf = await generateBcegDossier({
@@ -643,17 +657,31 @@ router.post('/submit-full', requireAuth, async (req, res) => {
     const { project_id, simulation_id } = req.body || {};
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
 
-    // 1. Charger projet + sim + score
-    const [{ data: project }, { data: simulation }, { data: scoreData }] = await Promise.all([
+    // 1. Charger projet + score
+    const [{ data: project }, { data: scoreData }] = await Promise.all([
       supabase.from('saved_projects').select('*').eq('id', project_id).single(),
-      simulation_id
-        ? supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single()
-        : Promise.resolve({ data: null }),
       supabase.from('bceg_scores').select('*').eq('project_id', project_id).order('computed_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     if (!project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
     if (project.user_id && project.user_id !== req.user.id) {
       return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    // Auto-fetch la dernière simulation du projet si pas d'id explicite
+    let simulation = null;
+    if (simulation_id) {
+      const r = await supabase.from('bceg_simulations').select('*').eq('id', simulation_id).single();
+      simulation = r.data;
+    } else {
+      const r = await supabase
+        .from('bceg_simulations')
+        .select('*')
+        .eq('project_id', project_id)
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      simulation = r.data;
     }
 
     const montant_demande = simulation?.montant_demande || null;
