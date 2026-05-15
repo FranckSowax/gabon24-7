@@ -168,9 +168,15 @@ export default function CreerProjetPage() {
     setIsGenerating(true)
     setError('')
     try {
+      const { supabase: sb } = await import('@/lib/auth')
+      const { data: { session } } = await sb.auth.getSession()
+      const token = session?.access_token
       const response = await fetch(`${API_URL}/api/projects/generate-framework`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           userId: user.id,
           userEmail: user.email,
