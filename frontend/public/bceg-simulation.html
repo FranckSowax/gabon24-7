@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BCEG × Gabon Insight — Simulation expliquée simplement</title>
+<style>
+  :root {
+    --bceg: #697357;
+    --bceg-dark: #4d553e;
+    --bceg-darker: #3a4030;
+    --amber: #f59e0b;
+    --amber-soft: #fef3c7;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-500: #64748b;
+    --slate-700: #334155;
+    --slate-900: #0f172a;
+    --rose: #e11d48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--slate-900);
+    line-height: 1.6;
+    background: var(--slate-50);
+    padding: 24px 16px 60px;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, var(--bceg) 0%, var(--bceg-dark) 100%);
+    color: white;
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .hero h1 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; margin-bottom: 8px; }
+  .hero p { color: rgba(255,255,255,0.9); font-size: 1rem; max-width: 600px; margin: 0 auto; }
+
+  /* Sections */
+  section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    border: 1px solid var(--slate-200);
+  }
+  h2 {
+    font-size: 1.35rem;
+    color: var(--slate-900);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .num {
+    background: var(--bceg);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+  h3 {
+    font-size: 1.05rem;
+    color: var(--bceg-dark);
+    margin: 16px 0 8px;
+  }
+  p, li { color: var(--slate-700); }
+
+  /* FUNNEL */
+  .funnel { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .step {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    background: var(--slate-50);
+    border-left: 4px solid var(--bceg);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .step.win { background: rgba(245,158,11,0.08); border-left-color: var(--amber); }
+  .step .label { font-weight: 600; color: var(--slate-900); }
+  .step .label small { display: block; color: var(--slate-500); font-weight: 400; font-size: 0.85rem; margin-top: 2px; }
+  .step .val {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--bceg);
+    line-height: 1;
+    text-align: right;
+  }
+  .step.win .val { color: var(--amber); }
+  .step .val small {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--slate-500);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* Big number box */
+  .big-result {
+    background: linear-gradient(135deg, var(--amber-soft), white);
+    border: 2px solid var(--amber);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    margin: 16px 0;
+  }
+  .big-result .big {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--bceg-darker);
+  }
+  .big-result .big strong { color: var(--amber); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--slate-200);
+    font-size: 0.95rem;
+  }
+  th {
+    background: var(--slate-100);
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--slate-700);
+    font-weight: 700;
+  }
+  td { padding: 10px 14px; border-top: 1px solid var(--slate-200); color: var(--slate-700); }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+  td.green { color: var(--bceg); }
+  td.amber { color: #b45309; }
+  tr.total { background: var(--slate-50); font-weight: 800; }
+  tr.total td { color: var(--slate-900); }
+
+  /* Scenario cards */
+  .scenarios { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  @media (max-width: 600px) { .scenarios { grid-template-columns: 1fr; } }
+  .scenario {
+    background: var(--slate-50);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    border-top: 3px solid var(--slate-200);
+  }
+  .scenario.cons { border-top-color: var(--slate-500); }
+  .scenario.real { border-top-color: var(--bceg); background: rgba(105,115,87,0.08); }
+  .scenario.opt  { border-top-color: var(--amber); }
+  .scenario .name { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--slate-500); font-weight: 700; }
+  .scenario .conv { font-size: 1.3rem; font-weight: 900; margin: 6px 0 2px; color: var(--slate-900); }
+  .scenario .vol { font-size: 0.85rem; color: var(--slate-700); }
+  .scenario .roi { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; }
+  .scenario.cons .roi { background: var(--slate-200); color: var(--slate-700); }
+  .scenario.real .roi { background: var(--bceg); color: white; }
+  .scenario.opt  .roi { background: var(--amber); color: white; }
+
+  /* Why credible */
+  .why ul { list-style: none; padding: 0; }
+  .why li {
+    padding: 8px 0 8px 28px;
+    position: relative;
+    border-bottom: 1px dashed var(--slate-200);
+  }
+  .why li:last-child { border-bottom: none; }
+  .why li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    color: var(--bceg);
+    font-weight: 800;
+  }
+
+  /* TLDR */
+  .tldr {
+    background: var(--bceg-darker);
+    color: white;
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    margin-top: 24px;
+  }
+  .tldr h2 { color: white; justify-content: center; }
+  .tldr h2 .num { background: white; color: var(--bceg-darker); }
+  .tldr p { color: rgba(255,255,255,0.9); font-size: 1.05rem; max-width: 600px; margin: 0 auto; }
+  .tldr strong { color: #fcd34d; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    color: var(--slate-500);
+    font-size: 0.85rem;
+    margin-top: 24px;
+  }
+  footer a { color: var(--bceg); text-decoration: none; }
+
+  /* Print */
+  @media print {
+    body { background: white; padding: 0; }
+    .hero, .tldr, .scenario.real { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="badge">BCEG × Gabon Insight</div>
+    <h1>Simulation expliquée simplement</h1>
+    <p>Chaque mois, BCEG offre 1 000 crédits Gabon Insight à des entrepreneurs gabonais. Combien finissent par obtenir un vrai crédit bancaire ? Voici la réponse, étape par étape.</p>
+  </div>
+
+  <!-- 1 — L'idée -->
+  <section>
+    <h2><span class="num">1</span> L'idée en une phrase</h2>
+    <p>BCEG <strong>finance la diffusion de 1 000 crédits Gabon Insight</strong> (5 000 FCFA chacun) chaque mois via WhatsApp, newsletter et site. On suit combien d'entrepreneurs vont au bout du parcours et soumettent un dossier qui sera validé par la banque.</p>
+  </section>
+
+  <!-- 2 — Le funnel -->
+  <section>
+    <h2><span class="num">2</span> L'entonnoir, étape par étape</h2>
+
+    <div class="funnel">
+      <div class="step">
+        <div class="label">① Personnes touchées <small>WhatsApp, newsletter, site</small></div>
+        <div class="val">1 000<small>100 %</small></div>
+      </div>
+      <div class="step">
+        <div class="label">② Activent le crédit offert <small>4 sur 10 créent leur compte</small></div>
+        <div class="val">400<small>40 % des touchées</small></div>
+      </div>
+      <div class="step">
+        <div class="label">③ Démarrent un projet <small>1 sur 2 lance vraiment une idée</small></div>
+        <div class="val">200<small>50 % des activés</small></div>
+      </div>
+      <div class="step">
+        <div class="label">④ Génèrent Business Plan + Plan d'action <small>vont jusqu'au bout du parcours</small></div>
+        <div class="val">120<small>60 % des démarrages</small></div>
+      </div>
+      <div class="step">
+        <div class="label">⑤ Soumettent à la BCEG <small>envoient le dossier à la banque</small></div>
+        <div class="val">48<small>40 % des dossiers</small></div>
+      </div>
+      <div class="step win">
+        <div class="label">⑥ Crédits validés par BCEG <small>la banque accepte 1 dossier sur 2</small></div>
+        <div class="val">24<small>50 % des soumis</small></div>
+      </div>
+    </div>
+
+    <div class="big-result">
+      <div class="big">Sur <strong>1 000</strong> personnes touchées, <strong>24</strong> obtiennent un crédit bancaire</div>
+      <div style="color: var(--slate-700); margin-top: 6px;">soit <strong>2,4 %</strong> — un excellent taux pour la fintech africaine (1-5 % standards).</div>
+    </div>
+  </section>
+
+  <!-- 3 — Financièrement -->
+  <section>
+    <h2><span class="num">3</span> Financièrement, ça donne quoi ?</h2>
+
+    <h3>💸 Ce que BCEG dépense chaque mois</h3>
+    <table>
+      <tr>
+        <th>Poste</th>
+        <th>Calcul</th>
+        <th style="text-align: right;">Coût</th>
+      </tr>
+      <tr>
+        <td>📣 Campagne marketing</td>
+        <td>1 000 crédits × 5 000 FCFA</td>
+        <td class="num amber">5 000 000 FCFA</td>
+      </tr>
+      <tr>
+        <td>💰 Commission Gabon Insight</td>
+        <td>2 % × 360 M (crédits validés)</td>
+        <td class="num amber">7 200 000 FCFA</td>
+      </tr>
+      <tr class="total">
+        <td>Total dépensé</td>
+        <td>—</td>
+        <td class="num amber">12 200 000 FCFA</td>
+      </tr>
+    </table>
+
+    <h3>📈 Ce que BCEG gagne en retour</h3>
+    <table>
+      <tr>
+        <th>Poste</th>
+        <th>Calcul</th>
+        <th style="text-align: right;">Volume</th>
+      </tr>
+      <tr>
+        <td>Crédits PME placés</td>
+        <td>24 dossiers × 15 M FCFA en moyenne</td>
+        <td class="num green">360 000 000 FCFA</td>
+      </tr>
+    </table>
+
+    <div class="big-result">
+      <div class="big">Pour <strong>12,2 M</strong> dépensés → <strong>360 M</strong> placés</div>
+      <div style="color: var(--slate-700); margin-top: 6px;">soit un <strong style="color: var(--bceg);">ROI ×29,5</strong> chaque mois. Sur chaque 1 FCFA investi, BCEG génère <strong>29,5 FCFA</strong> de crédits accordés.</div>
+    </div>
+  </section>
+
+  <!-- 4 — Sur un an -->
+  <section>
+    <h2><span class="num">4</span> Sur 1 an, ça donne…</h2>
+    <table>
+      <tr>
+        <th>Indicateur</th>
+        <th style="text-align: right;">Valeur</th>
+      </tr>
+      <tr>
+        <td>Crédits PME accordés</td>
+        <td class="num green">288 (24 × 12)</td>
+      </tr>
+      <tr>
+        <td>Volume total placé</td>
+        <td class="num green">4,32 milliards FCFA</td>
+      </tr>
+      <tr>
+        <td>Coût total annuel BCEG</td>
+        <td class="num amber">146 M FCFA</td>
+      </tr>
+      <tr class="total">
+        <td>ROI annuel</td>
+        <td class="num green">×29,5</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- 5 — Pourquoi crédible -->
+  <section class="why">
+    <h2><span class="num">5</span> Pourquoi ces chiffres sont crédibles</h2>
+    <ul>
+      <li><strong>40 % d'activation</strong> : standard pour une offre WhatsApp avec avantage immédiat</li>
+      <li><strong>60 % de dossiers finis</strong> : élevé mais justifié — le crédit offert pousse à terminer le parcours</li>
+      <li><strong>50 % d'acceptation BCEG</strong> : réaliste pour des dossiers déjà pré-scorés par BCEG Score™</li>
+      <li><strong>15 M FCFA / crédit moyen</strong> : aligné sur les programmes PME au Gabon (CATR / FAMAD)</li>
+    </ul>
+  </section>
+
+  <!-- 6 — 3 scénarios -->
+  <section>
+    <h2><span class="num">6</span> 3 scénarios pour rassurer</h2>
+    <p style="margin-bottom: 8px;">Même dans le pire des cas, l'investissement marketing reste exceptionnel pour une banque.</p>
+    <div class="scenarios">
+      <div class="scenario cons">
+        <div class="name">🛡️ Conservateur</div>
+        <div class="conv">12 dossiers</div>
+        <div class="vol">180 M FCFA</div>
+        <div class="roi">ROI ×20,9</div>
+      </div>
+      <div class="scenario real">
+        <div class="name">🎯 Réaliste</div>
+        <div class="conv">24 dossiers</div>
+        <div class="vol">360 M FCFA</div>
+        <div class="roi">ROI ×29,5</div>
+      </div>
+      <div class="scenario opt">
+        <div class="name">🚀 Optimiste</div>
+        <div class="conv">40 dossiers</div>
+        <div class="vol">600 M FCFA</div>
+        <div class="roi">ROI ×35,3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TLDR -->
+  <div class="tldr">
+    <h2><span class="num">✦</span> TL;DR pour la BCEG</h2>
+    <p>Vous dépensez <strong>12 millions FCFA / mois</strong>, vous placez <strong>360 millions FCFA / mois</strong> de crédits PME. Vous multipliez votre mise par <strong>29</strong>. Et vous ne payez la commission de 2 % <strong>que sur les dossiers effectivement validés</strong> — donc zéro risque sur le levier performance.</p>
+  </div>
+
+  <footer>
+    Gabon Insight × BCEG — Simulation indicative basée sur des hypothèses prudentes du marché fintech africain.<br>
+    <a href="/bceg-brochure.html">Voir la plaquette complète</a>
+  </footer>
+
+</div>
+
+</body>
+</html>
