@@ -3,9 +3,25 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const emailService = require('../services/emailService');
 const { requireAdmin, optionalAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const submitFeedbackSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  type: z.string().min(1).max(50),
+  message: z.string().min(1, 'message requis').max(5000),
+  rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+  userEmail: z.string().email().max(255).optional().nullable(),
+  userName: z.string().max(200).optional().nullable(),
+}).passthrough();
+
+const feedbackStatusSchema = z.object({
+  status: z.string().min(1).max(50),
+}).passthrough();
 
 // POST /api/feedback - Submit new feedback
-router.post('/', async (req, res) => {
+router.post('/', validateBody(submitFeedbackSchema), async (req, res) => {
   try {
     const { userId, type, message, rating, userEmail, userName } = req.body;
 
@@ -90,7 +106,7 @@ router.get('/', requireAdmin, async (req, res) => {
 
 // PATCH /api/feedback/:id/status - Update feedback status
 // 🔒 SÉCURISÉ: Authentification admin requise
-router.patch('/:id/status', requireAdmin, async (req, res) => {
+router.patch('/:id/status', requireAdmin, validateBody(feedbackStatusSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

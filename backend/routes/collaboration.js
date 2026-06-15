@@ -3,12 +3,38 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
 const supabase = supabaseService.supabase;
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const inviteSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  email: z.string().email('email invalide').max(255),
+  role: z.string().max(50).optional(),
+  invitedBy: z.string().uuid().optional().nullable(),
+}).passthrough();
+
+const commentSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  userId: z.string().uuid('userId invalide'),
+  commentText: z.string().min(1, 'commentText requis').max(10000),
+  parentCommentId: z.string().uuid().optional().nullable(),
+}).passthrough();
+
+const collabDocSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  userId: z.string().uuid('userId invalide'),
+  documentType: z.string().min(1).max(100),
+  fileName: z.string().max(255).optional().nullable(),
+  fileUrl: z.string().max(2000).optional().nullable(),
+  fileSize: z.coerce.number().int().nonnegative().optional().nullable(),
+}).passthrough();
 
 // Collaboration sur projets : auth obligatoire pour toutes routes
 router.use(requireAuth);
 
 // POST /api/collaboration/invite - Inviter un collaborateur
-router.post('/invite', async (req, res) => {
+router.post('/invite', validateBody(inviteSchema), async (req, res) => {
   try {
     const { projectId, email, role = 'viewer', invitedBy } = req.body;
 
@@ -176,7 +202,7 @@ router.delete('/remove/:collaboratorId', async (req, res) => {
 });
 
 // POST /api/collaboration/comments - Ajouter un commentaire
-router.post('/comments', async (req, res) => {
+router.post('/comments', validateBody(commentSchema), async (req, res) => {
   try {
     const { projectId, userId, commentText, parentCommentId } = req.body;
 
@@ -298,7 +324,7 @@ router.get('/comments/:projectId', async (req, res) => {
 });
 
 // POST /api/collaboration/documents - Ajouter un document/vision
-router.post('/documents', async (req, res) => {
+router.post('/documents', validateBody(collabDocSchema), async (req, res) => {
   try {
     const { 
       projectId, 

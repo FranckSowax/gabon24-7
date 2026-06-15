@@ -14,6 +14,23 @@ const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
 const veilleService = require('../services/veille-subscription.service');
 const ebillingService = require('../services/ebilling-payment.service');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const subscribeSchema = z.object({
+  planSlug: z.string().min(1, 'planSlug requis').max(100),
+  whatsappNumber: z.string().max(40).optional().nullable(),
+  duration: z.coerce.number().int().min(1).max(24).optional(),
+  keywords: z.array(z.string().max(100)).max(50).optional(),
+}).passthrough();
+
+const demoSchema = z.object({
+  whatsappNumber: z.string().min(1, 'whatsappNumber requis').max(40),
+  email: z.string().email().max(255).optional().nullable(),
+  name: z.string().max(200).optional().nullable(),
+  keywords: z.array(z.string().max(100)).max(50).optional(),
+}).passthrough();
 
 const supabase = supabaseService.supabase;
 
@@ -86,7 +103,7 @@ router.get('/limits', requireAuth, async (req, res) => {
 // =====================================================
 // POST /api/veille/subscribe - Lancer paiement E-Billing
 // =====================================================
-router.post('/subscribe', requireAuth, async (req, res) => {
+router.post('/subscribe', requireAuth, validateBody(subscribeSchema), async (req, res) => {
   try {
     const userId = req.user.id;
     const { planSlug, whatsappNumber, duration = 1, keywords } = req.body;
@@ -195,7 +212,7 @@ router.post('/subscribe', requireAuth, async (req, res) => {
 // =====================================================
 // POST /api/veille/demo - Demarrer demo gratuite 24h
 // =====================================================
-router.post('/demo', async (req, res) => {
+router.post('/demo', validateBody(demoSchema), async (req, res) => {
   try {
     const { whatsappNumber, email, name, keywords } = req.body;
 

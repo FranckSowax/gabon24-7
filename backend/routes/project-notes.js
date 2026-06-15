@@ -6,6 +6,18 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const createNoteSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  noteContent: z.string().min(1, 'noteContent requis').max(10000),
+}).passthrough();
+
+const updateNoteSchema = z.object({
+  noteContent: z.string().min(1, 'noteContent requis').max(10000),
+}).passthrough();
 
 /**
  * GET /api/project-notes/:projectId
@@ -48,7 +60,7 @@ router.get('/:projectId', requireAuth, async (req, res) => {
 /**
  * POST /api/project-notes - Créer une note
  */
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validateBody(createNoteSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const { projectId, noteContent } = req.body;
@@ -103,7 +115,7 @@ router.post('/', requireAuth, async (req, res) => {
 /**
  * PUT /api/project-notes/:noteId - Modifier une note
  */
-router.put('/:noteId', requireAuth, async (req, res) => {
+router.put('/:noteId', requireAuth, validateBody(updateNoteSchema), async (req, res) => {
   try {
     const { noteId } = req.params;
     const userId = req.user.id; // Extrait du JWT

@@ -10,6 +10,41 @@ const { checkOpenAIError, checkUsageThreshold } = require('../utils/quota-monito
 const aiValidation = require('../middleware/ai-validation');
 const { trackAIUsage } = require('../utils/track-ai-usage');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough : objets IA imbriqués préservés) ====================
+const analyzeOppSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  opportunityText: z.string().max(20000).optional().nullable(),
+  context: z.string().max(20000).optional(),
+  usePerplexity: z.boolean().optional(),
+}).passthrough();
+
+const generateProposalsSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  secteur: z.string().max(200).optional().nullable(),
+  problematique: z.string().max(20000).optional().nullable(),
+}).passthrough();
+
+const generateByBudgetSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  budget: z.union([z.number(), z.string().max(50)]),
+  sector: z.string().max(200).optional(),
+  interests: z.array(z.string().max(100)).max(50).optional(),
+}).passthrough();
+
+const enhanceOppSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  opportunityId: z.string().max(200).optional().nullable(),
+  opportunityText: z.string().max(20000).optional().nullable(),
+}).passthrough();
+
+const businessIdeasSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  keywords: z.array(z.string().max(100)).max(50).optional(),
+  count: z.coerce.number().int().min(1).max(20).optional(),
+}).passthrough();
 
 // Toutes les routes opportunités utilisent l'IA (coût €) → auth obligatoire
 router.use(requireAuth);
@@ -176,7 +211,7 @@ async function callAIPropositions(prompt, options = {}) {
 }
 
 // POST /api/opportunities/analyze - Analyser une opportunité
-router.post('/analyze', async (req, res) => {
+router.post('/analyze', validateBody(analyzeOppSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -434,7 +469,7 @@ router.options('/generate-proposals', (req, res) => {
 });
 
 // POST /api/opportunities/generate-proposals - Générer propositions de projets (Netlify compatible)
-router.post('/generate-proposals', async (req, res) => {
+router.post('/generate-proposals', validateBody(generateProposalsSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -608,7 +643,7 @@ IMPORTANT: Reponds UNIQUEMENT avec le JSON demande.`;
 });
 
 // POST /api/opportunities/generate-by-budget - Générer idées par budget
-router.post('/generate-by-budget', async (req, res) => {
+router.post('/generate-by-budget', validateBody(generateByBudgetSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -684,7 +719,7 @@ Format: JSON array avec structure {title, description, investment, profitability
 });
 
 // POST /api/opportunities/enhance - Enrichir une opportunité
-router.post('/enhance', async (req, res) => {
+router.post('/enhance', validateBody(enhanceOppSchema), async (req, res) => {
   try {
     let {
       userId,
@@ -773,7 +808,7 @@ router.post('/enhance', async (req, res) => {
 });
 
 // POST /api/opportunities/business-ideas - Générer idées d'affaires
-router.post('/business-ideas', async (req, res) => {
+router.post('/business-ideas', validateBody(businessIdeasSchema), async (req, res) => {
   try {
     const {
       userId,

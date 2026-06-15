@@ -3,6 +3,25 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const generateTrainingSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  articleId: z.string().max(200).optional().nullable(),
+  projectId: z.string().uuid().optional().nullable(),
+}).passthrough();
+
+const generateModuleSchema = z.object({
+  moduleId: z.union([z.string().max(200), z.number()]).optional().nullable(),
+}).passthrough();
+
+const trainingProgressSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  currentModuleIndex: z.coerce.number().int().nonnegative().optional(),
+  projectId: z.string().uuid().optional().nullable(),
+}).passthrough();
 
 // Service Gemini 3 Pro centralisé
 // Rapide et économique
@@ -123,7 +142,7 @@ function calculatePricing(modules = []) {
 }
 
 // POST /api/training/generate - Générer une formation sur mesure avec Replicate nano-gpt
-router.post('/generate', async (req, res) => {
+router.post('/generate', validateBody(generateTrainingSchema), async (req, res) => {
   try {
     const { userAnalysis = {}, article = {}, sectorResults = {}, userId = null, articleId = null, projectId = null } = req.body || {};
 
@@ -340,7 +359,7 @@ router.get('/:training_id', async (req, res) => {
 });
 
 // POST /api/training/:training_id/generate-module - Générer le contenu détaillé d'un module
-router.post('/:training_id/generate-module', async (req, res) => {
+router.post('/:training_id/generate-module', validateBody(generateModuleSchema), async (req, res) => {
   // Timeout de sécurité pour éviter les 502 Railway
   const timeoutMs = 55000; // 55 secondes (Railway timeout = 60s)
   let timeoutReached = false;
@@ -555,7 +574,7 @@ Take a deep breath and work on this problem step-by-step.`;
 // ==================== ROUTES DE PROGRESSION ====================
 
 // POST /api/training/:training_id/progress - Sauvegarder la progression
-router.post('/:training_id/progress', async (req, res) => {
+router.post('/:training_id/progress', validateBody(trainingProgressSchema), async (req, res) => {
   try {
     const { training_id } = req.params;
     const {

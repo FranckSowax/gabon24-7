@@ -9,12 +9,35 @@ const router = express.Router();
 const geminiService = require('../services/gemini-service');
 const supabaseService = require('../supabase-config');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const generateTestSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  proposal: z.string().min(1, 'proposal requis').max(20000),
+  articleId: z.string().max(200).optional().nullable(),
+  difficulty: z.string().max(20).optional(),
+}).passthrough();
+
+const completeTestSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  score: z.coerce.number().optional().nullable(),
+  scorePercentage: z.coerce.number().min(0).max(100).optional().nullable(),
+}).passthrough();
+
+const saveScoreSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  projectId: z.string().uuid().optional().nullable(),
+  score: z.coerce.number(),
+  difficulty: z.string().max(20).optional().nullable(),
+}).passthrough();
 
 /**
  * POST /api/skill-test/generate
  * Génère un test de compétence personnalisé
  */
-router.post('/generate', async (req, res) => {
+router.post('/generate', validateBody(generateTestSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -330,7 +353,7 @@ router.get('/:id', async (req, res) => {
  * PUT /api/skill-test/:id/complete
  * Enregistre les résultats d'un test complété
  */
-router.put('/:id/complete', async (req, res) => {
+router.put('/:id/complete', validateBody(completeTestSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const { userId, userAnswers, score, scorePercentage } = req.body;
@@ -557,7 +580,7 @@ GÉNÈRE MAINTENANT UN NOUVEAU TEST COMPLET (10 questions) en JSON UNIQUEMENT.`;
  * POST /api/skill-test/save-score
  * Sauvegarde le score d'un test
  */
-router.post('/save-score', async (req, res) => {
+router.post('/save-score', validateBody(saveScoreSchema), async (req, res) => {
   try {
     const {
       userId,

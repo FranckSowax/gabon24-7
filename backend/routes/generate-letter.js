@@ -8,6 +8,17 @@ const { requireAuth } = require('../middleware/auth');
 // Utiliser le client Supabase partagé avec toutes les configurations
 const supabase = supabaseService.supabase;
 
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMA DE VALIDATION (.passthrough) ====================
+const generateLetterSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  projectId: z.string().uuid().optional().nullable(),
+  recipientType: z.string().max(100).optional().nullable(),
+  letterSubject: z.string().max(500).optional().nullable(),
+}).passthrough();
+
 // Génération courriers IA = coût € → auth obligatoire
 router.use(requireAuth);
 
@@ -17,7 +28,7 @@ router.use(requireAuth);
  * POST /api/generate-letter
  * Génère un courrier professionnel adapté au destinataire et au contexte
  */
-router.post('/', async (req, res) => {
+router.post('/', validateBody(generateLetterSchema), async (req, res) => {
   try {
     const {
       userId,

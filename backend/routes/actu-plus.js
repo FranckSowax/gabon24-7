@@ -7,6 +7,24 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const actuPlusSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  serviceType: z.string().max(100).optional(),
+  articleIds: z.array(z.union([z.string().max(200), z.number()])).max(100).optional(),
+  usePerplexity: z.boolean().optional(),
+}).passthrough();
+
+const saveActuPlusSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  title: z.string().min(1, 'title requis').max(500),
+  content: z.string().max(100000).optional().nullable(),
+  referenceId: z.string().max(200).optional().nullable(),
+  service: z.string().max(100).optional().nullable(),
+}).passthrough();
 
 // Helper: Extraire les mots-clés importants (copié depuis related-articles.js)
 function extractKeywords(title, description, category) {
@@ -300,7 +318,7 @@ const SERVICE_PRICING = {
 };
 
 // POST /api/actu-plus - Générer un résumé intelligent
-router.post('/', async (req, res) => {
+router.post('/', validateBody(actuPlusSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -496,7 +514,7 @@ router.post('/', async (req, res) => {
 });
 
 // POST /api/actu-plus/save - Enregistrer le livrable
-router.post('/save', async (req, res) => {
+router.post('/save', validateBody(saveActuPlusSchema), async (req, res) => {
   try {
     const { userId, title, content, referenceId, service } = req.body;
 

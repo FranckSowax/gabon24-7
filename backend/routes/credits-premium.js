@@ -3,6 +3,30 @@ const router = express.Router();
 const paymentService = require('../services/payment.service');
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const purchaseSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  packageId: z.string().min(1).max(200),
+  paymentMethod: z.string().max(50).optional().nullable(),
+  phoneNumber: z.string().max(40).optional().nullable(),
+  mobileOperator: z.string().max(50).optional().nullable(),
+}).passthrough();
+
+const mobileMoneyWebhookSchema = z.object({
+  transactionId: z.string().min(1).max(200),
+  status: z.string().min(1).max(50),
+  externalReference: z.string().max(200).optional().nullable(),
+}).passthrough();
+
+const consumePremiumSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  serviceName: z.string().max(100).optional().nullable(),
+  amount: z.coerce.number().int().positive('amount positif requis').max(1_000_000),
+  description: z.string().max(500).optional().nullable(),
+}).passthrough();
 
 // ============================================
 // 1. GET /api/credits-premium/packages - Liste des packages
@@ -27,7 +51,7 @@ router.get('/packages', async (req, res) => {
 // ============================================
 // 2. POST /api/credits-premium/purchase - Acheter un package (avec PaymentService)
 // ============================================
-router.post('/purchase', requireAuth, async (req, res) => {
+router.post('/purchase', requireAuth, validateBody(purchaseSchema), async (req, res) => {
   try {
     const { userId, packageId, paymentMethod, phoneNumber, mobileOperator } = req.body;
 
@@ -82,7 +106,7 @@ router.post('/purchase', requireAuth, async (req, res) => {
 // ============================================
 // 3. POST /api/credits-premium/webhook/mobile-money - Callback pour Mobile Money
 // ============================================
-router.post('/webhook/mobile-money', async (req, res) => {
+router.post('/webhook/mobile-money', validateBody(mobileMoneyWebhookSchema), async (req, res) => {
   try {
     const { transactionId, status, externalReference } = req.body;
     console.log('📩 Webhook Mobile Money reçu:', req.body);
@@ -129,7 +153,7 @@ router.get('/balance/:userId', requireAuth, async (req, res) => {
 // ============================================
 // 5. POST /api/credits-premium/consume - Consommer des crédits
 // ============================================
-router.post('/consume', requireAuth, async (req, res) => {
+router.post('/consume', requireAuth, validateBody(consumePremiumSchema), async (req, res) => {
   try {
     const { userId, serviceName, amount, description } = req.body;
 

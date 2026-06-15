@@ -8,9 +8,19 @@ const express = require('express');
 const router = express.Router();
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMA DE VALIDATION (.passthrough) ====================
+const tldrSchema = z.object({
+  title: z.string().max(1000).optional().nullable(),
+  content: z.string().max(100000).optional().nullable(),
+  summary: z.string().max(100000).optional().nullable(),
+  url: z.string().max(2000).optional().nullable(),
+}).passthrough();
 
 // POST /api/tldr - Générer un résumé TL;DR (GRATUIT)
-router.post('/', async (req, res) => {
+router.post('/', validateBody(tldrSchema), async (req, res) => {
   try {
     const { title, content, summary, url } = req.body;
 

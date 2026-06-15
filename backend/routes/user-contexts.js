@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMA DE VALIDATION (.passthrough) ====================
+const createContextSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  contextName: z.string().min(1, 'contextName requis').max(200),
+}).passthrough();
 
 // Données personnelles utilisateur → auth obligatoire
 router.use(requireAuth);
@@ -52,7 +60,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/user-contexts - Sauvegarder un nouveau contexte
-router.post('/', async (req, res) => {
+router.post('/', validateBody(createContextSchema), async (req, res) => {
   try {
     const {
       userId,

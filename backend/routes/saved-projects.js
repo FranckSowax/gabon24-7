@@ -7,6 +7,24 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
 const redisCache = require('../services/redis-cache.service');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const createProjectSchema = z.object({
+  secteurSelectionne: z.string().max(200).optional().nullable(),
+  budgetSelectionne: z.union([z.string().max(50), z.number()]).optional().nullable(),
+}).passthrough();
+
+const projectActionPlanSchema = z.object({
+  planSteps: z.array(z.any()).max(200).optional(),
+  creditsUsed: z.coerce.number().int().nonnegative().max(100000).optional().nullable(),
+}).passthrough();
+
+const updateStepsSchema = z.object({
+  planSteps: z.array(z.any()).max(200).optional(),
+  progressPercentage: z.coerce.number().min(0).max(100).optional().nullable(),
+}).passthrough();
 
 // Constantes de cache
 const CACHE_TTL = {
@@ -380,7 +398,7 @@ router.get('/:projectId/stats', requireAuth, async (req, res) => {
  * POST /api/saved-projects
  * Sauvegarde un nouveau projet
  */
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validateBody(createProjectSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const {
@@ -557,7 +575,7 @@ router.delete('/:projectId', requireAuth, async (req, res) => {
  * POST /api/saved-projects/:projectId/action-plan
  * Génère et sauvegarde le plan d'action d'un projet
  */
-router.post('/:projectId/action-plan', requireAuth, async (req, res) => {
+router.post('/:projectId/action-plan', requireAuth, validateBody(projectActionPlanSchema), async (req, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user.id; // Extrait du JWT
@@ -645,7 +663,7 @@ router.post('/:projectId/action-plan', requireAuth, async (req, res) => {
  * PATCH /api/saved-projects/:projectId/update-steps
  * Met à jour les étapes du plan d'action
  */
-router.patch('/:projectId/update-steps', requireAuth, async (req, res) => {
+router.patch('/:projectId/update-steps', requireAuth, validateBody(updateStepsSchema), async (req, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user.id;

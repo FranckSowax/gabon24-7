@@ -6,6 +6,27 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION (.passthrough) ====================
+const trackActionSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  userId: z.string().uuid('userId invalide'),
+  actionType: z.string().min(1).max(50),
+}).passthrough();
+
+const actionStatusSchema = z.object({
+  status: z.string().min(1).max(50),
+  referenceId: z.string().max(200).optional().nullable(),
+}).passthrough();
+
+const completeActionSchema = z.object({
+  projectId: z.string().uuid('projectId invalide'),
+  userId: z.string().uuid('userId invalide'),
+  actionType: z.string().min(1).max(50),
+  referenceId: z.string().max(200).optional().nullable(),
+}).passthrough();
 
 // Tracking actions user-bound → auth obligatoire
 router.use(requireAuth);
@@ -14,7 +35,7 @@ router.use(requireAuth);
  * POST /api/project-actions/track
  * Enregistre une action effectuée sur un projet
  */
-router.post('/track', async (req, res) => {
+router.post('/track', validateBody(trackActionSchema), async (req, res) => {
   try {
     const {
       projectId,
@@ -196,7 +217,7 @@ router.get('/user/:userId/summary', async (req, res) => {
  * PATCH /api/project-actions/:actionId/status
  * Met à jour le statut d'une action
  */
-router.patch('/:actionId/status', async (req, res) => {
+router.patch('/:actionId/status', validateBody(actionStatusSchema), async (req, res) => {
   try {
     const { actionId } = req.params;
     const { status, referenceId } = req.body;
@@ -243,7 +264,7 @@ router.patch('/:actionId/status', async (req, res) => {
  * POST /api/project-actions/complete
  * Marque une action comme completed
  */
-router.post('/complete', async (req, res) => {
+router.post('/complete', validateBody(completeActionSchema), async (req, res) => {
   try {
     const { projectId, userId, actionType, referenceId } = req.body;
 
