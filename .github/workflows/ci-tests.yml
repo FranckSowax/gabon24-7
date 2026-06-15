@@ -147,6 +147,27 @@ jobs:
         run: npm audit --audit-level=high || echo "::warning::Frontend has high-severity npm vulnerabilities"
         continue-on-error: true
 
+  # Secret Scanning (gitleaks) — bloque le merge si un secret est détecté
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # Binaire gitleaks (gratuit, sans licence — contrairement à l'action v2 pour repos privés).
+      # --no-git scanne l'arbre de fichiers ACTUEL (pas l'historique) : bloque les nouveaux
+      # secrets sans faire échouer la CI sur les clés déjà présentes dans les anciens commits.
+      # Un scan d'historique complet sera fait une fois après la rotation des clés (M1-1).
+      - name: 🔎 Run gitleaks (current tree)
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect --source . --no-git --redact --verbose --exit-code 1
+
   # Dependency Check
   dependency-review:
     name: Dependency Review

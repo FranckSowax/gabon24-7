@@ -222,31 +222,21 @@ async function sendInteractiveMessage(to, title, summary, originalUrl, opportuni
 }
 
 /**
- * Générer 3 opportunités business à partir du titre et résumé d'un article
- * Utilise Kimi K2.5 (Moonshot AI) pour proposer des idées d'entreprise liées à la problématique
+ * Générer 3 opportunités business à partir du titre et résumé d'un article.
+ * Passe par geminiService.generateJSON qui tente OpenAI (gpt-4.1-mini) puis
+ * bascule automatiquement sur Gemini si OpenAI échoue (ex. quota 429).
+ * Retourne null en cas d'échec total — l'appelant continue alors l'envoi
+ * WhatsApp SANS le bloc opportunités (cf. régression du 2026-06-02 où le
+ * quota OpenAI bloquait toute la diffusion).
  */
 async function generateOpportunities(title, summary) {
   try {
-    const OpenAI = require('openai');
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.warn('OPENAI_API_KEY manquante - opportunités non générées');
-      return null;
-    }
+    const geminiService = require('./gemini-service');
 
-    const client = new OpenAI({ apiKey });
-    const response = await client.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      temperature: 0.6,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: 'Tu es un expert en identification d\'opportunités d\'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.'
-        },
-        {
-          role: 'user',
-          content: `Contexte article d'actualité au Gabon :
+    const systemPrompt =
+      "Tu es un expert en identification d'opportunités d'affaires au Gabon. Réponds UNIQUEMENT en JSON valide.";
+
+    const prompt = `Contexte article d'actualité au Gabon :
 Titre : ${title}
 Résumé : ${summary}
 
@@ -255,23 +245,22 @@ En te basant sur la problématique soulevée par cet article, propose exactement
 Réponds en JSON strict :
 {
   "opportunities": ["Idée 1 en une phrase courte et percutante", "Idée 2 en une phrase courte et percutante", "Idée 3 en une phrase courte et percutante"]
-}`
-        }
-      ]
+}`;
+
+    const result = await geminiService.generateJSON(prompt, {
+      systemPrompt,
+      temperature: 0.6,
     });
 
-    const content = response.choices[0].message.content;
-    console.log('🔍 GPT-4.1-mini opportunities response:', content.substring(0, 300));
-
-    const result = JSON.parse(content);
-    if (result && result.opportunities && result.opportunities.length >= 3) {
-      console.log('✅ 3 opportunités générées avec succès');
+    if (result && Array.isArray(result.opportunities) && result.opportunities.length >= 3) {
+      console.log('✅ 3 opportunités générées (OpenAI→Gemini fallback)');
       return result.opportunities.slice(0, 3);
     }
     console.warn('⚠️ Réponse invalide - pas assez d\'opportunités:', result);
     return null;
   } catch (error) {
-    console.error('❌ Erreur génération opportunités WhatsApp:', error.message);
+    // Échec des DEUX providers : on log mais on ne bloque pas la diffusion WhatsApp.
+    console.error('❌ Génération opportunités indisponible (OpenAI+Gemini KO):', error.message);
     return null;
   }
 }

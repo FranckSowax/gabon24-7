@@ -268,6 +268,13 @@ app.use('/api/generate', aiLimiter);                       // IA: 50/15min par u
 app.use('/api/analyze', aiLimiter);                        // IA: 50/15min par user
 app.use('/api/chat', aiLimiter);                           // IA: 50/15min par user
 app.use('/api/project-chat', aiLimiter);                   // IA: 50/15min par user
+app.use('/api/action-plans', aiLimiter);                   // IA: génération plans d'action
+app.use('/api/opportunities', aiLimiter);                  // IA: analyse d'opportunités
+app.use('/api/bceg', aiLimiter);                           // IA: mentor BCEG (chatbot Gemini)
+app.use('/api/skill-test', aiLimiter);                     // IA: tests de compétences
+app.use('/api/training', aiLimiter);                       // IA: génération de formations
+app.use('/api/generate-letter', aiLimiter);               // IA: génération de courriers
+app.use('/api/tldr', aiLimiter);                           // IA: résumés TL;DR
 app.use('/api/auth', authLimiter);                         // Auth: 10/15min par IP
 app.use('/api/payments', paymentLimiter);                  // Paiements: 20/heure par user
 app.use('/api/credits-premium', paymentLimiter);           // Paiements: 20/heure par user
