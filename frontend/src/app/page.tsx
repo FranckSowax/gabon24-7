@@ -28,7 +28,7 @@ import WeatherWidget from '@/components/widgets/WeatherWidget'
 import MultiQuestionPollWidget from '@/components/widgets/MultiQuestionPollWidget'
 import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
-import FootballScores from '@/components/widgets/FootballScores'
+import WorldCupLive from '@/components/widgets/WorldCupLive'
 import HeroSlider from '@/components/hero/HeroSlider'
 import { supabase } from '@/lib/supabase'
 // Force rebuild for media_name support - v4.9 (Fixed generate-project-proposals function)
@@ -1284,7 +1284,7 @@ export default function HomePage() {
                       </LazyMount>
                     </div>
                     <div className="w-[82vw] max-w-[340px] h-[500px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><FootballScores className="h-[500px]" /></LazyMount>
+                      <LazyMount className="w-full h-full"><WorldCupLive className="h-[500px]" /></LazyMount>
                     </div>
                   </div>
                 </div>
@@ -1869,7 +1869,7 @@ export default function HomePage() {
         {/* Timestamp: 2025-10-28 - Widget Football Scores en dessous du Journal TV */}
         <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
           <LazyMount><YouTubeWidget /></LazyMount>
-          <LazyMount><FootballScores /></LazyMount>
+          <LazyMount><WorldCupLive /></LazyMount>
           <LazyMount><UpcomingEvents /></LazyMount>
         </aside>
       </div>

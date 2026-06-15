@@ -398,6 +398,7 @@ app.use('/api', youtubeRoutes);
 // ==================== ROUTES MODULAIRES ====================
 // Import des routes extraites de server.js pour meilleure maintenabilité
 const footballRoutes = require('./routes/football');
+const worldcupRoutes = require('./routes/worldcup');
 const pollsRoutes = require('./routes/polls');
 const eventsRoutes = require('./routes/events');
 const uploadsRoutes = require('./routes/uploads');
@@ -411,6 +412,7 @@ console.log('📦 Chargement des routes modulaires...');
 // Enregistrement des routes modulaires (WhatsApp déjà enregistré plus haut)
 app.use('/api/auth', authRoutes);
 app.use('/api/football', cacheControl('public', 60, 300), footballRoutes);  // Scores: 1min cache
+app.use('/api/worldcup', cacheControl('public', 45, 120), worldcupRoutes);  // Coupe du Monde 2026: 45s
 app.use('/api/polls', cacheControl('public', 30, 120), pollsRoutes);        // Sondages: 30s
 app.use('/api/events', cacheControl('public', 300, 900), eventsRoutes);     // Événements: 5min
 app.use('/api/admin', uploadsRoutes);
