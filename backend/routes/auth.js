@@ -9,6 +9,28 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const verifyTurnstileSchema = z.object({
+  token: z.string().min(1, 'token requis').max(4096),
+});
+
+const createProfileSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  email: z.string().email('email invalide').max(255),
+  fullName: z.string().max(200).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
+  whatsappNumber: z.string().max(40).optional().nullable(),
+  subscriptionType: z.string().max(50).optional().nullable(),
+});
+
+const uploadAvatarSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  imageData: z.string().min(1, 'imageData requis').max(15_000_000), // base64, ~10MB max
+  fileName: z.string().min(1).max(255).optional().nullable(),
+});
 
 // Clé secrète Turnstile (obligatoire en production)
 const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
@@ -64,7 +86,7 @@ function authRateLimit(req, res, next) {
  * POST /api/auth/verify-turnstile
  * Vérifie un token Turnstile avec l'API Cloudflare
  */
-router.post('/verify-turnstile', authRateLimit, async (req, res) => {
+router.post('/verify-turnstile', authRateLimit, validateBody(verifyTurnstileSchema), async (req, res) => {
   try {
     const { token } = req.body;
 
@@ -125,7 +147,7 @@ router.post('/verify-turnstile', authRateLimit, async (req, res) => {
  * Crée le profil utilisateur après inscription Supabase Auth
  * Utilise service_role pour bypass RLS
  */
-router.post('/create-profile', authRateLimit, async (req, res) => {
+router.post('/create-profile', authRateLimit, validateBody(createProfileSchema), async (req, res) => {
   try {
     const { userId, email, fullName, phone, whatsappNumber, subscriptionType } = req.body;
 
@@ -223,7 +245,7 @@ router.post('/create-profile', authRateLimit, async (req, res) => {
  * POST /api/auth/upload-avatar
  * Upload d'avatar utilisateur via le backend (bypass RLS)
  */
-router.post('/upload-avatar', async (req, res) => {
+router.post('/upload-avatar', validateBody(uploadAvatarSchema), async (req, res) => {
   try {
     const { userId, imageData, fileName } = req.body;
 

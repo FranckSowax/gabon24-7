@@ -3,8 +3,35 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const notificationHelper = require('../utils/notificationHelper');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
 
 const supabase = supabaseService.supabase;
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const newUserNotifSchema = z.object({
+  newUserId: z.string().uuid('newUserId invalide'),
+  newUserEmail: z.string().email('newUserEmail invalide').max(255),
+  newUserName: z.string().max(200).optional().nullable(),
+});
+
+const broadcastSchema = z.object({
+  adminId: z.string().min(1).max(100).optional().nullable(),
+  title: z.string().min(1, 'title requis').max(200),
+  message: z.string().min(1, 'message requis').max(5000),
+  priority: z.string().max(20).optional().default('normal'),
+  targetGroup: z.string().max(50).optional().default('all'),
+  actionUrl: z.string().max(2000).optional().nullable(),
+  actionLabel: z.string().max(100).optional().nullable(),
+});
+
+const systemUpdateSchema = z.object({
+  adminId: z.string().min(1).max(100).optional().nullable(),
+  updateTitle: z.string().min(1, 'updateTitle requis').max(200),
+  updateMessage: z.string().min(1, 'updateMessage requis').max(5000),
+  version: z.string().max(50).optional().nullable(),
+  features: z.array(z.string().max(500)).max(100).optional().default([]),
+});
 
 // Toutes les routes admin-notifications requièrent une authentification minimum
 // (POST /new-user est appelé après signup, donc requireAuth suffit ;
@@ -16,7 +43,7 @@ router.use(requireAuth);
  * Notifier les admins d'un nouvel utilisateur
  * (À appeler depuis le frontend après inscription)
  */
-router.post('/new-user', async (req, res) => {
+router.post('/new-user', validateBody(newUserNotifSchema), async (req, res) => {
   try {
     const { newUserId, newUserEmail, newUserName } = req.body;
 
@@ -86,7 +113,7 @@ router.post('/new-user', async (req, res) => {
  * Envoyer un message à tous les utilisateurs ou un groupe
  * (Réservé aux admins)
  */
-router.post('/broadcast', requireAdmin, async (req, res) => {
+router.post('/broadcast', requireAdmin, validateBody(broadcastSchema), async (req, res) => {
   try {
     const { 
       adminId, 
@@ -195,7 +222,7 @@ router.post('/broadcast', requireAdmin, async (req, res) => {
  * POST /api/admin-notifications/system-update
  * Notifier tous les utilisateurs d'une mise à jour système
  */
-router.post('/system-update', requireAdmin, async (req, res) => {
+router.post('/system-update', requireAdmin, validateBody(systemUpdateSchema), async (req, res) => {
   try {
     const { 
       adminId,

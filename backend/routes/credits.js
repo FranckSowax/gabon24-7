@@ -7,9 +7,42 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const checkBalanceSchema = z.object({
+  requiredCredits: z.coerce.number().int().nonnegative().max(1_000_000).optional().default(0),
+});
+
+const consumeCreditsSchema = z.object({
+  serviceName: z.string().min(1).max(100).optional().nullable(),
+  amount: z.coerce.number().int().positive('amount doit être positif').max(1_000_000),
+  referenceId: z.string().max(200).optional().nullable(),
+  openaiUsage: z.any().optional().nullable(),
+});
+
+const addCreditsSchema = z.object({
+  amount: z.coerce.number().int().positive('amount positif requis').max(1_000_000),
+  source: z.string().max(100).optional().default('manual'),
+  referenceId: z.string().max(200).optional().nullable(),
+});
+
+const buyPackageSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
+  packageId: z.string().max(200),
+  paymentMethod: z.string().max(50).optional().nullable(),
+  paymentReference: z.string().max(200).optional().nullable(),
+});
+
+const manageCreditsSchema = z.object({
+  action: z.string().min(1).max(50),
+  userId: z.string().uuid('userId invalide'),
+  requiredCredits: z.coerce.number().int().nonnegative().max(1_000_000).optional().default(0),
+});
 
 // POST /api/credits/check-balance - Vérifier solde
-router.post('/check-balance', requireAuth, async (req, res) => {
+router.post('/check-balance', requireAuth, validateBody(checkBalanceSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const { requiredCredits = 0 } = req.body;
@@ -38,7 +71,7 @@ router.post('/check-balance', requireAuth, async (req, res) => {
 });
 
 // POST /api/credits/consume - Consommer des crédits
-router.post('/consume', requireAuth, async (req, res) => {
+router.post('/consume', requireAuth, validateBody(consumeCreditsSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const {
@@ -107,7 +140,7 @@ router.post('/consume', requireAuth, async (req, res) => {
 });
 
 // POST /api/credits/add - Ajouter des crédits
-router.post('/add', requireAuth, async (req, res) => {
+router.post('/add', requireAuth, validateBody(addCreditsSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const {
@@ -282,7 +315,7 @@ router.get('/packages', async (req, res) => {
 });
 
 // POST /api/credits/packages - Acheter un package de crédits
-router.post('/packages', requireAuth, async (req, res) => {
+router.post('/packages', requireAuth, validateBody(buyPackageSchema), async (req, res) => {
   try {
     const userId = req.user?.id || req.body.userId;
     const { packageId, paymentMethod, paymentReference } = req.body;
@@ -324,7 +357,7 @@ router.post('/packages', requireAuth, async (req, res) => {
 });
 
 // POST /api/credits/manage - Gérer les crédits (check_balance)
-router.post('/manage', async (req, res) => {
+router.post('/manage', validateBody(manageCreditsSchema), async (req, res) => {
   try {
     const { action, userId, requiredCredits } = req.body;
 

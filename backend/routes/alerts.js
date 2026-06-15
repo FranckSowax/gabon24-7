@@ -7,6 +7,25 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const createAlertSchema = z.object({
+  name: z.string().min(1, 'name requis').max(200),
+  keywords: z.array(z.string().min(1).max(100)).max(50).optional().default([]),
+  notify_email: z.boolean().optional().default(false),
+  notify_push: z.boolean().optional().default(false),
+});
+
+// PUT/PATCH : mise à jour partielle (tous champs optionnels)
+const updateAlertSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  keywords: z.array(z.string().min(1).max(100)).max(50).optional(),
+  notify_email: z.boolean().optional(),
+  notify_push: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
 
 // POST /api/alerts/process - Traiter les alertes (matching articles)
 router.post('/process', async (req, res) => {
@@ -534,7 +553,7 @@ router.get('/matches/:alertId', async (req, res) => {
 });
 
 // POST /api/alerts/create - Créer une alerte
-router.post('/create', requireAuth, async (req, res) => {
+router.post('/create', requireAuth, validateBody(createAlertSchema), async (req, res) => {
   try {
     const userId = req.user.id; // Extrait du JWT
     const {
@@ -592,7 +611,7 @@ router.post('/create', requireAuth, async (req, res) => {
 });
 
 // PUT /api/alerts/:alertId - Mettre à jour une alerte
-router.put('/:alertId', async (req, res) => {
+router.put('/:alertId', validateBody(updateAlertSchema), async (req, res) => {
   try {
     const { alertId } = req.params;
     const {
@@ -633,7 +652,7 @@ router.put('/:alertId', async (req, res) => {
 });
 
 // PATCH /api/alerts/:alertId - Mettre à jour partiellement une alerte (compatible frontend)
-router.patch('/:alertId', async (req, res) => {
+router.patch('/:alertId', validateBody(updateAlertSchema), async (req, res) => {
   try {
     const { alertId } = req.params;
     const {

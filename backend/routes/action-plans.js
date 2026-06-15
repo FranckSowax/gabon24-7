@@ -6,9 +6,36 @@ const aiConfigService = require('../services/ai-config-service');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
 const { requireAuth } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
 
 // Plans d'action user-bound + génération IA → auth obligatoire
 router.use(requireAuth);
+
+// ==================== SCHÉMAS DE VALIDATION ====================
+const generatePlanSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  articleId: z.string().max(200).optional().nullable(),
+  proposal: z.string().min(1, 'proposal requis').max(10000),
+  userContext: z.any().optional().nullable(),
+});
+
+const toggleItemSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+});
+
+const itemCommentSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  content: z.string().min(1, 'content requis').max(5000),
+});
+
+const itemAttachmentSchema = z.object({
+  userId: z.string().uuid('userId invalide'),
+  fileName: z.string().min(1).max(255),
+  fileUrl: z.string().url('fileUrl invalide').max(2000),
+  fileType: z.string().max(100).optional().nullable(),
+  fileSize: z.number().int().nonnegative().max(50 * 1024 * 1024).optional().nullable(),
+});
 
 // Instanciation conditionnelle de OpenAI GPT-4.1-mini
 let openai = null;
@@ -24,7 +51,7 @@ if (process.env.OPENAI_API_KEY) {
  * POST /api/action-plans/generate
  * Génère un plan d'action IA en 10 points à partir d'une proposition business
  */
-router.post('/generate', async (req, res) => {
+router.post('/generate', validateBody(generatePlanSchema), async (req, res) => {
   try {
     // Vérifier si OpenAI est configuré
     if (!openai) {
@@ -291,7 +318,7 @@ router.get('/:id', async (req, res) => {
  * PUT /api/action-plans/:id/items/:itemId/toggle
  * Marque une action comme complétée/non complétée
  */
-router.put('/:id/items/:itemId/toggle', async (req, res) => {
+router.put('/:id/items/:itemId/toggle', validateBody(toggleItemSchema), async (req, res) => {
   try {
     const { itemId } = req.params;
     const { userId } = req.body;
@@ -345,7 +372,7 @@ router.put('/:id/items/:itemId/toggle', async (req, res) => {
  * POST /api/action-plans/:id/items/:itemId/comments
  * Ajoute un commentaire à une action
  */
-router.post('/:id/items/:itemId/comments', async (req, res) => {
+router.post('/:id/items/:itemId/comments', validateBody(itemCommentSchema), async (req, res) => {
   try {
     const { itemId } = req.params;
     const { userId, content } = req.body;
@@ -387,7 +414,7 @@ router.post('/:id/items/:itemId/comments', async (req, res) => {
  * POST /api/action-plans/:id/items/:itemId/attachments
  * Ajoute une pièce jointe à une action
  */
-router.post('/:id/items/:itemId/attachments', async (req, res) => {
+router.post('/:id/items/:itemId/attachments', validateBody(itemAttachmentSchema), async (req, res) => {
   try {
     const { itemId } = req.params;
     const { userId, fileName, fileUrl, fileType, fileSize } = req.body;
