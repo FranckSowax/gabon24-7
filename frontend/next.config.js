@@ -39,4 +39,25 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Wrapping conditionnel Sentry : si @sentry/nextjs est installé ET SENTRY_DSN défini,
+// on active l'instrumentation (source maps upload, edge/server/client runtimes).
+// Sinon, on exporte la config inchangée — pas de hard dependency, pas de crash build.
+let exportedConfig = nextConfig;
+try {
+  if (process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    const { withSentryConfig } = require('@sentry/nextjs');
+    exportedConfig = withSentryConfig(nextConfig, {
+      silent: !process.env.CI,
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      tunnelRoute: '/monitoring-tunnel', // contourne les ad-blockers (optionnel)
+      hideSourceMaps: true,
+      disableLogger: true,
+    });
+  }
+} catch (_err) {
+  // @sentry/nextjs non installé — on garde la config standard.
+}
+
+module.exports = exportedConfig;

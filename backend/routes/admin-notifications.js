@@ -86,7 +86,7 @@ router.post('/new-user', async (req, res) => {
  * Envoyer un message à tous les utilisateurs ou un groupe
  * (Réservé aux admins)
  */
-router.post('/broadcast', async (req, res) => {
+router.post('/broadcast', requireAdmin, async (req, res) => {
   try {
     const { 
       adminId, 
@@ -195,7 +195,7 @@ router.post('/broadcast', async (req, res) => {
  * POST /api/admin-notifications/system-update
  * Notifier tous les utilisateurs d'une mise à jour système
  */
-router.post('/system-update', async (req, res) => {
+router.post('/system-update', requireAdmin, async (req, res) => {
   try {
     const { 
       adminId,
@@ -295,7 +295,7 @@ router.post('/system-update', async (req, res) => {
  * GET /api/admin-notifications/stats
  * Statistiques des notifications pour les admins
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireAdmin, async (req, res) => {
   try {
     const { adminId } = req.query;
 

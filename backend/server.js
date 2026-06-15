@@ -1,3 +1,6 @@
+// Sentry doit être initialisé AVANT toute autre instrumentation Express.
+const sentry = require('./lib/sentry');
+
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -11,6 +14,7 @@ const supabaseService = require('./supabase-config');
 const { formatTimeAgo, formatFullDate, getTimeRangeTimestamps } = require('./time-utils');
 const cron = require('node-cron');
 const redisCache = require('./services/redis-cache.service');
+const { errorHandler, notFoundHandler } = require('./middleware/error-handler');
 
 /**
  * 📰 MAPPING COMPLET DES SOURCES MÉDIAS
@@ -197,6 +201,9 @@ const corsOptions = {
 };
 
 // CORS doit être AVANT helmet pour que les preflight OPTIONS fonctionnent
+// Sentry request handler — doit être en premier dans la chaîne pour tracer toutes les requêtes.
+app.use(sentry.requestHandler);
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
@@ -305,20 +312,33 @@ app.get('/', (req, res) => {
   });
 });
 
-// Route de santé
+// Route de santé — payload public minimal (status only) pour ne pas leak la version/deployment
 app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
+});
+
+// Health détaillé (interne) : exige le header X-Internal-Token configuré côté infra
+app.get('/health/detailed', (req, res) => {
+  const expected = process.env.INTERNAL_HEALTH_TOKEN;
+  if (!expected || req.get('X-Internal-Token') !== expected) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.status(200).json({
     status: 'OK',
     service: 'Gabon Insight API',
     version: '2.0.0-ai',
     timestamp: new Date().toISOString(),
-    deployment_id: 'deploy-check-12345',
     redis: redisCache.isAvailable() ? 'connected' : 'disconnected'
   });
 });
 
 // Route de vérification de déploiement (Si 404, c'est que le code n'est pas à jour)
+// Verrouillée par le même token interne pour éviter le fingerprinting public.
 app.get('/api/deployment-check', (req, res) => {
+  const expected = process.env.INTERNAL_HEALTH_TOKEN;
+  if (!expected || req.get('X-Internal-Token') !== expected) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.json({ success: true, message: 'New code is running!', time: new Date().toISOString() });
 });
 
@@ -326,11 +346,6 @@ app.get('/api/deployment-check', (req, res) => {
 try {
   console.log('🔄 Tentative chargement routes WhatsApp...');
   const whatsappRoutes = require('./routes/whatsapp');
-  
-  // Route Debug Inline
-  app.get('/api/whatsapp/status-debug', (req, res) => {
-    res.json({ status: 'connected', source: 'inline-debug', time: new Date() });
-  });
 
   // Montage du routeur
   app.use('/api/whatsapp', whatsappRoutes);
@@ -6037,3 +6052,11 @@ console.log('\n📡 Initialisation du processeur RSS...');
 services.rssAggregator.start()
   .then(() => console.log('✅ Processeur RSS démarré avec succès'))
   .catch(err => console.error('❌ Erreur démarrage RSS:', err));
+
+// ============================================
+// 404 + ERROR HANDLERS (doivent être les TOUT DERNIERS middlewares)
+// ============================================
+app.use(notFoundHandler);
+app.use(sentry.errorHandler); // capture Sentry avant le handler custom
+app.use(errorHandler);
+
