@@ -28,6 +28,7 @@ import ActionPlanChecklistModal from '@/components/business/ActionPlanChecklistM
 import ActionPlanGenerator from '@/components/business/ActionPlanGenerator'
 import RelatedArticles from '@/components/business/RelatedArticles'
 import DocumentViewer from '@/components/business/DocumentViewer'
+import { exportDocumentAsWord, exportDocumentAsPdf } from '@/utils/documentExport'
 import TrainingSummaryModal from '@/components/training/TrainingSummaryModal'
 import ProjectCollaboration from '@/components/ProjectCollaboration'
 import AIActionModal from '@/components/business/AIActionModal'
@@ -426,6 +427,32 @@ export default function MesProjetsPage() {
   const [actionPlanModal, setActionPlanModal] = useState<{ isOpen: boolean, stepNumber: number }>({ isOpen: false, stepNumber: 1 })
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false)
   const [selectedDocumentToView, setSelectedDocumentToView] = useState<any | null>(null)
+  // Édition du document affiché dans la modale (selectedDocument)
+  const [editingDoc, setEditingDoc] = useState(false)
+  const [docDraftContent, setDocDraftContent] = useState('')
+  const [docDraftTitle, setDocDraftTitle] = useState('')
+  const [savingDoc, setSavingDoc] = useState(false)
+  const handleSaveDocument = async () => {
+    if (!selectedDocument) return
+    setSavingDoc(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const res = await fetch(`${apiUrl}/api/project-documents/${selectedDocument.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: docDraftContent, title: docDraftTitle }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`)
+      setSelectedDocument({ ...selectedDocument, content: docDraftContent, title: docDraftTitle })
+      setEditingDoc(false)
+      if (selectedProject?.id) hookFetchDocuments(selectedProject.id)
+    } catch (e: any) {
+      alert("Échec de l'enregistrement : " + (e?.message || 'erreur inconnue'))
+    } finally {
+      setSavingDoc(false)
+    }
+  }
   // États pour génération locale test et formation
   const [isGeneratingSkillTest, setIsGeneratingSkillTest] = useState(false)
   const [generatedSkillTest, setGeneratedSkillTest] = useState<any | null>(null)
@@ -4492,7 +4519,16 @@ export default function MesProjetsPage() {
                       {getDocumentIcon(selectedDocument.document_type || selectedDocument.type || 'default')}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900">{selectedDocument.title}</h2>
+                      {editingDoc ? (
+                        <input
+                          value={docDraftTitle}
+                          onChange={(e) => setDocDraftTitle(e.target.value)}
+                          className="w-full text-2xl font-bold text-slate-900 bg-[#697357]/5 border border-[#697357]/30 rounded-lg px-2 py-1 focus:outline-none focus:border-[#697357]"
+                          placeholder="Titre du document"
+                        />
+                      ) : (
+                        <h2 className="text-2xl font-bold text-slate-900">{selectedDocument.title}</h2>
+                      )}
                       <p className="text-sm text-slate-500">{formatDate(selectedDocument.created_at)}</p>
                     </div>
                   </div>
@@ -4501,6 +4537,7 @@ export default function MesProjetsPage() {
                       setSelectedDocument(null)
                       setShowContextForm(false)
                       setNewContext('')
+                      setEditingDoc(false)
                     }}
                     className="text-slate-500 hover:text-slate-900 transition-colors"
                   >
@@ -4510,9 +4547,59 @@ export default function MesProjetsPage() {
                   </button>
                 </div>
 
+                {/* Barre d'actions : édition & export */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {editingDoc ? (
+                    <>
+                      <button
+                        onClick={handleSaveDocument}
+                        disabled={savingDoc}
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2 bg-[#697357] hover:bg-[#4d553e] text-white rounded-lg font-semibold transition-colors disabled:opacity-60"
+                      >
+                        💾 {savingDoc ? 'Enregistrement…' : 'Enregistrer'}
+                      </button>
+                      <button
+                        onClick={() => setEditingDoc(false)}
+                        disabled={savingDoc}
+                        className="flex-1 min-w-[110px] px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-semibold transition-colors"
+                      >
+                        Annuler
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => { setDocDraftContent(selectedDocument.content || ''); setDocDraftTitle(selectedDocument.title || ''); setEditingDoc(true) }}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-[#697357] hover:bg-[#4d553e] text-white rounded-lg font-semibold transition-colors"
+                      >
+                        ✏️ Éditer
+                      </button>
+                      <button
+                        onClick={() => exportDocumentAsPdf(selectedDocument.title, selectedDocument.content, selectedDocument.created_at)}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        📄 PDF
+                      </button>
+                      <button
+                        onClick={() => exportDocumentAsWord(selectedDocument.title, selectedDocument.content, selectedDocument.created_at)}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        📝 Word (.doc)
+                      </button>
+                    </>
+                  )}
+                </div>
+
                 {/* Content */}
                 <div className="prose max-w-none mb-6">
-                  {(selectedDocument.document_type === 'custom-training' || selectedDocument.type === 'custom-training') ? (
+                  {editingDoc ? (
+                    <textarea
+                      value={docDraftContent}
+                      onChange={(e) => setDocDraftContent(e.target.value)}
+                      className="w-full min-h-[45vh] bg-white text-slate-900 border border-[#697357]/30 rounded-xl p-4 font-mono text-sm leading-relaxed focus:outline-none focus:border-[#697357] resize-y"
+                      spellCheck={false}
+                    />
+                  ) : (selectedDocument.document_type === 'custom-training' || selectedDocument.type === 'custom-training') ? (
                     /* Affichage spécial pour les formations */
                     <div className="space-y-4">
                       {/* Bouton Reprendre la formation en haut */}
