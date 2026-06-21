@@ -110,13 +110,14 @@ router.get('/:documentId', async (req, res) => {
 router.put('/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
-    const { content, contextAdded, promptUsed } = req.body;
+    const { content, title, contextAdded, promptUsed } = req.body;
 
     const updateData = {
       updated_at: new Date().toISOString()
     };
 
     if (content) updateData.content = content;
+    if (title) updateData.title = title;
     if (contextAdded) updateData.context_added = contextAdded;
     if (promptUsed) updateData.prompt_used = promptUsed;
 

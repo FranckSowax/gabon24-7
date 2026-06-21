@@ -4815,6 +4815,11 @@ export default function MesProjetsPage() {
             setSelectedDocumentToView(null)
           }}
           document={selectedDocumentToView}
+          onSaved={(updated) => {
+            setSelectedDocumentToView(updated)
+            const pid = updated?.project_id || selectedProject?.id
+            if (pid) hookFetchDocuments(pid)
+          }}
         />
 
         {/* Modal Formation sur mesure */}
