@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BCEG × Gabon Insight — Note à la Direction</title>
+<style>
+  :root{
+    --green:#697357; --dark:#4d553e; --sage:#8a9576; --gold:#f59e0b;
+    --bg:#f5f7f3; --card:#ffffff; --ink:#2b3327; --muted:#6b7363;
+    --line:#e3e8dd;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .section{padding:54px 0;border-bottom:1px solid var(--line)}
+  h1,h2,h3{color:var(--dark);line-height:1.2}
+  h2{font-size:clamp(22px,3.4vw,30px);margin-bottom:6px}
+  .kicker{display:inline-block;font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;
+    color:var(--green);background:rgba(105,115,87,.1);padding:5px 12px;border-radius:99px;margin-bottom:14px}
+  .lead{color:var(--muted);font-size:17px;max-width:760px}
+  /* HERO */
+  .hero{background:linear-gradient(135deg,var(--green),var(--dark));color:#fff;padding:64px 0 56px}
+  .hero .kicker{color:#fff;background:rgba(255,255,255,.18)}
+  .hero h1{color:#fff;font-size:clamp(28px,5vw,46px);margin-bottom:14px}
+  .hero p{color:rgba(255,255,255,.92);font-size:18px;max-width:720px}
+  .badges{display:flex;gap:14px;align-items:center;margin-top:26px;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:10px 16px;border-radius:12px;
+    font-weight:700;font-size:14px;color:#fff}
+  .badge b{color:var(--gold)}
+  /* GRID cards */
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card h3{font-size:18px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+  .card p{color:var(--muted);font-size:15px}
+  .ico{width:40px;height:40px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--green),var(--dark));color:#fff;font-size:20px;flex:0 0 auto}
+  /* KPI */
+  .kpi{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .kpi .num{font-size:30px;font-weight:800;color:var(--green)}
+  .kpi .lbl{font-size:13px;color:var(--muted);margin-top:2px}
+  /* WORKFLOW */
+  .flow{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:10px}
+  @media(max-width:860px){.flow{grid-template-columns:1fr 1fr}}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;position:relative}
+  .step .n{width:28px;height:28px;border-radius:99px;background:var(--green);color:#fff;font-weight:800;
+    display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:10px}
+  .step.win .n{background:var(--gold)}
+  .step h4{font-size:14px;color:var(--dark);margin-bottom:4px}
+  .step p{font-size:12.5px;color:var(--muted)}
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  th,td{padding:12px 14px;text-align:left;font-size:14.5px;border-bottom:1px solid var(--line)}
+  th{background:#eef2e9;color:var(--dark);font-weight:700}
+  td.k{color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .scen-pess{color:#a05a2c;font-weight:700}
+  .scen-norm{color:var(--green);font-weight:700}
+  .scen-opt{color:#2f7d3a;font-weight:800}
+  .pill{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:800}
+  .pill.pess{background:#fbeadb;color:#a05a2c}
+  .pill.norm{background:#eaf0e3;color:var(--green)}
+  .pill.opt{background:#e2f3e6;color:#2f7d3a}
+  .note{background:#fff8ec;border:1px solid #f3e2bf;border-radius:12px;padding:14px 16px;font-size:13.5px;color:#7a5a1e;margin-top:16px}
+  .save{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .save:last-child{border-bottom:none}
+  .save .amt{font-weight:800;color:var(--green)}
+  .total{background:linear-gradient(135deg,var(--green),var(--dark));color:#fff;border-radius:14px;padding:18px 20px;margin-top:14px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .total .amt{font-size:26px;font-weight:800;color:var(--gold)}
+  .foot{padding:34px 0;text-align:center;color:var(--muted);font-size:13px}
+  .cta{background:var(--dark);color:#fff;border-radius:18px;padding:30px;text-align:center}
+  .cta h2{color:#fff}
+  .cta p{color:rgba(255,255,255,.9);max-width:640px;margin:8px auto 0}
+  ul.clean{list-style:none;margin-top:8px}
+  ul.clean li{padding-left:24px;position:relative;color:var(--muted);font-size:15px;margin:6px 0}
+  ul.clean li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}
+  @media print{.section{padding:26px 0}body{background:#fff}.hero{padding:34px 0}}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Note de partenariat — Confidentiel</span>
+    <h1>BCEG × Gabon Insight</h1>
+    <p>Un pipeline de dossiers de financement <b>pré-qualifiés</b>, des clients PME formés et bancables,
+       et des coûts d'acquisition et d'instruction <b>fortement réduits</b> — au service de la mission BCEG :
+       financer l'entrepreneuriat gabonais.</p>
+    <div class="badges">
+      <div class="badge">Plateforme développée par <b>Studia Academy</b></div>
+      <div class="badge">Dossiers notés par le <b>BCEG Score™</b></div>
+      <div class="badge">Commission <b>au succès</b> uniquement</div>
+    </div>
+  </div>
+</header>
+
+<!-- POURQUOI -->
+<section class="section">
+  <div class="wrap">
+    <span class="kicker">Pourquoi c'est stratégique pour la BCEG</span>
+    <h2>5 intérêts directs pour la banque</h2>
+    <p class="lead">Le partenariat transforme une dépense marketing en un <b>canal d'origination mesurable</b> :
+       chaque franc investi alimente un flux de dossiers déjà structurés, notés et accompagnés.</p>
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card"><h3><span class="ico">🎯</span> Pipeline pré-qualifié</h3>
+        <p>Les dossiers arrivent déjà <b>structurés</b> (business plan, pièces, plan d'action) et <b>notés par le BCEG Score™</b>.
+           La banque n'instruit plus que des projets bancables → moins de rejets, moins de temps perdu.</p></div>
+      <div class="card"><h3><span class="ico">💸</span> Coût d'acquisition divisé</h3>
+        <p>La campagne + la formation génèrent un <b>lead pré-éduqué</b> qui se présente avec un projet complet.
+           Le coût d'acquisition d'un client PME bancable chute fortement vs prospection classique.</p></div>
+      <div class="card"><h3><span class="ico">🛡️</span> Risque maîtrisé</h3>
+        <p>Entrepreneurs <b>formés</b> + scoring amont + capacité de remboursement vérifiée
+           = meilleure qualité de portefeuille et taux de défaut attendu plus faible.</p></div>
+      <div class="card"><h3><span class="ico">🤝</span> Intérêts alignés</h3>
+        <p>Gabon Insight n'est rémunéré <b>qu'au succès</b> (dossier accepté et financé).
+           Aucune charge fixe sur des dossiers non retenus : la plateforme est incitée à n'envoyer que du qualifié.</p></div>
+      <div class="card"><h3><span class="ico">📣</span> Marque & inclusion</h3>
+        <p>La campagne financée par la BCEG positionne la banque comme <b>partenaire n°1 des PME/PMI</b>
+           gabonaises (CATR, FAMAD, taux dès 5 %) et nourrit ses objectifs RSE et d'inclusion financière.</p></div>
+      <div class="card"><h3><span class="ico">📈</span> Effet de portefeuille</h3>
+        <p>Chaque dossier financé = un <b>nouveau client bancarisé</b> (compte, épargne, cross-sell, second crédit).
+           La valeur dépasse largement le premier prêt.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<section class="section">
+  <div class="wrap">
+    <span class="kicker">Le parcours</span>
+    <h2>Du premier contact au dossier financé</h2>
+    <p class="lead">Une boucle vertueuse, mesurable à chaque étape :</p>
+    <div class="flow">
+      <div class="step"><div class="n">1</div><h4>Campagne BCEG</h4><p>La banque finance la communication → audience d'entrepreneurs.</p></div>
+      <div class="step"><div class="n">2</div><h4>Formation</h4><p>À Studia Academy : maîtriser la plateforme Gabon Insight.</p></div>
+      <div class="step"><div class="n">3</div><h4>Génération du projet</h4><p>L'entrepreneur génère son business plan + crédits IA offerts par la BCEG.</p></div>
+      <div class="step"><div class="n">4</div><h4>BCEG Score™</h4><p>Le dossier est noté, complété et rendu bancable.</p></div>
+      <div class="step"><div class="n">5</div><h4>Soumission</h4><p>Le dossier qualifié est transmis à la BCEG pour instruction.</p></div>
+      <div class="step win"><div class="n">6</div><h4>Financé</h4><p>Dossier accepté → commission Gabon Insight (au succès).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ECONOMIES -->
+<section class="section">
+  <div class="wrap">
+    <span class="kicker">Les économies</span>
+    <h2>Ce que la BCEG économise par dossier qualifié</h2>
+    <p class="lead">Un dossier issu de Gabon Insight coûte beaucoup moins cher à acquérir et à instruire
+       qu'un dossier prospecté à froid — parce qu'il est filtré et structuré en amont.</p>
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card">
+        <h3>Décomposition — par dossier financé</h3>
+        <div class="save"><span>Acquisition client (prospection évitée)</span><span class="amt">~ 200 000 FCFA</span></div>
+        <div class="save"><span>Instruction de dossiers non éligibles filtrés en amont</span><span class="amt">~ 300 000 FCFA</span></div>
+        <div class="save"><span>Temps analyste &amp; complétude du dossier</span><span class="amt">~ 50 000 FCFA</span></div>
+        <div class="total"><span>Économie moyenne / dossier financé</span><span class="amt">≈ 550 000 FCFA</span></div>
+      </div>
+      <div class="card">
+        <h3>Ce que paie la BCEG (par dossier financé)</h3>
+        <div class="save"><span>Quote-part formation (Studia Academy, format groupe)</span><span class="amt">~ 80 000 FCFA</span></div>
+        <div class="save"><span>Crédits IA offerts à l'entrepreneur</span><span class="amt">~ 50 000 FCFA</span></div>
+        <div class="save"><span>Commission Gabon Insight (3 % — au succès)</span><span class="amt">~ 150 000 FCFA</span></div>
+        <div class="total" style="background:linear-gradient(135deg,#8a9576,#4d553e)"><span>Coût moyen / dossier financé</span><span class="amt">≈ 280 000 FCFA</span></div>
+        <p style="margin-top:12px;color:var(--green);font-weight:700">Gain net opérationnel ≈ 270 000 FCFA / dossier — <span style="color:var(--muted);font-weight:600">avant même les revenus d'intérêts du crédit.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULATION -->
+<section class="section">
+  <div class="wrap">
+    <span class="kicker">Projection sur 12 mois</span>
+    <h2>Simulation annuelle — 3 scénarios</h2>
+    <p class="lead">Modèle en entonnoir, du nombre de personnes touchées jusqu'au dossier financé.
+       Hypothèses prudentes et calibrables avec vos équipes.</p>
+
+    <div class="grid g3" style="margin:22px 0 8px">
+      <div class="kpi"><div class="num scen-pess">60</div><div class="lbl"><span class="pill pess">Pessimiste</span><br>dossiers financés</div></div>
+      <div class="kpi"><div class="num scen-norm">380</div><div class="lbl"><span class="pill norm">Normal</span><br>dossiers financés</div></div>
+      <div class="kpi"><div class="num scen-opt">1 570</div><div class="lbl"><span class="pill opt">Optimiste</span><br>dossiers financés</div></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Indicateur (sur 12 mois)</th>
+          <th class="scen-pess">Pessimiste</th>
+          <th class="scen-norm">Normal</th>
+          <th class="scen-opt">Optimiste</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="k">Personnes touchées (campagne)</td><td>80 000</td><td>200 000</td><td>400 000</td></tr>
+        <tr><td class="k">Entrepreneurs formés</td><td>800</td><td>3 000</td><td>8 000</td></tr>
+        <tr><td class="k">Projets générés sur la plateforme</td><td>480</td><td>2 100</td><td>6 400</td></tr>
+        <tr><td class="k">Dossiers soumis à la BCEG</td><td>240</td><td>1 050</td><td>3 200</td></tr>
+        <tr><td class="k">Dossiers qualifiés (BCEG Score™)</td><td>132</td><td>680</td><td>2 240</td></tr>
+        <tr><td class="k"><b>Dossiers financés</b></td><td class="scen-pess">60</td><td class="scen-norm">380</td><td class="scen-opt">1 570</td></tr>
+        <tr><td class="k">Volume de crédit originé (5 M/dossier)</td><td>300 M</td><td>1,90 Md</td><td>7,85 Md</td></tr>
+        <tr><td class="k">Nouveaux clients PME bancarisés</td><td>60</td><td>380</td><td>1 570</td></tr>
+        <tr><td class="k">Économies opérationnelles (550 k/dossier)</td><td>33 M</td><td>209 M</td><td>863 M</td></tr>
+        <tr><td class="k">Coût du programme BCEG*</td><td>33 M</td><td>127 M</td><td>392 M</td></tr>
+        <tr><td class="k">Revenu d'intérêt — valeur sur 3 ans (marge 4 %)</td><td>≈ 36 M</td><td>≈ 125 M</td><td>≈ 518 M</td></tr>
+        <tr><td class="k"><b>Gain net estimé (économies − coût + intérêts)</b></td>
+          <td class="scen-pess">≈ +36 M</td><td class="scen-norm">≈ +207 M</td><td class="scen-opt">≈ +989 M</td></tr>
+      </tbody>
+    </table>
+
+    <div class="grid g3" style="margin-top:18px">
+      <div class="card"><h3><span class="pill pess">Pessimiste</span></h3>
+        <ul class="clean"><li>Le programme s'autofinance dès l'an 1 sur les seules économies opérationnelles.</li>
+          <li>300 M FCFA de crédit sain originé.</li><li>60 nouveaux clients PME.</li></ul></div>
+      <div class="card"><h3><span class="pill norm">Normal</span></h3>
+        <ul class="clean"><li>≈ 1,9 Md FCFA de crédit originé pour 127 M de coût.</li>
+          <li>Gain net ≈ +207 M FCFA.</li><li>ROI &gt; ×2,6 sur le coût du programme.</li></ul></div>
+      <div class="card"><h3><span class="pill opt">Optimiste</span></h3>
+        <ul class="clean"><li>≈ 7,85 Md FCFA de crédit originé.</li>
+          <li>Gain net ≈ +989 M FCFA.</li><li>1 570 PME bancarisées — effet portefeuille majeur.</li></ul></div>
+    </div>
+
+    <div class="note">
+      <b>* Coût du programme</b> = campagne de communication + formations (Studia Academy) + crédits IA offerts + commission Gabon Insight (au succès uniquement).
+      Hypothèses illustratives : montant moyen 5 M FCFA/dossier ; marge nette d'intérêt 4 %/an sur ~3 ans ; économie 550 k FCFA/dossier ;
+      commission 3 %. Chiffres à calibrer avec les données réelles BCEG.
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="wrap">
+    <div class="cta">
+      <h2>Une dépense marketing transformée en canal d'origination rentable</h2>
+      <p>Pipeline pré-qualifié, coûts réduits, risque maîtrisé, marque renforcée et rémunération au succès.
+         Lançons un pilote mesuré sur un trimestre pour valider les conversions sur vos données.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    Un partenariat <b>BCEG</b> × <b>Gabon Insight</b> × <b>Studia Academy</b> — Document de travail, chiffres illustratifs à calibrer.
+  </div>
+</footer>
+
+</body>
+</html>
