@@ -152,10 +152,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
     }
   }, [user])
 
-  const menuItems = [
+  const menuItems: { icon: string; label: string; href: string; active?: boolean; badge?: string; external?: boolean }[] = [
     { icon: '🏠', label: 'Accueil', href: '/', active: true },
-    { icon: '🕒', label: 'Historique', href: '/historique' },
-    { icon: '🎮', label: 'Jeu Quiz', href: 'https://emoneygabon.alwaysdata.net/la-map-gabon/la-map-landing/', badge: 'NEW', external: true }
+    { icon: '🕒', label: 'Historique', href: '/historique' }
+    // { icon: '🎮', label: 'Jeu Quiz', href: 'https://emoneygabon.alwaysdata.net/la-map-gabon/la-map-landing/', badge: 'NEW', external: true } // masqué
   ]
 
   const settingsItems = [
