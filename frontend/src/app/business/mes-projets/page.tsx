@@ -4482,7 +4482,7 @@ export default function MesProjetsPage() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-slate-300 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-gradient-to-br from-white via-[#f1f4ee] to-white rounded-2xl border border-[#697357]/30 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             >
               <div className="p-6">
                 {/* Header */}
@@ -4511,7 +4511,7 @@ export default function MesProjetsPage() {
                 </div>
 
                 {/* Content */}
-                <div className="prose prose-invert max-w-none mb-6">
+                <div className="prose max-w-none mb-6">
                   {(selectedDocument.document_type === 'custom-training' || selectedDocument.type === 'custom-training') ? (
                     /* Affichage spécial pour les formations */
                     <div className="space-y-4">
@@ -4534,13 +4534,13 @@ export default function MesProjetsPage() {
                       {selectedDocument.metadata?.modules && Array.isArray(selectedDocument.metadata.modules) ? (
                         <div className="space-y-3">
                           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                            <GraduationCap className="w-5 h-5 text-purple-400" />
+                            <GraduationCap className="w-5 h-5 text-[#697357]" />
                             Modules de la formation ({selectedDocument.metadata.modules.length})
                           </h3>
                           {selectedDocument.metadata.modules.map((mod: any, idx: number) => (
                             <div key={idx} className="bg-white/85 rounded-lg p-4 border border-slate-200">
                               <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold flex-shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-[#697357]/15 flex items-center justify-center text-[#697357] font-bold flex-shrink-0">
                                   {idx + 1}
                                 </div>
                                 <div className="flex-1">
@@ -4562,7 +4562,7 @@ export default function MesProjetsPage() {
                                       </span>
                                     )}
                                     {mod.level && (
-                                      <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium">
+                                      <span className="px-2 py-0.5 bg-[#697357]/15 text-[#697357] rounded-full text-xs font-medium">
                                         {mod.level}
                                       </span>
                                     )}
@@ -4578,7 +4578,7 @@ export default function MesProjetsPage() {
                           {selectedDocument.content?.split('\n').map((line: string, idx: number) => {
                             if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold text-slate-900 mt-4 mb-2">{line.slice(2)}</h1>
                             if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold text-slate-900 mt-4 mb-2">{line.slice(3)}</h2>
-                            if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold text-purple-400 mt-3 mb-1">{line.slice(4)}</h3>
+                            if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold text-[#697357] mt-3 mb-1">{line.slice(4)}</h3>
                             if (line.startsWith('**') && line.endsWith('**')) return <p key={idx} className="font-semibold text-slate-900">{line.slice(2, -2)}</p>
                             if (line.startsWith('- ')) return <li key={idx} className="ml-4 text-slate-700">{line.slice(2)}</li>
                             if (line.trim() === '---') return <hr key={idx} className="border-slate-200 my-4" />
@@ -4606,9 +4606,9 @@ export default function MesProjetsPage() {
 
                 {/* Contexte actuel */}
                 {selectedDocument.context_added && (
-                  <div className="mb-6 p-4 bg-blue-500/10 rounded-lg border border-[#697357]/20">
+                  <div className="mb-6 p-4 bg-[#697357]/10 rounded-lg border border-[#697357]/25">
                     <h4 className="text-slate-900 font-semibold mb-2 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-blue-400" />
+                      <Sparkles className="w-4 h-4 text-[#697357]" />
                       Contexte enrichi
                     </h4>
                     <p className="text-slate-700 text-sm whitespace-pre-wrap">{selectedDocument.context_added}</p>
@@ -4852,7 +4852,7 @@ export default function MesProjetsPage() {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl border border-slate-300 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+                className="bg-gradient-to-br from-white via-[#f1f4ee] to-white rounded-2xl border border-[#697357]/30 shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col"
               >
                 {/* Header */}
                 <div className="p-6 border-b border-slate-300 bg-gradient-to-r from-[#697357]/15 to-[#4d553e]/15">
@@ -4914,7 +4914,7 @@ export default function MesProjetsPage() {
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose max-w-none">
                     <div className="bg-white/85 rounded-lg p-4 border border-slate-200">
                       <pre className="text-slate-700 text-sm whitespace-pre-wrap font-sans">
                         {selectedHistoryEntry.content}
