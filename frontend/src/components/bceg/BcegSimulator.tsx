@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout'
 import { motion } from 'framer-motion'
 import { Building2, User, Wallet, Calendar, Percent, TrendingDown, TrendingUp, Loader2 } from 'lucide-react'
 
@@ -89,7 +90,7 @@ export default function BcegSimulator({
           taux_annuel: tauxAnnuel,
         }
 
-        const res = await fetch(`${API}/api/bceg/simulate`, {
+        const res = await fetchWithTimeout(`${API}/api/bceg/simulate`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ ...params, project_id: projectId, persist }),

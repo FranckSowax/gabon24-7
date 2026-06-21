@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -63,7 +64,7 @@ export default function DossierBcegPage() {
         setPdfError(null)
         const headers = await authHeaders()
 
-        const pdfRes = await fetch(`${API}/api/bceg/generate-dossier`, {
+        const pdfRes = await fetchWithTimeout(`${API}/api/bceg/generate-dossier`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ project_id: projectId }),
@@ -83,7 +84,7 @@ export default function DossierBcegPage() {
         blobUrlToClean = url
         if (alive) setPdfBlobUrl(url)
 
-        const scoreRes = await fetch(`${API}/api/bceg/my-score?project_id=${projectId}`, { headers })
+        const scoreRes = await fetchWithTimeout(`${API}/api/bceg/my-score?project_id=${projectId}`, { headers })
         const scoreJson = await scoreRes.json()
         if (alive && scoreJson?.success && scoreJson.score) {
           setScore({ score: scoreJson.score.score, color: scoreJson.score.color, breakdown: scoreJson.score.breakdown })
@@ -116,7 +117,7 @@ export default function DossierBcegPage() {
     setBanner(null)
     try {
       const headers = await authHeaders()
-      const res = await fetch(`${API}/api/bceg/submit-full`, {
+      const res = await fetchWithTimeout(`${API}/api/bceg/submit-full`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ project_id: projectId }),

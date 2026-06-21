@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react'
 
@@ -61,7 +62,7 @@ export default function BcegMentorChat({
     try {
       const headers = await authHeaders()
       const history = messages.map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch(`${API}/api/bceg/mentor-chat`, {
+      const res = await fetchWithTimeout(`${API}/api/bceg/mentor-chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ message, history, project_context: projectContext }),

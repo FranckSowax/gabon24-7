@@ -17,6 +17,121 @@ const { generateBcegDossier } = require('../services/bcegPdfService');
 const supabase = supabaseService.supabase;
 const BCEG_TARGET_EMAIL = process.env.BCEG_TARGET_EMAIL || 'commercial@bceg.ga';
 
+// ==================== SCHÉMAS DE VALIDATION (Zod) ====================
+const { validateBody } = require('../middleware/validation');
+const { z } = require('zod');
+
+const uuidOpt = z.string().uuid().optional().nullable();
+
+// .passthrough() : valide les champs clés sans retirer les autres (handlers à colonnes explicites)
+const simulateSchema = z.object({
+  project_id: uuidOpt,
+  type: z.string().max(30).optional(),
+  revenu_mensuel: z.coerce.number().nonnegative().max(1e12).optional().nullable(),
+  montant_demande: z.coerce.number().positive('montant_demande doit être > 0').max(1e12),
+  apport_personnel: z.coerce.number().nonnegative().max(1e12).optional(),
+  duree_mois: z.coerce.number().int().positive().max(600).optional(),
+  taux_annuel: z.coerce.number().nonnegative().max(100).optional(),
+  persist: z.boolean().optional(),
+}).passthrough();
+
+const scoreSchema = z.object({
+  project_id: uuidOpt,
+  step: z.coerce.number().int().min(1).max(20).optional(),
+  persist: z.boolean().optional(),
+}).passthrough(); // le reste du body alimente le calcul du score
+
+const submitSchema = z.object({
+  project_id: uuidOpt,
+  simulation_id: uuidOpt,
+  montant_demande: z.coerce.number().positive('montant_demande doit être > 0').max(1e12),
+  bceg_score: z.coerce.number().min(0).max(100).optional().nullable(),
+  pdf_url: z.string().max(2000).optional().nullable(),
+}).passthrough();
+
+const dossierSchema = z.object({
+  project_id: z.string().uuid('project_id invalide'),
+  simulation_id: uuidOpt,
+}).passthrough();
+
+const mentorChatSchema = z.object({
+  message: z.string().min(1, 'message requis').max(4000),
+  history: z.array(z.any()).max(50).optional(),
+  project_context: z.any().optional().nullable(),
+}).passthrough();
+
+const appointmentSchema = z.object({
+  project_id: uuidOpt,
+  submission_id: uuidOpt,
+  appointment_date: z.string().min(1, 'appointment_date requis').max(40),
+  appointment_time: z.string().min(1, 'appointment_time requis').max(20),
+  topic: z.string().max(500).optional().nullable(),
+  user_name: z.string().max(200).optional().nullable(),
+  user_phone: z.string().max(40).optional().nullable(),
+}).passthrough();
+
+const signUploadSchema = z.object({
+  doc_type: z.string().min(1, 'doc_type requis').max(100),
+  file_name: z.string().min(1, 'file_name requis').max(255),
+}).passthrough();
+
+const dueDiligenceSchema = z.object({
+  doc_type: z.string().min(1, 'doc_type requis').max(100),
+  file_url: z.string().max(2000).optional().nullable(),
+  file_name: z.string().max(255).optional().nullable(),
+  file_size: z.coerce.number().int().nonnegative().optional().nullable(),
+  mime_type: z.string().max(150).optional().nullable(),
+  project_id: uuidOpt,
+  submission_id: uuidOpt,
+}).passthrough();
+
+const sectorPrefSchema = z.object({
+  sectors: z.array(z.string().max(100)).max(50).optional(),
+  whatsapp_phone: z.string().max(40).optional().nullable(),
+  notify_via_whatsapp: z.boolean().optional(),
+  notify_via_email: z.boolean().optional(),
+}).passthrough();
+
+const sponsorshipSchema = z.object({
+  campaign_name: z.string().min(1, 'campaign_name requis').max(200),
+  description: z.string().max(5000).optional().nullable(),
+  credits_offered: z.coerce.number().int().nonnegative().optional().nullable(),
+  total_budget: z.coerce.number().nonnegative().optional().nullable(),
+  target_sectors: z.array(z.string().max(100)).max(50).optional(),
+  ends_at: z.string().max(40).optional().nullable(),
+  status: z.string().max(30).optional(),
+}).passthrough();
+
+const grantSchema = z.object({
+  user_id: z.string().uuid('user_id invalide'),
+  reason: z.string().max(1000).optional().nullable(),
+}).passthrough();
+
+const submissionStatusSchema = z.object({
+  status: z.string().min(1, 'status requis').max(40),
+  admin_notes: z.string().max(5000).optional().nullable(),
+  bceg_reference: z.string().max(200).optional().nullable(),
+}).passthrough();
+
+// PATCH admin qui spread req.body → schéma SANS passthrough : les colonnes inconnues
+// sont retirées (anti-injection de colonnes Supabase).
+const adminAppointmentUpdateSchema = z.object({
+  status: z.string().max(40).optional(),
+  admin_notes: z.string().max(5000).optional(),
+  banker_name: z.string().max(200).optional(),
+  location: z.string().max(300).optional(),
+  meeting_link: z.string().max(500).optional(),
+  appointment_date: z.string().max(40).optional(),
+  appointment_time: z.string().max(20).optional(),
+  topic: z.string().max(500).optional(),
+});
+
+const adminDueDiligenceUpdateSchema = z.object({
+  status: z.string().max(40).optional(),
+  admin_notes: z.string().max(5000).optional(),
+  rejection_reason: z.string().max(2000).optional(),
+});
+
 // =====================================================================
 // HELPERS — calculs financiers et scoring
 // =====================================================================
@@ -142,7 +257,7 @@ function buildAdvice(b) {
 // =====================================================================
 // POST /api/bceg/simulate
 // =====================================================================
-router.post('/simulate', async (req, res) => {
+router.post('/simulate', validateBody(simulateSchema), async (req, res) => {
   try {
     const {
       project_id = null,
@@ -229,7 +344,7 @@ router.post('/simulate', async (req, res) => {
 // =====================================================================
 // POST /api/bceg/score
 // =====================================================================
-router.post('/score', async (req, res) => {
+router.post('/score', validateBody(scoreSchema), async (req, res) => {
   try {
     const { project_id = null, step = 1, persist = false, ...formData } = req.body || {};
 
@@ -322,7 +437,7 @@ router.get('/leaderboard', async (_req, res) => {
 // =====================================================================
 // POST /api/bceg/submit — créer une soumission BCEG (user)
 // =====================================================================
-router.post('/submit', requireAuth, async (req, res) => {
+router.post('/submit', requireAuth, validateBody(submitSchema), async (req, res) => {
   try {
     const {
       project_id = null,
@@ -454,7 +569,7 @@ router.get('/admin/submissions/:id', requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/bceg/admin/submissions/:id/status — changer statut + notes
-router.patch('/admin/submissions/:id/status', requireAdmin, async (req, res) => {
+router.patch('/admin/submissions/:id/status', requireAdmin, validateBody(submissionStatusSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, admin_notes, bceg_reference } = req.body || {};
@@ -593,7 +708,7 @@ router.get('/admin/export', requireAdmin, async (_req, res) => {
 // =====================================================================
 // POST /api/bceg/generate-dossier — preview PDF d'un projet (sans soumettre)
 // =====================================================================
-router.post('/generate-dossier', requireAuth, async (req, res) => {
+router.post('/generate-dossier', requireAuth, validateBody(dossierSchema), async (req, res) => {
   try {
     const { project_id, simulation_id } = req.body || {};
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
@@ -652,7 +767,7 @@ router.post('/generate-dossier', requireAuth, async (req, res) => {
 // =====================================================================
 // POST /api/bceg/submit-full — soumission complète : PDF + email BCEG + DB
 // =====================================================================
-router.post('/submit-full', requireAuth, async (req, res) => {
+router.post('/submit-full', requireAuth, validateBody(dossierSchema), async (req, res) => {
   try {
     const { project_id, simulation_id } = req.body || {};
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
@@ -780,20 +895,16 @@ router.post('/submit-full', requireAuth, async (req, res) => {
 // =====================================================================
 // POST /api/bceg/mentor-chat — Chatbot "Conseiller BCEG" (Gemini)
 // =====================================================================
-router.post('/mentor-chat', requireAuth, async (req, res) => {
+router.post('/mentor-chat', requireAuth, validateBody(mentorChatSchema), async (req, res) => {
   try {
     const { message, history = [], project_context = null } = req.body || {};
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'message requis' });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ success: false, error: 'Service Gemini non configuré' });
+    if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ success: false, error: 'Service IA non configuré' });
     }
-
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
     const systemPrompt = `Tu es le Conseiller BCEG virtuel de l'application Gabon Insight.
 Tu aides un entrepreneur gabonais à préparer un dossier de financement bancaire pour la BCEG
@@ -813,20 +924,19 @@ Règles :
 
 ${project_context ? `\nContexte du projet de l'utilisateur :\n${JSON.stringify(project_context, null, 2)}` : ''}`;
 
-    const chatHistory = (Array.isArray(history) ? history : [])
-      .slice(-8)
-      .map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: String(m.content || '').slice(0, 2000) }],
-      }));
+    const geminiService = require('../services/gemini-service');
 
-    const chat = model.startChat({
-      history: chatHistory,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
-      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    const historyText = (Array.isArray(history) ? history : [])
+      .slice(-8)
+      .map(m => `${m.role === 'assistant' ? 'Conseiller' : 'Utilisateur'}: ${String(m.content || '').slice(0, 2000)}`)
+      .join('\n');
+    const conversationPrompt = `${historyText ? historyText + '\n' : ''}Utilisateur: ${message.slice(0, 2000)}\nConseiller:`;
+
+    // OpenAI (gpt-4.1-mini) en primaire, Gemini en fallback automatique
+    const reply = await geminiService.generateText(conversationPrompt, {
+      systemPrompt,
+      temperature: 0.7,
     });
-    const result = await chat.sendMessage(message.slice(0, 2000));
-    const reply = result.response.text();
 
     res.json({ success: true, reply });
   } catch (error) {
@@ -874,7 +984,7 @@ router.get('/templates/:slug', async (req, res) => {
   }
 });
 
-router.post('/appointments', requireAuth, async (req, res) => {
+router.post('/appointments', requireAuth, validateBody(appointmentSchema), async (req, res) => {
   try {
     const { project_id, submission_id, appointment_date, appointment_time, topic, user_name, user_phone } = req.body || {};
     if (!appointment_date || !appointment_time) {
@@ -930,7 +1040,7 @@ router.get('/admin/appointments', requireAdmin, async (req, res) => {
   }
 });
 
-router.patch('/admin/appointments/:id', requireAdmin, async (req, res) => {
+router.patch('/admin/appointments/:id', requireAdmin, validateBody(adminAppointmentUpdateSchema), async (req, res) => {
   try {
     const update = { ...req.body, updated_at: new Date().toISOString() };
     const { data, error } = await supabase
@@ -946,7 +1056,7 @@ router.patch('/admin/appointments/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/due-diligence/sign-upload', requireAuth, async (req, res) => {
+router.post('/due-diligence/sign-upload', requireAuth, validateBody(signUploadSchema), async (req, res) => {
   try {
     const { doc_type, file_name } = req.body || {};
     if (!doc_type || !file_name) {
@@ -964,7 +1074,7 @@ router.post('/due-diligence/sign-upload', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/due-diligence', requireAuth, async (req, res) => {
+router.post('/due-diligence', requireAuth, validateBody(dueDiligenceSchema), async (req, res) => {
   try {
     const { doc_type, file_url, file_name, file_size, mime_type, project_id, submission_id } = req.body || {};
     if (!doc_type || !file_url) return res.status(400).json({ success: false, error: 'doc_type et file_url requis' });
@@ -1022,7 +1132,7 @@ router.delete('/due-diligence/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.patch('/admin/due-diligence/:id', requireAdmin, async (req, res) => {
+router.patch('/admin/due-diligence/:id', requireAdmin, validateBody(adminDueDiligenceUpdateSchema), async (req, res) => {
   try {
     const update = {
       ...req.body,
@@ -1062,7 +1172,7 @@ router.get('/admin/sponsorships', requireAdmin, async (_req, res) => {
   }
 });
 
-router.post('/admin/sponsorships', requireAdmin, async (req, res) => {
+router.post('/admin/sponsorships', requireAdmin, validateBody(sponsorshipSchema), async (req, res) => {
   try {
     const { campaign_name, description, credits_offered, total_budget, target_sectors, ends_at, status } = req.body || {};
     if (!campaign_name || !credits_offered || !total_budget) {
@@ -1088,7 +1198,7 @@ router.post('/admin/sponsorships', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/admin/sponsorships/:id/grant', requireAdmin, async (req, res) => {
+router.post('/admin/sponsorships/:id/grant', requireAdmin, validateBody(grantSchema), async (req, res) => {
   try {
     const { user_id, reason } = req.body || {};
     if (!user_id) return res.status(400).json({ success: false, error: 'user_id requis' });
@@ -1125,7 +1235,7 @@ router.post('/admin/sponsorships/:id/grant', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/sector-preferences', requireAuth, async (req, res) => {
+router.put('/sector-preferences', requireAuth, validateBody(sectorPrefSchema), async (req, res) => {
   try {
     const { sectors = [], whatsapp_phone, notify_via_whatsapp = true, notify_via_email = false } = req.body || {};
     const { data, error } = await supabase

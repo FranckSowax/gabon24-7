@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
@@ -61,7 +62,7 @@ export default function BcegFinanceSection({
     ;(async () => {
       try {
         const headers = await authHeaders()
-        const res = await fetch(`${API}/api/bceg/score`, {
+        const res = await fetchWithTimeout(`${API}/api/bceg/score`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ project_id: project.id, project }),
