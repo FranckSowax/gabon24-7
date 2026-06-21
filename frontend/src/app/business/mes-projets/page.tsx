@@ -2611,22 +2611,22 @@ export default function MesProjetsPage() {
               Téléverser un document
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-white/80 text-sm">
-            <div className="bg-white/90 rounded-lg p-3">
-              <div className="text-2xl font-bold">{contexteTotal.documents}</div>
-              <div className="text-xs">Documents</div>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div className="bg-white rounded-lg p-3 border border-[#697357]/15">
+              <div className="text-2xl font-bold text-[#697357]">{contexteTotal.documents}</div>
+              <div className="text-xs text-[#4d553e]">Documents</div>
             </div>
-            <div className="bg-white/90 rounded-lg p-3">
-              <div className="text-2xl font-bold">{contexteTotal.notes}</div>
-              <div className="text-xs">Notes</div>
+            <div className="bg-white rounded-lg p-3 border border-[#697357]/15">
+              <div className="text-2xl font-bold text-[#697357]">{contexteTotal.notes}</div>
+              <div className="text-xs text-[#4d553e]">Notes</div>
             </div>
-            <div className="bg-white/90 rounded-lg p-3">
-              <div className="text-2xl font-bold">{contexteTotal.evenements}</div>
-              <div className="text-xs">Événements</div>
+            <div className="bg-white rounded-lg p-3 border border-[#697357]/15">
+              <div className="text-2xl font-bold text-[#697357]">{contexteTotal.evenements}</div>
+              <div className="text-xs text-[#4d553e]">Événements</div>
             </div>
-            <div className="bg-white/90 rounded-lg p-3">
-              <div className="text-2xl font-bold">{Math.round(contexteTotal.mots / 1000)}k</div>
-              <div className="text-xs">Mots</div>
+            <div className="bg-white rounded-lg p-3 border border-[#697357]/15">
+              <div className="text-2xl font-bold text-[#697357]">{Math.round(contexteTotal.mots / 1000)}k</div>
+              <div className="text-xs text-[#4d553e]">Mots</div>
             </div>
           </div>
         </motion.div>
