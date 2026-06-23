@@ -143,9 +143,28 @@ function getOpenAIClient() {
   if (!_openaiClient) {
     const OpenAI = require('openai');
     if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY manquant');
-    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      // Timeout généreux pour les analyses JSON longues + retries SDK sur erreurs réseau/5xx
+      timeout: 60000,
+      maxRetries: 3
+    });
   }
   return _openaiClient;
+}
+
+// Détecte les erreurs réseau transitoires (connexion coupée, timeout, socket)
+function isTransientConnectionError(error) {
+  const msg = (error && error.message) || '';
+  return (
+    error?.name === 'APIConnectionError' ||
+    error?.name === 'APIConnectionTimeoutError' ||
+    error?.code === 'ECONNRESET' ||
+    error?.code === 'ETIMEDOUT' ||
+    error?.code === 'ECONNABORTED' ||
+    error?.code === 'UND_ERR_SOCKET' ||
+    /premature close|socket hang up|network|fetch failed|terminated|ECONNRESET|timed? ?out/i.test(msg)
+  );
 }
 
 // Helper: Appel IA pour ANALYSE via GPT-4.1-mini avec JSON garanti
@@ -212,20 +231,20 @@ async function callAIPropositions(prompt, options = {}) {
 
 // POST /api/opportunities/analyze - Analyser une opportunité
 router.post('/analyze', validateBody(analyzeOppSchema), async (req, res) => {
+  // Déclarées hors du try pour rester accessibles dans le catch (fallback)
+  const { article } = req.body;
+  let articleTitle = article?.title || '';
+  let articleSummary = article?.summary || '';
+  let articleSource = article?.source || null;
   try {
     const {
       userId,
       opportunityText,
-      article,
-      context = '',
-      usePerplexity = false
+      context = ''
     } = req.body;
 
     // Accepter soit article soit opportunityText
     let textToAnalyze = opportunityText;
-    let articleTitle = article?.title || '';
-    let articleSummary = article?.summary || '';
-    let articleSource = article?.source || null;
     let articleUrl = article?.url || null;
     let articleContent = article?.content || '';
 
@@ -437,22 +456,40 @@ CONTRAINTE DE SORTIE (JSON UNIQUEMENT, SANS TEXTE HORS JSON):
 
   } catch (error) {
     console.error('❌ Erreur analyze opportunity:', error);
-    
+
     // Enregistrer l'erreur OpenAI pour monitoring
     const quotaManager = require('../services/openai-quota-manager');
     quotaManager.recordError('analyze-opportunity', error);
-    
+
+    // Erreur réseau transitoire (ex: "Premature close" sur l'appel OpenAI):
+    // renvoyer une analyse de secours plutôt qu'un 500, pour ne pas casser l'UX.
+    if (isTransientConnectionError(error)) {
+      console.warn('⚠️ Erreur de connexion IA transitoire — renvoi du fallback structuré');
+      const fallback = generateFallbackAnalysis({
+        title: articleTitle || '',
+        summary: articleSummary || '',
+        source: articleSource || ''
+      });
+      return res.json({
+        success: true,
+        analysisId: null,
+        fromFallback: true,
+        ...fallback,
+        usage: { total_tokens: 0 }
+      });
+    }
+
     // Déterminer le message d'erreur approprié
     let errorMessage = error.message || 'Erreur lors de l\'analyse';
     let statusCode = 500;
-    
+
     if (error.message && error.message.includes('quota')) {
       errorMessage = 'Service IA temporairement indisponible (quota dépassé). Réessayez plus tard.';
       statusCode = 503;
     }
-    
-    res.status(statusCode).json({ 
-      success: false, 
+
+    res.status(statusCode).json({
+      success: false,
       error: errorMessage,
       isQuotaError: error.message && error.message.includes('quota')
     });
