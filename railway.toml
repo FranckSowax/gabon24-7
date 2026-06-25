@@ -3,7 +3,11 @@
 
 [build]
   builder = "DOCKERFILE"
-  dockerfilePath = "Dockerfile"
+  # Résolu depuis la RACINE du repo (pas depuis rootDirectory=backend).
+  # Le contexte de build reste backend/ grâce à rootDirectory, donc les
+  # COPY du Dockerfile fonctionnent. Voir incident: déploiements en échec
+  # depuis le 30/03/2026 (Dockerfile introuvable à la racine).
+  dockerfilePath = "backend/Dockerfile"
 
 [deploy]
   startCommand = "node server.js"
