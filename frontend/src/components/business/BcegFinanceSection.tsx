@@ -40,6 +40,7 @@ interface BcegFinanceSectionProps {
 
 const REQUIRED_DOCS = [
   { key: 'business_plan', label: 'Business Plan', desc: '10 sections complètes', icon: BookOpen },
+  { key: 'illustration', label: 'Infographie du projet', desc: 'Business en 1 image', icon: Target },
   { key: 'cni', label: "Pièce d'identité (CNI)", desc: 'Recto-verso lisible', icon: FileText },
   { key: 'rccm', label: 'RCCM ou attestation', desc: 'Registre du Commerce', icon: FileText },
   { key: 'rib', label: 'RIB / Coordonnées bancaires', desc: 'Compte personnel ou pro', icon: FileText },

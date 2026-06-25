@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen } from 'lucide-react'
+import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen, Palette, Image as ImageIcon, PieChart, Download } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import BcegBackdrop from '@/components/bceg/BcegBackdrop'
@@ -103,6 +103,19 @@ const FINANCE_DOC_TYPES: DocTypeDef[] = [
       'Cohérence avec le secteur sélectionné dans votre projet',
     ],
     acceptedFormats: ['PDF', 'DOC', 'DOCX'],
+    maxSizeMb: 10,
+    required: true,
+  },
+  {
+    key: 'illustration',
+    label: 'Infographie du projet',
+    bcegPurpose: "Synthèse visuelle (concept, objectifs, chiffres clés, fonctionnement) — permet au comité de crédit de comprendre votre business en un coup d'œil.",
+    rules: [
+      "Générée via l'outil IA « Mon business en 1 image »",
+      'Doit refléter les chiffres clés et le fonctionnement du projet',
+      'Image lisible (PNG/JPG) ou PDF',
+    ],
+    acceptedFormats: ['PNG', 'JPG', 'JPEG', 'PDF'],
     maxSizeMb: 10,
     required: true,
   },
@@ -307,6 +320,33 @@ const QUICK_ACTIONS = [
     credits: 50
   },
   {
+    id: 'infographic',
+    title: 'Mon business en 1 image',
+    description: 'Infographie 3D (icônes, graphiques, personnages style Disney) qui résume votre projet — concept, objectifs, chiffres clés, fonctionnement — en un coup d\'œil. Pièce du dossier BCEG.',
+    useCase: 'Ex : une infographie claire et percutante à présenter au comité de crédit BCEG.',
+    icon: PieChart,
+    color: 'from-[#697357] to-[#4d553e]',
+    credits: 35
+  },
+  {
+    id: 'logo',
+    title: 'Générer un logo',
+    description: 'Logo professionnel de votre projet, généré par IA — moderne, mémorable, aux couleurs adaptées.',
+    useCase: 'Ex : un logo prêt à l\'emploi pour votre dossier, vos supports et vos réseaux.',
+    icon: Palette,
+    color: 'from-[#8a9576] to-[#697357]',
+    credits: 20
+  },
+  {
+    id: 'flyer',
+    title: 'Flyer de présentation',
+    description: 'Prospectus illustré (A4) présentant votre offre — prêt à imprimer et à partager.',
+    useCase: 'Ex : un flyer pour présenter votre activité à vos premiers clients et partenaires.',
+    icon: ImageIcon,
+    color: 'from-[#697357] to-[#4d553e]',
+    credits: 20
+  },
+  {
     id: 'generate-letter',
     title: 'Générer un courrier',
     description: 'Lettre professionnelle adaptée au destinataire et au contexte de votre projet — ton, formules, mise en page.',
@@ -412,6 +452,8 @@ export default function MesProjetsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<{[key: string]: boolean}>({})
+  const [illustrationLoading, setIllustrationLoading] = useState<string | null>(null)
+  const [illustrationResult, setIllustrationResult] = useState<{ kind: string; url: string; title: string } | null>(null)
   const [projectNotes, setProjectNotes] = useState<{[key: string]: ProjectNote[]}>({})
   const [newNote, setNewNote] = useState('')
   const [isAddingNote, setIsAddingNote] = useState(false)
@@ -2271,6 +2313,37 @@ export default function MesProjetsPage() {
     )
   }
 
+  const handleGenerateIllustration = async (project: any, kind: 'logo' | 'flyer' | 'infographic') => {
+    const COSTS: Record<string, number> = { logo: 20, flyer: 20, infographic: 35 }
+    const LABELS: Record<string, string> = { logo: 'le logo', flyer: 'le flyer de présentation', infographic: "l'infographie de votre business" }
+    if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.`)) return
+    setIllustrationLoading(kind)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`${API_URL}/api/saved-projects/${project.id}/illustration`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ kind }),
+      })
+      const json = await res.json()
+      if (json?.success) {
+        setIllustrationResult({
+          kind,
+          url: json.imageUrl,
+          title: kind === 'logo' ? 'Logo' : kind === 'flyer' ? 'Flyer de présentation' : 'Infographie — Mon business en 1 image',
+        })
+        try { hookFetchDocuments(project.id) } catch {}
+        setBcegDocsRefreshKey(k => k + 1)
+      } else {
+        alert(json?.error || 'Erreur lors de la génération de l\'illustration')
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Erreur réseau')
+    } finally {
+      setIllustrationLoading(null)
+    }
+  }
+
   const renderActionsSection = () => {
     if (!selectedProject) return null
 
@@ -2403,6 +2476,8 @@ export default function MesProjetsPage() {
                       if ((action as any).comingSoon) return
                       if (action.id === 'business-plan') {
                         setBusinessPlanSelectorOpen(true)
+                      } else if (action.id === 'logo' || action.id === 'flyer' || action.id === 'infographic') {
+                        handleGenerateIllustration(selectedProject, action.id as any)
                       } else if (action.id === 'generate-letter') {
                         handleGenerateLetter(selectedProject)
                       } else if (action.id === 'skill-test') {
@@ -2411,7 +2486,7 @@ export default function MesProjetsPage() {
                         handleGenerateTraining(selectedProject)
                       }
                     }}
-                    disabled={(action as any).comingSoon}
+                    disabled={(action as any).comingSoon || illustrationLoading === action.id}
                     className={`w-full py-3 font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
                       (action as any).comingSoon
                         ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
@@ -2420,6 +2495,7 @@ export default function MesProjetsPage() {
                   >
                     <span>{
                       (action as any).comingSoon ? 'Disponible prochainement'
+                      : illustrationLoading === action.id ? 'Génération en cours…'
                       : bpComplete ? 'Voir / compléter'
                       : bpPartial ? `Continuer (${bpCount}/${BP_TOTAL})`
                       : 'Lancer l\'action'
@@ -5108,6 +5184,38 @@ export default function MesProjetsPage() {
         }}
         creditsUsed={currentActionCredits}
       />
+
+      {/* Modal résultat illustration (logo / flyer / infographie) */}
+      {illustrationResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => setIllustrationResult(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2"><Sparkles className="w-5 h-5 text-[#697357]" /> {illustrationResult.title}</h3>
+              <button onClick={() => setIllustrationResult(null)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              {illustrationResult.url ? (
+                <img src={illustrationResult.url} alt={illustrationResult.title} className="w-full rounded-xl border border-slate-200" />
+              ) : (
+                <p className="text-sm text-slate-500">Image générée et enregistrée dans votre bibliothèque.</p>
+              )}
+              {illustrationResult.kind === 'infographic' && (
+                <div className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5" /> Ajoutée aux pièces de votre dossier de financement BCEG.
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+              {illustrationResult.url && (
+                <a href={illustrationResult.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#697357] to-[#4d553e] text-white text-sm font-bold">
+                  <Download className="w-4 h-4" /> Ouvrir / télécharger
+                </a>
+              )}
+              <button onClick={() => setIllustrationResult(null)} className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Test de Compétences */}
       {selectedProject && (

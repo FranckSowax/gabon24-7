@@ -1,4 +1,4 @@
--- Migration: aligner la contrainte CHECK due_diligence_documents.doc_type
+il -- Migration: aligner la contrainte CHECK due_diligence_documents.doc_type
 -- avec les types réellement utilisés par l'app (FINANCE_DOC_TYPES).
 --
 -- Contexte: l'insertion d'un doc_type 'business_plan' (import business plan)

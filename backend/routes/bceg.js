@@ -745,6 +745,7 @@ router.get('/admin/submissions/:id/documents', requireBcegAccess, async (req, re
     // Checklist des 6 pièces attendues (présente ? statut ?)
     const REQUIRED = [
       { key: 'business_plan', label: 'Business Plan', required: true },
+      { key: 'illustration', label: 'Infographie du projet', required: true },
       { key: 'plan_action', label: "Plan d'action détaillé", required: true },
       { key: 'cni', label: "Pièce d'identité (CNI)", required: true },
       { key: 'rccm', label: 'RCCM ou attestation', required: true },
@@ -1629,12 +1630,6 @@ router.post('/cron/sector-match', async (req, res) => {
     console.error('Erreur /cron/sector-match:', error);
     res.status(500).json({ success: false, error: error.message });
   }
-});
-
-// TEMP — diagnostic présence BCEG_PORTAL_CODE (pas de fuite : longueur + last4). À RETIRER.
-router.get('/diag/portal', (req, res) => {
-  const v = process.env.BCEG_PORTAL_CODE || '';
-  res.json({ set: !!v, len: v.length, last4: v.slice(-4) });
 });
 
 module.exports = router;
