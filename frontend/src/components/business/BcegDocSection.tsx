@@ -157,14 +157,16 @@ export default function BcegDocSection({
       body: JSON.stringify({ doc_type: docType.key, file_name: fileName }),
     })
     const signJson = await signRes.json()
-    if (!signJson?.success || !signJson.signedUrl) throw new Error(signJson?.error || 'Signature URL impossible')
+    if (!signJson?.success || !signJson.path || !signJson.token) {
+      throw new Error(signJson?.error || 'Signature URL impossible')
+    }
 
-    const putRes = await fetch(signJson.signedUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/msword' },
-      body: blob,
-    })
-    if (!putRes.ok) throw new Error(`Upload échoué (${putRes.status})`)
+    // Upload via le client Supabase (méthode supportée pour les URLs signées)
+    const { supabase } = await import('@/lib/auth')
+    const up = await supabase.storage
+      .from('due-diligence')
+      .uploadToSignedUrl(signJson.path, signJson.token, blob, { contentType: 'application/msword' })
+    if (up.error) throw new Error(up.error.message || 'Upload échoué')
 
     const metaRes = await fetch(`${API}/api/bceg/due-diligence`, {
       method: 'POST', headers,
@@ -233,17 +235,19 @@ export default function BcegDocSection({
         body: JSON.stringify({ doc_type: docType.key, file_name: file.name }),
       })
       const signJson = await signRes.json()
-      if (!signJson?.success || !signJson.signedUrl) {
+      if (!signJson?.success || !signJson.path || !signJson.token) {
         throw new Error(signJson?.error || 'Signature URL impossible')
       }
       setProgress(35)
 
-      const putRes = await fetch(signJson.signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file,
-      })
-      if (!putRes.ok) throw new Error(`Upload échoué (${putRes.status})`)
+      // Upload via le client Supabase (méthode supportée pour les URLs signées)
+      const { supabase } = await import('@/lib/auth')
+      const up = await supabase.storage
+        .from('due-diligence')
+        .uploadToSignedUrl(signJson.path, signJson.token, file, {
+          contentType: file.type || 'application/octet-stream',
+        })
+      if (up.error) throw new Error(up.error.message || 'Upload échoué')
       setProgress(75)
 
       const publicUrl = signJson.path
