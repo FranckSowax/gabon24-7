@@ -1,0 +1,24 @@
+# Contexte de build = racine du repo. On ne build que le backend.
+# Exclure tout le reste pour des images légères et sûres.
+
+# Frontend (déployé sur Netlify, pas dans l'image backend)
+frontend
+
+# Dépendances et builds
+**/node_modules
+**/.next
+**/dist
+**/build
+
+# Secrets / env
+**/.env
+**/.env.*
+
+# Divers
+.git
+**/*.md
+docs
+fb-rss-service
+**/*.test.js
+**/*.spec.js
+**/__tests__

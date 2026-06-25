@@ -1,0 +1,42 @@
+# Railway Configuration (RACINE du repo — seul emplacement lu par Railway)
+# https://docs.railway.app/reference/config-as-code
+#
+# Build via le Dockerfile RACINE (contexte = racine du repo, copie backend/).
+# Voir incident: déploiements en échec du 30/03 au 25/06/2026 (rootDirectory
+# plus honoré → Dockerfile/contexte mal résolus).
+
+[build]
+  builder = "DOCKERFILE"
+  dockerfilePath = "Dockerfile"
+
+[deploy]
+  startCommand = "node server.js"
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 10
+
+# ⏰ CRON JOBS — Timezone: Africa/Libreville (WAT = UTC+1)
+# (scripts présents dans /app via la copie backend/)
+
+[[crons]]
+  name = "extract-youtube-journals"
+  schedule = "0 */6 * * *"
+  command = "node scripts/extract-youtube-journals.js"
+  timezone = "Africa/Libreville"
+
+[[crons]]
+  name = "morning-summaries"
+  schedule = "0 7 * * *"
+  command = "node scripts/generate-morning-summaries.js"
+  timezone = "Africa/Libreville"
+
+[[crons]]
+  name = "afternoon-summaries"
+  schedule = "0 13 * * *"
+  command = "node scripts/generate-afternoon-summaries.js"
+  timezone = "Africa/Libreville"
+
+[[crons]]
+  name = "evening-summaries"
+  schedule = "0 20 * * *"
+  command = "node scripts/generate-evening-summaries.js"
+  timezone = "Africa/Libreville"
