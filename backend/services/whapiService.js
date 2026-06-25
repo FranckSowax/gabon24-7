@@ -427,26 +427,43 @@ async function sendPendingArticles(limit = 5) {
   let errors = 0;
 
   try {
-    // 1. Ne publier que les articles créés APRÈS l'activation du service (22 fév 2026 22:00 UTC)
-    //    + uniquement ceux des dernières 24h pour éviter les rattrapages
+    // 1. File d'attente : ne diffuser que les N articles les PLUS RÉCENTS.
+    //    Le reste de la file (backlog plus ancien) est marqué "envoyé" SANS être
+    //    diffusé, pour ne jamais inonder la chaîne après une interruption.
     const WHATSAPP_START = '2026-02-23T19:41:00.000Z';
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const since = since24h > WHATSAPP_START ? since24h : WHATSAPP_START;
-    const { data: articles, error } = await supabaseService.supabase
+    const MAX_QUEUE = 10; // on ne garde que les 10 derniers articles
+
+    const { data: pending, error } = await supabaseService.supabase
       .from('articles')
       .select('id, title, summary_ai, summary, source, author, url, image_urls')
       .eq('whatsapp_sent', false)
       .or('summary_ai.not.is.null,summary.not.is.null')
       .gte('created_at', since)
-      .order('published_at', { ascending: true })
-      .limit(limit);
+      .order('published_at', { ascending: false }); // plus récent d'abord
 
     if (error) throw error;
 
-    if (!articles || articles.length === 0) {
+    if (!pending || pending.length === 0) {
       console.log('Aucun article récent en attente d\'envoi WhatsApp');
       return { sent: 0, errors: 0, pending: 0, message: 'Aucun article en attente' };
     }
+
+    // Purge du backlog : tout sauf les MAX_QUEUE plus récents est marqué envoyé
+    // (NON diffusé) pour éviter de déverser toute la file sur la chaîne.
+    const recent = pending.slice(0, MAX_QUEUE);
+    const backlog = pending.slice(MAX_QUEUE);
+    if (backlog.length > 0) {
+      await supabaseService.supabase
+        .from('articles')
+        .update({ whatsapp_sent: true })
+        .in('id', backlog.map(a => a.id));
+      console.log(`🗑️ Backlog: ${backlog.length} article(s) marqués envoyés (non diffusés) — on ne garde que les ${MAX_QUEUE} plus récents`);
+    }
+
+    // Diffuser au plus `limit` articles, du plus récent au plus ancien.
+    const articles = recent.slice(0, limit);
 
     // 2. Détection des doublons par titre (vérifier les titres déjà envoyés)
     const titles = articles.map(a => a.title);
