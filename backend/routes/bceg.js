@@ -1117,6 +1117,27 @@ router.get('/due-diligence/mine', requireAuth, async (req, res) => {
   }
 });
 
+// URL signée de téléchargement/visualisation (propriétaire uniquement) — bucket privé
+router.get('/due-diligence/:id/url', requireAuth, async (req, res) => {
+  try {
+    const { data: doc, error } = await supabase
+      .from('due_diligence_documents')
+      .select('file_url, user_id')
+      .eq('id', req.params.id)
+      .single();
+    if (error || !doc) return res.status(404).json({ success: false, error: 'Document introuvable' });
+    if (doc.user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    const path = String(doc.file_url || '').replace(/^due-diligence\//, '');
+    const { data: signed, error: sErr } = await supabase.storage
+      .from('due-diligence')
+      .createSignedUrl(path, 3600);
+    if (sErr) throw sErr;
+    res.json({ success: true, url: signed.signedUrl });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.delete('/due-diligence/:id', requireAuth, async (req, res) => {
   try {
     const { data: doc } = await supabase.from('due_diligence_documents').select('*').eq('id', req.params.id).eq('user_id', req.user.id).single();

@@ -278,6 +278,23 @@ export default function BcegDocSection({
     }
   }
 
+  // Ouvre un document via une URL signée (le bucket est privé → pas d'accès direct)
+  const openDoc = async (docId: string) => {
+    setError(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API}/api/bceg/due-diligence/${docId}/url`, { headers })
+      const json = await res.json()
+      if (json?.success && json.url) {
+        window.open(json.url, '_blank', 'noopener')
+      } else {
+        setError(json?.error || "Impossible d'ouvrir le document")
+      }
+    } catch (e: any) {
+      setError(e?.message || "Erreur lors de l'ouverture du document")
+    }
+  }
+
   const handleDelete = async (docId: string) => {
     if (!confirm('Supprimer ce document ?')) return
     try {
@@ -544,15 +561,13 @@ export default function BcegDocSection({
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {doc.file_url && (
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        onClick={() => openDoc(doc.id)}
                         className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-[#697357]"
                         title="Voir"
                       >
                         <Eye className="w-4 h-4" />
-                      </a>
+                      </button>
                     )}
                     <button
                       onClick={() => handleDelete(doc.id)}
