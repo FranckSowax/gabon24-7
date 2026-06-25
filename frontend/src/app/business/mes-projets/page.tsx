@@ -2316,6 +2316,19 @@ export default function MesProjetsPage() {
             const actionCount = projectActionsData.filter(a => a.action_type === action.id).length
             const hasCompleted = projectActionsData.some(a => a.action_type === action.id && a.action_status === 'completed')
 
+            // Business Plan : avancement réel basé sur les sections déjà générées
+            // (document_type 'business-plan-section'), pour éviter de regénérer 2× le même.
+            const BP_TOTAL = 10
+            const projDocs = projectDocuments[selectedProject.id] || []
+            const bpSecs = action.id === 'business-plan'
+              ? projDocs.filter((d: any) => (d.document_type || '').toLowerCase().includes('business-plan-section'))
+              : []
+            const bpCount = action.id === 'business-plan'
+              ? (new Set(bpSecs.map((d: any) => d.metadata?.section_number).filter((n: any) => n != null)).size || bpSecs.length)
+              : 0
+            const bpPartial = action.id === 'business-plan' && bpCount > 0 && bpCount < BP_TOTAL
+            const bpComplete = action.id === 'business-plan' && bpCount >= BP_TOTAL
+
             return (
               <motion.div
                 key={action.id}
@@ -2337,6 +2350,16 @@ export default function MesProjetsPage() {
                       <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
                         <Clock className="w-4 h-4 text-amber-600" />
                         <span className="text-xs font-semibold text-amber-700">Bientôt</span>
+                      </div>
+                    ) : bpComplete ? (
+                      <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span className="text-xs font-semibold text-green-700">Généré ✓</span>
+                      </div>
+                    ) : bpPartial ? (
+                      <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-semibold text-amber-700">Partiel {bpCount}/{BP_TOTAL}</span>
                       </div>
                     ) : hasCompleted && (
                       <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
@@ -2395,7 +2418,12 @@ export default function MesProjetsPage() {
                         : 'bg-gradient-to-r from-[#697357] to-[#4d553e] hover:from-[#4d553e] hover:to-[#3a4030] text-white hover:shadow-lg shadow-[#697357]/30 group-hover:scale-[1.02]'
                     }`}
                   >
-                    <span>{(action as any).comingSoon ? 'Disponible prochainement' : 'Lancer l\'action'}</span>
+                    <span>{
+                      (action as any).comingSoon ? 'Disponible prochainement'
+                      : bpComplete ? 'Voir / compléter'
+                      : bpPartial ? `Continuer (${bpCount}/${BP_TOTAL})`
+                      : 'Lancer l\'action'
+                    }</span>
                     {!(action as any).comingSoon && <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />}
                   </button>
                 </div>
