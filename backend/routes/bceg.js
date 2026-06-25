@@ -1616,4 +1616,27 @@ router.post('/cron/sector-match', async (req, res) => {
   }
 });
 
+// TEMP — diagnostic : modèles OpenAI accessibles (IDs uniquement, non sensible).
+// À RETIRER après vérification. Gardé léger + clé simple pour éviter l'abus.
+router.get('/diag/openai-models', async (req, res) => {
+  if (req.query.key !== 'verify-openai-2026') {
+    return res.status(401).json({ success: false, error: 'key requise' });
+  }
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ success: false, error: 'OPENAI_API_KEY absente côté serveur' });
+    }
+    const r = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    });
+    const j = await r.json();
+    if (!r.ok) return res.status(r.status).json({ success: false, error: j?.error?.message || 'Erreur OpenAI', status: r.status });
+    const ids = (j.data || []).map((m) => m.id).sort();
+    const image = ids.filter((id) => /image|dall|gpt-image/i.test(id));
+    res.json({ success: true, total: ids.length, image_models: image, all: ids });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 module.exports = router;
