@@ -341,45 +341,46 @@ async function sendChannelPost(channelId, article, frontendUrl) {
     caption
   }).catch(err => console.warn('⚠️ [FACEBOOK] Webhook error:', err.message));
 
-  if (imageUrl) {
-    // Envoi avec image en header
-    const response = await axios.post(
-      `${WHAPI_BASE_URL}/messages/image`,
-      {
-        to: channelId,
-        media: imageUrl,
-        caption,
-        width: 800,
-        height: 418
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${WHAPI_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      }
-    );
-    return { success: true, type: 'image', data: response.data };
-  } else {
-    // Fallback texte si pas d'image
+  const headers = {
+    'Authorization': `Bearer ${WHAPI_TOKEN}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  // Helper: envoi texte (utilisé en mode normal ET en fallback si l'image échoue)
+  const sendText = async () => {
     const response = await axios.post(
       `${WHAPI_BASE_URL}/messages/text`,
-      {
-        to: channelId,
-        body: caption,
-        typing_time: 0
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${WHAPI_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      }
+      { to: channelId, body: caption, typing_time: 0 },
+      { headers }
     );
     return { success: true, type: 'text', data: response.data };
+  };
+
+  if (imageUrl) {
+    try {
+      // Envoi avec image en header
+      const response = await axios.post(
+        `${WHAPI_BASE_URL}/messages/image`,
+        { to: channelId, media: imageUrl, caption, width: 800, height: 418 },
+        { headers }
+      );
+      return { success: true, type: 'image', data: response.data };
+    } catch (imgError) {
+      // Une image cassée/inaccessible ne doit PAS bloquer la diffusion : on
+      // bascule sur un envoi texte. (Évite le head-of-line blocking où un
+      // article à image invalide bloque toute la file WhatsApp.)
+      const status = imgError.response?.status;
+      // Erreurs globales (auth/channel) : inutile de retenter en texte, on propage
+      if (status === 401 || status === 403 || status === 404) {
+        throw imgError;
+      }
+      console.warn(`⚠️ Envoi image échoué (${status || imgError.message}) — fallback texte`);
+      return await sendText();
+    }
   }
+  // Pas d'image : envoi texte direct
+  return await sendText();
 }
 
 /**
@@ -502,8 +503,28 @@ async function sendPendingArticles(limit = 5) {
         await new Promise(resolve => setTimeout(resolve, 5000));
 
       } catch (sendError) {
+        const status = sendError.response?.status;
         console.error(`❌ Erreur envoi article ${article.id}:`, sendError.response?.data || sendError.message);
         errors++;
+
+        // Erreur globale (token invalide / channel introuvable / accès refusé) :
+        // inutile de marteler les 4 articles suivants avec la même erreur.
+        // On abandonne le batch et on signale clairement la cause probable.
+        if (status === 401 || status === 403 || status === 404) {
+          console.error(
+            `🛑 Erreur Whapi ${status} — abandon du batch. ` +
+            `Vérifier WHAPI_TOKEN et WHAPI_CHANNEL_ID (channel reconnecté = ID changé ?). ` +
+            `Channel configuré: ${channelId}`
+          );
+          return {
+            sent,
+            errors,
+            skipped: skipped.length,
+            total: uniqueArticles.length,
+            aborted: true,
+            reason: `Whapi ${status} — WHAPI_CHANNEL_ID/WHAPI_TOKEN probablement invalide`
+          };
+        }
       }
     }
 
