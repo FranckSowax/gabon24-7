@@ -26,6 +26,13 @@ const updateStepsSchema = z.object({
   progressPercentage: z.coerce.number().min(0).max(100).optional().nullable(),
 }).passthrough();
 
+const illustrationSchema = z.object({
+  kind: z.enum(['logo', 'flyer', 'infographic']),
+}).passthrough();
+
+// Coût en crédits par type d'illustration
+const ILLUSTRATION_CREDITS = { logo: 20, flyer: 20, infographic: 35 };
+
 // Constantes de cache
 const CACHE_TTL = {
   PROJECTS_LIST: 60,      // 1 minute pour la liste
@@ -715,6 +722,130 @@ router.patch('/:projectId/update-steps', requireAuth, validateBody(updateStepsSc
       success: false,
       error: 'Erreur serveur'
     });
+  }
+});
+
+/**
+ * POST /api/saved-projects/:projectId/illustration
+ * Génère une illustration (logo / flyer / infographie) via GPT Image 2,
+ * la stocke et l'attache au projet. L'infographie devient une pièce du dossier.
+ */
+router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSchema), async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+    const { kind } = req.body;
+    const cost = ILLUSTRATION_CREDITS[kind] || 20;
+
+    // 1. Projet (+ contrôle d'accès)
+    const { data: project, error: pErr } = await supabaseService.supabase
+      .from('saved_projects').select('*').eq('id', projectId).single();
+    if (pErr || !project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
+    if (project.user_id && project.user_id !== userId) {
+      return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    // 2. Documents générés (contexte pour le prompt)
+    const { data: docs } = await supabaseService.supabase
+      .from('project_documents')
+      .select('document_type, title, content, metadata')
+      .eq('project_id', projectId);
+
+    // 3. Génération via gpt-image-2
+    const { generateIllustration } = require('../services/projectIllustration');
+    const { buffer, promptJson } = await generateIllustration(kind, project, docs || []);
+
+    // 4. Upload dans le bucket privé due-diligence
+    const path = `${userId}/illustration-${kind}-${Date.now()}.png`;
+    const { error: upErr } = await supabaseService.supabase.storage
+      .from('due-diligence')
+      .upload(path, buffer, { contentType: 'image/png', upsert: false });
+    if (upErr) throw upErr;
+
+    // URL signée pour affichage immédiat
+    let imageUrl = null;
+    try {
+      const { data: signed } = await supabaseService.supabase.storage
+        .from('due-diligence').createSignedUrl(path, 3600);
+      imageUrl = signed?.signedUrl || null;
+    } catch { /* ignore */ }
+
+    const LABELS = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' };
+
+    // 5. Enregistrer comme document projet (visible dans la bibliothèque)
+    let documentId = null;
+    try {
+      const { data: doc } = await supabaseService.supabase
+        .from('project_documents')
+        .insert([{
+          project_id: projectId,
+          user_id: userId,
+          document_type: kind === 'infographic' ? 'illustration' : kind,
+          title: LABELS[kind] || 'Illustration',
+          content: imageUrl ? `![${LABELS[kind]}](${imageUrl})` : '',
+          metadata: { is_image: true, kind, storage_path: path, bucket: 'due-diligence', prompt: promptJson },
+        }])
+        .select('id').single();
+      documentId = doc?.id || null;
+    } catch (e) { console.warn('⚠️ Sauvegarde project_documents illustration:', e.message); }
+
+    // 6. Infographie → pièce du dossier de financement (due_diligence_documents)
+    let dossierPieceId = null;
+    if (kind === 'infographic') {
+      try {
+        const { data: dd, error: ddErr } = await supabaseService.supabase
+          .from('due_diligence_documents')
+          .insert({
+            user_id: userId,
+            project_id: projectId,
+            doc_type: 'illustration',
+            file_url: path,
+            file_name: 'infographie-business.png',
+            file_size: buffer.length,
+            mime_type: 'image/png',
+            verification_status: 'pending',
+          })
+          .select('id').single();
+        if (ddErr) {
+          // Le plus souvent : contrainte CHECK doc_type à mettre à jour (SQL)
+          console.warn('⚠️ due_diligence illustration échouée (contrainte doc_type ?):', ddErr.message);
+        } else {
+          dossierPieceId = dd?.id || null;
+        }
+      } catch (e) { console.warn('⚠️ due_diligence illustration:', e.message); }
+    }
+
+    // 7. Décompte des crédits (sur le projet)
+    try {
+      const current = project.total_credits_used || 0;
+      await supabaseService.supabase
+        .from('saved_projects')
+        .update({ total_credits_used: current + cost, context_updated_at: new Date().toISOString() })
+        .eq('id', projectId);
+    } catch (e) { console.warn('⚠️ Décompte crédits illustration:', e.message); }
+
+    // Invalider le cache projet
+    try {
+      if (redisCache.isAvailable()) {
+        await redisCache.delPattern(`projects:*:${userId}*`);
+        await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+      }
+    } catch { /* ignore */ }
+
+    res.json({
+      success: true,
+      kind,
+      imageUrl,
+      documentId,
+      dossierPieceId,
+      creditsUsed: cost,
+      addedToDossier: kind === 'infographic' && !!dossierPieceId,
+    });
+  } catch (error) {
+    console.error('❌ Erreur génération illustration:', error);
+    const msg = error?.message || 'Erreur génération illustration';
+    const isQuota = /quota|insufficient|billing/i.test(msg);
+    res.status(isQuota ? 402 : 500).json({ success: false, error: msg });
   }
 });
 
