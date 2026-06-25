@@ -1631,4 +1631,10 @@ router.post('/cron/sector-match', async (req, res) => {
   }
 });
 
+// TEMP — diagnostic présence BCEG_PORTAL_CODE (pas de fuite : longueur + last4). À RETIRER.
+router.get('/diag/portal', (req, res) => {
+  const v = process.env.BCEG_PORTAL_CODE || '';
+  res.json({ set: !!v, len: v.length, last4: v.slice(-4) });
+});
+
 module.exports = router;
