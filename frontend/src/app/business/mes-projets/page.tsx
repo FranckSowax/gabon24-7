@@ -1579,6 +1579,7 @@ export default function MesProjetsPage() {
             project={selectedProject}
             actions={projectActions[selectedProject.id] || []}
             documents={projectDocuments[selectedProject.id] || []}
+            uploadedDocs={bcegDocs}
             onNavigateSection={(s) => goToSection(s)}
           />
         )

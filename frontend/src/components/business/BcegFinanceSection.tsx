@@ -33,6 +33,8 @@ interface BcegFinanceSectionProps {
   project: any
   actions?: any[]
   documents?: any[]
+  /** Pièces réellement téléversées/importées dans le dossier (due_diligence_documents, avec doc_type) */
+  uploadedDocs?: any[]
   onNavigateSection?: (section: string) => void
 }
 
@@ -48,7 +50,7 @@ const REQUIRED_DOCS = [
 export default function BcegFinanceSection({
   project,
   actions = [],
-  documents = [],
+  uploadedDocs = [],
   onNavigateSection,
 }: BcegFinanceSectionProps) {
   const router = useRouter()
@@ -82,13 +84,17 @@ export default function BcegFinanceSection({
     a.action_type === 'business-plan' || a.action_type === 'business-plan-section'
   )
   const hasActionPlan = (actions || []).some(a => a.action_type === 'action-plan')
-  const hasDocs = (documents || []).length > 0
+
+  // Pièces réellement téléversées/importées dans le dossier (par doc_type)
+  const uploadedTypes = new Set((uploadedDocs || []).map((d: any) => d.doc_type))
+  const hasPersonalDocs = ['cni', 'rccm', 'rib'].every(k => uploadedTypes.has(k))
 
   const checklist = REQUIRED_DOCS.map(d => {
-    let ok = false
-    if (d.key === 'business_plan') ok = hasBusinessPlan
-    if (d.key === 'plan_action') ok = hasActionPlan
-    if (['cni', 'rccm', 'rib', 'devis'].includes(d.key)) ok = hasDocs
+    // Une pièce est validée si son fichier est joint au dossier…
+    let ok = uploadedTypes.has(d.key)
+    // …ou, pour le BP / plan d'action, si elle a été générée via l'IA.
+    if (d.key === 'business_plan') ok = ok || hasBusinessPlan
+    if (d.key === 'plan_action') ok = ok || hasActionPlan
     return { ...d, ok }
   })
 
@@ -282,7 +288,7 @@ export default function BcegFinanceSection({
             title="Documents personnels"
             desc="CNI, RCCM, RIB"
             cta="Préparer"
-            done={hasDocs}
+            done={hasPersonalDocs}
             onClick={() => window.location.href = '/business/bceg-prepare'}
           />
           <NextStep

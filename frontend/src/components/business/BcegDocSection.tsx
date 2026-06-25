@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, AlertCircle, Trash2, Loader2,
-  ShieldCheck, Eye, Clock, Building2, Sparkles, Zap, ArrowRight,
+  ShieldCheck, Eye, Building2, Sparkles, Zap, ArrowRight,
   FolderOpen, X, BookOpen
 } from 'lucide-react'
 
@@ -503,14 +503,19 @@ export default function BcegDocSection({
                       <div className="text-sm font-semibold text-slate-900 truncate">{doc.file_name}</div>
                       <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
                         {doc.file_size && <span>{(doc.file_size / 1024).toFixed(0)} Ko</span>}
-                        {doc.verification_status === 'pending' && (
-                          <span className="flex items-center gap-1 text-amber-700">
-                            <Clock className="w-3 h-3" /> En attente de vérification
+                        {(!doc.verification_status || doc.verification_status === 'pending') && (
+                          <span className="flex items-center gap-1 text-emerald-700">
+                            <CheckCircle2 className="w-3 h-3" /> Joint au dossier
                           </span>
                         )}
                         {doc.verification_status === 'approved' && (
                           <span className="flex items-center gap-1 text-emerald-700">
                             <CheckCircle2 className="w-3 h-3" /> Validé par BCEG
+                          </span>
+                        )}
+                        {doc.verification_status === 'rejected' && (
+                          <span className="flex items-center gap-1 text-rose-700">
+                            <AlertCircle className="w-3 h-3" /> À corriger
                           </span>
                         )}
                       </div>
