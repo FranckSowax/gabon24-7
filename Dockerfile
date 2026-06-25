@@ -24,6 +24,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# Puppeteer doit utiliser le Chromium système (pas de téléchargement au build).
+# Défini AVANT npm install pour que puppeteer/whatsapp-web.js ne télécharge rien.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 # Installer les dépendances backend (cache Docker tant que package*.json ne change pas)
 COPY backend/package*.json ./
 RUN npm install --production
@@ -32,8 +38,5 @@ RUN npm install --production
 COPY backend/ ./
 
 EXPOSE 3001
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 CMD ["node", "server.js"]

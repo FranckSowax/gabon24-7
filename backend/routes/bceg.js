@@ -764,6 +764,112 @@ router.post('/generate-dossier', requireAuth, validateBody(dossierSchema), async
   }
 });
 
+// POST /import-business-plan : regroupe les sections générées (project_documents)
+// en un PDF au template BCEG, l'upload dans le bucket privé et l'attache au
+// dossier (due_diligence_documents). Aucun appel IA : assemblage déterministe.
+router.post('/import-business-plan', requireAuth, async (req, res) => {
+  try {
+    const { project_id, kind = 'business_plan', document_ids } = req.body || {};
+    if (!project_id) return res.status(400).json({ success: false, error: 'project_id requis' });
+    if (!['business_plan', 'plan_action'].includes(kind)) {
+      return res.status(400).json({ success: false, error: 'kind invalide' });
+    }
+
+    // 1. Projet (page de garde + contrôle d'accès)
+    const { data: project } = await supabase.from('saved_projects').select('*').eq('id', project_id).single();
+    if (!project) return res.status(404).json({ success: false, error: 'Projet introuvable' });
+    if (project.user_id && project.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Projet non autorisé' });
+    }
+
+    // 2. Documents générés correspondant au type
+    const { data: allDocs, error: docErr } = await supabase
+      .from('project_documents')
+      .select('id, document_type, title, content, metadata, created_at')
+      .eq('project_id', project_id);
+    if (docErr) throw docErr;
+
+    const re = kind === 'business_plan' ? /business[-_]plan/i : /action[-_]plan/i;
+    let docs = (allDocs || []).filter((d) => re.test(d.document_type || ''));
+    if (Array.isArray(document_ids) && document_ids.length) {
+      docs = docs.filter((d) => document_ids.includes(d.id));
+    }
+    if (!docs.length) {
+      return res.status(404).json({ success: false, error: 'Aucun document à regrouper' });
+    }
+
+    // 3. Tri par numéro de section/phase
+    docs.sort((a, b) => {
+      const na = a.metadata?.section_number ?? a.metadata?.phase_number ?? 9999;
+      const nb = b.metadata?.section_number ?? b.metadata?.phase_number ?? 9999;
+      return na - nb;
+    });
+    const sections = docs.map((d, i) => ({
+      number: d.metadata?.section_number ?? d.metadata?.phase_number ?? (i + 1),
+      title: d.title || d.metadata?.section_title || `Section ${i + 1}`,
+      content: d.content || '',
+    }));
+
+    // 4. Annexes : pièces déjà fournies au dossier
+    const { data: dd } = await supabase
+      .from('due_diligence_documents')
+      .select('doc_type')
+      .eq('project_id', project_id)
+      .eq('user_id', req.user.id);
+    const present = new Set((dd || []).map((d) => d.doc_type));
+    const ANNEXES = [
+      { key: 'cni', label: "Pièce d'identité (CNI)" },
+      { key: 'rccm', label: 'RCCM ou attestation' },
+      { key: 'rib', label: 'RIB / Coordonnées bancaires' },
+      { key: 'devis', label: 'Devis ou justificatifs' },
+    ];
+    const annexes = ANNEXES.map((a) => ({ label: a.label, present: present.has(a.key) }));
+
+    // 5. HTML template BCEG → PDF
+    const { buildBcegBusinessPlanHtml, renderHtmlToPdf } = require('../services/businessPlanPdf');
+    const docTitle = kind === 'business_plan' ? 'Business Plan' : "Plan d'action";
+    const projectTitle = project.title || project.name || project.project_name || project.idea || 'Projet';
+    const html = buildBcegBusinessPlanHtml({
+      docTitle,
+      projectTitle,
+      owner: req.user.email || null,
+      sections,
+      annexes,
+    });
+    const pdf = await renderHtmlToPdf(html);
+
+    // 6. Upload PDF (service role) dans le bucket privé due-diligence
+    const safe = String(docTitle).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${req.user.id}/${kind}-${Date.now()}-${safe}.pdf`;
+    const { error: upErr } = await supabase.storage
+      .from('due-diligence')
+      .upload(path, pdf, { contentType: 'application/pdf', upsert: false });
+    if (upErr) throw upErr;
+
+    // 7. Enregistrement de la pièce
+    const { data: doc, error: insErr } = await supabase
+      .from('due_diligence_documents')
+      .insert({
+        user_id: req.user.id,
+        project_id,
+        doc_type: kind,
+        file_url: path,
+        file_name: `${safe}.pdf`,
+        file_size: pdf.length,
+        mime_type: 'application/pdf',
+        verification_status: 'pending',
+      })
+      .select()
+      .single();
+    if (insErr) throw insErr;
+
+    res.json({ success: true, document: doc, sections: sections.length });
+  } catch (error) {
+    console.error('Erreur /import-business-plan:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // =====================================================================
 // POST /api/bceg/submit-full — soumission complète : PDF + email BCEG + DB
 // =====================================================================

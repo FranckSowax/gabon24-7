@@ -7,7 +7,6 @@ import {
   ShieldCheck, Eye, Clock, Building2, Sparkles, Zap, ArrowRight,
   FolderOpen, X, BookOpen
 } from 'lucide-react'
-import { buildDocumentHtml } from '@/utils/documentExport'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -133,66 +132,24 @@ export default function BcegDocSection({
     }
   }
 
-  // Construit le contenu Markdown combiné des sections (triées) ou d'un seul document
-  const buildContent = (docs: ProjectDoc[]): string => {
-    const ordered = [...docs].sort((a, b) => {
-      const na = a.metadata?.section_number ?? a.metadata?.phase_number ?? 9999
-      const nb = b.metadata?.section_number ?? b.metadata?.phase_number ?? 9999
-      return na - nb
-    })
-    return ordered
-      .map(d => `## ${d.title || d.metadata?.section_title || 'Section'}\n\n${d.content || ''}`)
-      .join('\n\n---\n\n')
-  }
-
-  // Téléverse un contenu (Markdown) comme fichier .doc via le pipeline due-diligence existant
-  const uploadAsDoc = async (fileBase: string, title: string, content: string) => {
-    const headers = await authHeaders()
-    const html = buildDocumentHtml(title, content)
-    const blob = new Blob(['﻿', html], { type: 'application/msword' })
-    const fileName = `${(fileBase || 'document').replace(/[^a-z0-9]/gi, '_')}.doc`
-
-    const signRes = await fetch(`${API}/api/bceg/due-diligence/sign-upload`, {
-      method: 'POST', headers,
-      body: JSON.stringify({ doc_type: docType.key, file_name: fileName }),
-    })
-    const signJson = await signRes.json()
-    if (!signJson?.success || !signJson.path || !signJson.token) {
-      throw new Error(signJson?.error || 'Signature URL impossible')
-    }
-
-    // Upload via le client Supabase (méthode supportée pour les URLs signées)
-    const { supabase } = await import('@/lib/auth')
-    const up = await supabase.storage
-      .from('due-diligence')
-      .uploadToSignedUrl(signJson.path, signJson.token, blob, { contentType: 'application/msword' })
-    if (up.error) throw new Error(up.error.message || 'Upload échoué')
-
-    const metaRes = await fetch(`${API}/api/bceg/due-diligence`, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        project_id: projectId,
-        doc_type: docType.key,
-        file_url: signJson.path,
-        file_name: fileName,
-        file_size: blob.size,
-        mime_type: 'application/msword',
-      }),
-    })
-    const metaJson = await metaRes.json()
-    if (!metaJson?.success) throw new Error(metaJson?.error || 'Erreur enregistrement métadonnées')
-    return metaJson.document as UploadedDoc
-  }
-
-  // Importe l'ensemble (business plan complet = toutes les sections) ou un document précis
+  // Importe : regroupe les sections en un PDF template BCEG côté serveur,
+  // puis l'attache au dossier (endpoint /import-business-plan).
   const handleImport = async (selection: { id: string; title: string; docs: ProjectDoc[] }) => {
     setImportingId(selection.id)
     setError(null)
     try {
-      const content = buildContent(selection.docs)
-      if (!content.trim()) throw new Error('Document vide')
-      const created = await uploadAsDoc(selection.title, selection.title, content)
-      setLocalDocs(prev => [created, ...prev])
+      const headers = await authHeaders()
+      const res = await fetch(`${API}/api/bceg/import-business-plan`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          project_id: projectId,
+          kind: docType.key,
+          document_ids: selection.docs.map(d => d.id),
+        }),
+      })
+      const json = await res.json()
+      if (!json?.success || !json.document) throw new Error(json?.error || "Erreur lors de l'import")
+      setLocalDocs(prev => [json.document, ...prev])
       setImportOpen(false)
       onChange?.()
     } catch (e: any) {
@@ -675,7 +632,7 @@ export default function BcegDocSection({
                             {docType.key === 'business_plan' ? 'Business Plan complet' : "Plan d'action complet"}
                           </div>
                           <div className="text-xs opacity-90">
-                            Regroupe les {importDocs.length} partie(s) en un seul document imprimable (.doc)
+                            Regroupe les {importDocs.length} partie(s) en un seul PDF aux couleurs BCEG (page de garde, sommaire, annexes)
                           </div>
                         </div>
                       </div>
