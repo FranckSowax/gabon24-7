@@ -69,6 +69,14 @@ const STATUS_ORDER: Status[] = ['draft', 'submitted', 'in_review', 'accepted', '
 
 async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  // Portail partenaire BCEG : code d'accès partagé (prioritaire, sans session)
+  try {
+    if (typeof window !== 'undefined') {
+      const code = sessionStorage.getItem('bceg_portal_code')
+      if (code) { headers['x-bceg-code'] = code; return headers }
+    }
+  } catch {}
+  // Sinon : JWT admin authentifié
   try {
     const { supabase } = await import('@/lib/auth')
     const { data } = await supabase.auth.getSession()
@@ -94,7 +102,8 @@ function timeAgo(iso: string | null | undefined): string {
   return `il y a ${Math.floor(h / 24)} j`
 }
 
-export default function AdminBcegDashboardPage() {
+// Dashboard de revue BCEG — réutilisé par /admin/bceg (admin) et /partenaire/bceg (portail code)
+export function BcegReviewDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -914,4 +923,9 @@ function ActionBtn({ icon, label, onClick, tone }: { icon: React.ReactNode; labe
       {icon} {label}
     </button>
   )
+}
+
+// Route admin interne : /admin/bceg (gardée par le layout admin → is_admin)
+export default function AdminBcegDashboardPage() {
+  return <BcegReviewDashboard />
 }

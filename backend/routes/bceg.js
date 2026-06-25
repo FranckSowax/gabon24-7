@@ -18,6 +18,21 @@ const supabase = supabaseService.supabase;
 const BCEG_TARGET_EMAIL = process.env.BCEG_TARGET_EMAIL || 'commercial@bceg.ga';
 
 /**
+ * Accès au portail BCEG : autorisé si un code partagé valide est fourni
+ * (header x-bceg-code ou ?code=) OU si l'utilisateur est un admin authentifié.
+ * Le code est défini via la variable d'env BCEG_PORTAL_CODE (Railway).
+ */
+async function requireBcegAccess(req, res, next) {
+  const code = req.headers['x-bceg-code'] || req.query.code;
+  if (process.env.BCEG_PORTAL_CODE && code && code === process.env.BCEG_PORTAL_CODE) {
+    req.user = req.user || { id: null };
+    req.bcegPortal = true;
+    return next();
+  }
+  return requireAdmin(req, res, next);
+}
+
+/**
  * Annonce la décision BCEG au porteur du projet sur 3 canaux (best-effort) :
  * notification in-app, WhatsApp (si numéro connu), email (SendGrid).
  * Ne notifie que pour les statuts in_review / accepted / rejected.
@@ -587,7 +602,7 @@ router.get('/my-submissions', requireAuth, async (req, res) => {
 // =====================================================================
 
 // GET /api/bceg/admin/submissions — toutes les soumissions (Kanban)
-router.get('/admin/submissions', requireAdmin, async (req, res) => {
+router.get('/admin/submissions', requireBcegAccess, async (req, res) => {
   try {
     const { status, search } = req.query;
     let query = supabase
@@ -623,7 +638,7 @@ router.get('/admin/submissions', requireAdmin, async (req, res) => {
 });
 
 // GET /api/bceg/admin/submissions/:id — détail complet d'une soumission
-router.get('/admin/submissions/:id', requireAdmin, async (req, res) => {
+router.get('/admin/submissions/:id', requireBcegAccess, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -658,7 +673,7 @@ router.get('/admin/submissions/:id', requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/bceg/admin/submissions/:id/status — changer statut + notes
-router.patch('/admin/submissions/:id/status', requireAdmin, validateBody(submissionStatusSchema), async (req, res) => {
+router.patch('/admin/submissions/:id/status', requireBcegAccess, validateBody(submissionStatusSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, admin_notes, bceg_reference } = req.body || {};
@@ -702,7 +717,7 @@ router.patch('/admin/submissions/:id/status', requireAdmin, validateBody(submiss
 });
 
 // GET /api/bceg/admin/submissions/:id/documents — pièces du dossier + URLs signées + checklist
-router.get('/admin/submissions/:id/documents', requireAdmin, async (req, res) => {
+router.get('/admin/submissions/:id/documents', requireBcegAccess, async (req, res) => {
   try {
     const { data: sub, error: sErr } = await supabase
       .from('bceg_submissions')
@@ -752,7 +767,7 @@ router.get('/admin/submissions/:id/documents', requireAdmin, async (req, res) =>
 });
 
 // GET /api/bceg/admin/stats — stats globales pour le header dashboard
-router.get('/admin/stats', requireAdmin, async (_req, res) => {
+router.get('/admin/stats', requireBcegAccess, async (_req, res) => {
   try {
     const [allRes, draftRes, subRes, reviewRes, accRes, rejRes, montants, scoreAcc] = await Promise.all([
       supabase.from('bceg_submissions').select('id', { count: 'exact', head: true }),
@@ -799,7 +814,7 @@ router.get('/admin/stats', requireAdmin, async (_req, res) => {
 });
 
 // GET /api/bceg/admin/export — export CSV pour BCEG
-router.get('/admin/export', requireAdmin, async (_req, res) => {
+router.get('/admin/export', requireBcegAccess, async (_req, res) => {
   try {
     const { data, error } = await supabase
       .from('bceg_submissions')
@@ -1401,7 +1416,7 @@ router.delete('/due-diligence/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.patch('/admin/due-diligence/:id', requireAdmin, validateBody(adminDueDiligenceUpdateSchema), async (req, res) => {
+router.patch('/admin/due-diligence/:id', requireBcegAccess, validateBody(adminDueDiligenceUpdateSchema), async (req, res) => {
   try {
     const { status, admin_notes, rejection_reason } = req.body || {};
     const update = {
@@ -1613,29 +1628,6 @@ router.post('/cron/sector-match', async (req, res) => {
   } catch (error) {
     console.error('Erreur /cron/sector-match:', error);
     res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// TEMP — diagnostic : modèles OpenAI accessibles (IDs uniquement, non sensible).
-// À RETIRER après vérification. Gardé léger + clé simple pour éviter l'abus.
-router.get('/diag/openai-models', async (req, res) => {
-  if (req.query.key !== 'verify-openai-2026') {
-    return res.status(401).json({ success: false, error: 'key requise' });
-  }
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ success: false, error: 'OPENAI_API_KEY absente côté serveur' });
-    }
-    const r = await fetch('https://api.openai.com/v1/models', {
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    });
-    const j = await r.json();
-    if (!r.ok) return res.status(r.status).json({ success: false, error: j?.error?.message || 'Erreur OpenAI', status: r.status });
-    const ids = (j.data || []).map((m) => m.id).sort();
-    const image = ids.filter((id) => /image|dall|gpt-image/i.test(id));
-    res.json({ success: true, total: ids.length, image_models: image, all: ids });
-  } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
   }
 });
 
