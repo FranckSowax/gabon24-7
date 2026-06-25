@@ -17,6 +17,95 @@ const { generateBcegDossier } = require('../services/bcegPdfService');
 const supabase = supabaseService.supabase;
 const BCEG_TARGET_EMAIL = process.env.BCEG_TARGET_EMAIL || 'commercial@bceg.ga';
 
+/**
+ * Annonce la décision BCEG au porteur du projet sur 3 canaux (best-effort) :
+ * notification in-app, WhatsApp (si numéro connu), email (SendGrid).
+ * Ne notifie que pour les statuts in_review / accepted / rejected.
+ */
+async function notifyApplicantOfDecision({ submission, status }) {
+  const result = { inApp: false, whatsapp: false, email: false };
+  const userId = submission?.user_id;
+  const reference = submission?.bceg_reference;
+  const adminNotes = submission?.admin_notes;
+
+  const titleMap = {
+    in_review: 'Votre dossier BCEG est en cours d\'examen',
+    accepted: '🎉 Votre dossier BCEG est accepté',
+    rejected: 'Votre dossier BCEG nécessite une révision',
+  };
+  const msgMap = {
+    in_review: 'La BCEG a bien reçu votre dossier et l\'examine actuellement. Vous serez notifié de la décision.',
+    accepted: `Félicitations ! La BCEG a accepté votre dossier de financement${reference ? ` (réf. ${reference})` : ''}.${adminNotes ? `\n\n${adminNotes}` : ''}`,
+    rejected: `La BCEG a examiné votre dossier et demande des compléments ou corrections.${adminNotes ? `\n\nMotif : ${adminNotes}` : ''}`,
+  };
+  const title = titleMap[status];
+  const message = msgMap[status];
+  if (!userId || !title) return result;
+
+  const actionUrl = submission.project_id
+    ? `/business/mes-projets/${submission.project_id}/dossier-bceg`
+    : '/business/mes-projets';
+
+  // 1. Notification in-app
+  try {
+    const notificationService = require('../services/notification-service');
+    await notificationService.sendUserNotification(userId, {
+      title, message,
+      type: status === 'accepted' ? 'success' : status === 'rejected' ? 'warning' : 'info',
+      category: 'bceg',
+      priority: 'high',
+      actionUrl,
+      actionLabel: 'Voir mon dossier',
+      referenceType: 'bceg_submission',
+      referenceId: submission.id,
+    });
+    result.inApp = true;
+  } catch (e) { console.warn('⚠️ Notif in-app décision échouée:', e.message); }
+
+  // Récupérer email + téléphone du porteur
+  let email = null, phone = null;
+  try {
+    const { data } = await supabase.auth.admin.getUserById(userId);
+    email = data?.user?.email || null;
+  } catch (e) { console.warn('⚠️ getUserById échoué:', e.message); }
+  try {
+    const { data: pref } = await supabase
+      .from('user_sector_preferences')
+      .select('whatsapp_phone')
+      .eq('user_id', userId)
+      .not('whatsapp_phone', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    phone = pref?.whatsapp_phone || null;
+  } catch (e) { /* table optionnelle */ }
+
+  // 2. WhatsApp
+  if (phone) {
+    try {
+      const whapiService = require('../services/whapiService');
+      await whapiService.sendWhatsAppMessage(phone, `*${title}*\n\n${message}\n\n_Gabon Insight × BCEG_`);
+      result.whatsapp = true;
+    } catch (e) { console.warn('⚠️ WhatsApp décision échoué:', e.message); }
+  }
+
+  // 3. Email
+  if (email && process.env.SENDGRID_API_KEY) {
+    try {
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      await sgMail.send({
+        to: email,
+        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@gabon-insight.com',
+        subject: `[BCEG] ${title}`,
+        text: `${message}\n\nConsultez votre dossier : https://gaboninsight.com${actionUrl}`,
+      });
+      result.email = true;
+    } catch (e) { console.warn('⚠️ Email décision échoué:', e.message); }
+  }
+
+  return result;
+}
+
 // ==================== SCHÉMAS DE VALIDATION (Zod) ====================
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
@@ -597,14 +686,67 @@ router.patch('/admin/submissions/:id/status', requireAdmin, validateBody(submiss
       .single();
     if (error) throw error;
 
-    // TODO Phase 4 bis : envoyer notification WhatsApp à l'user
-    // (via whapiService.sendWhatsAppMessage si le user a un phone)
-    // Pour l'instant on log juste
     console.log(`📋 Submission ${id} → ${status} (admin: ${req.user.id})`);
 
-    res.json({ success: true, submission: data });
+    // Annonce la décision au porteur (in-app + WhatsApp + email), best-effort
+    let notified = null;
+    if (['in_review', 'accepted', 'rejected'].includes(status)) {
+      notified = await notifyApplicantOfDecision({ submission: data, status });
+    }
+
+    res.json({ success: true, submission: data, notified });
   } catch (error) {
     console.error('Erreur PATCH /admin/submissions/:id/status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bceg/admin/submissions/:id/documents — pièces du dossier + URLs signées + checklist
+router.get('/admin/submissions/:id/documents', requireAdmin, async (req, res) => {
+  try {
+    const { data: sub, error: sErr } = await supabase
+      .from('bceg_submissions')
+      .select('id, user_id, project_id')
+      .eq('id', req.params.id)
+      .single();
+    if (sErr || !sub) return res.status(404).json({ success: false, error: 'Soumission introuvable' });
+
+    let q = supabase.from('due_diligence_documents').select('*').eq('user_id', sub.user_id);
+    if (sub.project_id) q = q.eq('project_id', sub.project_id);
+    const { data: docs, error } = await q.order('created_at', { ascending: false });
+    if (error) throw error;
+
+    // URL signée d'aperçu (lecture) pour chaque pièce
+    const withUrls = await Promise.all((docs || []).map(async (d) => {
+      let view_url = null;
+      try {
+        const path = String(d.file_url || '').replace(/^due-diligence\//, '');
+        const { data: signed } = await supabase.storage.from('due-diligence').createSignedUrl(path, 3600);
+        view_url = signed?.signedUrl || null;
+      } catch { /* ignore */ }
+      return { ...d, view_url };
+    }));
+
+    // Checklist des 6 pièces attendues (présente ? statut ?)
+    const REQUIRED = [
+      { key: 'business_plan', label: 'Business Plan', required: true },
+      { key: 'plan_action', label: "Plan d'action détaillé", required: true },
+      { key: 'cni', label: "Pièce d'identité (CNI)", required: true },
+      { key: 'rccm', label: 'RCCM ou attestation', required: true },
+      { key: 'rib', label: 'RIB / Coordonnées bancaires', required: true },
+      { key: 'devis', label: 'Devis ou justificatifs', required: false },
+    ];
+    const byType = {};
+    withUrls.forEach((d) => { (byType[d.doc_type] = byType[d.doc_type] || []).push(d); });
+    const checklist = REQUIRED.map((r) => ({
+      ...r,
+      provided: !!(byType[r.key] && byType[r.key].length),
+      status: byType[r.key]?.[0]?.verification_status || null,
+    }));
+
+    res.json({ success: true, documents: withUrls, checklist });
+  } catch (error) {
+    console.error('Erreur GET /admin/submissions/:id/documents:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1261,12 +1403,17 @@ router.delete('/due-diligence/:id', requireAuth, async (req, res) => {
 
 router.patch('/admin/due-diligence/:id', requireAdmin, validateBody(adminDueDiligenceUpdateSchema), async (req, res) => {
   try {
+    const { status, admin_notes, rejection_reason } = req.body || {};
     const update = {
-      ...req.body,
       verified_by: req.user.id,
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+    // La colonne réelle est verification_status (lue côté porteur)
+    if (status !== undefined) update.verification_status = status;
+    if (admin_notes !== undefined) update.admin_notes = admin_notes;
+    if (rejection_reason !== undefined) update.rejection_reason = rejection_reason;
+
     const { data, error } = await supabase
       .from('due_diligence_documents')
       .update(update)
