@@ -89,6 +89,14 @@ export default function DossierBcegPage() {
         if (alive && scoreJson?.success && scoreJson.score) {
           setScore({ score: scoreJson.score.score, color: scoreJson.score.color, breakdown: scoreJson.score.breakdown })
         }
+
+        // Statut/décision de la dernière soumission pour ce projet
+        const subRes = await fetchWithTimeout(`${API}/api/bceg/my-submissions`, { headers })
+        const subJson = await subRes.json()
+        if (alive && subJson?.success) {
+          const mine = (subJson.submissions || []).find((s: any) => s.project_id === projectId)
+          if (mine) setSubmission(mine)
+        }
       } catch (e: any) {
         if (alive) setPdfError(e?.message || 'Erreur de chargement')
       } finally {
@@ -188,19 +196,32 @@ export default function DossierBcegPage() {
               </motion.div>
             )}
 
-            {submission && (
-              <div className="mb-5 bg-emerald-500/10 border border-emerald-400/30 rounded-2xl p-5 flex items-start gap-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-300 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <div className="font-bold text-emerald-100 mb-1">Dossier soumis avec succès</div>
-                  <div className="text-sm text-emerald-200/80">
-                    Réf. : <span className="font-mono">{submission.id}</span>
-                    <br />Soumis le {new Date(submission.submitted_at).toLocaleString('fr-FR')}
-                    <br />La BCEG t'enverra une réponse par email d'ici quelques jours ouvrés.
+            {submission && (() => {
+              const st = submission.status || 'submitted'
+              const META: Record<string, { tone: string; title: string; sub: string }> = {
+                submitted: { tone: 'bg-blue-500/10 border-blue-400/30 text-blue-100', title: 'Dossier soumis à la BCEG', sub: 'Votre dossier a bien été reçu. Il sera bientôt pris en charge.' },
+                in_review: { tone: 'bg-amber-500/10 border-amber-400/30 text-amber-100', title: '⏳ Dossier en cours d\'examen', sub: 'La BCEG examine actuellement votre dossier. Vous serez notifié de la décision.' },
+                accepted: { tone: 'bg-emerald-500/10 border-emerald-400/30 text-emerald-100', title: '🎉 Dossier accepté par la BCEG', sub: 'Félicitations ! La BCEG va vous recontacter pour la suite.' },
+                rejected: { tone: 'bg-rose-500/10 border-rose-400/30 text-rose-100', title: 'Dossier à réviser', sub: 'La BCEG demande des compléments ou corrections avant de poursuivre.' },
+                draft: { tone: 'bg-slate-500/10 border-slate-400/30 text-slate-100', title: 'Brouillon', sub: 'Dossier non encore soumis.' },
+              }
+              const m = META[st] || META.submitted
+              return (
+                <div className={`mb-5 border rounded-2xl p-5 flex items-start gap-3 ${m.tone}`}>
+                  <CheckCircle2 className="w-6 h-6 mt-0.5 shrink-0 opacity-90" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-bold mb-1">{m.title}</div>
+                    <div className="opacity-80">
+                      {m.sub}
+                      {submission.bceg_reference && <><br />Référence BCEG : <span className="font-mono">{submission.bceg_reference}</span></>}
+                      {submission.admin_notes && (st === 'rejected' || st === 'accepted') && <><br />Message BCEG : {submission.admin_notes}</>}
+                      {submission.submitted_at && <><br />Soumis le {new Date(submission.submitted_at).toLocaleString('fr-FR')}</>}
+                      {submission.decision_at && <><br />Décision le {new Date(submission.decision_at).toLocaleString('fr-FR')}</>}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             <div className="grid lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2">
