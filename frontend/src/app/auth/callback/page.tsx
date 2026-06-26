@@ -26,38 +26,48 @@ function AuthCallbackContent() {
 
   const handleAuthCallback = async () => {
     try {
-      // 1) PKCE: échanger le code d'auth pour une session si présent
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href)
-        const code = url.searchParams.get('code')
         const errorDesc = url.searchParams.get('error_description')
         if (errorDesc) {
           throw new Error(decodeURIComponent(errorDesc))
         }
-        if (code) {
-          // Support des différentes signatures via any-cast
-          const authAny: any = (supabase as any).auth
-          try {
-            const res = await authAny.exchangeCodeForSession(code)
-            if (res?.error) throw res.error
-          } catch (e1) {
-            try {
-              const res2 = await authAny.exchangeCodeForSession({ code })
-              if (res2?.error) throw res2.error
-            } catch (e2) {
-              throw e2
-            }
-          }
-          // Nettoyer l'URL des paramètres sensibles
-          try { window.history.replaceState({}, document.title, '/auth/callback') } catch {}
+
+        const code = url.searchParams.get('code')
+        const tokenHash = url.searchParams.get('token_hash')
+        const otpType = url.searchParams.get('type')
+        const authAny: any = (supabase as any).auth
+
+        // 1) Avec flowType 'pkce' + detectSessionInUrl, le client échange déjà
+        //    le ?code= automatiquement. On laisse un court instant puis on vérifie.
+        let session = (await supabase.auth.getSession()).data.session
+
+        // 2) Lien de confirmation e-mail au format token_hash (verifyOtp) — robuste
+        if (!session && tokenHash && otpType) {
+          const { error } = await authAny.verifyOtp({ token_hash: tokenHash, type: otpType })
+          if (error) throw error
+          session = (await supabase.auth.getSession()).data.session
         }
+
+        // 3) PKCE ?code= : n'échanger QUE si aucune session (string uniquement, jamais d'objet)
+        if (!session && code) {
+          const { error } = await authAny.exchangeCodeForSession(code)
+          if (error) {
+            // Le code a peut-être déjà été consommé par detectSessionInUrl → re-vérifier
+            session = (await supabase.auth.getSession()).data.session
+            if (!session) throw error
+          }
+        }
+
+        // Nettoyer l'URL des paramètres sensibles
+        try { window.history.replaceState({}, document.title, '/auth/callback') } catch {}
       }
 
-      // 2) Récupérer la session actualisée
+      // Récupérer la session actualisée
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
 
-      if (!data.session) throw new Error('Aucune session trouvée');
+      if (!data.session) throw new Error('Aucune session trouvée. Le lien a peut-être expiré ou déjà été utilisé.');
 
       const user = data.session.user;
       const plan = searchParams?.get('plan');
