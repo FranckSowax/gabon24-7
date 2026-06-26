@@ -178,6 +178,23 @@ export default function BcegToolsMenu({
                   : 'bg-white border border-slate-200 hover:border-[#697357]/40 shadow-md hover:shadow-xl'
               }`}
             >
+              {/* Cover vidéo 21:9 avec titre en overlay (thème BCEG) */}
+              <div className="relative -mx-6 -mt-6 mb-4 aspect-[21/9] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#697357] to-[#4d553e]">
+                <video
+                  src={`/covers/modules/${mod.id}.mp4`}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/5" />
+                <h3 className="absolute bottom-0 left-0 right-0 px-5 pb-3 pt-8 text-white text-lg font-bold leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                  {mod.title}
+                </h3>
+              </div>
+
               {mod.primary && (
                 <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-amber-300/10 blur-3xl" />
               )}
@@ -202,9 +219,6 @@ export default function BcegToolsMenu({
                   )}
                 </div>
 
-                <h3 className={`text-lg font-bold mb-1.5 ${mod.primary ? 'text-white' : 'text-slate-900'}`}>
-                  {mod.title}
-                </h3>
                 <p className={`text-sm leading-relaxed mb-4 ${mod.primary ? 'opacity-85' : 'text-slate-600'}`}>
                   {mod.description}
                 </p>
