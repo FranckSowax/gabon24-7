@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen, Palette, Image as ImageIcon, PieChart, Download, Loader2 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
@@ -735,6 +735,32 @@ export default function MesProjetsPage() {
       setSimilarArticles([])
     }
   }, [selectedProject])
+
+  // Hydrater le projet complet à la sélection : la liste ne renvoie que des
+  // champs minimaux (cardFields) → problématique, liens article, contexte
+  // utilisateur, etc. sont absents tant qu'on ne charge pas le projet complet.
+  const hydratedProjectRef = useRef<string | null>(null)
+  useEffect(() => {
+    const pid = selectedProject?.id
+    if (!pid || hydratedProjectRef.current === pid) return
+    // Déjà complet (un champ "full" est présent) → ne rien faire
+    if ((selectedProject as any)?.user_context !== undefined || (selectedProject as any)?.problematique_centrale !== undefined) {
+      hydratedProjectRef.current = pid
+      return
+    }
+    ;(async () => {
+      try {
+        const headers = await getAuthHeaders()
+        const res = await fetch(`${API_URL}/api/saved-projects/${pid}`, { headers })
+        const data = await res.json()
+        if (data.success && data.project) {
+          hydratedProjectRef.current = pid
+          setSelectedProject((prev: any) => (prev && prev.id === pid ? { ...prev, ...data.project } : prev))
+        }
+      } catch { /* silencieux : on garde les champs de la carte */ }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject?.id])
 
 
   const restartAnalysis = async (projectId: string) => {
@@ -1748,9 +1774,12 @@ export default function MesProjetsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
                 {selectedProject.proposition_titre}
               </h1>
-              <p className="text-white/90 text-base sm:text-lg break-words">
-                {selectedProject.proposition_description}
-              </p>
+              {selectedProject.secteur_selectionne && (
+                <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white/90 bg-white/15 backdrop-blur px-3 py-1 rounded-full">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  {selectedProject.secteur_selectionne}
+                </span>
+              )}
             </div>
             <div className="text-right sm:ml-4 flex-shrink-0">
               <div className={`text-3xl sm:text-4xl font-bold ${
@@ -1788,7 +1817,7 @@ export default function MesProjetsPage() {
           className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-purple-400" />
+            <FileText className="w-6 h-6 text-[#697357]" />
             Description du Projet
           </h2>
           <p className="text-slate-700 leading-relaxed">
@@ -1804,11 +1833,13 @@ export default function MesProjetsPage() {
           className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <Target className="w-6 h-6 text-blue-400" />
+            <Target className="w-6 h-6 text-[#697357]" />
             Problématique Centrale
           </h2>
           <p className="text-slate-700 leading-relaxed">
-            {selectedProject.problematique_centrale}
+            {selectedProject.problematique_centrale || selectedProject.proposition_problematique || (
+              <span className="text-slate-400 italic">Problématique non renseignée lors de l'analyse de l'article.</span>
+            )}
           </p>
         </motion.div>
 
@@ -1874,7 +1905,7 @@ export default function MesProjetsPage() {
           className="bg-gradient-to-br from-[#697357]/10 to-[#8a9576]/10 rounded-2xl p-6 border border-[#697357]/20"
         >
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <ExternalLink className="w-6 h-6 text-blue-400" />
+            <ExternalLink className="w-6 h-6 text-[#697357]" />
             Article Source
           </h2>
           <div className="space-y-3">
@@ -1891,7 +1922,7 @@ export default function MesProjetsPage() {
                 href={selectedProject.article_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#697357] hover:bg-[#4d553e] text-white font-semibold rounded-lg transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Voir l'article original
@@ -1913,9 +1944,15 @@ export default function MesProjetsPage() {
           className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
           <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <User className="w-7 h-7 text-green-400" />
+            <User className="w-7 h-7 text-[#697357]" />
             Contexte Utilisateur
           </h2>
+
+          {!selectedProject.user_context && (
+            <p className="text-slate-400 italic text-sm mb-4">
+              Aucun contexte personnel n'a été renseigné lors de l'analyse de l'article (situation, disponibilité, expérience, compétences…).
+            </p>
+          )}
 
           {/* Grille d'informations contexte */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2040,17 +2077,27 @@ export default function MesProjetsPage() {
           transition={{ delay: 0.7 }}
           className="bg-white shadow-sm rounded-2xl p-6 border border-slate-200"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <Newspaper className="w-7 h-7 text-blue-400" />
-            Articles Similaires
-          </h2>
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <Newspaper className="w-7 h-7 text-[#697357]" />
+              Articles Similaires
+            </h2>
+            <button
+              onClick={() => selectedProject && fetchSimilarArticles(selectedProject, true)}
+              disabled={loadingSimilarArticles}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#697357] hover:text-[#4d553e] bg-[#697357]/10 hover:bg-[#697357]/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingSimilarArticles ? 'animate-spin' : ''}`} />
+              Actualiser
+            </button>
+          </div>
           <p className="text-slate-500 text-sm mb-4">
             Articles de notre base de données traitant du même sujet ou de la même problématique
           </p>
 
           {loadingSimilarArticles ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#697357]"></div>
               <span className="ml-3 text-slate-500">Recherche d'articles similaires...</span>
             </div>
           ) : similarArticles.length > 0 ? (
@@ -2064,13 +2111,13 @@ export default function MesProjetsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="flex items-start gap-4 p-4 bg-white/85 rounded-xl border border-slate-200 hover:bg-white/90 hover:border-blue-500/50 transition-all group"
+                  className="flex items-start gap-4 p-4 bg-white/85 rounded-xl border border-slate-200 hover:bg-white/90 hover:border-[#697357]/50 transition-all group"
                 >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-[#697357] to-[#4d553e] flex items-center justify-center flex-shrink-0">
                     <Newspaper className="w-5 h-5 text-slate-900" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-slate-900 font-medium mb-1 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                    <h3 className="text-slate-900 font-medium mb-1 line-clamp-2 group-hover:text-[#697357] transition-colors">
                       {article.title}
                     </h3>
                     {article.summary && (
@@ -2080,7 +2127,7 @@ export default function MesProjetsPage() {
                     )}
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       {article.relevance_reason && (
-                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
+                        <span className="px-2 py-1 bg-[#697357]/15 text-[#697357] rounded-full border border-[#697357]/30">
                           {article.relevance_reason}
                         </span>
                       )}
@@ -2096,7 +2143,7 @@ export default function MesProjetsPage() {
                       )}
                     </div>
                   </div>
-                  <ExternalLink className="w-5 h-5 text-gray-500 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                  <ExternalLink className="w-5 h-5 text-gray-500 group-hover:text-[#697357] flex-shrink-0 transition-colors" />
                 </motion.a>
               ))}
             </div>
