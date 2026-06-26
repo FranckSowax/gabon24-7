@@ -817,7 +817,20 @@ router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSc
             .then(() => {}, (e) => console.warn('⚠️ due_diligence illustration (contrainte doc_type ?):', e.message));
         }
 
-        // Décompte crédits
+        // Décompte crédits : solde utilisateur (user_credits via RPC) + compteur projet
+        try {
+          const creditManager = require('../services/credit-manager-premium');
+          const r = await creditManager.consumeCredits(
+            userId,
+            `illustration-${kind}`,
+            cost,
+            `Génération ${ILLUSTRATION_LABELS[kind] || kind}`,
+            documentId,
+            { kind, project_id: projectId }
+          );
+          if (!r?.success) console.warn('⚠️ consumeCredits illustration:', r?.error);
+        } catch (e) { console.warn('⚠️ consumeCredits illustration:', e.message); }
+
         const current = project.total_credits_used || 0;
         await supabaseService.supabase
           .from('saved_projects')
