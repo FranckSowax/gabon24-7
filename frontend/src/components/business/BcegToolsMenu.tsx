@@ -181,7 +181,7 @@ export default function BcegToolsMenu({
               {/* Cover vidéo 21:9 avec titre en overlay (thème BCEG) */}
               <div className="relative -mx-6 -mt-6 mb-4 aspect-[21/9] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#697357] to-[#4d553e]">
                 <video
-                  src={`/covers/modules/${mod.id}.mp4`}
+                  src={`/covers/modules/${mod.id}.mp4${mod.id === 'collaboration' ? '?v=2' : ''}`}
                   autoPlay
                   loop
                   muted
