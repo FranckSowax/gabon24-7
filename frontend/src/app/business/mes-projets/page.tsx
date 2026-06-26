@@ -2822,16 +2822,33 @@ export default function MesProjetsPage() {
             )}
           </button>
           <button
-            onClick={() => setContexteActiveTab('documents')}
+            onClick={() => { setContexteActiveTab('documents'); setBibliothequeFilter('all') }}
             className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
-              contexteActiveTab === 'documents'
+              contexteActiveTab === 'documents' && bibliothequeFilter !== 'visuels'
                 ? 'text-[#697357] font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <FileText className="w-5 h-5 inline mr-2" />
             Documents ({allDocs.length})
-            {contexteActiveTab === 'documents' && (
+            {contexteActiveTab === 'documents' && bibliothequeFilter !== 'visuels' && (
+              <motion.div
+                layoutId="contexteTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
+              />
+            )}
+          </button>
+          <button
+            onClick={() => { setContexteActiveTab('documents'); setBibliothequeFilter('visuels') }}
+            className={`px-4 sm:px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+              contexteActiveTab === 'documents' && bibliothequeFilter === 'visuels'
+                ? 'text-[#697357] font-bold'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <ImageIcon className="w-5 h-5 inline mr-2" />
+            Infographies ({allDocs.filter(isVisual).length})
+            {contexteActiveTab === 'documents' && bibliothequeFilter === 'visuels' && (
               <motion.div
                 layoutId="contexteTab"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#697357]"
