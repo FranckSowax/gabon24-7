@@ -778,18 +778,21 @@ export default function MesProjetsPage() {
 
   const fetchSkillTestScores = async (projectId: string) => {
     if (!user?.id) return
+    // Marque immédiatement comme "en cours" pour éviter les appels en rafale
+    // (sinon, sur 429/erreur, le garde !skillTestScores[id] reste vrai → boucle).
+    setSkillTestScores(prev => (prev[projectId] ? prev : { ...prev, [projectId]: [] }))
     try {
       const response = await fetch(`${API_URL}/api/skill-test/scores/${projectId}?userId=${user.id}`)
-      const data = await response.json()
-      if (data.success) {
-        console.log(`🎯 Scores chargés pour projet ${projectId}:`, data.scores?.length || 0)
-        setSkillTestScores(prev => ({
-          ...prev,
-          [projectId]: data.scores || []
-        }))
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setSkillTestScores(prev => ({ ...prev, [projectId]: data.scores || [] }))
+        }
       }
+      // En cas de 429/erreur HTTP : on garde le tableau vide déjà posé (pas de boucle)
     } catch (error) {
       console.error('Error fetching skill test scores:', error)
+      // Le garde [] est déjà posé → pas de re-fetch en boucle
     }
   }
 
