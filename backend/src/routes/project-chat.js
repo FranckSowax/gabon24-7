@@ -227,7 +227,8 @@ INSTRUCTIONS:
       success: true,
       conversationId: currentConversationId,
       message: assistantMessage,
-      creditsUsed: creditsNeeded
+      creditsUsed: creditsNeeded,
+      balance: deductResult?.newBalance
     });
 
   } catch (error) {

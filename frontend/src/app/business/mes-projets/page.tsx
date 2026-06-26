@@ -17,6 +17,7 @@ import { trackProjectAction } from '@/utils/project-tracking'
 import { useRouter } from 'next/navigation'
 import apiCall from '@/lib/api-client'
 import { useSavedProjects, SavedProject } from '@/hooks/business/useSavedProjects'
+import { useCredits } from '@/hooks/useCredits'
 import { useProjectDocuments } from '@/hooks/business/useProjectDocuments'
 import ProgressBar, { ActionStep } from '@/components/business/ProgressBar'
 import ProjectChatBot from '@/components/business/ProjectChatBot'
@@ -428,8 +429,11 @@ export default function MesProjetsPage() {
     setSelectedProject, 
     deleteProject: hookDeleteProject, 
     updateProjectStepStatus: hookUpdateStepStatus,
-    refreshProjects 
+    refreshProjects
   } = useSavedProjects(user?.id)
+
+  // Solde de crédits réel de l'utilisateur (pour le conseiller IA)
+  const { balance: userCreditBalance, refresh: refreshCredits } = useCredits()
 
   const {
     projectDocuments,
@@ -4099,7 +4103,8 @@ export default function MesProjetsPage() {
           }}
           documents={projectDocuments[selectedProject.id] || []}
           notes={projectNotes[selectedProject.id] || []}
-          userCredits={100}
+          userCredits={userCreditBalance}
+          onCreditsChange={refreshCredits}
         />
       </div>
     )

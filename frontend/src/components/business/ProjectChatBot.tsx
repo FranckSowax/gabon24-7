@@ -23,6 +23,7 @@ interface ProjectChatBotProps {
   documents?: any[]
   notes?: any[]
   userCredits: number
+  onCreditsChange?: () => void
 }
 
 export default function ProjectChatBot({
@@ -31,7 +32,8 @@ export default function ProjectChatBot({
   projectData,
   documents = [],
   notes = [],
-  userCredits
+  userCredits,
+  onCreditsChange
 }: ProjectChatBotProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -40,6 +42,8 @@ export default function ProjectChatBot({
   const [isSending, setIsSending] = useState(false)
   const [totalCreditsUsed, setTotalCreditsUsed] = useState(0)
   const [costPerMessage, setCostPerMessage] = useState(2) // grille tarifaire (chat_message), confirmé par le backend
+  const [remainingCredits, setRemainingCredits] = useState(userCredits) // solde réel restant
+  useEffect(() => { setRemainingCredits(userCredits) }, [userCredits])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Refs pour archiver automatiquement la conversation au démontage
@@ -152,6 +156,8 @@ export default function ProjectChatBot({
           setCostPerMessage(data.creditsUsed)
           setTotalCreditsUsed(prev => prev + data.creditsUsed)
         }
+        if (typeof data.balance === 'number') setRemainingCredits(data.balance)
+        onCreditsChange?.() // resynchronise le solde affiché ailleurs (sidebar)
         setInputMessage('')
       } else {
         alert(data.error || 'Erreur lors de l\'envoi du message')
@@ -230,11 +236,13 @@ export default function ProjectChatBot({
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    title={`${costPerMessage} crédits par message`}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 text-white px-3 py-1.5 rounded-lg"
+                    title={`${costPerMessage} crédits par message${totalCreditsUsed > 0 ? ` · ${totalCreditsUsed} utilisés cette session` : ''}`}
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg ${
+                      remainingCredits < costPerMessage ? 'bg-red-500/30 text-red-50' : 'bg-white/15 text-white'
+                    }`}
                   >
                     <Zap className="w-3.5 h-3.5 text-amber-200" />
-                    {totalCreditsUsed > 0 ? `${totalCreditsUsed} crédits utilisés` : `${costPerMessage} cr/message`}
+                    Solde : {remainingCredits} cr
                   </span>
                   {messages.length > 0 && (
                     <button
