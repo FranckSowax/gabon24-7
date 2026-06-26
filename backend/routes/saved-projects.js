@@ -784,9 +784,20 @@ router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSc
           .upload(path, buffer, { contentType: 'image/png', upsert: false });
         if (upErr) throw upErr;
 
+        // URL signée longue durée pour l'affichage dans la bibliothèque
+        let imageUrl = null;
+        try {
+          const { data: signed } = await supabaseService.supabase.storage
+            .from('due-diligence').createSignedUrl(path, 31536000); // ~1 an
+          imageUrl = signed?.signedUrl || null;
+        } catch { /* ignore */ }
+
         await supabaseService.supabase
           .from('project_documents')
-          .update({ metadata: { is_image: true, kind, status: 'done', storage_path: path, bucket: 'due-diligence', prompt: promptJson } })
+          .update({
+            content: `Visuel généré (${ILLUSTRATION_LABELS[kind] || kind}).`,
+            metadata: { is_image: true, kind, status: 'done', storage_path: path, bucket: 'due-diligence', image_url: imageUrl, prompt: promptJson },
+          })
           .eq('id', documentId);
 
         // Infographie → pièce du dossier (nécessite doc_type 'illustration' autorisé en base)

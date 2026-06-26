@@ -2436,6 +2436,14 @@ export default function MesProjetsPage() {
             const bpPartial = action.id === 'business-plan' && bpCount > 0 && bpCount < BP_TOTAL
             const bpComplete = action.id === 'business-plan' && bpCount >= BP_TOTAL
 
+            // Illustrations (logo / flyer / infographie) : nombre déjà généré
+            const isIllustrationCard = ['logo', 'flyer', 'infographic'].includes(action.id)
+            const illusType = action.id === 'infographic' ? 'illustration' : action.id
+            const illusDocs = isIllustrationCard ? projDocs.filter((d: any) => d.document_type === illusType) : []
+            const illusCount = illusDocs.filter((d: any) => (d.metadata?.status ?? 'done') !== 'error').length
+            const illusGenerating = illusDocs.some((d: any) => d.metadata?.status === 'generating')
+            const usedCount = actionCount || illusCount
+
             return (
               <motion.div
                 key={action.id}
@@ -2468,6 +2476,16 @@ export default function MesProjetsPage() {
                         <Clock className="w-4 h-4 text-amber-600" />
                         <span className="text-xs font-semibold text-amber-700">Partiel {bpCount}/{BP_TOTAL}</span>
                       </div>
+                    ) : isIllustrationCard && illusGenerating ? (
+                      <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                        <RefreshCw className="w-4 h-4 text-amber-600 animate-spin" />
+                        <span className="text-xs font-semibold text-amber-700">En cours…</span>
+                      </div>
+                    ) : isIllustrationCard && illusCount > 0 ? (
+                      <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span className="text-xs font-semibold text-green-700">{illusCount} généré{illusCount > 1 ? 's' : ''} ✓</span>
+                      </div>
                     ) : hasCompleted && (
                       <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
                         <CheckCircle className="w-4 h-4 text-green-600" />
@@ -2497,9 +2515,9 @@ export default function MesProjetsPage() {
                       </div>
                       <span className="text-sm font-semibold text-gray-700">{action.credits} crédits</span>
                     </div>
-                    {actionCount > 0 && (
+                    {usedCount > 0 && (
                       <div className="flex items-center gap-1.5 text-xs text-[#697357] bg-[#697357]/10 px-2.5 py-1 rounded-full font-medium">
-                        <span>Utilisé {actionCount}×</span>
+                        <span>{isIllustrationCard ? `${usedCount} généré${usedCount > 1 ? 's' : ''}` : `Utilisé ${usedCount}×`}</span>
                       </div>
                     )}
                   </div>
@@ -2716,11 +2734,14 @@ export default function MesProjetsPage() {
           if (bibliothequeFilter === 'formation') return d.document_type === 'custom-training'
           if (bibliothequeFilter === 'test') return d.document_type === 'skill-test'
           if (bibliothequeFilter === 'conversation') return d.document_type === 'conversation-ai'
+          if (bibliothequeFilter === 'visuels') return (d.metadata as any)?.is_image || ['illustration', 'logo', 'flyer'].includes(d.document_type)
           return d.document_type === bibliothequeFilter
         })
 
+    const isVisual = (d: any) => (d.metadata as any)?.is_image || ['illustration', 'logo', 'flyer'].includes(d.document_type)
     const filters = [
       { id: 'all', label: 'Tous', count: allDocs.length },
+      { id: 'visuels', label: 'Infographies & visuels', count: allDocs.filter(isVisual).length },
       { id: 'business-plan', label: 'Business Plan', count: allDocs.filter(d => d.document_type === 'business-plan-section').length },
       { id: 'formation', label: 'Formations', count: allDocs.filter(d => d.document_type === 'custom-training').length },
       { id: 'test', label: 'Tests', count: allDocs.filter(d => d.document_type === 'skill-test').length },
@@ -2986,7 +3007,18 @@ export default function MesProjetsPage() {
                     <ExternalLink className="w-5 h-5 text-slate-500 flex-shrink-0" />
                   </div>
 
-                  {doc.content && (
+                  {(doc.metadata as any)?.is_image && (doc.metadata as any)?.image_url ? (
+                    <img
+                      src={(doc.metadata as any).image_url}
+                      alt={doc.title}
+                      loading="lazy"
+                      className="w-full h-44 object-contain rounded-lg border border-slate-200 bg-slate-50 mb-3"
+                    />
+                  ) : (doc.metadata as any)?.is_image && (doc.metadata as any)?.status === 'generating' ? (
+                    <div className="w-full h-44 rounded-lg border border-slate-200 bg-slate-50 mb-3 flex items-center justify-center text-slate-400 text-sm gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Génération en cours…
+                    </div>
+                  ) : doc.content && (
                     <p className="text-slate-700 text-sm line-clamp-2 mb-3">
                       {doc.content.substring(0, 150)}...
                     </p>
@@ -3218,7 +3250,11 @@ export default function MesProjetsPage() {
                   }
                 }
 
-                const eventInfo = getEventInfo(event.event_type)
+                // La table project_timeline utilise `entry_type` + `content`
+                // (et non event_type/event_description) → fallback robuste anti-crash.
+                const evType: string = event.entry_type || event.event_type || 'event'
+                const evDesc: string = event.content || event.event_description || event.description || ''
+                const eventInfo = getEventInfo(evType)
                 const EventIcon = eventInfo.icon
 
                 return (
@@ -3237,11 +3273,11 @@ export default function MesProjetsPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="text-slate-900 font-bold text-lg">{eventInfo.title}</h3>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${eventInfo.bgColor} ${eventInfo.color}`}>
-                            {event.event_type.replace(/_/g, ' ')}
+                            {evType.replace(/_/g, ' ')}
                           </span>
                         </div>
                         <p className="text-slate-700 text-sm mb-3 leading-relaxed">
-                          {event.event_description}
+                          {evDesc}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <Clock className="w-3.5 h-3.5" />
