@@ -317,7 +317,7 @@ const QUICK_ACTIONS = [
     useCase: "Ex : générez un business plan d'élevage de poulets de chair à Owendo prêt à présenter à votre conseiller.",
     icon: FileText,
     color: 'from-[#697357] to-[#4d553e]',
-    credits: 50
+    credits: 80
   },
   {
     id: 'infographic',
@@ -326,7 +326,7 @@ const QUICK_ACTIONS = [
     useCase: 'Ex : une infographie claire et percutante à présenter au comité de crédit BCEG.',
     icon: PieChart,
     color: 'from-[#697357] to-[#4d553e]',
-    credits: 35
+    credits: 40
   },
   {
     id: 'logo',
@@ -335,7 +335,7 @@ const QUICK_ACTIONS = [
     useCase: 'Ex : un logo prêt à l\'emploi pour votre dossier, vos supports et vos réseaux.',
     icon: Palette,
     color: 'from-[#8a9576] to-[#697357]',
-    credits: 20
+    credits: 25
   },
   {
     id: 'flyer',
@@ -344,7 +344,7 @@ const QUICK_ACTIONS = [
     useCase: 'Ex : un flyer pour présenter votre activité à vos premiers clients et partenaires.',
     icon: ImageIcon,
     color: 'from-[#697357] to-[#4d553e]',
-    credits: 20
+    credits: 30
   },
   {
     id: 'generate-letter',
@@ -382,7 +382,7 @@ const QUICK_ACTIONS = [
     useCase: 'Ex : vérifiez si vous maîtrisez la gestion comptable avant de lancer votre boutique.',
     icon: Award,
     color: 'from-[#697357] to-[#4d553e]',
-    credits: 20
+    credits: 35
   },
   {
     id: 'custom-training',
@@ -391,7 +391,7 @@ const QUICK_ACTIONS = [
     useCase: 'Ex : formez-vous en 7 jours sur la fiscalité PME gabonaise avant le rendez-vous BCEG.',
     icon: GraduationCap,
     color: 'from-[#8a9576] to-[#697357]',
-    credits: 50
+    credits: 80
   },
   {
     id: 'legal-checklist',
@@ -2323,7 +2323,7 @@ export default function MesProjetsPage() {
   }
 
   const handleGenerateIllustration = async (project: any, kind: 'logo' | 'flyer' | 'infographic') => {
-    const COSTS: Record<string, number> = { logo: 20, flyer: 20, infographic: 35 }
+    const COSTS: Record<string, number> = { logo: 25, flyer: 30, infographic: 40 }
     const LABELS: Record<string, string> = { logo: 'le logo', flyer: 'le flyer de présentation', infographic: "l'infographie de votre business" }
     const TITLES: Record<string, string> = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' }
     if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.\nLa génération peut prendre 1 à 3 minutes.`)) return

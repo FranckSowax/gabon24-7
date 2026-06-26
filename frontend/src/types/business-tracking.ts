@@ -101,13 +101,19 @@ export interface CreditTransaction {
   description: string
 }
 
+// Grille unifiée "1 contenu = 1 prix" — ancre Infographie = 40 ; BP & Formation = 2× (80)
 export const CREDIT_COSTS: Record<string, number> = {
   initial_analysis: 25,
   re_analysis: 25,
-  'action-plan': 25,
-  'skill-test': 30,
-  'custom-training': 50,
-  'business-plan': 100
+  'action-plan': 60,
+  'skill-test': 35,
+  'custom-training': 80,
+  'business-plan': 80,
+  // Visuels IA (gpt-image-2)
+  'logo': 25,
+  'flyer': 30,
+  'infographic': 40,
+  'generate-letter': 15,
 }
 
 export const PHASE_LABELS: Record<ProjectPhase, string> = {

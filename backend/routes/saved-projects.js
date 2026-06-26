@@ -31,7 +31,7 @@ const illustrationSchema = z.object({
 }).passthrough();
 
 // Coût en crédits par type d'illustration
-const ILLUSTRATION_CREDITS = { logo: 20, flyer: 20, infographic: 35 };
+const ILLUSTRATION_CREDITS = { logo: 25, flyer: 30, infographic: 40 };
 
 // Constantes de cache
 const CACHE_TTL = {

@@ -20,11 +20,15 @@ const DEFAULT_PRICING = {
   // Business & Projets
   initial_analysis: { credits: 25, model: 'gemini-2.0-flash', category: 'business' },
   re_analysis: { credits: 25, model: 'gemini-2.0-flash', category: 'business' },
-  action_plan: { credits: 25, model: 'gemini-2.0-flash', category: 'business' },
-  skill_test: { credits: 30, model: 'gemini-2.0-flash', category: 'business' },
-  custom_training: { credits: 50, model: 'gemini-2.0-flash', category: 'business' },
-  business_plan: { credits: 150, model: 'gpt-4.1-mini', category: 'business' },
-  motivation_letter: { credits: 20, model: 'gemini-2.0-flash', category: 'business' },
+  action_plan: { credits: 60, model: 'gemini-2.0-flash', category: 'business' },
+  skill_test: { credits: 35, model: 'gemini-2.0-flash', category: 'business' },
+  custom_training: { credits: 80, model: 'gemini-2.0-flash', category: 'business' },
+  business_plan: { credits: 80, model: 'gpt-4.1-mini', category: 'business' },
+  motivation_letter: { credits: 15, model: 'gemini-2.0-flash', category: 'business' },
+  // Visuels IA (gpt-image-2) — ancre infographie = 40, BP/formation = 2×
+  illustration_logo: { credits: 25, model: 'gpt-image-2', category: 'business' },
+  illustration_flyer: { credits: 30, model: 'gpt-image-2', category: 'business' },
+  illustration_infographic: { credits: 40, model: 'gpt-image-2', category: 'business' },
   sponsored_article: { credits: 50, model: 'gemini-2.0-flash', category: 'business' },
   generate_document: { credits: 15, model: 'gemini-2.0-flash', category: 'business' },
 
@@ -37,7 +41,7 @@ const DEFAULT_PRICING = {
   // Veille & Alertes
   veille_report: { credits: 20, model: 'gpt-4.1-mini', category: 'veille' },
   custom_alert: { credits: 5, model: null, category: 'veille' },
-  opportunity_analysis: { credits: 15, model: 'gemini-2.0-flash', category: 'veille' },
+  opportunity_analysis: { credits: 25, model: 'gemini-2.0-flash', category: 'veille' },
 
   // Chat & Assistant
   chat_message: { credits: 2, model: 'gpt-4o-mini', category: 'chat' },
