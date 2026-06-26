@@ -74,6 +74,19 @@ export default function ProjectDashboard({
             whileTap={{ scale: 0.98 }}
             className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#697357]/40 p-6 text-left shadow-md hover:shadow-xl transition-all"
           >
+            {/* Cover vidéo 21:9 avec titre en overlay (thème BCEG) */}
+            <div className="relative -mx-6 -mt-6 mb-5 aspect-[21/9] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#697357] to-[#4d553e]">
+              <video
+                src="/covers/dashboard/develop.mp4"
+                autoPlay loop muted playsInline preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/5" />
+              <h3 className="absolute bottom-0 left-0 right-0 px-5 pb-3 pt-8 text-white text-xl font-bold leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                Continuer à développer mon projet
+              </h3>
+            </div>
+
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[#697357]/5 blur-3xl group-hover:bg-[#697357]/10 transition-all" />
 
             <div className="relative">
@@ -85,10 +98,6 @@ export default function ProjectDashboard({
                   Outils IA
                 </span>
               </div>
-
-              <h3 className="text-xl font-bold text-slate-900 mb-4">
-                Continuer à développer mon projet
-              </h3>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <span className="text-sm font-bold text-[#697357]">Explorer les outils</span>
@@ -106,6 +115,22 @@ export default function ProjectDashboard({
             whileTap={{ scale: 0.98 }}
             className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] p-6 text-white text-left shadow-xl shadow-[#697357]/30 hover:shadow-2xl transition-all"
           >
+            {/* Cover vidéo 21:9 avec titre en overlay (thème BCEG) */}
+            <div className="relative -mx-6 -mt-6 mb-5 aspect-[21/9] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#4d553e] to-[#3a4030]">
+              <video
+                src="/covers/dashboard/financement.mp4"
+                autoPlay loop muted playsInline preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/5" />
+              <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-amber-300/90 text-[#4d553e] shadow">
+                ★ Prioritaire
+              </span>
+              <h3 className="absolute bottom-0 left-0 right-0 px-5 pb-3 pt-8 text-white text-xl font-bold leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                Préparer mon dossier de financement
+              </h3>
+            </div>
+
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-amber-300/10 blur-3xl" />
 
             <div className="relative">
@@ -117,10 +142,6 @@ export default function ProjectDashboard({
                   ★ Prioritaire
                 </span>
               </div>
-
-              <h3 className="text-xl font-bold mb-4">
-                Préparer mon dossier de financement
-              </h3>
 
               <div className="flex items-center justify-between pt-4 border-t border-white/15">
                 <span className="text-sm font-bold">Démarrer le parcours</span>
