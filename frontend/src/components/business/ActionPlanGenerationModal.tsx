@@ -110,7 +110,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
           className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 p-4 sm:p-6 text-white flex-shrink-0">
+          <div className="bg-gradient-to-r from-[#697357] via-amber-500 to-yellow-500 p-4 sm:p-6 text-white flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -140,7 +140,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.5 }}
-                className="h-full bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"
+                className="h-full bg-gradient-to-r from-[#697357] via-amber-500 to-yellow-500"
               />
             </div>
             <p className="text-center text-xs sm:text-sm text-gray-600 mt-2">
@@ -164,7 +164,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
                   className={`
                     flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg transition-all
                     ${isCompleted ? 'bg-green-50 border border-green-200' : ''}
-                    ${isCurrent ? 'bg-orange-50 border border-orange-200' : ''}
+                    ${isCurrent ? 'bg-[#697357]/10 border border-[#697357]/20' : ''}
                     ${isPending ? 'bg-gray-50 border border-gray-200 opacity-50' : ''}
                   `}
                 >
@@ -172,7 +172,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
                   <div className={`
                     flex-shrink-0 p-1.5 sm:p-2 rounded-lg
                     ${isCompleted ? 'bg-green-100 text-green-600' : ''}
-                    ${isCurrent ? 'bg-orange-100 text-orange-600' : ''}
+                    ${isCurrent ? 'bg-[#697357]/15 text-[#697357]' : ''}
                     ${isPending ? 'bg-gray-100 text-gray-400' : ''}
                   `}>
                     {isCompleted ? (
@@ -194,7 +194,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
                     <p className={`
                       text-xs sm:text-sm font-medium truncate
                       ${isCompleted ? 'text-green-700' : ''}
-                      ${isCurrent ? 'text-orange-700' : ''}
+                      ${isCurrent ? 'text-[#4d553e]' : ''}
                       ${isPending ? 'text-gray-500' : ''}
                     `}>
                       {step.label}
@@ -215,7 +215,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
                   )}
                   {isCurrent && (
                     <div className="flex-shrink-0">
-                      <span className="text-[10px] sm:text-xs font-semibold text-orange-600">
+                      <span className="text-[10px] sm:text-xs font-semibold text-[#697357]">
                         ...
                       </span>
                     </div>
@@ -229,7 +229,7 @@ export default function ActionPlanGenerationModal({ isOpen, onCancel, creditsUse
           <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-orange-600" />
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-[#697357]" />
                 <span>Veuillez patienter...</span>
               </div>
               {onCancel && (

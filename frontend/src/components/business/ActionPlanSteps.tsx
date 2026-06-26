@@ -568,7 +568,7 @@ Exemple de format attendu:
     switch (priority) {
       case 'haute': return 'bg-red-100 text-red-700 border-red-300'
       case 'moyenne': return 'bg-yellow-100 text-yellow-700 border-yellow-300'
-      case 'basse': return 'bg-green-100 text-green-700 border-green-300'
+      case 'basse': return 'bg-[#697357]/15 text-[#4d553e] border-[#697357]/40'
       default: return 'bg-gray-100 text-gray-700 border-gray-300'
     }
   }
@@ -576,7 +576,7 @@ Exemple de format attendu:
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#697357] animate-spin" />
         <span className="ml-3 text-gray-600">Chargement du plan d'action...</span>
       </div>
     )
@@ -585,7 +585,7 @@ Exemple de format attendu:
   return (
     <div className="space-y-6">
       {/* Barre de progression globale */}
-      <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 border-2 border-orange-400">
+      <div className="bg-gradient-to-r from-[#697357]/10 to-[#8a9576]/10 rounded-xl p-6 border-2 border-[#697357]/40">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xl font-bold text-gray-900">Progression Globale</h3>
@@ -593,14 +593,14 @@ Exemple de format attendu:
               {completedSteps} sur {totalSteps} étapes complétées
             </p>
           </div>
-          <div className="text-3xl font-bold text-orange-600">
+          <div className="text-3xl font-bold text-[#697357]">
             {globalProgress}%
           </div>
         </div>
         
         <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-orange-500 to-yellow-500"
+            className="h-full bg-gradient-to-r from-[#697357] to-yellow-500"
             initial={{ width: 0 }}
             animate={{ width: `${globalProgress}%` }}
             transition={{ duration: 0.5 }}
@@ -621,10 +621,10 @@ Exemple de format attendu:
               onClick={() => setCurrentStep(step.step)}
               className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${
                 isActive
-                  ? 'bg-gradient-to-r from-orange-500 to-yellow-500 border-orange-500 text-white'
+                  ? 'bg-gradient-to-r from-[#697357] to-yellow-500 border-[#697357] text-white'
                   : isCompleted
-                  ? 'bg-violet-50 border-orange-400 text-violet-700'
-                  : 'bg-white border-gray-200 text-gray-700 hover:border-orange-300'
+                  ? 'bg-[#697357]/10 border-[#697357]/40 text-[#697357]'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-[#697357]/30'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -657,7 +657,7 @@ Exemple de format attendu:
               className="space-y-4"
             >
               {/* Header de l'étape */}
-              <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-6 border-2 border-orange-400">
+              <div className="bg-gradient-to-br from-[#697357]/10 to-[#8a9576]/10 rounded-xl p-6 border-2 border-[#697357]/40">
                 <div className="flex items-start gap-4">
                   <span className="text-4xl">{step.icon}</span>
                   <div className="flex-1">
@@ -666,7 +666,7 @@ Exemple de format attendu:
                     </h2>
                     <p className="text-gray-600 mb-4">{step.objective}</p>
                     <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-orange-600">
+                      <div className="flex items-center gap-2 text-[#697357]">
                         <Clock className="w-4 h-4" />
                         <span>{step.duration}</span>
                       </div>
@@ -680,7 +680,7 @@ Exemple de format attendu:
                 {/* Barre de progression de l'étape */}
                 <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-[#697357] to-yellow-500 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${stepProgress.progress}%` }}
                     transition={{ duration: 0.3 }}
@@ -701,8 +701,8 @@ Exemple de format attendu:
                       key={item.id}
                       className={`bg-white rounded-xl border-2 transition-all ${
                         itemState?.is_completed
-                          ? 'border-orange-400 bg-violet-50/50'
-                          : 'border-violet-200 hover:border-orange-300'
+                          ? 'border-[#697357]/40 bg-[#697357]/10'
+                          : 'border-[#697357]/20 hover:border-[#697357]/30'
                       }`}
                     >
                       {/* Header de l'item */}
@@ -719,9 +719,9 @@ Exemple de format attendu:
                             className="flex-shrink-0 mt-1"
                           >
                             {itemState?.is_completed ? (
-                              <CheckCircle className="w-6 h-6 text-orange-600" />
+                              <CheckCircle className="w-6 h-6 text-[#697357]" />
                             ) : (
-                              <Circle className="w-6 h-6 text-gray-400 hover:text-orange-600" />
+                              <Circle className="w-6 h-6 text-gray-400 hover:text-[#697357]" />
                             )}
                           </button>
 
@@ -729,7 +729,7 @@ Exemple de format attendu:
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
                                 <h3 className={`font-semibold ${
-                                  itemState?.is_completed ? 'text-violet-700 line-through' : 'text-gray-900'
+                                  itemState?.is_completed ? 'text-[#697357] line-through' : 'text-gray-900'
                                 }`}>
                                   {item.task}
                                 </h3>
@@ -754,7 +754,7 @@ Exemple de format attendu:
                                 {item.estimatedTime}
                               </div>
                               {item.requiresDocument && (
-                                <div className="flex items-center gap-1 text-orange-600">
+                                <div className="flex items-center gap-1 text-[#697357]">
                                   <FileText className="w-3 h-3" />
                                   Document requis
                                 </div>
@@ -782,8 +782,8 @@ Exemple de format attendu:
                                 
                                 {!itemState?.answer ? (
                                   // Bouton pour générer le plan d'action
-                                  <div className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center bg-gradient-to-br from-purple-50 to-pink-50">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+                                  <div className="border-2 border-dashed border-[#697357]/40 rounded-xl p-8 text-center bg-gradient-to-br from-[#697357]/10 to-pink-50">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-[#697357] to-pink-500 rounded-full mb-4">
                                       <Sparkles className="w-8 h-8 text-white" />
                                     </div>
                                     <h4 className="text-lg font-semibold text-gray-900 mb-2">
@@ -795,7 +795,7 @@ Exemple de format attendu:
                                     <button
                                       onClick={() => handleGenerateAI(step.step, item)}
                                       disabled={isGenerating}
-                                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#697357] to-pink-500 text-white rounded-lg hover:from-[#4d553e] hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                                     >
                                       {isGenerating ? (
                                         <>
@@ -813,20 +813,20 @@ Exemple de format attendu:
                                 ) : (
                                   // Affichage du plan d'action généré sous forme de checklist
                                   <div className="space-y-3">
-                                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border-2 border-purple-200">
+                                    <div className="bg-gradient-to-br from-[#697357]/10 to-pink-50 rounded-xl p-4 border-2 border-[#697357]/20">
                                       <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
-                                          <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full">
+                                          <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#697357] to-pink-500 rounded-full">
                                             <Sparkles className="w-4 h-4 text-white" />
                                           </div>
-                                          <span className="text-sm font-medium text-purple-700">
+                                          <span className="text-sm font-medium text-[#4d553e]">
                                             Plan de tâches à effectuer
                                           </span>
                                         </div>
                                         <button
                                           onClick={() => handleGenerateAI(step.step, item)}
                                           disabled={isGenerating}
-                                          className="text-xs text-purple-600 hover:text-purple-700 underline"
+                                          className="text-xs text-[#697357] hover:text-[#4d553e] underline"
                                         >
                                           Régénérer
                                         </button>
@@ -906,7 +906,7 @@ Exemple de format attendu:
                                                       })
                                                     }, 500)
                                                   }}
-                                                  className="mt-1 w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                                  className="mt-1 w-5 h-5 text-[#697357] border-gray-300 rounded focus:ring-[#697357]"
                                                 />
                                                 <span className={`text-sm flex-1 ${isChecked ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                                                   {substep.replace(/^[-•\*]\s*/, '').replace(/^\d+\.\s*/, '')}
@@ -917,7 +917,7 @@ Exemple de format attendu:
                                       </div>
                                       
                                       {/* Progression du plan */}
-                                      <div className="mt-3 pt-3 border-t border-purple-200">
+                                      <div className="mt-3 pt-3 border-t border-[#697357]/20">
                                         {(() => {
                                           // Utiliser le même filtre que pour l'affichage des tâches
                                           const totalSteps = itemState.answer.split('\n')
@@ -952,12 +952,12 @@ Exemple de format attendu:
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                                   <div
-                                                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                                                    className="bg-gradient-to-r from-[#697357] to-pink-500 h-2 rounded-full transition-all duration-300"
                                                     style={{ width: `${progress}%` }}
                                                   />
                                                 </div>
                                               </div>
-                                              <span className="text-lg font-bold text-purple-600">{progress}%</span>
+                                              <span className="text-lg font-bold text-[#697357]">{progress}%</span>
                                             </div>
                                           )
                                         })()}
@@ -1014,18 +1014,18 @@ Exemple de format attendu:
                                     <button
                                       onClick={() => handleGenerateDocument(step.step, item.id, item.documentType || 'Document', item.task)}
                                       disabled={generatingDocId === item.id}
-                                      className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all w-full"
+                                      className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-[#697357]/40 rounded-lg hover:border-[#697357] hover:bg-[#697357]/10 transition-all w-full"
                                     >
                                       {generatingDocId === item.id ? (
                                         <>
-                                          <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
-                                          <span className="text-sm text-purple-600">Génération en cours...</span>
+                                          <Loader2 className="w-5 h-5 text-[#697357] animate-spin" />
+                                          <span className="text-sm text-[#697357]">Génération en cours...</span>
                                         </>
                                       ) : (
                                         <>
-                                          <Sparkles className="w-5 h-5 text-purple-500" />
-                                          <span className="text-sm text-purple-600 font-medium">Générer le document avec IA</span>
-                                          <span className="text-xs text-purple-400 ml-1">(5 crédits)</span>
+                                          <Sparkles className="w-5 h-5 text-[#697357]" />
+                                          <span className="text-sm text-[#697357] font-medium">Générer le document avec IA</span>
+                                          <span className="text-xs text-[#8a9576] ml-1">(5 crédits)</span>
                                         </>
                                       )}
                                     </button>
@@ -1054,7 +1054,7 @@ Exemple de format attendu:
                 <button
                   onClick={() => setCurrentStep(Math.min(totalSteps, currentStep + 1))}
                   disabled={currentStep === totalSteps}
-                  className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg hover:from-emerald-600 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-6 py-3 bg-gradient-to-r from-[#697357] to-[#697357] text-white rounded-lg hover:from-[#4d553e] hover:to-[#4d553e] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   Étape suivante →
                 </button>
@@ -1069,10 +1069,10 @@ Exemple de format attendu:
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-8 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 border-2 border-green-400"
+          className="mt-8 bg-gradient-to-br from-[#697357]/10 via-[#8a9576]/10 to-[#8a9576]/10 rounded-2xl p-8 border-2 border-[#697357]/40"
         >
           <div className="text-center space-y-6">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500 rounded-full">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-[#697357] rounded-full">
               <Check className="w-12 h-12 text-white" />
             </div>
             
@@ -1088,20 +1088,20 @@ Exemple de format attendu:
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">📊 Résumé de votre progression</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600">{totalSteps}</div>
+                <div className="text-center p-4 bg-[#697357]/10 rounded-lg">
+                  <div className="text-3xl font-bold text-[#697357]">{totalSteps}</div>
                   <div className="text-sm text-gray-600 mt-1">Étapes complétées</div>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-3xl font-bold text-purple-600">
+                <div className="text-center p-4 bg-[#697357]/10 rounded-lg">
+                  <div className="text-3xl font-bold text-[#697357]">
                     {Object.values(stepsProgress).reduce((acc, step) => 
                       acc + Object.values(step.items).filter(item => item.is_completed).length, 0
                     )}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">Actions réalisées</div>
                 </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <div className="text-3xl font-bold text-orange-600">
+                <div className="text-center p-4 bg-[#697357]/10 rounded-lg">
+                  <div className="text-3xl font-bold text-[#697357]">
                     {Object.values(stepsProgress).reduce((acc, step) => 
                       acc + Object.values(step.items).reduce((sum, item) => 
                         sum + (item.document_urls?.length || 0), 0
@@ -1113,23 +1113,23 @@ Exemple de format attendu:
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl p-6 border-2 border-orange-300">
+            <div className="bg-gradient-to-r from-[#697357]/15 to-yellow-100 rounded-xl p-6 border-2 border-[#697357]/30">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">🚀 Prochaines étapes recommandées</h3>
               <ul className="text-left space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
-                  <span className="text-orange-500 mt-1">•</span>
+                  <span className="text-[#697357] mt-1">•</span>
                   <span>Téléchargez un récapitulatif PDF de votre plan d'action</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-orange-500 mt-1">•</span>
+                  <span className="text-[#697357] mt-1">•</span>
                   <span>Partagez votre projet avec des collaborateurs potentiels</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-orange-500 mt-1">•</span>
+                  <span className="text-[#697357] mt-1">•</span>
                   <span>Consultez les ressources de formation adaptées à votre projet</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-orange-500 mt-1">•</span>
+                  <span className="text-[#697357] mt-1">•</span>
                   <span>Explorez les opportunités de financement disponibles</span>
                 </li>
               </ul>
@@ -1145,7 +1145,7 @@ Exemple de format attendu:
               </button>
               <button
                 onClick={() => window.location.href = '/business/mes-projets'}
-                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-gradient-to-r from-[#697357] to-yellow-500 text-white rounded-lg hover:from-[#4d553e] hover:to-yellow-600 transition-all flex items-center gap-2"
               >
                 <Briefcase className="w-5 h-5" />
                 Voir mes projets

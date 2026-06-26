@@ -275,8 +275,8 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
   if (isCheckingExisting) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
-        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center mb-3 sm:mb-4 shadow-sm">
-          <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600 animate-spin" />
+        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-[#697357]/15 to-amber-100 rounded-xl flex items-center justify-center mb-3 sm:mb-4 shadow-sm">
+          <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-[#697357] animate-spin" />
         </div>
         <span className="text-sm sm:text-base text-gray-600 text-center">Vérification du plan d'action...</span>
       </div>
@@ -298,13 +298,13 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-violet-50 via-purple-50 to-orange-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-orange-200 sm:border-2 sm:border-orange-400 shadow-sm"
+        className="bg-gradient-to-br from-[#697357]/10 via-[#8a9576]/10 to-[#8a9576]/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#697357]/20 sm:border-2 sm:border-[#697357]/40 shadow-sm"
       >
         {/* Header avec icône - Stack sur mobile, row sur desktop */}
         <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
           {/* Icône - Centrée sur mobile, à gauche sur desktop */}
           <div className="flex justify-center sm:justify-start sm:flex-shrink-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-[#697357] to-yellow-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
               <Rocket className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
             </div>
           </div>
@@ -315,7 +315,7 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
               Plan d'Action Personnalisé
             </h2>
             <p className="text-sm sm:text-base lg:text-lg text-gray-600 leading-relaxed">
-              Générez un plan d'action en 5 étapes adapté à votre projet : <strong className="text-orange-700">{projectData.titre}</strong>
+              Générez un plan d'action en 5 étapes adapté à votre projet : <strong className="text-[#4d553e]">{projectData.titre}</strong>
             </p>
           </div>
         </div>
@@ -325,36 +325,36 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
           <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-3">Ce qui sera pris en compte :</h3>
           <ul className="space-y-2 sm:space-y-2.5">
             <li className="flex items-start gap-2 sm:gap-3">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
               <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                 Secteur d'activité : <strong className="text-gray-900">{projectData.secteur}</strong>
               </span>
             </li>
             <li className="flex items-start gap-2 sm:gap-3">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
               <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                 Budget disponible : <strong className="text-gray-900">{projectData.budget}</strong>
               </span>
             </li>
             <li className="flex items-start gap-2 sm:gap-3">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
               <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">Description et objectifs du projet</span>
             </li>
             {projectData.contexte && (
               <li className="flex items-start gap-2 sm:gap-3">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
                 <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">Contexte spécifique fourni</span>
               </li>
             )}
             {projectData.problematique && (
               <li className="flex items-start gap-2 sm:gap-3">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
                 <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">Problématique identifiée</span>
               </li>
             )}
             {projectData.article && (
               <li className="flex items-start gap-2 sm:gap-3">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#697357] flex-shrink-0 mt-0.5" />
                 <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">Article de référence analysé</span>
               </li>
             )}
@@ -365,7 +365,7 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
         <button
           onClick={handleGeneratePlan}
           disabled={isGenerating}
-          className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 lg:py-4 bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl text-sm sm:text-base"
+          className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 lg:py-4 bg-gradient-to-r from-[#697357] to-yellow-500 text-white font-semibold rounded-xl hover:from-[#4d553e] hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl text-sm sm:text-base"
         >
           {isGenerating ? (
             <>
@@ -412,9 +412,9 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
           <p className="leading-relaxed">
             Notre IA analysera votre projet et générera un plan personnalisé en 5 étapes, avec des tâches concrètes adaptées au contexte gabonais.
           </p>
-          <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
-            <h4 className="font-semibold text-violet-900 text-xs sm:text-sm mb-2 sm:mb-3">Les 5 étapes typiques :</h4>
-            <ol className="space-y-1.5 sm:space-y-2 text-violet-800">
+          <div className="bg-gradient-to-br from-[#697357]/10 to-[#8a9576]/10 border border-[#697357]/20 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
+            <h4 className="font-semibold text-[#4d553e] text-xs sm:text-sm mb-2 sm:mb-3">Les 5 étapes typiques :</h4>
+            <ol className="space-y-1.5 sm:space-y-2 text-[#697357]">
               {[
                 'Validation et Étude Préliminaire',
                 'Structuration Juridique et Administrative',
@@ -423,7 +423,7 @@ Génère maintenant les 5 étapes personnalisées pour ce projet.
                 'Lancement et Suivi'
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs sm:text-sm">
-                  <span className="w-5 h-5 sm:w-6 sm:h-6 bg-violet-200 text-violet-800 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 bg-[#697357]/15 text-[#697357] rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {i + 1}
                   </span>
                   <span className="leading-relaxed pt-0.5">{step}</span>

@@ -413,7 +413,7 @@ IMPORTANT:
     switch (priority) {
       case 'haute': return 'bg-red-100 text-red-700 border-red-300'
       case 'moyenne': return 'bg-yellow-100 text-yellow-700 border-yellow-300'
-      case 'basse': return 'bg-green-100 text-green-700 border-green-300'
+      case 'basse': return 'bg-[#697357]/15 text-[#4d553e] border-[#697357]/40'
       default: return 'bg-gray-100 text-gray-700 border-gray-300'
     }
   }
@@ -430,7 +430,7 @@ IMPORTANT:
           className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col my-8"
         >
           {/* Header */}
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#697357]/10 to-[#8a9576]/10">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
@@ -443,11 +443,11 @@ IMPORTANT:
                   🎯 {stepData.objective}
                 </p>
                 <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-emerald-700">
+                  <div className="flex items-center gap-2 text-[#4d553e]">
                     <Clock className="w-4 h-4" />
                     <span>Durée: {stepData.duration}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-emerald-700">
+                  <div className="flex items-center gap-2 text-[#4d553e]">
                     <Briefcase className="w-4 h-4" />
                     <span>{completedCount}/{checklist.length} tâches complétées</span>
                   </div>
@@ -465,14 +465,14 @@ IMPORTANT:
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Progression</span>
-                <span className="text-sm font-bold text-emerald-600">{progressPercentage}%</span>
+                <span className="text-sm font-bold text-[#697357]">{progressPercentage}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-emerald-500 to-green-600"
+                  className="h-full bg-gradient-to-r from-[#697357] to-[#4d553e]"
                 />
               </div>
             </div>
@@ -482,7 +482,7 @@ IMPORTANT:
           <div className="flex-1 overflow-y-auto p-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#697357]" />
               </div>
             ) : (
               <div className="space-y-3">
@@ -502,7 +502,7 @@ IMPORTANT:
                       key={item.id}
                       className={`border-2 rounded-xl transition-all ${
                         state.is_completed
-                          ? 'border-emerald-300 bg-emerald-50/50'
+                          ? 'border-[#697357]/40 bg-[#697357]/10'
                           : 'border-gray-200 bg-white'
                       }`}
                     >
@@ -520,7 +520,7 @@ IMPORTANT:
                             className="flex-shrink-0"
                           >
                             {state.is_completed ? (
-                              <CheckCircle className="w-6 h-6 text-emerald-600" />
+                              <CheckCircle className="w-6 h-6 text-[#697357]" />
                             ) : (
                               <Circle className="w-6 h-6 text-gray-400" />
                             )}
@@ -535,7 +535,7 @@ IMPORTANT:
                                 {item.priority}
                               </span>
                               {item.requiresDocument && (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300">
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#697357]/15 text-[#4d553e] border border-[#697357]/40">
                                   📎 Document requis
                                 </span>
                               )}
@@ -577,7 +577,7 @@ IMPORTANT:
                                   value={state.answer}
                                   onChange={(e) => handleAnswerChange(item.id, e.target.value)}
                                   placeholder={item.placeholder}
-                                  className="w-full min-h-[120px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-y"
+                                  className="w-full min-h-[120px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#697357] focus:border-transparent resize-y"
                                   disabled={isGenerating}
                                 />
                               </div>
@@ -586,7 +586,7 @@ IMPORTANT:
                               <button
                                 onClick={() => handleGenerateAI(item)}
                                 disabled={isGenerating}
-                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {isGenerating ? (
                                   <>
@@ -629,7 +629,7 @@ IMPORTANT:
                                               rel="noopener noreferrer"
                                               className="p-1 hover:bg-gray-200 rounded transition-colors"
                                             >
-                                              <Download className="w-4 h-4 text-blue-600" />
+                                              <Download className="w-4 h-4 text-[#697357]" />
                                             </a>
                                             <button
                                               onClick={() => handleDeleteDocument(item.id, idx)}
@@ -647,22 +647,22 @@ IMPORTANT:
                                   <button
                                     onClick={() => handleGenerateDocument(item.id, item.documentType || 'Document', item.task)}
                                     disabled={generatingDocId === item.id}
-                                    className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all w-full"
+                                    className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-[#697357]/40 rounded-lg hover:border-[#697357] hover:bg-[#697357]/10 transition-all w-full"
                                   >
                                     {generatingDocId === item.id ? (
                                       <>
-                                        <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
-                                        <span className="text-sm font-medium text-purple-600">
+                                        <Loader2 className="w-5 h-5 animate-spin text-[#697357]" />
+                                        <span className="text-sm font-medium text-[#697357]">
                                           Génération en cours...
                                         </span>
                                       </>
                                     ) : (
                                       <>
-                                        <Sparkles className="w-5 h-5 text-purple-500" />
-                                        <span className="text-sm font-medium text-purple-600">
+                                        <Sparkles className="w-5 h-5 text-[#697357]" />
+                                        <span className="text-sm font-medium text-[#697357]">
                                           Générer le document avec IA
                                         </span>
-                                        <span className="text-xs text-purple-400 ml-1">(5 crédits)</span>
+                                        <span className="text-xs text-[#8a9576] ml-1">(5 crédits)</span>
                                       </>
                                     )}
                                   </button>
@@ -687,7 +687,7 @@ IMPORTANT:
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 {progressPercentage === 100 ? (
-                  <span className="text-emerald-600 font-semibold">
+                  <span className="text-[#697357] font-semibold">
                     ✅ Étape complétée !
                   </span>
                 ) : (
@@ -698,7 +698,7 @@ IMPORTANT:
               </div>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all"
+                className="px-6 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-lg hover:from-[#4d553e] hover:to-[#3a4030] transition-all"
               >
                 Fermer
               </button>
