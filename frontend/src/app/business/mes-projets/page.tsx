@@ -2378,6 +2378,20 @@ export default function MesProjetsPage() {
     }
   }
 
+  // Source UNIQUE des sections Business Plan réellement générées (déduites des documents).
+  // Gère les variantes de champ (sectionNumber / section_number / section) et dédoublonne.
+  const getBpGeneratedSections = (projectId: string): Set<number> => {
+    const docs = projectDocuments[projectId] || []
+    const set = new Set<number>()
+    docs.forEach((d: any) => {
+      const dt = (d.document_type || '')
+      if (!dt.includes('business-plan-section')) return
+      const n = d.metadata?.sectionNumber ?? d.metadata?.section_number ?? d.metadata?.section
+      if (n != null && !isNaN(Number(n))) set.add(Number(n))
+    })
+    return set
+  }
+
   const renderActionsSection = () => {
     if (!selectedProject) return null
 
@@ -2427,11 +2441,8 @@ export default function MesProjetsPage() {
             // (document_type 'business-plan-section'), pour éviter de regénérer 2× le même.
             const BP_TOTAL = 10
             const projDocs = projectDocuments[selectedProject.id] || []
-            const bpSecs = action.id === 'business-plan'
-              ? projDocs.filter((d: any) => (d.document_type || '').toLowerCase().includes('business-plan-section'))
-              : []
             const bpCount = action.id === 'business-plan'
-              ? (new Set(bpSecs.map((d: any) => d.metadata?.section_number).filter((n: any) => n != null)).size || bpSecs.length)
+              ? Math.min(BP_TOTAL, getBpGeneratedSections(selectedProject.id).size)
               : 0
             const bpPartial = action.id === 'business-plan' && bpCount > 0 && bpCount < BP_TOTAL
             const bpComplete = action.id === 'business-plan' && bpCount >= BP_TOTAL
@@ -4980,8 +4991,8 @@ export default function MesProjetsPage() {
               {/* Sections Grid - Scrollable */}
               <div className="flex-1 overflow-y-auto p-3 sm:p-6 overscroll-contain">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-                  {BUSINESS_PLAN_SECTIONS.map((section) => {
-                    const isCompleted = (businessPlanProgress[selectedProject.id] || 0) >= section.section
+                  {(() => { const bpDone = getBpGeneratedSections(selectedProject.id); return BUSINESS_PLAN_SECTIONS.map((section) => {
+                    const isCompleted = bpDone.has(section.section)
                     return (
                       <button
                         key={section.section}
@@ -5011,7 +5022,7 @@ export default function MesProjetsPage() {
                         </div>
                       </button>
                     )
-                  })}
+                  }) })()}
                 </div>
               </div>
 
