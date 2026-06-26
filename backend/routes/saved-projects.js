@@ -322,15 +322,32 @@ router.get('/:projectId', requireAuth, async (req, res) => {
       .from('saved_projects')
       .select('*')
       .eq('id', projectId)
-      .eq('user_id', userId)
       .single();
 
-    if (error) {
+    if (error || !data) {
       console.error('❌ Erreur récupération projet:', error);
       return res.status(404).json({
         success: false,
         error: 'Projet non trouvé'
       });
+    }
+
+    // Autorisation : propriétaire OU collaborateur accepté
+    if (data.user_id !== userId) {
+      const { data: collab } = await supabaseService.supabase
+        .from('project_collaborators')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('collaborator_id', userId)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      if (!collab) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé à ce projet'
+        });
+      }
     }
 
     console.log('✅ Projet trouvé:', data?.proposition_titre);
