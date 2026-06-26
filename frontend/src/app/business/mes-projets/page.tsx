@@ -2323,7 +2323,8 @@ export default function MesProjetsPage() {
   const handleGenerateIllustration = async (project: any, kind: 'logo' | 'flyer' | 'infographic') => {
     const COSTS: Record<string, number> = { logo: 20, flyer: 20, infographic: 35 }
     const LABELS: Record<string, string> = { logo: 'le logo', flyer: 'le flyer de présentation', infographic: "l'infographie de votre business" }
-    if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.`)) return
+    const TITLES: Record<string, string> = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' }
+    if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.\nLa génération peut prendre 1 à 3 minutes.`)) return
     setIllustrationLoading(kind)
     try {
       const headers = await getAuthHeaders()
@@ -2333,20 +2334,46 @@ export default function MesProjetsPage() {
         body: JSON.stringify({ kind }),
       })
       const json = await res.json()
-      if (json?.success) {
-        setIllustrationResult({
-          kind,
-          url: json.imageUrl,
-          title: kind === 'logo' ? 'Logo' : kind === 'flyer' ? 'Flyer de présentation' : 'Infographie — Mon business en 1 image',
-        })
-        try { hookFetchDocuments(project.id) } catch {}
-        setBcegDocsRefreshKey(k => k + 1)
-      } else {
-        alert(json?.error || 'Erreur lors de la génération de l\'illustration')
+      if (!json?.success || !json.documentId) {
+        alert(json?.error || 'Erreur lors du lancement de la génération')
+        setIllustrationLoading(null)
+        return
       }
+
+      // Génération asynchrone : on interroge le statut jusqu'à la fin
+      const documentId = json.documentId
+      const startedAt = Date.now()
+      const MAX_WAIT = 5 * 60 * 1000 // 5 min
+      const poll = async () => {
+        try {
+          const h = await getAuthHeaders()
+          const r = await fetch(`${API_URL}/api/saved-projects/${project.id}/illustration/${documentId}`, { headers: h })
+          const j = await r.json()
+          if (j?.status === 'done') {
+            setIllustrationResult({ kind, url: j.imageUrl, title: TITLES[kind] })
+            try { hookFetchDocuments(project.id) } catch {}
+            setBcegDocsRefreshKey(k => k + 1)
+            setIllustrationLoading(null)
+            return
+          }
+          if (j?.status === 'error') {
+            alert('Échec de la génération : ' + (j?.error || 'erreur inconnue'))
+            setIllustrationLoading(null)
+            return
+          }
+          if (Date.now() - startedAt > MAX_WAIT) {
+            alert('La génération prend trop de temps. Elle continue en arrière-plan — réessayez de rafraîchir la bibliothèque dans un instant.')
+            setIllustrationLoading(null)
+            return
+          }
+          setTimeout(poll, 5000)
+        } catch {
+          setTimeout(poll, 5000)
+        }
+      }
+      setTimeout(poll, 4000)
     } catch (e: any) {
       alert(e?.message || 'Erreur réseau')
-    } finally {
       setIllustrationLoading(null)
     }
   }

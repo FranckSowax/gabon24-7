@@ -725,10 +725,14 @@ router.patch('/:projectId/update-steps', requireAuth, validateBody(updateStepsSc
   }
 });
 
+const ILLUSTRATION_LABELS = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' };
+
 /**
  * POST /api/saved-projects/:projectId/illustration
- * Génère une illustration (logo / flyer / infographie) via GPT Image 2,
- * la stocke et l'attache au projet. L'infographie devient une pièce du dossier.
+ * Lance la génération d'une illustration (logo / flyer / infographie) via GPT Image 2.
+ * ASYNCHRONE : répond immédiatement avec un documentId, puis génère en arrière-plan
+ * (gpt-image-2 dépasse le timeout du proxy → réponse synchrone impossible).
+ * Le frontend interroge GET .../illustration/:documentId jusqu'au statut 'done'.
  */
 router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSchema), async (req, res) => {
   try {
@@ -745,107 +749,115 @@ router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSc
       return res.status(403).json({ success: false, error: 'Projet non autorisé' });
     }
 
-    // 2. Documents générés (contexte pour le prompt)
-    const { data: docs } = await supabaseService.supabase
+    // 2. Créer le document "en génération" (visible dès maintenant)
+    const { data: doc, error: insErr } = await supabaseService.supabase
       .from('project_documents')
-      .select('document_type, title, content, metadata')
-      .eq('project_id', projectId);
+      .insert([{
+        project_id: projectId,
+        user_id: userId,
+        document_type: kind === 'infographic' ? 'illustration' : kind,
+        title: ILLUSTRATION_LABELS[kind] || 'Illustration',
+        content: '',
+        metadata: { is_image: true, kind, status: 'generating' },
+      }])
+      .select('id').single();
+    if (insErr) throw insErr;
+    const documentId = doc.id;
 
-    // 3. Génération via gpt-image-2
-    const { generateIllustration } = require('../services/projectIllustration');
-    const { buffer, promptJson } = await generateIllustration(kind, project, docs || []);
+    // 3. Répondre TOUT DE SUITE (évite le 502 du proxy sur les longues générations)
+    res.json({ success: true, status: 'generating', documentId, kind });
 
-    // 4. Upload dans le bucket privé due-diligence
-    const path = `${userId}/illustration-${kind}-${Date.now()}.png`;
-    const { error: upErr } = await supabaseService.supabase.storage
-      .from('due-diligence')
-      .upload(path, buffer, { contentType: 'image/png', upsert: false });
-    if (upErr) throw upErr;
-
-    // URL signée pour affichage immédiat
-    let imageUrl = null;
-    try {
-      const { data: signed } = await supabaseService.supabase.storage
-        .from('due-diligence').createSignedUrl(path, 3600);
-      imageUrl = signed?.signedUrl || null;
-    } catch { /* ignore */ }
-
-    const LABELS = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' };
-
-    // 5. Enregistrer comme document projet (visible dans la bibliothèque)
-    let documentId = null;
-    try {
-      const { data: doc } = await supabaseService.supabase
-        .from('project_documents')
-        .insert([{
-          project_id: projectId,
-          user_id: userId,
-          document_type: kind === 'infographic' ? 'illustration' : kind,
-          title: LABELS[kind] || 'Illustration',
-          content: imageUrl ? `![${LABELS[kind]}](${imageUrl})` : '',
-          metadata: { is_image: true, kind, storage_path: path, bucket: 'due-diligence', prompt: promptJson },
-        }])
-        .select('id').single();
-      documentId = doc?.id || null;
-    } catch (e) { console.warn('⚠️ Sauvegarde project_documents illustration:', e.message); }
-
-    // 6. Infographie → pièce du dossier de financement (due_diligence_documents)
-    let dossierPieceId = null;
-    if (kind === 'infographic') {
+    // 4. Génération en arrière-plan (ne bloque pas la réponse)
+    (async () => {
       try {
-        const { data: dd, error: ddErr } = await supabaseService.supabase
-          .from('due_diligence_documents')
-          .insert({
-            user_id: userId,
-            project_id: projectId,
-            doc_type: 'illustration',
-            file_url: path,
-            file_name: 'infographie-business.png',
-            file_size: buffer.length,
-            mime_type: 'image/png',
-            verification_status: 'pending',
-          })
-          .select('id').single();
-        if (ddErr) {
-          // Le plus souvent : contrainte CHECK doc_type à mettre à jour (SQL)
-          console.warn('⚠️ due_diligence illustration échouée (contrainte doc_type ?):', ddErr.message);
-        } else {
-          dossierPieceId = dd?.id || null;
+        const { data: ctxDocs } = await supabaseService.supabase
+          .from('project_documents')
+          .select('document_type, title, content, metadata')
+          .eq('project_id', projectId);
+
+        const { generateIllustration } = require('../services/projectIllustration');
+        const { buffer, promptJson } = await generateIllustration(kind, project, ctxDocs || []);
+
+        const path = `${userId}/illustration-${kind}-${Date.now()}.png`;
+        const { error: upErr } = await supabaseService.supabase.storage
+          .from('due-diligence')
+          .upload(path, buffer, { contentType: 'image/png', upsert: false });
+        if (upErr) throw upErr;
+
+        await supabaseService.supabase
+          .from('project_documents')
+          .update({ metadata: { is_image: true, kind, status: 'done', storage_path: path, bucket: 'due-diligence', prompt: promptJson } })
+          .eq('id', documentId);
+
+        // Infographie → pièce du dossier (nécessite doc_type 'illustration' autorisé en base)
+        if (kind === 'infographic') {
+          await supabaseService.supabase
+            .from('due_diligence_documents')
+            .insert({
+              user_id: userId, project_id: projectId, doc_type: 'illustration',
+              file_url: path, file_name: 'infographie-business.png',
+              file_size: buffer.length, mime_type: 'image/png', verification_status: 'pending',
+            })
+            .then(() => {}, (e) => console.warn('⚠️ due_diligence illustration (contrainte doc_type ?):', e.message));
         }
-      } catch (e) { console.warn('⚠️ due_diligence illustration:', e.message); }
-    }
 
-    // 7. Décompte des crédits (sur le projet)
-    try {
-      const current = project.total_credits_used || 0;
-      await supabaseService.supabase
-        .from('saved_projects')
-        .update({ total_credits_used: current + cost, context_updated_at: new Date().toISOString() })
-        .eq('id', projectId);
-    } catch (e) { console.warn('⚠️ Décompte crédits illustration:', e.message); }
+        // Décompte crédits
+        const current = project.total_credits_used || 0;
+        await supabaseService.supabase
+          .from('saved_projects')
+          .update({ total_credits_used: current + cost, context_updated_at: new Date().toISOString() })
+          .eq('id', projectId);
 
-    // Invalider le cache projet
-    try {
-      if (redisCache.isAvailable()) {
-        await redisCache.delPattern(`projects:*:${userId}*`);
-        await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+        try {
+          if (redisCache.isAvailable()) {
+            await redisCache.delPattern(`projects:*:${userId}*`);
+            await redisCache.del(getCacheKey.projectDetail(userId, projectId));
+          }
+        } catch { /* ignore */ }
+
+        console.log(`🎨 [illustration] ${kind} terminé → ${path}`);
+      } catch (e) {
+        console.error('❌ [illustration] échec génération (bg):', e.message);
+        await supabaseService.supabase
+          .from('project_documents')
+          .update({ metadata: { is_image: true, kind, status: 'error', error: String(e.message || 'Erreur').slice(0, 300) } })
+          .eq('id', documentId)
+          .then(() => {}, () => {});
       }
-    } catch { /* ignore */ }
-
-    res.json({
-      success: true,
-      kind,
-      imageUrl,
-      documentId,
-      dossierPieceId,
-      creditsUsed: cost,
-      addedToDossier: kind === 'infographic' && !!dossierPieceId,
-    });
+    })();
   } catch (error) {
-    console.error('❌ Erreur génération illustration:', error);
-    const msg = error?.message || 'Erreur génération illustration';
-    const isQuota = /quota|insufficient|billing/i.test(msg);
-    res.status(isQuota ? 402 : 500).json({ success: false, error: msg });
+    console.error('❌ Erreur lancement illustration:', error);
+    res.status(500).json({ success: false, error: error?.message || 'Erreur génération illustration' });
+  }
+});
+
+/**
+ * GET /api/saved-projects/:projectId/illustration/:documentId
+ * Statut de génération + URL signée quand prête (polling frontend).
+ */
+router.get('/:projectId/illustration/:documentId', requireAuth, async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { data: doc, error } = await supabaseService.supabase
+      .from('project_documents')
+      .select('id, user_id, metadata')
+      .eq('id', documentId)
+      .single();
+    if (error || !doc) return res.status(404).json({ success: false, error: 'Document introuvable' });
+    if (doc.user_id && doc.user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Non autorisé' });
+
+    const status = doc.metadata?.status || 'generating';
+    let imageUrl = null;
+    if (status === 'done' && doc.metadata?.storage_path) {
+      try {
+        const { data: signed } = await supabaseService.supabase.storage
+          .from('due-diligence').createSignedUrl(doc.metadata.storage_path, 3600);
+        imageUrl = signed?.signedUrl || null;
+      } catch { /* ignore */ }
+    }
+    res.json({ success: true, status, imageUrl, error: doc.metadata?.error || null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
