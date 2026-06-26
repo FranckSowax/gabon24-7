@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Lock, Loader2, LogOut, ShieldCheck } from 'lucide-react'
-import { BcegReviewDashboard } from '@/app/admin/bceg/page'
+import { BcegReviewDashboard } from '@/components/business/BcegReviewDashboard'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 const CODE_KEY = 'bceg_portal_code'
@@ -22,7 +22,7 @@ export default function PartenaireBcegPortail() {
     }
   }, [])
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const c = code.trim()
     if (!c) return
