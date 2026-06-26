@@ -72,8 +72,8 @@ export default function JoinProjectPage() {
   // Rejoindre le projet
   const handleJoinProject = async () => {
     if (!user) {
-      // Rediriger vers login avec retour ici
-      router.push(`/login?redirect=/collaboration/join/${token}`)
+      // Rediriger vers la connexion avec retour ici
+      router.push(`/auth/signin?redirectTo=${encodeURIComponent(`/collaboration/join/${token}`)}`)
       return
     }
 
@@ -255,7 +255,7 @@ export default function JoinProjectPage() {
         ) : (
           <div className="space-y-3">
             <button
-              onClick={() => router.push(`/login?redirect=/collaboration/join/${token}`)}
+              onClick={() => router.push(`/auth/signin?redirectTo=${encodeURIComponent(`/collaboration/join/${token}`)}`)}
               className="w-full px-6 py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-green-600 transition-all flex items-center justify-center gap-2"
             >
               <LogIn className="w-5 h-5" />

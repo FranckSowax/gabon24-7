@@ -116,10 +116,10 @@ router.get('/', requireAuth, async (req, res) => {
           .select(`
             role,
             permissions,
-            joined_at,
+            accepted_at,
             saved_projects!inner (${selectFields})
           `)
-          .eq('user_id', userId)
+          .eq('collaborator_id', userId)
           .eq('status', 'accepted');
 
         if (sharedProjects && sharedProjects.length > 0) {
@@ -132,7 +132,7 @@ router.get('/', requireAuth, async (req, res) => {
               collaboration: {
                 role: collab.role,
                 permissions: collab.permissions,
-                joined_at: collab.joined_at
+                joined_at: collab.accepted_at
               }
             }));
           allProjects = [...allProjects, ...formattedShared];
