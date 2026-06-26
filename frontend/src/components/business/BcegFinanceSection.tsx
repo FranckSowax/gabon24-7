@@ -290,16 +290,16 @@ export default function BcegFinanceSection({
             desc="CNI, RCCM, RIB"
             cta="Préparer"
             done={hasPersonalDocs}
-            onClick={() => window.location.href = '/business/bceg-prepare'}
+            onClick={() => { window.location.href = `/business/bceg-prepare?tab=docs&projectId=${project.id}&from=${encodeURIComponent(`/business/mes-projets?projectId=${project.id}&openCard=true&tab=financement`)}` }}
           />
           <NextStep
             n={3}
             icon={Calendar}
-            title="RDV avec la BCEG"
-            desc="Demandez un entretien dans votre agence"
+            title="Prendre RDV avec un conseiller"
+            desc="Échangez avec un conseiller Gabon Insight"
             cta="Réserver"
             done={false}
-            onClick={() => window.location.href = '/business/bceg-prepare'}
+            onClick={() => { window.location.href = `/business/bceg-prepare?tab=rdv&projectId=${project.id}&from=${encodeURIComponent(`/business/mes-projets?projectId=${project.id}&openCard=true&tab=financement`)}` }}
           />
         </div>
       </div>

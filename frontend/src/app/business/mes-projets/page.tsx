@@ -716,7 +716,7 @@ export default function MesProjetsPage() {
       if (project) {
         setSelectedProject(project)
         // Si un onglet spécifique est demandé, l'activer
-        if (tab && ['dashboard', 'overview', 'plan-action', 'actions', 'contexte', 'conseiller', 'collaboration'].includes(tab)) {
+        if (tab && ['dashboard', 'overview', 'plan-action', 'actions', 'contexte', 'conseiller', 'collaboration', 'financement', 'outils', 'documents', 'timeline', 'notes'].includes(tab)) {
           setActiveSection(tab)
         }
         // Nettoyer l'URL après ouverture
