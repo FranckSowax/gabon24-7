@@ -196,7 +196,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
         body: JSON.stringify({
           projectId: selectedProject.id,
           ownerId: user.id,
-          expiresInDays: 7
+          expiresInDays: 90
         })
       })
 
@@ -335,7 +335,7 @@ export default function CollaborationSection({ selectedProject, user }: Collabor
             </div>
 
             <p className="text-xs text-slate-500 text-center">
-              🔗 Ce lien expire dans 7 jours • Les invités pourront voir et commenter le projet
+              🔗 Ce lien expire dans 90 jours • Les invités pourront voir et commenter le projet
             </p>
           </div>
         )}

@@ -644,7 +644,7 @@ router.post('/reject', requireAuth, async (req, res) => {
 // 🔒 SÉCURISÉ: Authentification requise
 router.post('/generate-share-link', requireAuth, async (req, res) => {
   try {
-    const { projectId, ownerId, expiresInDays = 7 } = req.body;
+    const { projectId, ownerId, expiresInDays = 90 } = req.body;
 
     if (!projectId || !ownerId) {
       return res.status(400).json({ success: false, error: 'Paramètres manquants' });
