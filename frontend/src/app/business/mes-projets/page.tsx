@@ -686,6 +686,9 @@ export default function MesProjetsPage() {
     }
   }
 
+  // Clé STABLE des IDs : évite que l'effet se relance à chaque render
+  // (le hook renvoie un nouveau tableau `projects` à chaque rendu → boucle de fetch/429).
+  const projectIdsKey = Array.isArray(projects) ? projects.map((p: any) => p.id).join(',') : ''
   useEffect(() => {
     if (Array.isArray(projects) && projects.length > 0) {
       projects.forEach(project => {
@@ -696,7 +699,8 @@ export default function MesProjetsPage() {
         if (!projectTimeline[project.id]) fetchProjectTimeline(project.id)
       })
     }
-  }, [projects]) // Dépendance sur projects du hook
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectIdsKey]) // Dépend de la LISTE d'IDs (stable), pas de l'identité du tableau
 
   // Ouvrir automatiquement la carte du projet si projectId est dans l'URL
   useEffect(() => {
