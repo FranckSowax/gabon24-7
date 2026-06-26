@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   X, Sparkles, Loader2, ChevronDown, ChevronUp, 
@@ -43,6 +43,9 @@ export default function ActionPlanChecklistModal({
   // Using singleton supabase from @/lib/supabase
   const [checklistId, setChecklistId] = useState<string | null>(null)
   const [itemStates, setItemStates] = useState<{[key: string]: ChecklistItemState}>({})
+  // Ref toujours à jour pour éviter les closures périmées dans les sauvegardes
+  const itemStatesRef = useRef<{[key: string]: ChecklistItemState}>({})
+  useEffect(() => { itemStatesRef.current = itemStates }, [itemStates])
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -227,8 +230,9 @@ IMPORTANT:
       const data = await response.json()
       if (data.success && data.response) {
         handleAnswerChange(item.id, data.response)
-        // Sauvegarder immédiatement après génération IA
-        await saveItemToDatabase(item.id)
+        // Sauvegarder immédiatement après génération IA (valeur fraîche explicite)
+        const baseAns = itemStatesRef.current[item.id] || itemStates[item.id] || ({} as ChecklistItemState)
+        await saveItemToDatabase(item.id, { ...baseAns, answer: data.response })
       } else {
         throw new Error(data.error || 'Réponse IA invalide')
       }
@@ -266,17 +270,16 @@ IMPORTANT:
       const fileUrl = urlData.signedUrl
 
       // Mettre à jour l'état local
-      setItemStates(prev => ({
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          document_urls: [...(prev[itemId]?.document_urls || []), fileUrl],
-          document_names: [...(prev[itemId]?.document_names || []), file.name]
-        }
-      }))
+      const baseUp = itemStatesRef.current[itemId] || itemStates[itemId] || ({} as ChecklistItemState)
+      const nextUp: ChecklistItemState = {
+        ...baseUp,
+        document_urls: [...(baseUp.document_urls || []), fileUrl],
+        document_names: [...(baseUp.document_names || []), file.name]
+      }
+      setItemStates(prev => ({ ...prev, [itemId]: nextUp }))
 
-      // Sauvegarder en DB
-      await saveItemToDatabase(itemId)
+      // Sauvegarder en DB (valeur fraîche explicite)
+      await saveItemToDatabase(itemId, nextUp)
 
     } catch (error) {
       console.error('Erreur upload:', error)
@@ -327,16 +330,15 @@ IMPORTANT:
       }
 
       // Ajouter le document généré à la liste
-      setItemStates(prev => ({
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          document_urls: [...(prev[itemId]?.document_urls || []), data.documentUrl],
-          document_names: [...(prev[itemId]?.document_names || []), data.documentName]
-        }
-      }))
+      const baseGen = itemStatesRef.current[itemId] || itemStates[itemId] || ({} as ChecklistItemState)
+      const nextGen: ChecklistItemState = {
+        ...baseGen,
+        document_urls: [...(baseGen.document_urls || []), data.documentUrl],
+        document_names: [...(baseGen.document_names || []), data.documentName]
+      }
+      setItemStates(prev => ({ ...prev, [itemId]: nextGen }))
 
-      await saveItemToDatabase(itemId)
+      await saveItemToDatabase(itemId, nextGen)
 
       alert(`✅ Document "${data.documentName}" généré avec succès!\n\n💰 5 crédits utilisés\n📁 Disponible dans votre bibliothèque`)
     } catch (error) {
@@ -351,23 +353,17 @@ IMPORTANT:
     if (!confirm('Supprimer ce document ?')) return
 
     try {
-      const state = itemStates[itemId]
-      const newUrls = [...state.document_urls]
-      const newNames = [...state.document_names]
-      
+      const baseDel = itemStatesRef.current[itemId] || itemStates[itemId]
+      const newUrls = [...(baseDel.document_urls || [])]
+      const newNames = [...(baseDel.document_names || [])]
+
       newUrls.splice(index, 1)
       newNames.splice(index, 1)
 
-      setItemStates(prev => ({
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          document_urls: newUrls,
-          document_names: newNames
-        }
-      }))
+      const nextDel: ChecklistItemState = { ...baseDel, document_urls: newUrls, document_names: newNames }
+      setItemStates(prev => ({ ...prev, [itemId]: nextDel }))
 
-      await saveItemToDatabase(itemId)
+      await saveItemToDatabase(itemId, nextDel)
     } catch (error) {
       console.error('Erreur suppression:', error)
       alert('Erreur lors de la suppression')
@@ -376,21 +372,25 @@ IMPORTANT:
 
   const handleToggleComplete = async (itemId: string) => {
     const newCompleted = !itemStates[itemId]?.is_completed
+    const nextState: ChecklistItemState = { ...itemStates[itemId], is_completed: newCompleted }
 
     setItemStates(prev => ({
       ...prev,
       [itemId]: { ...prev[itemId], is_completed: newCompleted }
     }))
 
-    await saveItemToDatabase(itemId)
+    // Passe la nouvelle valeur explicitement (setState est async → closure périmée sinon)
+    await saveItemToDatabase(itemId, nextState)
   }
 
-  const saveItemToDatabase = async (itemId: string) => {
+  const saveItemToDatabase = async (itemId: string, override?: ChecklistItemState) => {
     if (!checklistId) return
 
     try {
-      const state = itemStates[itemId]
-      
+      // override (toggle immédiat) sinon ref toujours à jour (saves debounced)
+      const state = override || itemStatesRef.current[itemId] || itemStates[itemId]
+      if (!state) return
+
       const { error } = await supabase
         .from('action_plan_checklist_items')
         .update({
