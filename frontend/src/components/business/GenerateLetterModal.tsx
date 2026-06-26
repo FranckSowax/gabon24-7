@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Building2, User, MapPin, Phone, FileText, Send, Loader2 } from 'lucide-react'
+import { X, Mail, Building2, User, MapPin, Phone, FileText, Send, Loader2, Sparkles } from 'lucide-react'
+
+const LETTER_GEN_STEPS = ['Analyse du destinataire…', 'Structuration du courrier…', 'Rédaction du contenu…', 'Mise en forme…', 'Finalisation…']
 
 interface GenerateLetterModalProps {
   isOpen: boolean
@@ -36,6 +38,15 @@ const LETTER_PURPOSES = [
 
 export default function GenerateLetterModal({ isOpen, onClose, project, userId, onSuccess }: GenerateLetterModalProps) {
   const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  // Progression simulée pendant la génération IA du courrier
+  useEffect(() => {
+    if (!isGenerating) { setProgress(0); return }
+    setProgress(5)
+    const t = setInterval(() => setProgress(p => Math.min(93, p + 4)), 1400)
+    return () => clearInterval(t)
+  }, [isGenerating])
   const [formData, setFormData] = useState({
     recipientType: '',
     recipientName: '',
@@ -122,6 +133,26 @@ export default function GenerateLetterModal({ isOpen, onClose, project, userId, 
           exit={{ opacity: 0, y: 100, scale: 0.98 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
+          {/* Overlay de progression pendant la génération IA */}
+          {isGenerating && (
+            <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur flex items-center justify-center p-6">
+              <div className="text-center max-w-sm w-full">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-amber-200 animate-pulse" />
+                </div>
+                <h3 className="font-bold text-slate-900">Génération du courrier…</h3>
+                <p className="text-xs text-slate-500 mt-1">{LETTER_GEN_STEPS[Math.min(LETTER_GEN_STEPS.length - 1, Math.floor(progress / 20))]}</p>
+                <div className="mt-4 h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <motion.div animate={{ width: `${Math.round(progress)}%` }} transition={{ ease: 'easeOut', duration: 0.6 }} className="h-full bg-gradient-to-r from-[#8a9576] to-[#697357]" />
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1.5 flex items-center justify-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" /> {Math.round(progress)}% · IA
+                </div>
+                <p className="text-[11px] text-slate-400 mt-3">Ne fermez pas cette fenêtre.</p>
+              </div>
+            </div>
+          )}
+
           {/* Header - Compact sur mobile */}
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
