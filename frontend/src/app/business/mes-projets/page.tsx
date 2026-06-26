@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen, Palette, Image as ImageIcon, PieChart, Download } from 'lucide-react'
+import { Bookmark, Calendar, ArrowLeft, ExternalLink, Target, Sparkles, ChevronDown, Rocket, GraduationCap, FileText, Play, Zap, Award, TrendingUp, AlertCircle, MessageSquare, Trash2, Edit2, Send, RefreshCw, X, Briefcase, Clock, DollarSign, Building2, Star, Users, LayoutDashboard, User, StickyNote, CheckCircle, Menu, Database, Upload, Mail, Link, Copy, MessageCircle, Newspaper, RotateCcw, BookOpen, Palette, Image as ImageIcon, PieChart, Download, Loader2 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import BcegBackdrop from '@/components/bceg/BcegBackdrop'
@@ -454,6 +454,8 @@ export default function MesProjetsPage() {
   const [actionLoading, setActionLoading] = useState<{[key: string]: boolean}>({})
   const [illustrationLoading, setIllustrationLoading] = useState<string | null>(null)
   const [illustrationResult, setIllustrationResult] = useState<{ kind: string; url: string; title: string } | null>(null)
+  const [illustrationProgress, setIllustrationProgress] = useState(0)
+  const [illustrationStep, setIllustrationStep] = useState('')
   const [projectNotes, setProjectNotes] = useState<{[key: string]: ProjectNote[]}>({})
   const [newNote, setNewNote] = useState('')
   const [isAddingNote, setIsAddingNote] = useState(false)
@@ -2326,6 +2328,16 @@ export default function MesProjetsPage() {
     const TITLES: Record<string, string> = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' }
     if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.\nLa génération peut prendre 1 à 3 minutes.`)) return
     setIllustrationLoading(kind)
+    setIllustrationProgress(4)
+    setIllustrationStep('Initialisation…')
+
+    const STEPS = kind === 'infographic'
+      ? ['Analyse du projet…', 'Extraction des chiffres clés…', 'Composition de la scène 3D…', 'Application du thème BCEG…', 'Rendu final…']
+      : ['Analyse du projet…', 'Conception du visuel…', 'Application du thème BCEG…', 'Rendu final…']
+    let progTimer: any = null
+    const stopProgress = () => { if (progTimer) { clearInterval(progTimer); progTimer = null } }
+    const finish = () => { stopProgress(); setIllustrationLoading(null); setIllustrationProgress(0); setIllustrationStep('') }
+
     try {
       const headers = await getAuthHeaders()
       const res = await fetch(`${API_URL}/api/saved-projects/${project.id}/illustration`, {
@@ -2335,8 +2347,8 @@ export default function MesProjetsPage() {
       })
       const json = await res.json()
       if (!json?.success || !json.documentId) {
+        finish()
         alert(json?.error || 'Erreur lors du lancement de la génération')
-        setIllustrationLoading(null)
         return
       }
 
@@ -2344,26 +2356,38 @@ export default function MesProjetsPage() {
       const documentId = json.documentId
       const startedAt = Date.now()
       const MAX_WAIT = 5 * 60 * 1000 // 5 min
+      const stepDur = kind === 'infographic' ? 24000 : 14000
+
+      // Progression simulée (l'image est générée côté serveur, sans % réel)
+      progTimer = setInterval(() => {
+        const elapsed = Date.now() - startedAt
+        setIllustrationProgress(p => Math.min(93, p + 3))
+        setIllustrationStep(STEPS[Math.min(STEPS.length - 1, Math.floor(elapsed / stepDur))])
+      }, 1800)
+
       const poll = async () => {
         try {
           const h = await getAuthHeaders()
           const r = await fetch(`${API_URL}/api/saved-projects/${project.id}/illustration/${documentId}`, { headers: h })
           const j = await r.json()
           if (j?.status === 'done') {
+            stopProgress()
+            setIllustrationProgress(100)
+            setIllustrationStep('Terminé ✓')
             setIllustrationResult({ kind, url: j.imageUrl, title: TITLES[kind] })
             try { hookFetchDocuments(project.id) } catch {}
             setBcegDocsRefreshKey(k => k + 1)
-            setIllustrationLoading(null)
+            setTimeout(() => { setIllustrationLoading(null); setIllustrationProgress(0); setIllustrationStep('') }, 400)
             return
           }
           if (j?.status === 'error') {
+            finish()
             alert('Échec de la génération : ' + (j?.error || 'erreur inconnue'))
-            setIllustrationLoading(null)
             return
           }
           if (Date.now() - startedAt > MAX_WAIT) {
+            finish()
             alert('La génération prend trop de temps. Elle continue en arrière-plan — réessayez de rafraîchir la bibliothèque dans un instant.')
-            setIllustrationLoading(null)
             return
           }
           setTimeout(poll, 5000)
@@ -2373,8 +2397,8 @@ export default function MesProjetsPage() {
       }
       setTimeout(poll, 4000)
     } catch (e: any) {
+      finish()
       alert(e?.message || 'Erreur réseau')
-      setIllustrationLoading(null)
     }
   }
 
@@ -5282,6 +5306,38 @@ export default function MesProjetsPage() {
         }}
         creditsUsed={currentActionCredits}
       />
+
+      {/* Modal de progression illustration (logo / flyer / infographie) */}
+      {illustrationLoading && !illustrationResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div className="p-5 text-center">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-amber-200 animate-pulse" />
+              </div>
+              <h3 className="font-bold text-slate-900">
+                {illustrationLoading === 'logo' ? 'Génération du logo…'
+                  : illustrationLoading === 'flyer' ? 'Génération du flyer…'
+                  : 'Génération de l\'infographie…'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">{illustrationStep || 'Traitement en cours…'}</p>
+
+              <div className="mt-4 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <motion.div
+                  animate={{ width: `${Math.round(illustrationProgress)}%` }}
+                  transition={{ ease: 'easeOut', duration: 0.6 }}
+                  className="h-full bg-gradient-to-r from-[#8a9576] to-[#697357]"
+                />
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1.5 flex items-center justify-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {Math.round(illustrationProgress)}% · IA (GPT Image 2) — 1 à 3 min
+              </div>
+              <p className="text-[11px] text-slate-400 mt-3">Ne fermez pas cette fenêtre. Le visuel s'affichera automatiquement.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal résultat illustration (logo / flyer / infographie) */}
       {illustrationResult && (
