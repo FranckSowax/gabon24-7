@@ -27,7 +27,9 @@ const NEGATIVE_COMMON =
 function getOpenAI() {
   const OpenAI = require('openai');
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY manquant');
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 120000, maxRetries: 2 });
+  // Génération d'image longue : timeout généreux mais SANS retry
+  // (un retry ne ferait qu'empiler des attentes de plusieurs minutes).
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 240000, maxRetries: 0 });
 }
 
 /** Compacte les données projet utiles pour les prompts. */
@@ -152,12 +154,15 @@ async function generateIllustration(kind, project, docs) {
     `sans fautes.\n\n${JSON.stringify(promptJson, null, 2)}`;
 
   const client = getOpenAI();
+  const t0 = Date.now();
+  console.log(`🎨 [illustration] génération ${kind} (${size}) via ${IMAGE_MODEL}…`);
   const resp = await client.images.generate({
     model: IMAGE_MODEL,
     prompt: promptText,
     size,
     n: 1,
   });
+  console.log(`🎨 [illustration] ${kind} reçu en ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
   const b64 = resp?.data?.[0]?.b64_json;
   if (!b64) throw new Error('Réponse image vide (gpt-image-2)');
