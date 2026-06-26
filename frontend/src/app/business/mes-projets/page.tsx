@@ -2734,7 +2734,7 @@ export default function MesProjetsPage() {
           if (bibliothequeFilter === 'formation') return d.document_type === 'custom-training'
           if (bibliothequeFilter === 'test') return d.document_type === 'skill-test'
           if (bibliothequeFilter === 'conversation') return d.document_type === 'conversation-ai'
-          if (bibliothequeFilter === 'visuels') return (d.metadata as any)?.is_image || ['illustration', 'logo', 'flyer'].includes(d.document_type)
+          if (bibliothequeFilter === 'visuels') return (d.metadata as any)?.is_image || ['illustration', 'logo', 'flyer'].includes((d.document_type as string) || '')
           return d.document_type === bibliothequeFilter
         })
 

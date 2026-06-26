@@ -758,10 +758,15 @@ router.post('/:projectId/illustration', requireAuth, validateBody(illustrationSc
         document_type: kind === 'infographic' ? 'illustration' : kind,
         title: ILLUSTRATION_LABELS[kind] || 'Illustration',
         content: '',
+        prompt_used: '',
+        context_added: '',
         metadata: { is_image: true, kind, status: 'generating' },
       }])
       .select('id').single();
-    if (insErr) throw insErr;
+    if (insErr) {
+      console.error('❌ Insert project_documents (illustration) échoué:', JSON.stringify({ message: insErr.message, details: insErr.details, hint: insErr.hint, code: insErr.code }));
+      return res.status(500).json({ success: false, error: insErr.message, code: insErr.code, details: insErr.details });
+    }
     const documentId = doc.id;
 
     // 3. Répondre TOUT DE SUITE (évite le 502 du proxy sur les longues générations)
