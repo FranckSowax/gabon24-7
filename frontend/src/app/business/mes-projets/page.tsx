@@ -2326,7 +2326,7 @@ export default function MesProjetsPage() {
     const COSTS: Record<string, number> = { logo: 25, flyer: 30, infographic: 40 }
     const LABELS: Record<string, string> = { logo: 'le logo', flyer: 'le flyer de présentation', infographic: "l'infographie de votre business" }
     const TITLES: Record<string, string> = { logo: 'Logo', flyer: 'Flyer de présentation', infographic: 'Infographie — Mon business en 1 image' }
-    if (!confirm(`Générer ${LABELS[kind]} avec l'IA (GPT Image 2) ?\n\nCoût : ${COSTS[kind]} crédits.\nLa génération peut prendre 1 à 3 minutes.`)) return
+    if (!confirm(`Générer ${LABELS[kind]} avec l'IA ?\n\nCoût : ${COSTS[kind]} crédits.\nLa génération peut prendre 1 à 3 minutes.`)) return
     setIllustrationLoading(kind)
     setIllustrationProgress(4)
     setIllustrationStep('Initialisation…')
@@ -5331,7 +5331,7 @@ export default function MesProjetsPage() {
               </div>
               <div className="text-[11px] text-slate-400 mt-1.5 flex items-center justify-center gap-1.5">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                {Math.round(illustrationProgress)}% · IA (GPT Image 2) — 1 à 3 min
+                {Math.round(illustrationProgress)}% · IA — 1 à 3 min
               </div>
               <p className="text-[11px] text-slate-400 mt-3">Ne fermez pas cette fenêtre. Le visuel s'affichera automatiquement.</p>
             </div>
