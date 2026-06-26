@@ -39,6 +39,7 @@ export default function ProjectChatBot({
   const [inputMessage, setInputMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [totalCreditsUsed, setTotalCreditsUsed] = useState(0)
+  const [costPerMessage, setCostPerMessage] = useState(2) // grille tarifaire (chat_message), confirmé par le backend
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Refs pour archiver automatiquement la conversation au démontage
@@ -112,7 +113,7 @@ export default function ProjectChatBot({
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isSending) return
 
-    // Pas de vérification de crédits pour Gabon Insight
+    // Les crédits sont débités côté backend selon la grille (chat_message)
 
     setIsSending(true)
 
@@ -147,7 +148,10 @@ export default function ProjectChatBot({
         setMessages(prev => [...prev, data.message])
         
         setConversationId(data.conversationId)
-        setTotalCreditsUsed(prev => prev + data.creditsUsed)
+        if (typeof data.creditsUsed === 'number') {
+          setCostPerMessage(data.creditsUsed)
+          setTotalCreditsUsed(prev => prev + data.creditsUsed)
+        }
         setInputMessage('')
       } else {
         alert(data.error || 'Erreur lors de l\'envoi du message')
@@ -224,16 +228,25 @@ export default function ProjectChatBot({
                     </p>
                   </div>
                 </div>
-                {messages.length > 0 && (
-                  <button
-                    onClick={handleEndConversation}
-                    title="Terminer la conversation et enregistrer un résumé dans vos documents"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 hover:bg-white/25 text-white px-3 py-1.5 rounded-lg transition-colors"
+                <div className="flex items-center gap-2">
+                  <span
+                    title={`${costPerMessage} crédits par message`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 text-white px-3 py-1.5 rounded-lg"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    Terminer & résumer
-                  </button>
-                )}
+                    <Zap className="w-3.5 h-3.5 text-amber-200" />
+                    {totalCreditsUsed > 0 ? `${totalCreditsUsed} crédits utilisés` : `${costPerMessage} cr/message`}
+                  </span>
+                  {messages.length > 0 && (
+                    <button
+                      onClick={handleEndConversation}
+                      title="Terminer la conversation et enregistrer un résumé dans vos documents"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 hover:bg-white/25 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Terminer & résumer
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}
@@ -318,7 +331,7 @@ export default function ProjectChatBot({
                       </button>
                     </div>
                     <p className="mt-2 text-xs text-slate-500 text-center">
-                      Gabon Insight • Conseiller IA intelligent
+                      Gabon Insight • Conseiller IA • {costPerMessage} crédits / message
                     </p>
                   </div>
                 </>
