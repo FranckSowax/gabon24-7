@@ -252,26 +252,30 @@ router.post('/end-conversation', async (req, res) => {
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
-    // Récupérer la conversation pour avoir le user_id
+    // Récupérer la conversation (user_id + idempotence)
     const { data: conversation } = await supabase
       .from('project_chat_conversations')
-      .select('user_id')
+      .select('user_id, ended_at')
       .eq('id', conversationId)
       .single();
 
+    // Idempotence : déjà terminée → ne pas recréer de document
+    if (conversation?.ended_at) {
+      return res.json({ success: true, alreadyEnded: true, message: 'Conversation déjà archivée' });
+    }
+
     const userId = conversation?.user_id;
-
-    // Générer résumé complet
-    const fullSummary = messages
-      ?.map(m => `**${m.role === 'user' ? 'Vous' : 'Gabon Insight'}:** ${m.content}`)
-      .join('\n\n') || 'Aucun message';
-
-    // Générer résumé court pour contexte
-    const shortSummary = messages
-      ?.map(m => `[${m.role}] ${m.content}`)
-      .join('\n\n') || 'Aucun message';
-
     const now = new Date().toISOString();
+
+    // Conversation vide → rien à archiver (on marque juste comme terminée)
+    if (!messages || messages.length === 0) {
+      await supabase
+        .from('project_chat_conversations')
+        .update({ ended_at: now })
+        .eq('id', conversationId);
+      return res.json({ success: true, empty: true, message: 'Conversation vide, rien à archiver' });
+    }
+
     const conversationDate = new Date().toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
@@ -280,6 +284,34 @@ router.post('/end-conversation', async (req, res) => {
       minute: '2-digit'
     });
 
+    // Transcript complet (conservé)
+    const transcript = messages
+      .map(m => `**${m.role === 'user' ? 'Vous' : 'Gabon Insight'}:** ${m.content}`)
+      .join('\n\n');
+
+    // Résumé IA structuré de la conversation
+    let aiSummary = '';
+    if (openai) {
+      try {
+        const summaryPrompt = `Voici une conversation entre un entrepreneur gabonais et son conseiller IA "Gabon Insight".\n\n${messages.map(m => `${m.role === 'user' ? 'Entrepreneur' : 'Conseiller'}: ${m.content}`).join('\n')}\n\nRédige un RÉSUMÉ structuré et actionnable en français (markdown) avec ces sections :\n## 🎯 Sujets abordés\n## 💡 Conseils clés donnés\n## ✅ Décisions / points validés\n## 👉 Prochaines actions recommandées\n\nSois concis et concret. Contexte gabonais, montants en FCFA.`;
+        const completion = await openai.chat.completions.create({
+          model: OPENAI_MODEL,
+          messages: [{ role: 'user', content: summaryPrompt }],
+          temperature: 0.4,
+          max_tokens: 800,
+        });
+        aiSummary = completion.choices?.[0]?.message?.content?.trim() || '';
+      } catch (e) {
+        console.error('⚠️ Résumé IA échoué, fallback sur le transcript:', e.message);
+      }
+    }
+
+    // Contenu du document : résumé IA + transcript replié
+    const documentContent = aiSummary
+      ? `${aiSummary}\n\n---\n\n### 📝 Transcript complet\n\n${transcript}`
+      : transcript;
+    const shortSummary = (aiSummary || transcript).substring(0, 600);
+
     // 1. Créer document dans project_documents (Bibliothèque)
     const { data: document, error: docError } = await supabase
       .from('project_documents')
@@ -287,13 +319,14 @@ router.post('/end-conversation', async (req, res) => {
         project_id: projectId,
         user_id: userId,
         document_type: 'conversation-ai',
-        title: `Conversation Gabon Insight - ${conversationDate}`,
-        content: fullSummary,
+        title: `Résumé conversation IA — ${conversationDate}`,
+        content: documentContent,
         metadata: {
           conversation_id: conversationId,
-          message_count: messages?.length || 0,
+          message_count: messages.length,
           date: now,
-          type: 'gabon-insight'
+          type: 'gabon-insight',
+          has_ai_summary: !!aiSummary
         },
         created_at: now
       })
@@ -303,7 +336,7 @@ router.post('/end-conversation', async (req, res) => {
     if (docError) {
       console.error('❌ Erreur création document:', docError);
     } else {
-      console.log('✅ Document conversation créé:', document.id);
+      console.log('✅ Document résumé conversation créé:', document.id);
     }
 
     // 2. Créer un rapport contextuel

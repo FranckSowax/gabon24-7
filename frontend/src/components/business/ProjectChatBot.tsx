@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle, X, Send, Zap, Sparkles, Bot, User, AlertCircle } from 'lucide-react'
+import { MessageCircle, X, Send, Zap, Sparkles, Bot, User, AlertCircle, CheckCircle } from 'lucide-react'
 import { AIModelType, ChatMessage, AI_MODELS, ChatContextData } from '@/types/project-chat'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
@@ -41,6 +41,14 @@ export default function ProjectChatBot({
   const [totalCreditsUsed, setTotalCreditsUsed] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Refs pour archiver automatiquement la conversation au démontage
+  // (changement d'onglet, fermeture du projet, fermeture de l'app)
+  const conversationIdRef = useRef<string | null>(null)
+  const messageCountRef = useRef(0)
+  const endedRef = useRef(false)
+  useEffect(() => { conversationIdRef.current = conversationId }, [conversationId])
+  useEffect(() => { messageCountRef.current = messages.length }, [messages])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -48,6 +56,30 @@ export default function ProjectChatBot({
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Archivage automatique (résumé IA + stockage dans Mes Documents) à la sortie
+  useEffect(() => {
+    const archive = () => {
+      const cid = conversationIdRef.current
+      if (!cid || messageCountRef.current === 0 || endedRef.current) return
+      endedRef.current = true
+      try {
+        const payload = JSON.stringify({ conversationId: cid, projectId })
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          navigator.sendBeacon(`${API_URL}/api/project-chat/end-conversation`, new Blob([payload], { type: 'application/json' }))
+        } else {
+          fetch(`${API_URL}/api/project-chat/end-conversation`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true
+          })
+        }
+      } catch { /* noop */ }
+    }
+    if (typeof window !== 'undefined') window.addEventListener('beforeunload', archive)
+    return () => {
+      if (typeof window !== 'undefined') window.removeEventListener('beforeunload', archive)
+      archive() // démontage du composant (changement d'onglet/section)
+    }
+  }, [projectId])
 
   const buildContextData = (): ChatContextData => {
     return {
@@ -92,7 +124,7 @@ export default function ProjectChatBot({
           conversationId,
           projectId,
           userId,
-          modelType: 'gpt-4o',
+          modelType: 'gpt-4.1-mini',
           message: inputMessage,
           contextData: buildContextData()
         })
@@ -129,29 +161,36 @@ export default function ProjectChatBot({
   }
 
   const handleEndConversation = async () => {
-    if (!conversationId) {
-      setIsOpen(false)
+    if (!conversationId || messages.length === 0) {
       setMessages([])
+      setConversationId(null)
       return
     }
 
-    if (!confirm('Terminer la conversation ? Un rapport sera généré et ajouté au contexte du projet.')) {
+    if (!confirm('Terminer la conversation ? Un résumé sera généré par l\'IA et ajouté à vos documents.')) {
       return
     }
 
     try {
-      await fetch(`${API_URL}/api/project-chat/end-conversation`, {
+      endedRef.current = true // évite le double archivage par le démontage
+      const res = await fetch(`${API_URL}/api/project-chat/end-conversation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId, projectId })
       })
+      const data = await res.json().catch(() => ({}))
 
-      setIsOpen(false)
+      // Nouvelle conversation (le panneau reste ouvert)
       setMessages([])
       setConversationId(null)
       setTotalCreditsUsed(0)
+      endedRef.current = false
+      if (data?.success && !data?.empty) {
+        alert('✅ Résumé de la conversation ajouté à vos documents.')
+      }
     } catch (error) {
       console.error('Erreur end conversation:', error)
+      endedRef.current = false
     }
   }
 
@@ -185,6 +224,16 @@ export default function ProjectChatBot({
                     </p>
                   </div>
                 </div>
+                {messages.length > 0 && (
+                  <button
+                    onClick={handleEndConversation}
+                    title="Terminer la conversation et enregistrer un résumé dans vos documents"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/15 hover:bg-white/25 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Terminer & résumer
+                  </button>
+                )}
               </div>
 
               {/* Messages */}
@@ -199,7 +248,7 @@ export default function ProjectChatBot({
                         <p className="text-slate-500 text-sm mb-3">
                           Posez toutes vos questions sur votre projet
                         </p>
-                        <div className="max-w-md mx-auto p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <div className="max-w-md mx-auto p-3 bg-[#697357]/10 rounded-lg border border-[#697357]/20">
                           <p className="text-xs text-[#697357]">
                             💡 L'assistant a accès à tout le contexte : documents, historique, notes, plan d'action
                           </p>
