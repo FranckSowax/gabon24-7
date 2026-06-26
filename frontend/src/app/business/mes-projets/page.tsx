@@ -2487,6 +2487,24 @@ export default function MesProjetsPage() {
                 transition={{ delay: idx * 0.1 }}
                 className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all border border-gray-100 group relative overflow-hidden"
               >
+                {/* Cover vidéo 21:9 avec titre en overlay (thème BCEG) */}
+                <div className={`relative -mx-6 -mt-6 mb-5 aspect-[21/9] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#697357] to-[#4d553e] ${(action as any).comingSoon ? 'grayscale-[35%]' : ''}`}>
+                  <video
+                    src={`/covers/${action.id}.mp4`}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  {/* Overlay dégradé pour la lisibilité du titre */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/5" />
+                  <h3 className="absolute bottom-0 left-0 right-0 px-5 pb-4 pt-8 text-white text-xl font-bold leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                    {action.title}
+                  </h3>
+                </div>
+
                 {/* Halo vert BCEG au hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-[#697357]/0 to-[#4d553e]/0 group-hover:from-[#697357]/5 group-hover:to-[#4d553e]/5 transition-all duration-500 rounded-2xl"></div>
 
@@ -2529,8 +2547,7 @@ export default function MesProjetsPage() {
                     )}
                   </div>
 
-                  {/* Titre et description */}
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">{action.title}</h3>
+                  {/* Description */}
                   <p className="text-slate-600 text-sm leading-relaxed mb-3 min-h-[40px]">
                     {action.description}
                   </p>
