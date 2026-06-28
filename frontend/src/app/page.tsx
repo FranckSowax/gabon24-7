@@ -30,6 +30,7 @@ import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import WorldCupLive from '@/components/widgets/WorldCupLive'
 import HeroSlider from '@/components/hero/HeroSlider'
+import HeroVideos from '@/components/hero/HeroVideos'
 import { supabase } from '@/lib/supabase'
 // Force rebuild for media_name support - v4.9 (Fixed generate-project-proposals function)
 
@@ -1259,8 +1260,8 @@ export default function HomePage() {
                 Actualités Gabon & Opportunités d&apos;Investissement
               </h1>
 
-              {/* Hero Slider Dynamique */}
-              <HeroSlider />
+              {/* Section vidéos d'accueil (21:9, autoplay en boucle) */}
+              <HeroVideos />
 
               {/* Zone Widgets (météo, sondages, trafic, pub, youtube) - utilisée pour contrôle du scroll */}
               <div ref={widgetsAreaRef} className="w-full">

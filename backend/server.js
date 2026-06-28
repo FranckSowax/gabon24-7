@@ -4104,6 +4104,10 @@ app.use('/api/image-extraction', imageExtractionRoutes);
 const audioRoutes = require('./routes/audio');
 app.use('/api/audio', audioRoutes);
 
+// Section vidéos d'accueil (21:9, autoplay en boucle)
+const heroVideosRoutes = require('./routes/hero-videos');
+app.use('/api/hero-videos', heroVideosRoutes);
+
 // Routes Veille & Alertes (Notifications)
 const alertsRoutes = require('./routes/alerts');
 app.use('/api/alerts', alertsRoutes);
