@@ -403,9 +403,9 @@ export default function RoutesMapWidget() {
           )}
         </div>
 
-        {/* Indicateurs de navigation - progress segments */}
+        {/* Indicateurs de navigation - progress segments (masqués sur mobile : les flèches suffisent) */}
         {routes.length > 1 && (
-          <div className="flex items-center gap-[3px] mt-2 px-1">
+          <div className="hidden sm:flex items-center gap-[3px] mt-2 px-1">
             {routes.map((_, index) => (
               <button
                 key={index}
