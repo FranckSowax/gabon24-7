@@ -153,8 +153,8 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   }, [user])
 
   const menuItems: { icon: string; label: string; href: string; active?: boolean; badge?: string; external?: boolean }[] = [
-    { icon: '🏠', label: 'Accueil', href: '/', active: true },
-    { icon: '🕒', label: 'Historique', href: '/historique' }
+    { icon: '🏠', label: 'Accueil', href: '/', active: true }
+    // { icon: '🕒', label: 'Historique', href: '/historique' } // déplacé sous Archives (section Outils)
     // { icon: '🎮', label: 'Jeu Quiz', href: 'https://emoneygabon.alwaysdata.net/la-map-gabon/la-map-landing/', badge: 'NEW', external: true } // masqué
   ]
 
@@ -402,6 +402,13 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
                 <span>🗄️</span>
                 <span className="flex-1">Archives</span>
                 {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+              </a>
+              <a
+                href="/historique"
+                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+              >
+                <span>🕒</span>
+                <span className="flex-1">Historique</span>
               </a>
             </div>
           </div>
