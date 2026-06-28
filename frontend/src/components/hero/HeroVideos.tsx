@@ -19,6 +19,15 @@ export default function HeroVideos() {
   const [index, setIndex] = useState(0)
   const [showOverlay, setShowOverlay] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const viewedRef = useRef<Set<string>>(new Set())
+
+  const track = (id: string, kind: 'view' | 'click') => {
+    try {
+      const url = `${API_URL}/api/hero-videos/${id}/${kind}`
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) navigator.sendBeacon(url)
+      else fetch(url, { method: 'POST', keepalive: true }).catch(() => {})
+    } catch { /* noop */ }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +74,12 @@ export default function HeroVideos() {
           preload="auto"
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded}
+          onPlay={() => {
+            if (!viewedRef.current.has(current.id)) {
+              viewedRef.current.add(current.id)
+              track(current.id, 'view')
+            }
+          }}
           className="absolute inset-0 w-full h-full object-cover"
         />
 
@@ -90,6 +105,7 @@ export default function HeroVideos() {
                 href={current.cta_url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track(current.id, 'click')}
                 className="self-end inline-flex items-center gap-1.5 mt-1 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-xs sm:text-sm font-semibold shadow-lg transition-colors"
               >
                 {current.cta_label}

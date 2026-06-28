@@ -59,6 +59,38 @@ router.get('/active', async (req, res) => {
   }
 });
 
+// ---------- PUBLIC : tracking impressions / clics CTA ----------
+router.post('/:id/view', async (req, res) => {
+  try {
+    await supabase.rpc('increment_hero_video_stat', { p_id: req.params.id, p_field: 'view' });
+    res.json({ success: true });
+  } catch { res.json({ success: false }); }
+});
+
+router.post('/:id/click', async (req, res) => {
+  try {
+    await supabase.rpc('increment_hero_video_stat', { p_id: req.params.id, p_field: 'click' });
+    res.json({ success: true });
+  } catch { res.json({ success: false }); }
+});
+
+// ---------- ADMIN : réordonner (drag & drop) ----------
+router.put('/reorder', requireAdmin, async (req, res) => {
+  try {
+    const { ids } = req.body; // tableau d'ids dans le nouvel ordre
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ success: false, error: 'ids[] requis' });
+    }
+    await Promise.all(ids.map((id, i) =>
+      supabase.from('hero_videos').update({ order_index: i, updated_at: new Date().toISOString() }).eq('id', id)
+    ));
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ hero-videos reorder:', error);
+    res.status(500).json({ success: false, error: 'Erreur réordonnancement' });
+  }
+});
+
 // ---------- ADMIN : liste complète ----------
 router.get('/', requireAdmin, async (req, res) => {
   try {

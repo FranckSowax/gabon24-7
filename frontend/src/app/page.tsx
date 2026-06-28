@@ -1318,8 +1318,8 @@ export default function HomePage() {
                 {/* Bannière de campagne validée */}
                 <LazyMount className="w-full mb-6"><CampaignBanner /></LazyMount>
 
-                {/* Slider publicitaire */}
-                <LazyMount className="w-full mb-6"><PromotionalSlider /></LazyMount>
+                {/* Slider publicitaire — masqué (remplacé par la section vidéos d'accueil) */}
+                {/* <LazyMount className="w-full mb-6"><PromotionalSlider /></LazyMount> */}
               </div>
 
               {/* Navigation des onglets - Design moderne et responsive */}

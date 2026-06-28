@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Upload, Trash2, Loader2, Film, Save, Eye, EyeOff } from 'lucide-react'
+import { Upload, Trash2, Loader2, Film, Eye, EyeOff, GripVertical, MousePointerClick } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -15,6 +15,8 @@ interface HeroVideo {
   video_url: string
   order_index: number
   is_active: boolean
+  view_count?: number
+  click_count?: number
 }
 
 export default function HeroVideosAdminPage() {
@@ -23,6 +25,7 @@ export default function HeroVideosAdminPage() {
   const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', cta_label: '', cta_url: '', order_index: '0' })
   const [file, setFile] = useState<File | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -84,6 +87,23 @@ export default function HeroVideosAdminPage() {
     else alert(data.error || 'Échec de la suppression')
   }
 
+  const persistOrder = async (ordered: HeroVideo[]) => {
+    const headers = { ...(await authHeaders()), 'Content-Type': 'application/json' }
+    await fetch(`${API_URL}/api/hero-videos/reorder`, {
+      method: 'PUT', headers, body: JSON.stringify({ ids: ordered.map(v => v.id) })
+    }).catch(() => {})
+  }
+
+  const handleDrop = (target: number) => {
+    if (dragIndex === null || dragIndex === target) { setDragIndex(null); return }
+    const next = [...videos]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(target, 0, moved)
+    setVideos(next)
+    setDragIndex(null)
+    persistOrder(next)
+  }
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
       <header>
@@ -119,10 +139,28 @@ export default function HeroVideosAdminPage() {
         ) : videos.length === 0 ? (
           <p className="text-slate-500 text-sm">Aucune vidéo. Ajoutez-en une ci-dessus.</p>
         ) : (
-          videos.map(v => (
-            <div key={v.id} className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 shadow-sm">
+          videos.map((v, i) => (
+            <div
+              key={v.id}
+              draggable
+              onDragStart={() => setDragIndex(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(i)}
+              className={`bg-white rounded-2xl border p-4 grid grid-cols-1 md:grid-cols-[24px_200px_1fr] gap-3 shadow-sm transition-all ${
+                dragIndex === i ? 'border-[#697357] opacity-60' : 'border-slate-200'
+              }`}
+            >
+              <div className="hidden md:flex items-center justify-center text-slate-300 cursor-grab active:cursor-grabbing" title="Glisser pour réordonner">
+                <GripVertical className="w-5 h-5" />
+              </div>
               <video src={v.video_url} muted loop playsInline controls className="w-full aspect-[21/9] object-cover rounded-lg bg-black" />
               <div className="space-y-2">
+                {/* Stats */}
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {v.view_count || 0} vues</span>
+                  <span className="inline-flex items-center gap-1"><MousePointerClick className="w-3.5 h-3.5" /> {v.click_count || 0} clics</span>
+                  <span className="text-slate-400">CTR {v.view_count ? Math.round(((v.click_count || 0) / v.view_count) * 100) : 0}%</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input defaultValue={v.title || ''} onBlur={e => updateVideo(v.id, { title: e.target.value })} placeholder="Titre" className="px-3 py-2 border border-slate-300 rounded-lg text-sm" />
                   <input defaultValue={v.cta_label || ''} onBlur={e => updateVideo(v.id, { cta_label: e.target.value })} placeholder="Libellé bouton" className="px-3 py-2 border border-slate-300 rounded-lg text-sm" />
