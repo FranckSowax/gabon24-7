@@ -22,6 +22,7 @@ import FeedBannerAd from '@/components/campaigns/FeedBannerAd'
 import VideoModal from '@/components/campaigns/VideoModal'
 import EventsSlider from '@/components/widgets/EventsSlider'
 import AudioPlayerBanner from '@/components/audio/AudioPlayerBanner'
+import AudioSummaryWidget from '@/components/audio/AudioSummaryWidget'
 import Sidebar from '@/components/layout/Sidebar'
 import axios from '@/lib/axios'
 import Header from '@/components/layout/Header'
@@ -1846,9 +1847,9 @@ export default function HomePage() {
 
         {/* Timestamp: 2025-10-28 - Widget Football Scores en dessous du Journal TV */}
         <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
-          {/* 🎵 Résumé audio journalier */}
-          <LazyMount><AudioPlayerBanner /></LazyMount>
           <LazyMount><YouTubeWidget /></LazyMount>
+          {/* 🎵 Résumé audio — sous le Journal TV */}
+          <LazyMount><AudioSummaryWidget /></LazyMount>
           <LazyMount><WorldCupLive /></LazyMount>
           <LazyMount><UpcomingEvents /></LazyMount>
         </aside>
