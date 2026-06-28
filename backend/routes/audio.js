@@ -1032,4 +1032,78 @@ router.post('/cron-trigger', async (req, res) => {
   }
 });
 
+// ====================================================================
+// POST /api/audio/article/:id — Audio du résumé d'un article (GRATUIT)
+// Génère une seule fois puis met en cache sur articles.audio_url.
+// Public : tout lecteur peut écouter (le coût TTS n'est payé qu'une fois).
+// ====================================================================
+router.post('/article/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: article, error } = await supabaseService.supabase
+      .from('articles')
+      .select('id, title, summary, audio_url')
+      .eq('id', id)
+      .single();
+
+    if (error || !article) {
+      return res.status(404).json({ success: false, error: 'Article non trouvé' });
+    }
+
+    // Cache : déjà généré → on renvoie l'URL
+    if (article.audio_url) {
+      return res.json({ success: true, audioUrl: article.audio_url, cached: true });
+    }
+
+    // Nettoyer le résumé (HTML → texte) et limiter la longueur
+    const raw = article.summary || '';
+    const text = raw
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z]+;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 1500);
+
+    if (!text) {
+      return res.status(400).json({ success: false, error: 'Résumé indisponible pour cet article' });
+    }
+
+    console.log(`🔊 [article-audio] Génération pour ${id} (${text.length} car.)`);
+
+    // Générer l'audio (Buffer) puis uploader
+    const audioBuffer = await generateAudio(text, 'fr', 'normal');
+    const fileName = `article-${id.substring(0, 8)}-${Date.now()}.mp3`;
+
+    const { error: uploadError } = await supabaseService.supabase
+      .storage
+      .from('audio-summaries')
+      .upload(fileName, audioBuffer, { contentType: 'audio/mpeg', upsert: false });
+
+    if (uploadError) {
+      throw new Error(`Upload échoué: ${uploadError.message}`);
+    }
+
+    const { data: urlData } = supabaseService.supabase
+      .storage
+      .from('audio-summaries')
+      .getPublicUrl(fileName);
+
+    const audioUrl = urlData.publicUrl;
+
+    // Cache sur l'article
+    await supabaseService.supabase
+      .from('articles')
+      .update({ audio_url: audioUrl })
+      .eq('id', id);
+
+    console.log(`✅ [article-audio] ${id} → ${audioUrl}`);
+    res.json({ success: true, audioUrl, cached: false });
+
+  } catch (error) {
+    console.error('❌ Erreur article-audio:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erreur génération audio' });
+  }
+});
+
 module.exports = router;
