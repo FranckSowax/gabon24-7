@@ -48,6 +48,18 @@ export default function HeroVideos() {
   // À chaque changement de vidéo, masquer l'overlay
   useEffect(() => { setShowOverlay(false) }, [index])
 
+  // Autoplay mobile fiable : iOS exige la PROPRIÉTÉ muted (pas seulement
+  // l'attribut React) + un play() explicite. On force au montage/changement.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = muted
+    v.setAttribute('muted', '')
+    v.playsInline = true
+    const p = v.play()
+    if (p && typeof p.catch === 'function') p.catch(() => {})
+  }, [index, muted, videos.length])
+
   if (videos.length === 0) return null
 
   const current = videos[index]
