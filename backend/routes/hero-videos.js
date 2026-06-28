@@ -34,7 +34,8 @@ function compressVideo(inputPath, outputPath) {
         '-vf', "scale='min(1920,iw)':-2",
         '-pix_fmt', 'yuv420p',
         '-movflags', '+faststart',
-        '-an', // banner muet en boucle → audio retiré (réduit fortement la taille)
+        '-c:a', 'aac', // audio conservé (lecture possible au clic son)
+        '-b:a', '128k',
       ])
       .on('end', () => resolve())
       .on('error', (err) => reject(err))

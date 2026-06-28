@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Volume2, VolumeX } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -18,8 +18,15 @@ export default function HeroVideos() {
   const [videos, setVideos] = useState<HeroVideo[]>([])
   const [index, setIndex] = useState(0)
   const [showOverlay, setShowOverlay] = useState(false)
+  const [muted, setMuted] = useState(true) // autoplay → muet par défaut, l'utilisateur active le son
   const videoRef = useRef<HTMLVideoElement>(null)
   const viewedRef = useRef<Set<string>>(new Set())
+
+  const toggleSound = () => {
+    const next = !muted
+    setMuted(next)
+    if (videoRef.current) videoRef.current.muted = next
+  }
 
   const track = (id: string, kind: 'view' | 'click') => {
     try {
@@ -68,13 +75,14 @@ export default function HeroVideos() {
           ref={videoRef}
           src={current.video_url}
           autoPlay
-          muted
+          muted={muted}
           playsInline
           loop={videos.length === 1}
           preload="auto"
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded}
           onPlay={() => {
+            if (videoRef.current) videoRef.current.muted = muted
             if (!viewedRef.current.has(current.id)) {
               viewedRef.current.add(current.id)
               track(current.id, 'view')
@@ -114,6 +122,15 @@ export default function HeroVideos() {
             )}
           </div>
         )}
+
+        {/* Bouton son (mute / unmute) */}
+        <button
+          onClick={toggleSound}
+          title={muted ? 'Activer le son' : 'Couper le son'}
+          className="absolute bottom-2 right-2 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur transition-colors"
+        >
+          {muted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
+        </button>
 
         {/* Indicateurs (si plusieurs vidéos) */}
         {videos.length > 1 && (
