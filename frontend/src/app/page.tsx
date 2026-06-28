@@ -16,6 +16,7 @@ import AuthModal from '@/components/auth/AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 import { addToFavorites, removeFromFavorites, getFavorites, type Favorite } from '@/lib/favorites'
 import PromotionalSlider from '@/components/widgets/PromotionalSlider'
+import WidgetDropdown from '@/components/widgets/WidgetDropdown'
 import CampaignBanner from '@/components/campaigns/CampaignBanner'
 import FeedBannerAd from '@/components/campaigns/FeedBannerAd'
 import VideoModal from '@/components/campaigns/VideoModal'
@@ -1263,63 +1264,39 @@ export default function HomePage() {
               {/* Section vidéos d'accueil (21:9, autoplay en boucle) */}
               <HeroVideos />
 
-              {/* Zone Widgets (météo, sondages, trafic, pub, youtube) - utilisée pour contrôle du scroll */}
-              <div ref={widgetsAreaRef} className="w-full">
-                {/* Mobile: galerie horizontale swipeable */}
-                <div ref={widgetCarouselRef} className="lg:hidden mb-2 -mx-4 px-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
-                  <div className="flex gap-3 w-max pb-2">
-                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><WeatherWidget /></LazyMount>
-                    </div>
-                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><MultiQuestionPollWidget /></LazyMount>
-                    </div>
-                    <div className="w-[82vw] max-w-[340px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><RoutesMapWidget /></LazyMount>
-                    </div>
-                    <div className="w-[82vw] max-w-[340px] h-[500px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full">
-                        <div className="bg-white rounded-lg shadow-sm border p-3 w-full h-[500px] flex flex-col">
+              {/* Zone Widgets compacts (dropdowns) — météo / sondage / trafic.
+                  Repliés par défaut → les articles sont visibles juste après la vidéo. */}
+              <div ref={widgetsAreaRef} className="w-full mb-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  <WidgetDropdown title="Météo" icon="🌤️">
+                    <LazyMount className="w-full"><WeatherWidget /></LazyMount>
+                  </WidgetDropdown>
+                  <WidgetDropdown title="Sondage" icon="📊">
+                    <LazyMount className="w-full"><MultiQuestionPollWidget /></LazyMount>
+                  </WidgetDropdown>
+                  <WidgetDropdown title="Trafic" icon="🚗">
+                    <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
+                  </WidgetDropdown>
+
+                  {/* Mobile uniquement : YouTube + Coupe du monde (sur desktop ils sont en barre latérale droite) */}
+                  <div className="lg:hidden">
+                    <WidgetDropdown title="Journal TV" icon="📺">
+                      <LazyMount className="w-full">
+                        <div className="w-full h-[500px] flex flex-col">
                           <YouTubeWidget className="flex-1 flex flex-col" />
                         </div>
                       </LazyMount>
-                    </div>
-                    <div className="w-[82vw] max-w-[340px] h-[500px] flex-shrink-0 snap-start">
-                      <LazyMount className="w-full h-full"><WorldCupLive className="h-[500px]" /></LazyMount>
-                    </div>
+                    </WidgetDropdown>
                   </div>
-                </div>
-                {/* Traits de défilement mobile */}
-                <div className="lg:hidden flex justify-center gap-1.5 mb-4">
-                  {Array.from({ length: WIDGET_COUNT }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-[3px] rounded-full transition-all duration-300 ${
-                        i === activeWidgetIndex
-                          ? 'w-6 bg-orange-500'
-                          : 'w-3 bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                {/* Desktop: grille 3 colonnes (inchangée) */}
-                <div className="hidden lg:grid grid-cols-3 gap-6 mb-8 w-full">
-                  <LazyMount className="w-full"><WeatherWidget /></LazyMount>
-                  <LazyMount className="w-full"><MultiQuestionPollWidget /></LazyMount>
-                  <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
-                </div>
-
-                {/* 🎵 Lecteur Audio GPT-5 Nano - Résumés journaliers */}
-                <div className="w-full mb-6">
-                  <AudioPlayerBanner />
+                  <div className="lg:hidden">
+                    <WidgetDropdown title="Coupe du monde" icon="⚽">
+                      <LazyMount className="w-full"><WorldCupLive className="h-[500px]" /></LazyMount>
+                    </WidgetDropdown>
+                  </div>
                 </div>
 
                 {/* Bannière de campagne validée */}
-                <LazyMount className="w-full mb-6"><CampaignBanner /></LazyMount>
-
-                {/* Slider publicitaire — masqué (remplacé par la section vidéos d'accueil) */}
-                {/* <LazyMount className="w-full mb-6"><PromotionalSlider /></LazyMount> */}
+                <LazyMount className="w-full mt-4"><CampaignBanner /></LazyMount>
               </div>
 
               {/* Navigation des onglets - Design moderne et responsive */}
@@ -1869,6 +1846,8 @@ export default function HomePage() {
 
         {/* Timestamp: 2025-10-28 - Widget Football Scores en dessous du Journal TV */}
         <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
+          {/* 🎵 Résumé audio journalier */}
+          <LazyMount><AudioPlayerBanner /></LazyMount>
           <LazyMount><YouTubeWidget /></LazyMount>
           <LazyMount><WorldCupLive /></LazyMount>
           <LazyMount><UpcomingEvents /></LazyMount>
