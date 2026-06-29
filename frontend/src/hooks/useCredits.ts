@@ -1,7 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+// En-têtes d'authentification (les endpoints credits-premium exigent requireAuth)
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) h['Authorization'] = `Bearer ${session.access_token}`
+  return h
+}
 
 interface CreditBalance {
   balance: number
@@ -37,7 +46,7 @@ export function useCredits() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/credits-premium/balance/${user.id}`)
+      const res = await fetch(`${API_URL}/api/credits-premium/balance/${user.id}`, { headers: await authHeaders() })
       const data = await res.json()
       
       if (data.success) {
@@ -78,7 +87,7 @@ export function useCredits() {
     try {
       const res = await fetch(`${API_URL}/api/credits-premium/consume`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           userId: user.id,
           serviceName,
@@ -121,7 +130,7 @@ export function useCredits() {
     try {
       const res = await fetch(`${API_URL}/api/credits-premium/check`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           userId: user.id,
           serviceName
