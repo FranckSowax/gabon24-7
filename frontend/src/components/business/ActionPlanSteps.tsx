@@ -53,6 +53,35 @@ export default function ActionPlanSteps({ projectData, generatedSteps }: ActionP
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [generatingDocId, setGeneratingDocId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [compilingDoc, setCompilingDoc] = useState(false)
+
+  // Génère un document unique à partir de tout ce qui a été réalisé dans les étapes
+  // (même process que le Business Plan : POST /api/bceg/import-business-plan).
+  const handleGeneratePlanDocument = async () => {
+    if (!projectData.projectId) return
+    setCompilingDoc(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${API_URL}/api/bceg/import-business-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ project_id: projectData.projectId, kind: 'plan_action' }),
+      })
+      const json = await res.json()
+      if (json?.success) {
+        alert(`✅ Document du plan d'action généré (${json.sections} étape(s)) et ajouté à votre dossier de financement.`)
+      } else {
+        alert(json?.error || 'Erreur lors de la génération du document')
+      }
+    } catch {
+      alert('Erreur réseau lors de la génération du document')
+    } finally {
+      setCompilingDoc(false)
+    }
+  }
 
   // Utiliser les étapes générées par IA si disponibles, sinon utiliser le plan personnalisé par défaut
   const personalizedSteps = generatedSteps || getPersonalizedActionPlan(projectData)
@@ -1153,6 +1182,23 @@ Exemple de format attendu:
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* Compiler tout ce qui a été réalisé en un document (même process que le Business Plan) */}
+      {Object.values(stepsProgress).some((s: any) => s?.status && s.status !== 'not_started') && (
+        <div className="mt-6 bg-white rounded-2xl border border-[#697357]/20 p-5 text-center shadow-sm">
+          <h3 className="font-bold text-slate-900 mb-1">Compiler votre plan d'action</h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Génère un document unique à partir de toutes les étapes réalisées (même partiellement) et l'ajoute à votre dossier de financement.
+          </p>
+          <button
+            onClick={handleGeneratePlanDocument}
+            disabled={compilingDoc}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#697357] to-[#4d553e] text-white font-semibold rounded-xl hover:from-[#4d553e] hover:to-[#3a4030] transition-all disabled:opacity-50"
+          >
+            {compilingDoc ? <><Loader2 className="w-5 h-5 animate-spin" /> Génération…</> : <><FileText className="w-5 h-5" /> Générer le document du plan d'action</>}
+          </button>
+        </div>
       )}
     </div>
   )

@@ -940,33 +940,69 @@ router.post('/import-business-plan', requireAuth, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Projet non autorisé' });
     }
 
-    // 2. Documents générés correspondant au type
-    const { data: allDocs, error: docErr } = await supabase
-      .from('project_documents')
-      .select('id, document_type, title, content, metadata, created_at')
-      .eq('project_id', project_id);
-    if (docErr) throw docErr;
+    // 2. Construire les sections
+    let sections = [];
 
-    const re = kind === 'business_plan' ? /business[-_]plan/i : /action[-_]plan/i;
-    let docs = (allDocs || []).filter((d) => re.test(d.document_type || ''));
-    if (Array.isArray(document_ids) && document_ids.length) {
-      docs = docs.filter((d) => document_ids.includes(d.id));
-    }
-    if (!docs.length) {
-      return res.status(404).json({ success: false, error: 'Aucun document à regrouper' });
+    // 2a. Plan d'action : compiler les checklists des étapes (table dédiée)
+    if (kind === 'plan_action') {
+      const { data: checklists } = await supabase
+        .from('action_plan_checklists')
+        .select('id, step_number, step_title, step_objective')
+        .eq('project_id', project_id)
+        .order('step_number', { ascending: true });
+
+      for (const cl of (checklists || [])) {
+        const { data: items } = await supabase
+          .from('action_plan_checklist_items')
+          .select('task, answer, is_completed, document_names, order_index')
+          .eq('checklist_id', cl.id)
+          .order('order_index', { ascending: true });
+
+        const lines = [];
+        if (cl.step_objective) lines.push(`**Objectif :** ${cl.step_objective}`, '');
+        for (const it of (items || [])) {
+          lines.push(`**${it.is_completed ? '✓ ' : ''}${it.task || ''}**`);
+          if (it.answer) lines.push('', String(it.answer));
+          if (Array.isArray(it.document_names) && it.document_names.length) {
+            lines.push('', `_Documents : ${it.document_names.join(', ')}_`);
+          }
+          lines.push('');
+        }
+        sections.push({
+          number: cl.step_number,
+          title: cl.step_title || `Étape ${cl.step_number}`,
+          content: lines.join('\n').trim() || '_Aucun élément renseigné pour cette étape._',
+        });
+      }
     }
 
-    // 3. Tri par numéro de section/phase
-    docs.sort((a, b) => {
-      const na = a.metadata?.section_number ?? a.metadata?.phase_number ?? 9999;
-      const nb = b.metadata?.section_number ?? b.metadata?.phase_number ?? 9999;
-      return na - nb;
-    });
-    const sections = docs.map((d, i) => ({
-      number: d.metadata?.section_number ?? d.metadata?.phase_number ?? (i + 1),
-      title: d.title || d.metadata?.section_title || `Section ${i + 1}`,
-      content: d.content || '',
-    }));
+    // 2b. Repli (business plan, ou plan d'action sans checklist) : project_documents
+    if (!sections.length) {
+      const { data: allDocs, error: docErr } = await supabase
+        .from('project_documents')
+        .select('id, document_type, title, content, metadata, created_at')
+        .eq('project_id', project_id);
+      if (docErr) throw docErr;
+
+      const re = kind === 'business_plan' ? /business[-_]plan/i : /action[-_]plan/i;
+      let docs = (allDocs || []).filter((d) => re.test(d.document_type || ''));
+      if (Array.isArray(document_ids) && document_ids.length) {
+        docs = docs.filter((d) => document_ids.includes(d.id));
+      }
+      if (!docs.length) {
+        return res.status(404).json({ success: false, error: 'Aucun contenu à regrouper' });
+      }
+      docs.sort((a, b) => {
+        const na = a.metadata?.section_number ?? a.metadata?.phase_number ?? 9999;
+        const nb = b.metadata?.section_number ?? b.metadata?.phase_number ?? 9999;
+        return na - nb;
+      });
+      sections = docs.map((d, i) => ({
+        number: d.metadata?.section_number ?? d.metadata?.phase_number ?? (i + 1),
+        title: d.title || d.metadata?.section_title || `Section ${i + 1}`,
+        content: d.content || '',
+      }));
+    }
 
     // 4. Annexes : pièces déjà fournies au dossier
     const { data: dd } = await supabase
