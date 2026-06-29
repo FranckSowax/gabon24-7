@@ -572,14 +572,11 @@ Exemple de format attendu:
         return
       }
       
-      // Vérifier que l'item existe dans la définition du step
-      const stepData = ACTION_PLAN_STEPS.find(s => s.step === stepNumber)
-      const itemExists = stepData?.checklist.some(item => item.id === itemId)
-      if (!itemExists) {
-        console.warn(`Item ${itemId} not found in ACTION_PLAN_STEPS for step ${stepNumber}. Skipping save.`)
-        return
-      }
-      
+      // Note : on ne valide PAS contre la liste statique ACTION_PLAN_STEPS —
+      // les plans personnalisés/générés par IA ont leurs propres item_id
+      // (ex. em_01). L'item est déjà présent dans stepProgress.items (vérifié
+      // ci-dessus) et possède sa ligne en base.
+
       const { error } = await supabase
         .from('action_plan_checklist_items')
         .update({
