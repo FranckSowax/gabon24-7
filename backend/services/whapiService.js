@@ -408,10 +408,28 @@ async function getChannels() {
  * Envoie les articles non envoyés vers la chaîne WhatsApp
  * Limité à 5 articles par exécution pour éviter le spam
  */
-async function sendPendingArticles(limit = 5) {
+// Heures silencieuses : aucune publication sur la chaîne WhatsApp
+// entre 01h30 et 06h00 (heure du Gabon, Africa/Libreville).
+function isQuietHours() {
+  try {
+    const gabon = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Libreville' }));
+    const minutes = gabon.getHours() * 60 + gabon.getMinutes();
+    return minutes >= (1 * 60 + 30) && minutes < (6 * 60); // [01:30, 06:00[
+  } catch {
+    return false;
+  }
+}
+
+async function sendPendingArticles(limit = 5, options = {}) {
   if (!WHAPI_TOKEN) {
     console.error('Token Whapi manquant, impossible d\'envoyer les messages');
     return { sent: 0, errors: 0, message: 'Token Whapi manquant' };
+  }
+
+  // Plage silencieuse 01h30–06h (Gabon) — sauf forçage explicite
+  if (!options.force && isQuietHours()) {
+    console.log('🌙 Heures silencieuses WhatsApp (01h30–06h, Gabon) — envoi ignoré');
+    return { sent: 0, errors: 0, skipped: true, reason: 'quiet_hours', message: 'Heures silencieuses (01h30–06h)' };
   }
 
   const supabaseService = require('../supabase-config');
