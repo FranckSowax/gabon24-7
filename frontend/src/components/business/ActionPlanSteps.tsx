@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Sparkles, Loader2, ChevronDown, ChevronUp, 
@@ -48,6 +48,9 @@ export default function ActionPlanSteps({ projectData, generatedSteps }: ActionP
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [stepsProgress, setStepsProgress] = useState<{[key: number]: StepProgress}>({})
+  // Ref toujours à jour → évite les closures périmées dans les sauvegardes
+  const stepsProgressRef = useRef<{[key: number]: StepProgress}>({})
+  useEffect(() => { stepsProgressRef.current = stepsProgress }, [stepsProgress])
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -526,6 +529,7 @@ Exemple de format attendu:
     const currentState = stepsProgress[stepNumber].items[itemId]
     const newCompleted = !currentState?.is_completed
 
+    const nextItem = { ...currentState, is_completed: newCompleted }
     setStepsProgress(prev => ({
       ...prev,
       [stepNumber]: {
@@ -537,8 +541,9 @@ Exemple de format attendu:
       }
     }))
 
-    await saveItemToDatabase(stepNumber, itemId)
-    
+    // Passe la nouvelle valeur explicitement (setState async → closure périmée sinon)
+    await saveItemToDatabase(stepNumber, itemId, nextItem)
+
     // Recalculer la progression
     setTimeout(() => {
       loadOrCreateChecklist(stepNumber).then(newProgress => {
@@ -550,16 +555,17 @@ Exemple de format attendu:
     }, 500)
   }
 
-  const saveItemToDatabase = async (stepNumber: number, itemId: string) => {
-    const stepProgress = stepsProgress[stepNumber]
+  const saveItemToDatabase = async (stepNumber: number, itemId: string, overrideItem?: any) => {
+    const stepProgress = stepsProgressRef.current[stepNumber] || stepsProgress[stepNumber]
     if (!stepProgress?.checklistId) {
       console.warn(`No checklist found for step ${stepNumber}`)
       return
     }
 
     try {
-      const state = stepProgress.items[itemId]
-      
+      // override (toggle immédiat) sinon ref toujours à jour (saves debounced)
+      const state = overrideItem || stepProgress.items[itemId]
+
       // Vérifier que l'item existe avant de sauvegarder
       if (!state) {
         console.warn(`Item ${itemId} not found in step ${stepNumber}. Available items:`, Object.keys(stepProgress.items))
