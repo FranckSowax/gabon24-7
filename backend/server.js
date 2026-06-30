@@ -4108,6 +4108,10 @@ app.use('/api/audio', audioRoutes);
 const heroVideosRoutes = require('./routes/hero-videos');
 app.use('/api/hero-videos', heroVideosRoutes);
 
+// Formations Entrepreneur BCEG
+const formationsRoutes = require('./routes/formations');
+app.use('/api/formations', formationsRoutes);
+
 // Routes Veille & Alertes (Notifications)
 const alertsRoutes = require('./routes/alerts');
 app.use('/api/alerts', alertsRoutes);
