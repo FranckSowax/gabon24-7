@@ -457,15 +457,17 @@ function dbToModule(c) {
     summary: c.summary || '',
     durationMin: c.duration_min || 20,
     content: c.content || '',
+    sector: c.sector || null,
     quiz: c.quiz || { passScore: 70, questions: [] },
   };
 }
 
-// PUBLIC : cours publiés (option ?level=N)
+// PUBLIC : cours publiés (option ?level=N&sector=...)
 router.get('/courses', async (req, res) => {
   try {
     let q = supabase.from('formation_courses').select('*').eq('is_published', true);
     if (req.query.level) q = q.eq('level', parseInt(req.query.level, 10));
+    if (req.query.sector) q = q.eq('sector', String(req.query.sector));
     q = q.order('order_index', { ascending: true });
     const { data, error } = await q;
     if (error) {
@@ -495,7 +497,7 @@ router.get('/admin/courses', requireAdmin, async (req, res) => {
 // ADMIN : créer / mettre à jour un cours
 router.post('/admin/courses', requireAdmin, async (req, res) => {
   try {
-    const { id, level, order_index, title, summary, duration_min, content, quiz, is_published } = req.body || {};
+    const { id, level, order_index, title, summary, duration_min, content, quiz, is_published, sector } = req.body || {};
     if (!id || !level || !title || !content) {
       return res.status(400).json({ success: false, error: 'id, level, title, content requis' });
     }
@@ -505,6 +507,7 @@ router.post('/admin/courses', requireAdmin, async (req, res) => {
       title, summary: summary || null,
       duration_min: parseInt(duration_min, 10) || 20,
       content,
+      sector: sector || null,
       quiz: quiz || { passScore: 70, questions: [] },
       is_published: is_published !== false,
       updated_at: new Date().toISOString(),
@@ -545,6 +548,7 @@ router.post('/admin/courses/seed', requireAdmin, async (req, res) => {
       summary: m.summary || null,
       duration_min: m.durationMin || 20,
       content: m.content,
+      sector: m.sector || null,
       quiz: m.quiz || { passScore: 70, questions: [] },
       is_published: true,
       updated_at: new Date().toISOString(),

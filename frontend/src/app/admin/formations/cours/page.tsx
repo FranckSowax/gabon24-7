@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { MODULES_BY_LEVEL } from '@/lib/formations-content'
+import { FORMATION_SECTORS } from '@/lib/formations'
 import { BookOpen, Loader2, Save, Trash2, Download, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
@@ -16,6 +17,7 @@ interface Course {
   summary: string | null
   duration_min: number
   content: string
+  sector: string | null
   quiz: any
   is_published: boolean
 }
@@ -64,7 +66,7 @@ export default function CoursAdminPage() {
         method: 'POST', headers: await headers(),
         body: JSON.stringify({
           id: c.id, level: c.level, order_index: c.order_index, title: c.title,
-          summary: c.summary, duration_min: c.duration_min, content: c.content,
+          summary: c.summary, duration_min: c.duration_min, content: c.content, sector: c.sector,
           quiz: c.quiz, is_published: c.is_published,
         }),
       })
@@ -112,6 +114,10 @@ export default function CoursAdminPage() {
               <input type="number" value={c.duration_min} onChange={e => patch(c.id, { duration_min: parseInt(e.target.value, 10) || 0 })} placeholder="Durée (min)" className={input} />
             </div>
             <input value={c.summary || ''} onChange={e => patch(c.id, { summary: e.target.value })} placeholder="Résumé" className={input} />
+            <select value={c.sector || ''} onChange={e => patch(c.id, { sector: e.target.value || null })} className={input}>
+              <option value="">Secteur : générique (tous)</option>
+              {FORMATION_SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
             <textarea value={c.content} onChange={e => patch(c.id, { content: e.target.value })} rows={8} placeholder="Contenu (markdown)" className={`${input} font-mono text-xs`} />
             <details>
               <summary className="cursor-pointer text-sm font-semibold text-slate-700">QCM (JSON)</summary>
