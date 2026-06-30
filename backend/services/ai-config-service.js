@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
   re_analysis: { model: 'gpt-4.1-mini', credits: 25 },
   action_plan: { model: 'gpt-4.1-mini', credits: 25 },
   skill_test: { model: 'gpt-4.1-mini', credits: 30 },
-  custom_training: { model: 'gpt-4.1-mini', credits: 50 },
+  custom_training: { model: 'gemini-3-pro', credits: 50 },
   business_plan: { model: 'gpt-4.1-mini', credits: 150 },
   motivation_letter: { model: 'gpt-4.1-mini', credits: 20 },
   sponsored_article: { model: 'gpt-4.1-mini', credits: 50 },
@@ -54,6 +54,7 @@ const MODEL_PROVIDERS = {
   'gpt-4o-mini-tts': 'openai',
   'whisper-1': 'openai',
   'gemini-2.0-flash': 'gemini',
+  'gemini-3-pro': 'gemini',
 };
 
 class AIConfigService {

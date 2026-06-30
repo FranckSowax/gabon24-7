@@ -102,46 +102,41 @@ class GeminiService {
       options = { systemPrompt: options };
     }
 
-    const { systemPrompt = "", temperature = 0.7 } = options;
+    const { systemPrompt = "", temperature = 0.7, model = null } = options;
+
+    // Modèle demandé → choix du provider (Gemini si "gemini*", sinon OpenAI).
+    // Sans modèle explicite : comportement historique (OpenAI puis Gemini).
+    const wantGemini = model ? String(model).startsWith('gemini') : false;
+    const geminiModelId = wantGemini ? model : this.primaryModelId;
+
+    const tryOpenAI = () => this.executeWithRetry(() =>
+      this.generateWithOpenAI(prompt, systemPrompt, true, temperature));
+
+    const tryGemini = () => this.executeWithRetry(async () => {
+      const m = this.genAI.getGenerativeModel({
+        model: geminiModelId,
+        generationConfig: { responseMimeType: "application/json", temperature },
+        systemInstruction: systemPrompt ? { role: "system", parts: [{ text: systemPrompt }] } : undefined,
+      });
+      const result = await m.generateContent(prompt);
+      return JSON.parse(this.cleanJson(result.response.text()));
+    });
+
+    // Ordre des providers : le modèle demandé en premier, l'autre en repli.
+    const chain = wantGemini
+      ? [['Gemini', this.genAI, tryGemini, geminiModelId], ['OpenAI', this.openai, tryOpenAI, this.openaiModel]]
+      : [['OpenAI', this.openai, tryOpenAI, this.openaiModel], ['Gemini', this.genAI, tryGemini, geminiModelId]];
 
     try {
-      // 1. Primary: OpenAI GPT-4.1-mini
-      if (this.openai) {
+      for (const [name, client, fn, modelId] of chain) {
+        if (!client) continue;
         try {
-          return await this.executeWithRetry(async () => {
-            return await this.generateWithOpenAI(prompt, systemPrompt, true, temperature);
-          });
-        } catch (openaiError) {
-          console.error(`❌ Erreur OpenAI ${this.openaiModel}:`, openaiError.message);
+          return await fn();
+        } catch (err) {
+          console.error(`❌ Erreur ${name} (${modelId}):`, err.message);
         }
       }
-
-      // 2. Fallback: Gemini
-      if (this.genAI) {
-        try {
-          return await this.executeWithRetry(async () => {
-            const model = this.genAI.getGenerativeModel({
-              model: this.primaryModelId,
-              generationConfig: {
-                responseMimeType: "application/json",
-                temperature: temperature
-              },
-              systemInstruction: systemPrompt ? {
-                role: "system",
-                parts: [{ text: systemPrompt }]
-              } : undefined
-            });
-
-            const result = await model.generateContent(prompt);
-            return JSON.parse(this.cleanJson(result.response.text()));
-          });
-        } catch (geminiError) {
-          console.error(`❌ Erreur Gemini (${this.primaryModelId}):`, geminiError.message);
-        }
-      }
-
       throw new Error("Tous les modèles IA ont échoué.");
-
     } catch (finalError) {
       console.error("🔥 ECHEC CRITIQUE IA:", finalError);
       throw finalError;

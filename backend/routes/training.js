@@ -3,6 +3,7 @@ const router = express.Router();
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');
+const aiConfigService = require('../services/ai-config-service');
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 
@@ -155,16 +156,18 @@ router.post('/generate', validateBody(generateTrainingSchema), async (req, res) 
 
     console.log('📡 Appel Gemini 3 Pro...');
 
-    // Utiliser Gemini 3 Pro
+    // Modèle configurable via ai-config-service (custom_training)
+    const trainingModel = (await aiConfigService.getModel('custom_training')) || 'gemini-3-pro';
     let parsed;
     try {
       // Mode JSON strict
       parsed = await geminiService.generateJSON(prompt, {
         systemPrompt: 'Tu es un expert en ingénierie pédagogique. Réponds UNIQUEMENT avec le JSON demandé, sans texte avant ni après.',
-        temperature: 0.7
+        temperature: 0.7,
+        model: trainingModel,
       });
-      
-      console.log('✅ Gemini 3 Pro OK');
+
+      console.log(`✅ Formation générée (${trainingModel})`);
     } catch (geminiError) {
       console.error('❌ Erreur Gemini:', geminiError);
       return res.status(502).json({ 
@@ -219,7 +222,7 @@ router.post('/generate', validateBody(generateTrainingSchema), async (req, res) 
       serviceName: 'training-generate',
       description: `Formation: ${baseTitle} (${moduleCount} modules)`,
       creditsUsed: 150,
-      model: 'gemini-3-pro',
+      model: trainingModel,
       metadata: { moduleCount, articleId, projectId }
     });
 
@@ -492,19 +495,20 @@ RÈGLES
 
 Take a deep breath and work on this problem step-by-step.`;
 
-    // Stratégie: Gemini 3 Pro
+    // Modèle configurable via ai-config-service (custom_training)
     let parsed;
-    let modelUsed = 'gemini-3-pro';
-    
+    const modelUsed = (await aiConfigService.getModel('custom_training')) || 'gemini-3-pro';
+
     try {
-      console.log('📡 Appel Gemini 3 Pro (Contenu Module)...');
-      
+      console.log(`📡 Génération module (${modelUsed})...`);
+
       parsed = await geminiService.generateJSON(prompt, {
         systemPrompt: 'Tu es un expert en formation professionnelle. Génère un contenu pédagogique structuré en JSON valide.',
-        temperature: 0.7
+        temperature: 0.7,
+        model: modelUsed,
       });
-      
-      console.log('✅ Gemini 3: Génération réussie');
+
+      console.log('✅ Module: génération réussie');
       
     } catch (geminiError) {
       clearTimeout(timeout);
@@ -539,7 +543,7 @@ Take a deep breath and work on this problem step-by-step.`;
       serviceName: 'training-generate-module',
       description: `Module formation: ${module.competence}`,
       creditsUsed: 20,
-      model: 'gemini-3-pro',
+      model: modelUsed,
       metadata: { trainingId: training_id, moduleId }
     });
 
