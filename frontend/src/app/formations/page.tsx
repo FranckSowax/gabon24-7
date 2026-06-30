@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   GraduationCap, Trophy, Target, Rocket, CheckCircle2, MapPin, Wifi,
@@ -119,6 +120,14 @@ export default function FormationsPage() {
                   </li>
                 ))}
               </ul>
+              {lvl.level === 1 && (
+                <div className="px-5 pb-5">
+                  <Link href="/formations/niveau-1"
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold transition-colors">
+                    Aperçu du Niveau 1 <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              )}
             </div>
           ))}
         </div>
