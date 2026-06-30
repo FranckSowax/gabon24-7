@@ -244,97 +244,112 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     } catch { alert('Erreur lors du téléchargement du certificat.') }
   }
 
+  const active = courses.find(m => m.id === openId) || courses[0]
+  const activeIdx = courses.findIndex(m => m.id === active?.id)
+
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Barre supérieure */}
       <div className="bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-          <Link href="/formations" className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm mb-3">
-            <ArrowLeft className="w-4 h-4" /> Programme
-          </Link>
-          <h1 className="text-2xl sm:text-3xl font-black">{title}</h1>
-          <p className="text-white/80 mt-1 text-sm sm:text-base">Validez les {courses.length} modules pour débloquer la demande de financement {ceilingText.toLowerCase()}.</p>
-          <div className="mt-4 max-w-md">
-            <div className="flex justify-between text-xs text-white/70 mb-1">
-              <span>{passed.size}/{courses.length} modules validés</span><span>{progress} %</span>
-            </div>
-            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-300 rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Link href={`/formations/niveau-${level}`} className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-xs mb-1">
+              <ArrowLeft className="w-3.5 h-3.5" /> Présentation
+            </Link>
+            <h1 className="text-lg sm:text-xl font-black truncate">{title}</h1>
           </div>
-
-          {/* XP + badges */}
-          {user && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            {user && (
               <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
                 <Trophy className="w-4 h-4" /> {xp} XP
               </span>
-              {badges.map(b => (
-                <span key={b.id} title={b.label} className="inline-flex items-center gap-1 bg-white/15 backdrop-blur px-2.5 py-1.5 rounded-full text-xs font-semibold">
-                  <span>{b.emoji}</span> {b.label}
-                </span>
-              ))}
-            </div>
-          )}
+            )}
+            {allDone && user && (
+              <button onClick={downloadCertificate} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold">
+                <Award className="w-4 h-4" /> Certificat
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 border ${allDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-          {allDone ? <Unlock className="w-6 h-6 text-green-600 shrink-0" /> : <Lock className="w-6 h-6 text-slate-400 shrink-0" />}
-          <div className="text-sm flex-1">
-            {allDone
-              ? <span className="text-green-700 font-semibold">🎉 Niveau {level} validé ! La demande de financement {ceilingText.toLowerCase()} est débloquée.</span>
-              : <span className="text-slate-600">Validez tous les modules (cours + QCM) pour débloquer le palier de financement.</span>}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+        {/* Sidebar leçons */}
+        <aside className="lg:sticky lg:top-6 self-start space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-3">
+            <div className="flex justify-between text-xs text-slate-500 mb-1 px-1">
+              <span>{passed.size}/{courses.length} validés</span><span>{progress} %</span>
+            </div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-[#697357] rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="space-y-1">
+              {courses.map((m, i) => {
+                const isActive = m.id === active?.id
+                const isPassed = passed.has(m.id)
+                return (
+                  <button key={m.id} onClick={() => setOpenId(m.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? 'bg-[#697357]/10 ring-1 ring-[#697357]/30' : 'hover:bg-slate-50'}`}>
+                    {isPassed ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0" />}
+                    <span className={`text-sm flex-1 min-w-0 truncate ${isActive ? 'font-bold text-[#4d553e]' : 'text-slate-700'}`}>{i + 1}. {m.title}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          {allDone && user && (
-            <button onClick={downloadCertificate}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
-              <Award className="w-4 h-4" /> Certificat
-            </button>
+          {user && badges.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 flex flex-wrap gap-1.5">
+              {badges.map(b => <span key={b.id} title={b.label} className="inline-flex items-center gap-1 bg-[#697357]/10 text-[#4d553e] px-2 py-1 rounded-full text-xs font-semibold">{b.emoji} {b.label}</span>)}
+            </div>
           )}
-        </div>
+        </aside>
 
-        <div className="space-y-3">
-          {courses.map((m) => {
-            const isOpen = openId === m.id
-            const isPassed = passed.has(m.id)
-            return (
-              <div key={m.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <button onClick={() => setOpenId(isOpen ? null : m.id)}
-                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors">
-                  {isPassed ? <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" /> : <Circle className="w-6 h-6 text-slate-300 shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900">{m.order}. {m.title}</h3>
-                    <p className="text-sm text-slate-500 truncate">{m.summary}</p>
-                  </div>
-                  <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 shrink-0"><Clock className="w-3.5 h-3.5" />{m.durationMin} min</span>
-                </button>
-                {isOpen && (
-                  <div className="px-4 sm:px-6 pb-6 border-t border-slate-100">
-                    <article className="pt-4 max-w-none"><Markdown md={m.content} /></article>
-                    <AiAssistant module={m} />
-                    <Quiz module={m} onPass={(score) => markPassed(m.id, score)} />
-                  </div>
-                )}
+        {/* Contenu du module actif */}
+        <main className="min-w-0">
+          {allDone && (
+            <div className="mb-4 rounded-2xl p-4 flex items-center gap-3 border bg-green-50 border-green-200">
+              <Unlock className="w-6 h-6 text-green-600 shrink-0" />
+              <div className="text-sm flex-1 text-green-700 font-semibold">🎉 Niveau {level} validé ! Financement {ceilingText.toLowerCase()} débloqué.</div>
+              {user && <button onClick={downloadCertificate} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold"><Award className="w-4 h-4" /> Certificat</button>}
+            </div>
+          )}
+
+          {active && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
+              <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+                <BookOpen className="w-3.5 h-3.5" /> Module {activeIdx + 1}/{courses.length} · {active.durationMin} min
+                {passed.has(active.id) && <span className="text-green-600 font-semibold">· ✓ validé</span>}
               </div>
-            )
-          })}
-        </div>
+              <h2 className="text-2xl font-black text-slate-900 mb-4">{active.title}</h2>
+              <article className="max-w-none"><Markdown md={active.content} /></article>
+              <AiAssistant module={active} />
+              <Quiz key={active.id} module={active} onPass={(score) => markPassed(active.id, score)} />
 
-        <div className="mt-8 text-center">
-          {allDone && nextHref ? (
-            <Link href={nextHref} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-bold">
-              {nextLabel || 'Continuer'} <ArrowRight className="w-5 h-5" />
-            </Link>
-          ) : (
-            <p className="text-sm text-slate-500">
-              <BookOpen className="w-4 h-4 inline mr-1" />
-              {user
-                ? 'Votre progression est enregistrée automatiquement à chaque QCM réussi.'
-                : 'Connectez-vous pour enregistrer votre progression et débloquer votre palier de financement.'}
+              <div className="mt-6 flex items-center justify-between">
+                <button disabled={activeIdx <= 0} onClick={() => setOpenId(courses[activeIdx - 1]?.id)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-semibold disabled:opacity-40">
+                  <ArrowLeft className="w-4 h-4" /> Précédent
+                </button>
+                {activeIdx < courses.length - 1 ? (
+                  <button onClick={() => setOpenId(courses[activeIdx + 1]?.id)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
+                    Suivant <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (allDone && nextHref) ? (
+                  <Link href={nextHref} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
+                    {nextLabel || 'Continuer'} <ArrowRight className="w-4 h-4" />
+                  </Link>
+                ) : <span />}
+              </div>
+            </div>
+          )}
+
+          {!user && (
+            <p className="mt-4 text-center text-sm text-slate-500">
+              <BookOpen className="w-4 h-4 inline mr-1" /> Connectez-vous pour enregistrer votre progression et débloquer votre palier.
             </p>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )
