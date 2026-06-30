@@ -9,7 +9,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2, Award,
+  Sparkles, Send, Loader2, Award, Lightbulb, Layers,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -158,6 +158,67 @@ function AiAssistant({ module }: { module: FormationModule }) {
   )
 }
 
+/* ---------- Auto-formation : un bloc de contenu + 2 boutons IA ---------- */
+function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle: string; level: number }) {
+  const [loading, setLoading] = useState<'deepen' | 'simplify' | null>(null)
+  const [resp, setResp] = useState<{ action: 'deepen' | 'simplify'; text: string } | null>(null)
+
+  const run = async (action: 'deepen' | 'simplify') => {
+    if (loading) return
+    setLoading(action); setResp(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${API_URL}/api/formations/ai-paragraph`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ action, paragraph: text, moduleTitle, level }),
+      })
+      const data = await res.json()
+      setResp({ action, text: data?.success ? data.answer : (data?.error || 'Erreur') })
+    } catch { setResp({ action, text: 'Erreur réseau, réessayez.' }) } finally { setLoading(null) }
+  }
+
+  const trimmed = text.trim()
+  const headingOnly = /^#{1,3}\s/.test(trimmed) && !trimmed.includes('\n')
+  const actionable = !headingOnly && trimmed.replace(/[#>*\-\s]/g, '').length > 60
+
+  return (
+    <div className="group/blk">
+      <Markdown md={text} />
+      {actionable && (
+        <div className="flex flex-wrap gap-2 mt-1 mb-3 opacity-90">
+          <button onClick={() => run('deepen')} disabled={!!loading}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#697357]/10 text-[#4d553e] border border-[#697357]/25 hover:bg-[#697357]/20 disabled:opacity-50">
+            {loading === 'deepen' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />} Approfondir
+          </button>
+          <button onClick={() => run('simplify')} disabled={!!loading}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 disabled:opacity-50">
+            {loading === 'simplify' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lightbulb className="w-3.5 h-3.5" />} Expliquer simplement
+          </button>
+        </div>
+      )}
+      {resp && (
+        <div className={`mb-4 rounded-xl border p-3 text-sm ${resp.action === 'simplify' ? 'bg-amber-50 border-amber-200' : 'bg-[#697357]/5 border-[#697357]/20'}`}>
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide mb-1 text-slate-500">
+            <Sparkles className="w-3.5 h-3.5 text-[#697357]" /> {resp.action === 'simplify' ? 'Expliqué simplement' : 'Pour aller plus loin'}
+          </div>
+          <Markdown md={resp.text} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Contenu d'un cours découpé en blocs (boutons IA par paragraphe) ---------- */
+function CourseContent({ content, moduleTitle, level }: { content: string; moduleTitle: string; level: number }) {
+  const segments = (content || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+  return (
+    <article className="max-w-none">
+      {segments.map((seg, i) => <ContentBlock key={i} text={seg} moduleTitle={moduleTitle} level={level} />)}
+    </article>
+  )
+}
+
 /* ---------- Page de niveau réutilisable ---------- */
 interface LevelCourseProps {
   level: number
@@ -191,6 +252,10 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [xp, setXp] = useState(0)
   const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
+  const [showQuiz, setShowQuiz] = useState(false)
+
+  // Le QCM ne s'affiche qu'après lecture : on le masque à chaque changement de module
+  useEffect(() => { setShowQuiz(false) }, [openId])
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -321,9 +386,23 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                 {passed.has(active.id) && <span className="text-green-600 font-semibold">· ✓ validé</span>}
               </div>
               <h2 className="text-2xl font-black text-slate-900 mb-4">{active.title}</h2>
-              <article className="max-w-none"><Markdown md={active.content} /></article>
+              <CourseContent content={active.content} moduleTitle={active.title} level={level} />
+
+              <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <Sparkles className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
+                <span>Sous chaque point : <b>Approfondir</b> pour les détails et arguments clés, <b>Expliquer simplement</b> pour un exemple concret. Auto-formez-vous à votre rythme.</span>
+              </div>
+
               <AiAssistant module={active} />
-              <Quiz key={active.id} module={active} onPass={(score) => markPassed(active.id, score)} />
+
+              {showQuiz ? (
+                <Quiz key={active.id} module={active} onPass={(score) => markPassed(active.id, score)} />
+              ) : (
+                <button onClick={() => setShowQuiz(true)}
+                  className="mt-6 w-full py-3 rounded-xl border-2 border-[#697357] text-[#4d553e] font-bold hover:bg-[#697357]/5 inline-flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" /> J'ai terminé la lecture — Passer au QCM
+                </button>
+              )}
 
               <div className="mt-6 flex items-center justify-between">
                 <button disabled={activeIdx <= 0} onClick={() => setOpenId(courses[activeIdx - 1]?.id)}

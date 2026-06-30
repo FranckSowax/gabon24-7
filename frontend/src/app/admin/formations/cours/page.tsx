@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { MODULES_BY_LEVEL } from '@/lib/formations-content'
 import { FORMATION_SECTORS } from '@/lib/formations'
-import { BookOpen, Loader2, Save, Trash2, Download, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { BookOpen, Loader2, Save, Trash2, Download, ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -75,6 +75,44 @@ export default function CoursAdminPage() {
     } catch { alert('Erreur réseau') } finally { setBusy(null) }
   }
 
+  const generate = async (c: Course) => {
+    if (!confirm(`Régénérer le contenu de « ${c.title} » via IA (Mistral) ?\nLe contenu actuel sera remplacé.`)) return
+    setBusy(`gen-${c.id}`)
+    try {
+      const res = await fetch(`${API_URL}/api/formations/admin/courses/generate`, {
+        method: 'POST', headers: await headers(),
+        body: JSON.stringify({
+          id: c.id, level: c.level, title: c.title, summary: c.summary,
+          sector: c.sector, quiz: c.quiz, order: c.order_index, durationMin: c.duration_min, save: true,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) { patch(c.id, { content: data.content }); alert(`✅ Contenu régénéré (${data.model || 'IA'}).`) }
+      else alert(data.error || 'Échec génération')
+    } catch { alert('Erreur réseau') } finally { setBusy(null) }
+  }
+
+  const generateAll = async () => {
+    if (!courses.length) return
+    if (!confirm(`Régénérer le contenu des ${courses.length} cours via IA ?\nCela peut prendre 1-2 min. Les contenus actuels seront remplacés.`)) return
+    setBusy('gen-all')
+    let ok = 0
+    try {
+      const h = await headers()
+      for (const c of courses) {
+        try {
+          const res = await fetch(`${API_URL}/api/formations/admin/courses/generate`, {
+            method: 'POST', headers: h,
+            body: JSON.stringify({ id: c.id, level: c.level, title: c.title, summary: c.summary, sector: c.sector, quiz: c.quiz, order: c.order_index, durationMin: c.duration_min, save: true }),
+          })
+          const data = await res.json()
+          if (data.success) { patch(c.id, { content: data.content }); ok++ }
+        } catch { /* continue */ }
+      }
+      alert(`✅ ${ok}/${courses.length} cours enrichis via IA.`)
+    } finally { setBusy(null) }
+  }
+
   const del = async (id: string) => {
     if (!confirm('Supprimer ce cours ?')) return
     const res = await fetch(`${API_URL}/api/formations/admin/courses/${id}`, { method: 'DELETE', headers: await headers() })
@@ -92,10 +130,16 @@ export default function CoursAdminPage() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><BookOpen className="w-6 h-6 text-[#697357]" /> Cours & QCM</h1>
           <p className="text-slate-500 text-sm">Éditez le contenu sans redéploiement. Le quiz est au format JSON.</p>
         </div>
-        <button onClick={seed} disabled={busy === 'seed'}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50">
-          {busy === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Importer le contenu de démarrage
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={seed} disabled={busy === 'seed'}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50">
+            {busy === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Importer le contenu de démarrage
+          </button>
+          <button onClick={generateAll} disabled={!!busy || courses.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:opacity-50">
+            {busy === 'gen-all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Tout enrichir via IA
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -130,6 +174,10 @@ export default function CoursAdminPage() {
               <button onClick={() => patch(c.id, { is_published: !c.is_published })}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${c.is_published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                 {c.is_published ? <><Eye className="w-4 h-4" /> Publié</> : <><EyeOff className="w-4 h-4" /> Brouillon</>}
+              </button>
+              <button onClick={() => generate(c)} disabled={busy === `gen-${c.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 text-sm font-semibold disabled:opacity-50">
+                {busy === `gen-${c.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Enrichir via IA
               </button>
               <button onClick={() => saveCourse(c)} disabled={busy === c.id}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold disabled:opacity-50">

@@ -12,6 +12,7 @@ const { supabase } = supabaseService;
 
 const notificationService = require('../services/notification-service');
 const { renderHtmlToPdf } = require('../services/businessPlanPdf');
+const mistral = require('../services/mistral-service');
 
 // Assistant IA des formations (gratuit, gpt-4.1-mini)
 let openai = null;
@@ -333,33 +334,77 @@ router.get('/leaderboard', requireAuth, async (req, res) => {
   }
 });
 
+// Appel IA unifié : Mistral en priorité (clé fournie), repli OpenAI.
+async function aiComplete({ system, user, temperature = 0.5, maxTokens = 700 }) {
+  if (mistral.isConfigured()) {
+    return await mistral.chat({ system, user, temperature, maxTokens });
+  }
+  if (openai) {
+    const c = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      temperature, max_tokens: maxTokens,
+    });
+    return c.choices?.[0]?.message?.content?.trim() || '';
+  }
+  throw new Error('Aucun fournisseur IA configuré');
+}
+
+const FORMATEUR_SYSTEM = `Tu es un formateur en entrepreneuriat, expert du contexte gabonais (FCFA, OHADA, marché local, financement BCEG).
+Tu formes des entrepreneurs en autonomie. Sois concret, pédagogique et actionnable.
+Donne des exemples adaptés au Gabon. Utilise un ton encourageant. Formate en markdown léger (listes à puces, **gras** pour les points clés).`;
+
 // ---------- ASSISTANT IA (gratuit) ----------
 router.post('/ai-assist', requireAuth, async (req, res) => {
   try {
-    if (!openai) return res.status(503).json({ success: false, error: 'Assistant indisponible' });
     const { question, moduleTitle, moduleSummary, projectContext } = req.body || {};
     if (!question || !String(question).trim()) {
       return res.status(400).json({ success: false, error: 'Question requise' });
     }
-
-    const system = `Tu es un formateur en entrepreneuriat, expert du contexte gabonais (FCFA, OHADA, marché local, BCEG).
-Tu réponds à un apprenant pendant un module de formation. Sois concret, pédagogique et bref (5-8 phrases max).
-Donne des exemples adaptés au Gabon. Reste dans le cadre du module et de l'entrepreneuriat.`;
-
     const user = `Module en cours : "${moduleTitle || 'Formation entrepreneur'}"${moduleSummary ? ` (${moduleSummary})` : ''}.
-${projectContext ? `Projet de l'apprenant : ${projectContext}.\n` : ''}Question : ${question}`;
+${projectContext ? `Projet de l'apprenant : ${projectContext}.\n` : ''}Question : ${question}
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      temperature: 0.5,
-      max_tokens: 500,
-    });
-    const answer = completion.choices?.[0]?.message?.content?.trim() || "Désolé, je n'ai pas pu répondre.";
-    res.json({ success: true, answer });
+Réponds en 5-8 phrases max, concret et adapté au Gabon.`;
+    const answer = await aiComplete({ system: FORMATEUR_SYSTEM, user, temperature: 0.5, maxTokens: 600 });
+    res.json({ success: true, answer: answer || "Désolé, je n'ai pas pu répondre." });
   } catch (error) {
     console.error('❌ formations/ai-assist:', error);
-    res.status(500).json({ success: false, error: 'Erreur de l\'assistant' });
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Erreur de l\'assistant' });
+  }
+});
+
+// ---------- AUTO-FORMATION : actions IA par paragraphe ----------
+// action: 'deepen' (approfondir) | 'simplify' (expliquer simplement + exemple)
+router.post('/ai-paragraph', requireAuth, async (req, res) => {
+  try {
+    const { action, paragraph, moduleTitle, level } = req.body || {};
+    if (!paragraph || !String(paragraph).trim()) {
+      return res.status(400).json({ success: false, error: 'Paragraphe requis' });
+    }
+    const ctx = `Formation entrepreneur BCEG${moduleTitle ? ` — module "${moduleTitle}"` : ''}${level ? ` (niveau ${level})` : ''}.`;
+
+    let user;
+    if (action === 'simplify') {
+      user = `${ctx}
+Explique TRÈS SIMPLEMENT le point ci-dessous à un entrepreneur débutant, puis donne UN exemple concret gabonais (avec des chiffres en FCFA si pertinent).
+Format : 3-5 phrases simples + un exemple en bloc "**Exemple :** …".
+
+Point à expliquer :
+"""${String(paragraph).slice(0, 1500)}"""`;
+    } else {
+      user = `${ctx}
+APPROFONDIS le point ci-dessous pour un entrepreneur qui s'auto-forme : ajoute les détails essentiels, les arguments clés, les erreurs fréquentes à éviter et 2-3 tips actionnables.
+Format : markdown avec puces et **gras**, 8-12 lignes max, adapté au Gabon.
+
+Point à approfondir :
+"""${String(paragraph).slice(0, 1500)}"""`;
+    }
+
+    const answer = await aiComplete({ system: FORMATEUR_SYSTEM, user, temperature: action === 'simplify' ? 0.4 : 0.6, maxTokens: 800 });
+    res.json({ success: true, action: action === 'simplify' ? 'simplify' : 'deepen', answer });
+  } catch (error) {
+    console.error('❌ formations/ai-paragraph:', error);
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Erreur IA' });
   }
 });
 
@@ -560,6 +605,62 @@ router.post('/admin/courses/seed', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('❌ formations/admin/courses/seed:', error);
     res.status(500).json({ success: false, error: 'Erreur import' });
+  }
+});
+
+// ADMIN : (re)génère un contenu pédagogique enrichi via Mistral et l'enregistre
+// body: { id, level, title, summary?, sector?, quiz?, save? }
+router.post('/admin/courses/generate', requireAdmin, async (req, res) => {
+  try {
+    if (!mistral.isConfigured()) {
+      return res.status(503).json({ success: false, error: 'MISTRAL_API_KEY non configurée' });
+    }
+    const { id, level, title, summary, sector, quiz, order, durationMin, save = true } = req.body || {};
+    if (!id || !level || !title) {
+      return res.status(400).json({ success: false, error: 'id, level, title requis' });
+    }
+
+    const system = `Tu es un concepteur pédagogique expert en entrepreneuriat au Gabon (FCFA, OHADA, financement BCEG).
+Tu rédiges des modules de formation pour des entrepreneurs qui s'auto-forment. Style clair, concret, encourageant.`;
+
+    const user = `Rédige le CONTENU d'un module de formation.
+Titre : "${title}" — niveau ${level}${sector ? ` — secteur ${sector}` : ''}.
+${summary ? `Résumé : ${summary}\n` : ''}
+Exigences STRICTES :
+- 5 à 7 sections, chacune avec un sous-titre "### ".
+- Dans chaque section : 2 à 3 paragraphes DENSES (pas de phrases creuses) + une puce "💡 **Tip :** …" (conseil actionnable) + une puce "➡️ **Essentiel :** …" (l'argument clé à retenir).
+- Contenu indispensable et arguments essentiels du sujet, avec exemples concrets gabonais (chiffres en FCFA si utile).
+- Markdown uniquement : ## (titre module), ### (sous-titres), - (listes), **gras**. PAS de QCM, PAS de conclusion générique.
+- Longueur riche mais lisible (~700 à 1000 mots).`;
+
+    const content = await aiComplete({ system, user, temperature: 0.6, maxTokens: 2600 });
+    if (!content || content.length < 200) {
+      return res.status(502).json({ success: false, error: 'Contenu généré insuffisant' });
+    }
+
+    let course = null;
+    if (save) {
+      const row = {
+        id, level: parseInt(level, 10),
+        order_index: parseInt(order, 10) || 0,
+        title,
+        summary: summary || null,
+        duration_min: parseInt(durationMin, 10) || 25,
+        content,
+        sector: sector || null,
+        quiz: quiz || { passScore: 70, questions: [] },
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase.from('formation_courses').upsert(row, { onConflict: 'id' }).select().single();
+      if (error) throw error;
+      course = data;
+    }
+
+    res.json({ success: true, content, course, model: mistral.model() });
+  } catch (error) {
+    console.error('❌ formations/admin/courses/generate:', error);
+    res.status(500).json({ success: false, error: 'Erreur génération' });
   }
 });
 
