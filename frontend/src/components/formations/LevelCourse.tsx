@@ -9,6 +9,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
+  Sparkles, Send, Loader2,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -115,6 +116,48 @@ function Quiz({ module, onPass }: { module: FormationModule; onPass: (score: num
   )
 }
 
+/* ---------- Assistant IA (gratuit) ---------- */
+function AiAssistant({ module }: { module: FormationModule }) {
+  const [q, setQ] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const ask = async () => {
+    if (!q.trim() || loading) return
+    setLoading(true); setAnswer('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${API_URL}/api/formations/ai-assist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ question: q, moduleTitle: module.title, moduleSummary: module.summary }),
+      })
+      const data = await res.json()
+      setAnswer(data?.success ? data.answer : (data?.error || 'Erreur'))
+    } catch { setAnswer('Erreur réseau, réessayez.') } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-[#697357]/20 bg-[#697357]/5 p-4">
+      <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-2">
+        <Sparkles className="w-5 h-5 text-[#697357]" /> Assistant IA — une question sur ce module ?
+      </h3>
+      <div className="flex gap-2">
+        <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask()}
+          placeholder="Ex : comment calculer ma marge sur mon produit ?"
+          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-[#697357]" />
+        <button onClick={ask} disabled={loading || !q.trim()}
+          className="px-3 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white disabled:opacity-50">
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+        </button>
+      </div>
+      {answer && (
+        <div className="mt-3 bg-white rounded-xl border border-slate-200 p-3 text-sm text-slate-700 whitespace-pre-wrap">{answer}</div>
+      )}
+    </div>
+  )
+}
+
 /* ---------- Page de niveau réutilisable ---------- */
 interface LevelCourseProps {
   level: number
@@ -129,6 +172,8 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const { user } = useAuth()
   const [openId, setOpenId] = useState<string | null>(modules[0]?.id || null)
   const [passed, setPassed] = useState<Set<string>>(new Set())
+  const [xp, setXp] = useState(0)
+  const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -146,6 +191,8 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         if (!cancelled && data?.success && Array.isArray(data.passedModuleIds)) {
           const mine = data.passedModuleIds.filter((id: string) => modules.some(m => m.id === id))
           setPassed(new Set(mine))
+          setXp(data.xp || 0)
+          setBadges(data.badges || [])
         }
       } catch { /* noop */ }
     })()
@@ -156,10 +203,12 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     setPassed(prev => new Set(prev).add(id))
     if (!user?.id) return // non connecté → progression locale seulement
     try {
-      await fetch(`${API_URL}/api/formations/progress`, {
+      const res = await fetch(`${API_URL}/api/formations/progress`, {
         method: 'POST', headers: await authHeaders(),
         body: JSON.stringify({ module_id: id, level, score }),
       })
+      const data = await res.json()
+      if (data?.success) { setXp(data.xp || 0); setBadges(data.badges || []) }
     } catch { /* la progression locale reste affichée */ }
   }, [user?.id, authHeaders, level])
 
@@ -183,6 +232,20 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               <div className="h-full bg-amber-300 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
+
+          {/* XP + badges */}
+          {user && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
+                <Trophy className="w-4 h-4" /> {xp} XP
+              </span>
+              {badges.map(b => (
+                <span key={b.id} title={b.label} className="inline-flex items-center gap-1 bg-white/15 backdrop-blur px-2.5 py-1.5 rounded-full text-xs font-semibold">
+                  <span>{b.emoji}</span> {b.label}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -214,6 +277,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                 {isOpen && (
                   <div className="px-4 sm:px-6 pb-6 border-t border-slate-100">
                     <article className="pt-4 max-w-none"><Markdown md={m.content} /></article>
+                    <AiAssistant module={m} />
                     <Quiz module={m} onPass={(score) => markPassed(m.id, score)} />
                   </div>
                 )}

@@ -71,6 +71,10 @@ export default function FormationsPage() {
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
               Découvrir le programme
             </a>
+            <Link href="/formations/classement"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
+              <Trophy className="w-5 h-5 text-amber-200" /> Classement
+            </Link>
           </div>
           {/* Key facts */}
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">

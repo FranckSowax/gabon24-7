@@ -3,11 +3,39 @@
  * Candidature publique + gestion/sélection admin.
  */
 const express = require('express');
+const OpenAI = require('openai');
 const supabaseService = require('../supabase-config');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const { supabase } = supabaseService;
+
+// Assistant IA des formations (gratuit, gpt-4.1-mini)
+let openai = null;
+if (process.env.OPENAI_API_KEY) openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Gamification
+const XP_PER_MODULE = 100;
+const XP_PERFECT_BONUS = 20;
+
+function computeGamification(rows) {
+  let xp = 0;
+  let perfect = false;
+  const passedByLevel = {};
+  for (const r of rows) {
+    xp += XP_PER_MODULE + (r.score === 100 ? XP_PERFECT_BONUS : 0);
+    if (r.score === 100) perfect = true;
+    passedByLevel[r.level] = (passedByLevel[r.level] || 0) + 1;
+  }
+  const levelUnlocked = computeUnlockedLevel(passedByLevel);
+  const badges = [];
+  if (rows.length >= 1) badges.push({ id: 'first-step', label: 'Premier pas', emoji: '🚀' });
+  if (perfect) badges.push({ id: 'perfectionist', label: 'Sans faute', emoji: '🎯' });
+  if (levelUnlocked >= 1) badges.push({ id: 'level-1', label: 'Fondamentaux', emoji: '📘' });
+  if (levelUnlocked >= 2) badges.push({ id: 'level-2', label: 'Développement', emoji: '📈' });
+  if (levelUnlocked >= 3) badges.push({ id: 'graduate', label: 'Entrepreneur confirmé', emoji: '🏆' });
+  return { xp, badges, passedByLevel, levelUnlocked };
+}
 
 // Référentiel des niveaux (aligné sur le contenu front : 5 modules/niveau)
 const LEVEL_MODULE_COUNTS = { 1: 5, 2: 5, 3: 5 };
@@ -134,12 +162,15 @@ async function buildProgress(userId) {
     .eq('passed', true);
 
   const passedModuleIds = (rows || []).map((r) => r.module_id);
-  const passedByLevel = (rows || []).reduce((acc, r) => {
-    acc[r.level] = (acc[r.level] || 0) + 1;
-    return acc;
-  }, {});
-  const levelUnlocked = computeUnlockedLevel(passedByLevel);
-  return { passedModuleIds, passedByLevel, levelUnlocked, ceiling: LEVEL_CEILINGS[levelUnlocked] };
+  const g = computeGamification(rows || []);
+  return {
+    passedModuleIds,
+    passedByLevel: g.passedByLevel,
+    levelUnlocked: g.levelUnlocked,
+    ceiling: LEVEL_CEILINGS[g.levelUnlocked],
+    xp: g.xp,
+    badges: g.badges,
+  };
 }
 
 // GET /progress : modules validés + niveau débloqué
@@ -199,6 +230,82 @@ router.get('/financing-access', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ formations/financing-access:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// ---------- GAMIFICATION : classement national ----------
+router.get('/leaderboard', requireAuth, async (req, res) => {
+  try {
+    const { data: rows } = await supabase
+      .from('formation_progress')
+      .select('user_id, level, score')
+      .eq('passed', true);
+
+    // Agrégation XP par utilisateur
+    const byUser = {};
+    for (const r of (rows || [])) {
+      if (!byUser[r.user_id]) byUser[r.user_id] = [];
+      byUser[r.user_id].push(r);
+    }
+    const userIds = Object.keys(byUser);
+
+    // Noms (depuis les candidatures), best-effort
+    const names = {};
+    if (userIds.length) {
+      const { data: cands } = await supabase
+        .from('formation_candidates')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+      for (const c of (cands || [])) if (c.user_id && !names[c.user_id]) names[c.user_id] = c.full_name;
+    }
+
+    const board = userIds.map((uid) => {
+      const g = computeGamification(byUser[uid]);
+      return {
+        user_id: uid,
+        name: names[uid] || 'Entrepreneur',
+        xp: g.xp,
+        modules: byUser[uid].length,
+        level_unlocked: g.levelUnlocked,
+      };
+    }).sort((a, b) => b.xp - a.xp).slice(0, 50)
+      .map((u, i) => ({ rank: i + 1, ...u }));
+
+    const me = board.find((u) => u.user_id === req.user.id) || null;
+    res.json({ success: true, leaderboard: board, me });
+  } catch (error) {
+    console.error('❌ formations/leaderboard:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// ---------- ASSISTANT IA (gratuit) ----------
+router.post('/ai-assist', requireAuth, async (req, res) => {
+  try {
+    if (!openai) return res.status(503).json({ success: false, error: 'Assistant indisponible' });
+    const { question, moduleTitle, moduleSummary, projectContext } = req.body || {};
+    if (!question || !String(question).trim()) {
+      return res.status(400).json({ success: false, error: 'Question requise' });
+    }
+
+    const system = `Tu es un formateur en entrepreneuriat, expert du contexte gabonais (FCFA, OHADA, marché local, BCEG).
+Tu réponds à un apprenant pendant un module de formation. Sois concret, pédagogique et bref (5-8 phrases max).
+Donne des exemples adaptés au Gabon. Reste dans le cadre du module et de l'entrepreneuriat.`;
+
+    const user = `Module en cours : "${moduleTitle || 'Formation entrepreneur'}"${moduleSummary ? ` (${moduleSummary})` : ''}.
+${projectContext ? `Projet de l'apprenant : ${projectContext}.\n` : ''}Question : ${question}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      temperature: 0.5,
+      max_tokens: 500,
+    });
+    const answer = completion.choices?.[0]?.message?.content?.trim() || "Désolé, je n'ai pas pu répondre.";
+    res.json({ success: true, answer });
+  } catch (error) {
+    console.error('❌ formations/ai-assist:', error);
+    res.status(500).json({ success: false, error: 'Erreur de l\'assistant' });
   }
 });
 
