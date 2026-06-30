@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
   Building2, Sparkles, CheckCircle2, FileText, ArrowRight,
-  Loader2, Award, TrendingUp, Send, Upload, Calendar, BookOpen, Target
+  Loader2, Award, TrendingUp, Send, Upload, Calendar, BookOpen, Target, Lock
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
@@ -57,6 +57,21 @@ export default function BcegFinanceSection({
   const router = useRouter()
   const [score, setScore] = useState<ScoreInfo | null>(null)
   const [loadingScore, setLoadingScore] = useState(true)
+  const [finAccess, setFinAccess] = useState<{ level_unlocked: number; ceiling_label: string; ceiling_amount: number } | null>(null)
+
+  // Palier de financement débloqué par la formation
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const headers = await authHeaders()
+        const res = await fetchWithTimeout(`${API}/api/formations/financing-access`, { headers })
+        const json = await res.json()
+        if (alive && json?.success) setFinAccess({ level_unlocked: json.level_unlocked, ceiling_label: json.ceiling_label, ceiling_amount: json.ceiling_amount })
+      } catch {}
+    })()
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     if (!project?.id) return
@@ -148,6 +163,30 @@ export default function BcegFinanceSection({
       </motion.div>
 
       <EncouragementBanner completionPct={completionPct} score={score?.score} />
+
+      {/* Palier de financement débloqué par la formation BCEG */}
+      {finAccess && (
+        finAccess.level_unlocked > 0 ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
+            <Award className="w-6 h-6 text-emerald-600 shrink-0" />
+            <div className="text-sm text-emerald-800">
+              <span className="font-semibold">Formation validée — Niveau {finAccess.level_unlocked} :</span>{' '}
+              votre demande de financement est débloquée <b>{finAccess.ceiling_label.toLowerCase()}</b>.
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <Lock className="w-6 h-6 text-amber-600 shrink-0" />
+            <div className="text-sm text-amber-800 flex-1">
+              Validez le <b>Niveau 1</b> de la formation Entrepreneur BCEG pour débloquer une demande de financement jusqu'à 1 000 000 FCFA.
+            </div>
+            <button onClick={() => router.push('/formations')}
+              className="shrink-0 px-4 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
+              Suivre la formation
+            </button>
+          </div>
+        )
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

@@ -4,10 +4,29 @@
  */
 const express = require('express');
 const supabaseService = require('../supabase-config');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const { supabase } = supabaseService;
+
+// Référentiel des niveaux (aligné sur le contenu front : 5 modules/niveau)
+const LEVEL_MODULE_COUNTS = { 1: 5, 2: 5, 3: 5 };
+const LEVEL_CEILINGS = {
+  0: { amount: 0, label: 'Aucun palier débloqué' },
+  1: { amount: 1000000, label: "Jusqu'à 1 000 000 FCFA" },
+  2: { amount: 5000000, label: "Jusqu'à 5 000 000 FCFA" },
+  3: { amount: 999999999, label: 'Au-delà de 5 000 000 FCFA' },
+};
+
+// Plus haut niveau CONSÉCUTIF entièrement validé
+function computeUnlockedLevel(passedByLevel) {
+  let unlocked = 0;
+  for (let lvl = 1; lvl <= 3; lvl++) {
+    if ((passedByLevel[lvl] || 0) >= (LEVEL_MODULE_COUNTS[lvl] || 9999)) unlocked = lvl;
+    else break;
+  }
+  return unlocked;
+}
 
 // ---------- PUBLIC : déposer une candidature ----------
 router.post('/candidates', async (req, res) => {
@@ -103,6 +122,83 @@ router.patch('/candidates/:id', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('❌ formations/candidates PATCH:', error);
     res.status(500).json({ success: false, error: 'Erreur mise à jour' });
+  }
+});
+
+// ---------- APPRENANT : progression ----------
+async function buildProgress(userId) {
+  const { data: rows } = await supabase
+    .from('formation_progress')
+    .select('module_id, level, passed, score')
+    .eq('user_id', userId)
+    .eq('passed', true);
+
+  const passedModuleIds = (rows || []).map((r) => r.module_id);
+  const passedByLevel = (rows || []).reduce((acc, r) => {
+    acc[r.level] = (acc[r.level] || 0) + 1;
+    return acc;
+  }, {});
+  const levelUnlocked = computeUnlockedLevel(passedByLevel);
+  return { passedModuleIds, passedByLevel, levelUnlocked, ceiling: LEVEL_CEILINGS[levelUnlocked] };
+}
+
+// GET /progress : modules validés + niveau débloqué
+router.get('/progress', requireAuth, async (req, res) => {
+  try {
+    const p = await buildProgress(req.user.id);
+    res.json({ success: true, ...p });
+  } catch (error) {
+    console.error('❌ formations/progress GET:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// POST /progress : enregistrer un module validé (QCM réussi)
+router.post('/progress', requireAuth, async (req, res) => {
+  try {
+    const { module_id, level, score } = req.body || {};
+    if (!module_id || !level) {
+      return res.status(400).json({ success: false, error: 'module_id et level requis' });
+    }
+
+    await supabase
+      .from('formation_progress')
+      .upsert({
+        user_id: req.user.id,
+        module_id,
+        level: parseInt(level, 10),
+        passed: true,
+        score: typeof score === 'number' ? score : null,
+        completed_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,module_id' });
+
+    const p = await buildProgress(req.user.id);
+
+    // Refléter le niveau débloqué sur l'inscription (best-effort)
+    await supabase
+      .from('formation_enrollments')
+      .upsert({ user_id: req.user.id, level_unlocked: p.levelUnlocked, status: 'active', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+    res.json({ success: true, ...p });
+  } catch (error) {
+    console.error('❌ formations/progress POST:', error);
+    res.status(500).json({ success: false, error: 'Erreur enregistrement' });
+  }
+});
+
+// GET /financing-access : palier de financement débloqué par la formation
+router.get('/financing-access', requireAuth, async (req, res) => {
+  try {
+    const p = await buildProgress(req.user.id);
+    res.json({
+      success: true,
+      level_unlocked: p.levelUnlocked,
+      ceiling_amount: p.ceiling.amount,
+      ceiling_label: p.ceiling.label,
+    });
+  } catch (error) {
+    console.error('❌ formations/financing-access:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 });
 

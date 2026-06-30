@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { FormationModule } from '@/lib/formations-content'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
 } from 'lucide-react'
@@ -50,7 +54,7 @@ function Markdown({ md }: { md: string }) {
 }
 
 /* ---------- QCM ---------- */
-function Quiz({ module, onPass }: { module: FormationModule; onPass: () => void }) {
+function Quiz({ module, onPass }: { module: FormationModule; onPass: (score: number) => void }) {
   const qs = module.quiz.questions
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -59,7 +63,7 @@ function Quiz({ module, onPass }: { module: FormationModule; onPass: () => void 
   const score = Math.round((correct / qs.length) * 100)
   const passed = score >= module.quiz.passScore
 
-  const submit = () => { setSubmitted(true); if (score >= module.quiz.passScore) onPass() }
+  const submit = () => { setSubmitted(true); if (score >= module.quiz.passScore) onPass(score) }
 
   return (
     <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-5">
@@ -122,10 +126,43 @@ interface LevelCourseProps {
 }
 
 export default function LevelCourse({ level, title, ceilingText, modules, nextHref, nextLabel }: LevelCourseProps) {
+  const { user } = useAuth()
   const [openId, setOpenId] = useState<string | null>(modules[0]?.id || null)
   const [passed, setPassed] = useState<Set<string>>(new Set())
 
-  const markPassed = (id: string) => setPassed(prev => new Set(prev).add(id))
+  const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }
+  }, [])
+
+  // Charger la progression enregistrée (si connecté)
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/formations/progress`, { headers: await authHeaders() })
+        const data = await res.json()
+        if (!cancelled && data?.success && Array.isArray(data.passedModuleIds)) {
+          const mine = data.passedModuleIds.filter((id: string) => modules.some(m => m.id === id))
+          setPassed(new Set(mine))
+        }
+      } catch { /* noop */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, authHeaders, modules])
+
+  const markPassed = useCallback(async (id: string, score: number) => {
+    setPassed(prev => new Set(prev).add(id))
+    if (!user?.id) return // non connecté → progression locale seulement
+    try {
+      await fetch(`${API_URL}/api/formations/progress`, {
+        method: 'POST', headers: await authHeaders(),
+        body: JSON.stringify({ module_id: id, level, score }),
+      })
+    } catch { /* la progression locale reste affichée */ }
+  }, [user?.id, authHeaders, level])
+
   const allDone = passed.size >= modules.length
   const progress = Math.round((passed.size / modules.length) * 100)
 
@@ -177,7 +214,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                 {isOpen && (
                   <div className="px-4 sm:px-6 pb-6 border-t border-slate-100">
                     <article className="pt-4 max-w-none"><Markdown md={m.content} /></article>
-                    <Quiz module={m} onPass={() => markPassed(m.id)} />
+                    <Quiz module={m} onPass={(score) => markPassed(m.id, score)} />
                   </div>
                 )}
               </div>
@@ -193,7 +230,9 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
           ) : (
             <p className="text-sm text-slate-500">
               <BookOpen className="w-4 h-4 inline mr-1" />
-              Astuce : la progression de cette démo n'est pas encore enregistrée (sauvegarde du parcours = Phase 2).
+              {user
+                ? 'Votre progression est enregistrée automatiquement à chaque QCM réussi.'
+                : 'Connectez-vous pour enregistrer votre progression et débloquer votre palier de financement.'}
             </p>
           )}
         </div>
