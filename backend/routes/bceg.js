@@ -1882,4 +1882,199 @@ router.post('/cron/sector-match', async (req, res) => {
   }
 });
 
+// =====================================================================
+// =====================================================================
+// API PARTENAIRE BCEG — intégration app/back-office BCEG (niveaux 1→4)
+// Auth machine-to-machine par clé API (header x-bceg-api-key) ou, à défaut,
+// par le code portail existant (x-bceg-code). Aucune session utilisateur.
+// =====================================================================
+// =====================================================================
+
+function requirePartnerKey(req, res, next) {
+  const apiKey = req.get('x-bceg-api-key') || req.query.api_key;
+  const portalCode = req.get('x-bceg-code') || req.query.code;
+  const expectedKey = process.env.BCEG_PARTNER_API_KEY;
+  const expectedCode = process.env.BCEG_PORTAL_CODE;
+
+  if (!expectedKey && !expectedCode) {
+    return res.status(503).json({ success: false, error: 'Intégration partenaire non configurée (BCEG_PARTNER_API_KEY manquante).' });
+  }
+  const ok = (expectedKey && apiKey && apiKey === expectedKey)
+    || (expectedCode && portalCode && portalCode === expectedCode);
+  if (!ok) return res.status(401).json({ success: false, error: 'Clé API partenaire invalide.' });
+
+  req.partner = true;
+  next();
+}
+
+// Identité du porteur (best-effort, depuis la candidature formation)
+async function applicantsByUsers(userIds) {
+  const map = {};
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return map;
+  try {
+    const { data } = await supabase
+      .from('formation_candidates')
+      .select('user_id, full_name, email, phone, province')
+      .in('user_id', ids);
+    (data || []).forEach(c => { if (c.user_id && !map[c.user_id]) map[c.user_id] = c; });
+  } catch (e) {
+    console.warn('⚠️ applicantsByUsers:', e.message);
+  }
+  return map;
+}
+
+// Fiche consolidée (résumé) d'un dossier pour le gestionnaire BCEG
+function partnerFiche(s, formationPassed, applicant) {
+  const risk = assessRisk({ score: s.bceg_score, montant: s.montant_demande, formationPassed });
+  const sp = s.saved_projects || {};
+  return {
+    id: s.id,
+    reference: s.bceg_reference || null,
+    status: s.status,
+    titre: sp.proposition_titre || sp.article_title || null,
+    secteur: sp.secteur_selectionne || null,
+    ville: sp.ville || null,
+    montant_demande: s.montant_demande,
+    financing_tier: financingTier(s.montant_demande),
+    score: s.bceg_score,
+    risk: { level: risk.level, label: risk.label, recommendation: risk.recommendation },
+    formation: { passed: risk.formation_passed, total: risk.formation_total, ok: risk.formation_ok },
+    applicant: applicant
+      ? { name: applicant.full_name, email: applicant.email, phone: applicant.phone, province: applicant.province }
+      : { user_id: s.user_id },
+    pdf_url: s.pdf_url || null,
+    submitted_at: s.submitted_at,
+    decision_at: s.decision_at,
+    created_at: s.created_at,
+  };
+}
+
+// GET /api/bceg/partner/ping — test d'intégration / vérif de clé
+router.get('/partner/ping', requirePartnerKey, (_req, res) => {
+  res.json({ success: true, service: 'gabon-insight', partner: 'bceg', ts: new Date().toISOString() });
+});
+
+// GET /api/bceg/partner/deep-link — URLs pour intégration niveaux 1-2 (bouton / webview)
+router.get('/partner/deep-link', requirePartnerKey, (_req, res) => {
+  const base = (process.env.FRONTEND_URL || 'https://gaboninsight.com').replace(/\/$/, '');
+  res.json({
+    success: true,
+    urls: {
+      home: base,
+      formations: `${base}/formations`,
+      mes_projets: `${base}/business/mes-projets`,
+    },
+    note: 'Niveau 1 : ouvrir "home"/"formations" dans le navigateur. Niveau 2 : charger ces URLs dans une webview.',
+  });
+});
+
+// GET /api/bceg/partner/submissions — liste des dossiers (fiches consolidées)
+//   filtres: ?status=submitted,in_review,accepted &secteur= &tier=1|2|3 &since=ISO &limit=
+router.get('/partner/submissions', requirePartnerKey, async (req, res) => {
+  try {
+    const { status, secteur, tier, since, limit } = req.query;
+
+    let query = supabase
+      .from('bceg_submissions')
+      .select(`*, saved_projects(article_title, proposition_titre, secteur_selectionne, ville)`)
+      .order('submitted_at', { ascending: false, nullsFirst: false });
+
+    if (status && typeof status === 'string') {
+      const list = status.split(',').map(s => s.trim()).filter(Boolean);
+      if (list.length) query = query.in('status', list);
+    } else {
+      query = query.in('status', ['submitted', 'in_review', 'accepted']);
+    }
+    if (since) query = query.gte('created_at', String(since));
+    query = query.limit(Math.min(parseInt(limit, 10) || 100, 500));
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    let rows = data || [];
+    if (secteur) rows = rows.filter(s => (s.saved_projects?.secteur_selectionne || '') === secteur);
+    if (tier) rows = rows.filter(s => String(financingTier(s.montant_demande) || '') === String(tier));
+
+    const [passedMap, applicantMap] = await Promise.all([
+      formationPassedByUsers(rows.map(s => s.user_id)),
+      applicantsByUsers(rows.map(s => s.user_id)),
+    ]);
+
+    const submissions = rows.map(s => partnerFiche(s, passedMap[s.user_id] || 0, applicantMap[s.user_id]));
+    res.json({ success: true, count: submissions.length, submissions });
+  } catch (error) {
+    console.error('Erreur /partner/submissions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bceg/partner/submissions/:id — dossier complet (fiche + projet + simulation + score live)
+router.get('/partner/submissions/:id', requirePartnerKey, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_submissions')
+      .select(`*, saved_projects(*), bceg_simulations(*)`)
+      .eq('id', req.params.id)
+      .single();
+    if (error) throw error;
+
+    const formation = await computeFormationScore(data.user_id);
+    const applicantMap = await applicantsByUsers([data.user_id]);
+
+    // Score live = part projet (dernier score stocké) + formation actuelle
+    let projectScore = data.bceg_score ?? 0;
+    const { data: scoreRow } = await supabase
+      .from('bceg_scores').select('breakdown, score').eq('project_id', data.project_id)
+      .order('computed_at', { ascending: false }).limit(1).maybeSingle();
+    if (scoreRow?.breakdown && typeof scoreRow.breakdown.project_score === 'number') projectScore = scoreRow.breakdown.project_score;
+    else if (scoreRow?.score != null) projectScore = scoreRow.score;
+    const liveScore = Math.round(SCORE_WEIGHTS.project * projectScore + SCORE_WEIGHTS.formation * formation.score);
+
+    const fiche = partnerFiche(data, formation.meta.passed, applicantMap[data.user_id]);
+
+    res.json({
+      success: true,
+      dossier: {
+        ...fiche,
+        score_live: { score: liveScore, color: colorFor(liveScore), project_score: projectScore, formation_score: formation.score, formation_breakdown: formation.breakdown },
+        admin_notes: data.admin_notes || null,
+        project: data.saved_projects || null,
+        simulation: data.bceg_simulations || null,
+      },
+    });
+  } catch (error) {
+    console.error('Erreur /partner/submissions/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/bceg/partner/submissions/:id — retour de décision BCEG
+//   body: { status: in_review|accepted|rejected, bceg_reference?, decision_note? }
+router.patch('/partner/submissions/:id', requirePartnerKey, async (req, res) => {
+  try {
+    const { status, bceg_reference, decision_note } = req.body || {};
+    const valid = ['in_review', 'accepted', 'rejected'];
+    if (!valid.includes(status)) {
+      return res.status(400).json({ success: false, error: `status doit être l'un de ${valid.join(', ')}` });
+    }
+    const update = { status, updated_at: new Date().toISOString() };
+    if (bceg_reference !== undefined) update.bceg_reference = bceg_reference;
+    if (decision_note !== undefined) update.admin_notes = decision_note;
+    if (status === 'accepted' || status === 'rejected') update.decision_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('bceg_submissions').update(update).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    // Notifie le porteur (in-app + WhatsApp + email), best-effort
+    const notified = await notifyApplicantOfDecision({ submission: data, status });
+    console.log(`🤝 [partner] Submission ${req.params.id} → ${status}`);
+    res.json({ success: true, submission: data, notified });
+  } catch (error) {
+    console.error('Erreur PATCH /partner/submissions/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
