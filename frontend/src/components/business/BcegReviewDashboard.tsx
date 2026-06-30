@@ -31,10 +31,24 @@ interface Submission {
   decision_at: string | null
   created_at: string
   updated_at: string
+  formation_passed?: number
+  financing_tier?: 1 | 2 | 3 | null
+  risk?: {
+    level: 'faible' | 'modere' | 'eleve'
+    label: string
+    recommendation: string
+    score: number
+    tier: 1 | 2 | 3 | null
+    formation_passed: number
+    formation_total: number
+    formation_pct: number
+    formation_ok: boolean
+  }
   saved_projects?: {
     article_title?: string
     proposition_titre?: string
     secteur_selectionne?: string
+    ville?: string
     problematique_centrale?: string
     proposition_description?: string
   }
@@ -109,6 +123,9 @@ export function BcegReviewDashboard() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all')
+  const [secteurFilter, setSecteurFilter] = useState<string>('all')
+  const [palierFilter, setPalierFilter] = useState<'all' | '1' | '2' | '3'>('all')
+  const [formationFilter, setFormationFilter] = useState<'all' | 'ok' | 'ko'>('all')
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [selected, setSelected] = useState<Submission | null>(null)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
@@ -142,15 +159,25 @@ export function BcegReviewDashboard() {
 
   useEffect(() => { load() }, [])
 
+  const secteurs = useMemo(() => {
+    const set = new Set<string>()
+    submissions.forEach(s => { const v = s.saved_projects?.secteur_selectionne; if (v) set.add(v) })
+    return Array.from(set).sort()
+  }, [submissions])
+
   const filtered = useMemo(() => {
     let r = submissions
     if (statusFilter !== 'all') r = r.filter(s => s.status === statusFilter)
+    if (secteurFilter !== 'all') r = r.filter(s => (s.saved_projects?.secteur_selectionne || '') === secteurFilter)
+    if (palierFilter !== 'all') r = r.filter(s => String(s.financing_tier || '') === palierFilter)
+    if (formationFilter !== 'all') r = r.filter(s => (s.risk?.formation_ok ? 'ok' : 'ko') === formationFilter)
     if (search.trim()) {
       const q = search.toLowerCase()
       r = r.filter(s =>
         (s.saved_projects?.proposition_titre || '').toLowerCase().includes(q) ||
         (s.saved_projects?.article_title || '').toLowerCase().includes(q) ||
         (s.bceg_reference || '').toLowerCase().includes(q) ||
+        (s.saved_projects?.ville || '').toLowerCase().includes(q) ||
         (s.saved_projects?.secteur_selectionne || '').toLowerCase().includes(q)
       )
     }
@@ -164,7 +191,7 @@ export function BcegReviewDashboard() {
       return (da - db) * dir
     })
     return copy
-  }, [submissions, search, statusFilter, sortKey])
+  }, [submissions, search, statusFilter, secteurFilter, palierFilter, formationFilter, sortKey])
 
   const grouped = useMemo(() => {
     const map: Record<Status, Submission[]> = { draft: [], submitted: [], in_review: [], accepted: [], rejected: [] }
@@ -338,6 +365,39 @@ export function BcegReviewDashboard() {
             ))}
           </select>
 
+          {/* Filter secteur */}
+          <select
+            value={secteurFilter}
+            onChange={e => setSecteurFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#697357]"
+          >
+            <option value="all">Tous secteurs</option>
+            {secteurs.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          {/* Filter palier de financement */}
+          <select
+            value={palierFilter}
+            onChange={e => setPalierFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#697357]"
+          >
+            <option value="all">Tous paliers</option>
+            <option value="1">Palier 1 · ≤ 1M</option>
+            <option value="2">Palier 2 · ≤ 5M</option>
+            <option value="3">Palier 3 · &gt; 5M</option>
+          </select>
+
+          {/* Filter statut formation */}
+          <select
+            value={formationFilter}
+            onChange={e => setFormationFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#697357]"
+          >
+            <option value="all">Formation : toutes</option>
+            <option value="ok">🎓 Formation OK</option>
+            <option value="ko">⏳ Formation incomplète</option>
+          </select>
+
           {/* Sort */}
           <select
             value={sortKey}
@@ -433,6 +493,23 @@ function KpiCard({ label, value, accent }: { label: string; value: string | numb
       <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-bold">{label}</div>
       <div className={`text-xl sm:text-2xl font-bold tabular-nums ${color}`}>{value}</div>
     </div>
+  )
+}
+
+// =====================================================================
+const RISK_META: Record<'faible' | 'modere' | 'eleve', { cls: string; dot: string }> = {
+  faible: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  modere: { cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  eleve:  { cls: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
+}
+
+function RiskBadge({ level, label }: { level: 'faible' | 'modere' | 'eleve'; label: string }) {
+  const m = RISK_META[level] || RISK_META.modere
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${m.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+      {label}
+    </span>
   )
 }
 
@@ -542,6 +619,17 @@ function KanbanCard({
         {sub.saved_projects?.secteur_selectionne && (
           <div className="text-slate-600 truncate">{sub.saved_projects.secteur_selectionne}</div>
         )}
+        <div className="flex flex-wrap items-center gap-1 pt-0.5">
+          {sub.risk && <RiskBadge level={sub.risk.level} label={sub.risk.label} />}
+          {sub.risk && (
+            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${sub.risk.formation_ok ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+              🎓 {sub.risk.formation_passed}/{sub.risk.formation_total}
+            </span>
+          )}
+          {sub.financing_tier && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#697357]/10 text-[#4d553e] border border-[#697357]/20">P{sub.financing_tier}</span>
+          )}
+        </div>
         {sub.bceg_reference && (
           <div className="text-[10px] font-mono text-emerald-600">REF: {sub.bceg_reference}</div>
         )}
@@ -706,6 +794,29 @@ function SubmissionDetailModal({
               <div className="text-xl font-bold text-amber-700 tabular-nums">{formatXaf(sim.mensualite)}</div>
             </div>
           </div>
+
+          {/* Évaluation gestionnaire : risque + recommandation + formation */}
+          {submission.risk && (
+            <div className={`rounded-xl border p-4 ${RISK_META[submission.risk.level]?.cls || RISK_META.modere.cls}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <RiskBadge level={submission.risk.level} label={submission.risk.label} />
+                  {submission.risk.tier && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#697357]/10 text-[#4d553e] border border-[#697357]/20">
+                      Palier {submission.risk.tier}
+                    </span>
+                  )}
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${submission.risk.formation_ok ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-white/60 text-slate-600 border-slate-300'}`}>
+                  🎓 Formation {submission.risk.formation_passed}/{submission.risk.formation_total} ({submission.risk.formation_pct}%)
+                </span>
+              </div>
+              <p className="text-sm font-medium">
+                <span className="opacity-70">Recommandation d'orientation :</span> {submission.risk.recommendation}
+              </p>
+              <p className="text-[10px] opacity-60 mt-1">Indicateur d'aide à la décision — ne constitue pas une décision de crédit.</p>
+            </div>
+          )}
 
           {project.problematique_centrale && (
             <Section title="Problématique" icon="🎯">

@@ -451,6 +451,69 @@ async function buildScoreWithFormation(formData, userId) {
 }
 
 // =====================================================================
+// Niveau de risque indicatif + recommandation d'orientation (gestionnaire)
+// Indicateur d'aide à la décision — PAS une décision de crédit automatique.
+// =====================================================================
+function financingTier(montant) {
+  if (montant == null) return null;
+  if (montant <= 1000000) return 1;
+  if (montant <= 5000000) return 2;
+  return 3;
+}
+
+function assessRisk({ score, montant, formationPassed = 0 }) {
+  const total = TOTAL_FORMATION_MODULES;
+  const tier = financingTier(montant);
+  const requiredModules = tier ? tier * 5 : 0;
+  const formationOk = formationPassed >= requiredModules;
+  const s = typeof score === 'number' ? score : 0;
+
+  let level, label, recommendation;
+  if (s >= 70 && formationOk) {
+    level = 'faible'; label = 'Risque faible';
+    recommendation = 'Dossier mûr — à instruire en priorité.';
+  } else if (s >= 45) {
+    level = 'modere'; label = 'Risque modéré';
+    recommendation = formationOk
+      ? 'À instruire ; demander les compléments manquants.'
+      : `Faire compléter la formation (palier ${tier}) avant instruction.`;
+  } else {
+    level = 'eleve'; label = 'Risque élevé';
+    recommendation = 'Orienter vers accompagnement / formation avant instruction.';
+  }
+  if (!formationOk && tier) {
+    recommendation += ` Formation requise : ${requiredModules} modules (validés : ${formationPassed}/${total}).`;
+  }
+
+  return {
+    level, label, recommendation,
+    score: s, tier,
+    formation_passed: formationPassed,
+    formation_total: total,
+    formation_pct: Math.round((formationPassed / total) * 100),
+    formation_ok: formationOk,
+  };
+}
+
+// Map user_id -> nb de modules de formation validés (en lot)
+async function formationPassedByUsers(userIds) {
+  const map = {};
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return map;
+  try {
+    const { data } = await supabase
+      .from('formation_progress')
+      .select('user_id')
+      .in('user_id', ids)
+      .eq('passed', true);
+    (data || []).forEach(r => { map[r.user_id] = (map[r.user_id] || 0) + 1; });
+  } catch (e) {
+    console.warn('⚠️ formationPassedByUsers:', e.message);
+  }
+  return map;
+}
+
+// =====================================================================
 // POST /api/bceg/simulate
 // =====================================================================
 router.post('/simulate', validateBody(simulateSchema), async (req, res) => {
@@ -727,7 +790,7 @@ router.get('/admin/submissions', requireBcegAccess, async (req, res) => {
       .from('bceg_submissions')
       .select(`
         *,
-        saved_projects(article_title, proposition_titre, secteur_selectionne, problematique_centrale, proposition_description),
+        saved_projects(article_title, proposition_titre, secteur_selectionne, ville, problematique_centrale, proposition_description),
         bceg_simulations(montant_demande, apport_personnel, apport_pct, duree_mois, mensualite, total_a_rembourser, type, taux_annuel)
       `)
       .order('created_at', { ascending: false });
@@ -744,9 +807,23 @@ router.get('/admin/submissions', requireBcegAccess, async (req, res) => {
       submissions = submissions.filter(s =>
         (s.saved_projects?.article_title || '').toLowerCase().includes(q) ||
         (s.saved_projects?.proposition_titre || '').toLowerCase().includes(q) ||
+        (s.saved_projects?.secteur_selectionne || '').toLowerCase().includes(q) ||
+        (s.saved_projects?.ville || '').toLowerCase().includes(q) ||
         (s.bceg_reference || '').toLowerCase().includes(q)
       );
     }
+
+    // Enrichissement gestionnaire : palier + statut formation + niveau de risque
+    const passedMap = await formationPassedByUsers(submissions.map(s => s.user_id));
+    submissions = submissions.map(s => {
+      const formationPassed = passedMap[s.user_id] || 0;
+      return {
+        ...s,
+        formation_passed: formationPassed,
+        financing_tier: financingTier(s.montant_demande),
+        risk: assessRisk({ score: s.bceg_score, montant: s.montant_demande, formationPassed }),
+      };
+    });
 
     res.json({ success: true, submissions });
   } catch (error) {
@@ -783,7 +860,26 @@ router.get('/admin/submissions/:id', requireBcegAccess, async (req, res) => {
       lastScore = scoreData;
     }
 
-    res.json({ success: true, submission: data, last_score: lastScore });
+    // Score live (projet stocké + formation actuelle) + niveau de risque
+    const formation = await computeFormationScore(data?.user_id);
+    const projectScore = (lastScore?.breakdown && typeof lastScore.breakdown.project_score === 'number')
+      ? lastScore.breakdown.project_score
+      : (lastScore?.score ?? data?.bceg_score ?? 0);
+    const liveScoreVal = Math.round(SCORE_WEIGHTS.project * projectScore + SCORE_WEIGHTS.formation * formation.score);
+    const live_score = {
+      score: liveScoreVal,
+      color: colorFor(liveScoreVal),
+      breakdown: {
+        ...(lastScore?.breakdown || {}),
+        formation: formation.breakdown,
+        project_score: projectScore,
+        formation_score: formation.score,
+        weights: SCORE_WEIGHTS,
+      },
+    };
+    const risk = assessRisk({ score: liveScoreVal, montant: data?.montant_demande, formationPassed: formation.meta.passed });
+
+    res.json({ success: true, submission: data, last_score: lastScore, live_score, risk });
   } catch (error) {
     console.error('Erreur /admin/submissions/:id:', error);
     res.status(500).json({ success: false, error: error.message });
