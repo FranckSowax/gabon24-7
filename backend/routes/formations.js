@@ -10,9 +10,46 @@ const { requireAdmin, requireAuth } = require('../middleware/auth');
 const router = express.Router();
 const { supabase } = supabaseService;
 
+const notificationService = require('../services/notification-service');
+const { renderHtmlToPdf } = require('../services/businessPlanPdf');
+
 // Assistant IA des formations (gratuit, gpt-4.1-mini)
 let openai = null;
 if (process.env.OPENAI_API_KEY) openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const LEVEL_TITLES = { 1: 'Fondamentaux', 2: 'Développement', 3: 'Croissance' };
+
+// Nom affiché de l'apprenant (depuis la candidature), best-effort
+async function getLearnerName(userId) {
+  const { data } = await supabase
+    .from('formation_candidates')
+    .select('full_name')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.full_name || 'Apprenant Gabon Insight';
+}
+
+// Lundi 00:00 (UTC) de la semaine en cours
+function weekStart() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = (d.getUTCDay() + 6) % 7; // lundi = 0
+  d.setUTCDate(d.getUTCDate() - day);
+  return d;
+}
+function weekNumber() {
+  const start = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+  return Math.floor((Date.now() - start.getTime()) / (7 * 24 * 3600 * 1000));
+}
+
+// Défi de la semaine (rotation déterministe, calculable depuis formation_progress)
+const WEEKLY_CHALLENGES = [
+  { id: 'modules-3', title: 'Valider 3 modules cette semaine', target: 3, metric: 'modules', reward_xp: 150 },
+  { id: 'perfect-2', title: 'Obtenir 100 % à 2 QCM cette semaine', target: 2, metric: 'perfect', reward_xp: 120 },
+  { id: 'modules-2', title: 'Valider 2 modules cette semaine', target: 2, metric: 'modules', reward_xp: 100 },
+];
 
 // Gamification
 const XP_PER_MODULE = 100;
@@ -192,6 +229,8 @@ router.post('/progress', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'module_id et level requis' });
     }
 
+    const before = await buildProgress(req.user.id);
+
     await supabase
       .from('formation_progress')
       .upsert({
@@ -210,7 +249,21 @@ router.post('/progress', requireAuth, async (req, res) => {
       .from('formation_enrollments')
       .upsert({ user_id: req.user.id, level_unlocked: p.levelUnlocked, status: 'active', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 
-    res.json({ success: true, ...p });
+    // Notification si un nouveau niveau vient d'être validé
+    if (p.levelUnlocked > before.levelUnlocked) {
+      try {
+        await notificationService.sendUserNotification(req.user.id, {
+          title: `🎉 Niveau ${p.levelUnlocked} validé !`,
+          message: `Bravo ! Vous avez validé le niveau ${LEVEL_TITLES[p.levelUnlocked] || p.levelUnlocked}. Demande de financement ${p.ceiling.label.toLowerCase()} débloquée. Téléchargez votre certificat.`,
+          type: 'success',
+          category: 'formation',
+          actionUrl: '/formations',
+          actionLabel: 'Voir mon certificat',
+        });
+      } catch { /* best-effort */ }
+    }
+
+    res.json({ success: true, ...p, newLevel: p.levelUnlocked > before.levelUnlocked });
   } catch (error) {
     console.error('❌ formations/progress POST:', error);
     res.status(500).json({ success: false, error: 'Erreur enregistrement' });
@@ -306,6 +359,91 @@ ${projectContext ? `Projet de l'apprenant : ${projectContext}.\n` : ''}Question 
   } catch (error) {
     console.error('❌ formations/ai-assist:', error);
     res.status(500).json({ success: false, error: 'Erreur de l\'assistant' });
+  }
+});
+
+// ---------- CERTIFICAT PDF par niveau ----------
+function buildCertificateHtml({ name, level, levelTitle, ceiling, dateStr }) {
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
+  @page { margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, 'Times New Roman', serif; }
+  .page { width: 210mm; height: 297mm; padding: 18mm; display: flex; }
+  .frame { flex: 1; border: 3px solid #697357; border-radius: 8px; padding: 16mm 14mm; text-align: center;
+    display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .frame::after { content: ''; position: absolute; inset: 6px; border: 1px solid #8a9576; border-radius: 6px; pointer-events: none; }
+  .brand { color: #4d553e; letter-spacing: 2px; font-size: 12pt; font-weight: bold; text-transform: uppercase; }
+  .title { color: #697357; font-size: 30pt; font-weight: bold; margin: 10mm 0 4mm; }
+  .sub { color: #555; font-size: 13pt; }
+  .name { font-size: 26pt; color: #1f2937; margin: 8mm 0 2mm; border-bottom: 2px solid #697357; display: inline-block; padding: 0 8mm 3mm; }
+  .level { font-size: 16pt; color: #4d553e; margin-top: 6mm; }
+  .ceiling { display: inline-block; margin-top: 5mm; background: #697357; color: #fff; padding: 3mm 6mm; border-radius: 6px; font-size: 12pt; }
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 12mm; font-size: 11pt; color: #444; }
+  .sig { border-top: 1px solid #999; padding-top: 2mm; min-width: 55mm; }
+  </style></head><body><div class="page"><div class="frame">
+    <div>
+      <div class="brand">Gabon Insight × BCEG</div>
+      <div class="title">Certificat de réussite</div>
+      <div class="sub">Ce certificat atteste que</div>
+      <div class="name">${escapeHtmlCert(name)}</div>
+      <div class="sub">a validé avec succès la formation Entrepreneur BCEG</div>
+      <div class="level"><b>Niveau ${level} — ${escapeHtmlCert(levelTitle)}</b></div>
+      <div class="ceiling">Demande de financement débloquée : ${escapeHtmlCert(ceiling)}</div>
+    </div>
+    <div class="foot">
+      <div class="sig">Délivré le ${escapeHtmlCert(dateStr)}</div>
+      <div class="sig">Gabon Insight × BCEG</div>
+    </div>
+  </div></div></body></html>`;
+}
+function escapeHtmlCert(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+router.get('/certificate/:level', requireAuth, async (req, res) => {
+  try {
+    const level = parseInt(req.params.level, 10);
+    if (![1, 2, 3].includes(level)) return res.status(400).json({ success: false, error: 'Niveau invalide' });
+
+    const p = await buildProgress(req.user.id);
+    if (p.levelUnlocked < level) {
+      return res.status(403).json({ success: false, error: `Niveau ${level} non encore validé` });
+    }
+
+    const name = await getLearnerName(req.user.id);
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const html = buildCertificateHtml({ name, level, levelTitle: LEVEL_TITLES[level], ceiling: LEVEL_CEILINGS[level].label, dateStr });
+    const pdf = await renderHtmlToPdf(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="certificat-niveau-${level}.pdf"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('❌ formations/certificate:', error);
+    res.status(500).json({ success: false, error: 'Erreur génération certificat' });
+  }
+});
+
+// ---------- DÉFI DE LA SEMAINE ----------
+router.get('/challenge', requireAuth, async (req, res) => {
+  try {
+    const ch = WEEKLY_CHALLENGES[weekNumber() % WEEKLY_CHALLENGES.length];
+    const { data: rows } = await supabase
+      .from('formation_progress')
+      .select('score, completed_at')
+      .eq('user_id', req.user.id)
+      .eq('passed', true)
+      .gte('completed_at', weekStart().toISOString());
+
+    let current = 0;
+    if (ch.metric === 'modules') current = (rows || []).length;
+    else if (ch.metric === 'perfect') current = (rows || []).filter(r => r.score === 100).length;
+
+    res.json({
+      success: true,
+      challenge: { id: ch.id, title: ch.title, target: ch.target, reward_xp: ch.reward_xp, current: Math.min(current, ch.target), done: current >= ch.target },
+    });
+  } catch (error) {
+    console.error('❌ formations/challenge:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 });
 

@@ -14,17 +14,20 @@ export default function ClassementPage() {
   const { user } = useAuth()
   const [board, setBoard] = useState<Row[]>([])
   const [me, setMe] = useState<Row | null>(null)
+  const [challenge, setChallenge] = useState<{ title: string; target: number; current: number; done: boolean; reward_xp: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${API_URL}/api/formations/leaderboard`, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      })
-      const data = await res.json()
-      if (data?.success) { setBoard(data.leaderboard || []); setMe(data.me || null) }
+      const headers: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      const [lb, ch] = await Promise.all([
+        fetch(`${API_URL}/api/formations/leaderboard`, { headers }).then(r => r.json()).catch(() => null),
+        fetch(`${API_URL}/api/formations/challenge`, { headers }).then(r => r.json()).catch(() => null),
+      ])
+      if (lb?.success) { setBoard(lb.leaderboard || []); setMe(lb.me || null) }
+      if (ch?.success) setChallenge(ch.challenge)
     } catch { /* noop */ } finally { setLoading(false) }
   }, [])
 
@@ -45,6 +48,28 @@ export default function ClassementPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Défi de la semaine */}
+        {user && challenge && (
+          <div className={`mb-6 rounded-2xl border p-4 ${challenge.done ? 'border-green-200 bg-green-50' : 'border-[#697357]/20 bg-white'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-900">🎯 Défi de la semaine</h3>
+                <p className="text-sm text-slate-600">{challenge.title}</p>
+              </div>
+              <span className="shrink-0 text-xs font-bold bg-amber-300 text-[#3a4030] px-2.5 py-1 rounded-full">+{challenge.reward_xp} XP</span>
+            </div>
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
+                <span>{challenge.current}/{challenge.target}</span>
+                {challenge.done && <span className="text-green-700 font-semibold">✅ Défi relevé !</span>}
+              </div>
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${challenge.done ? 'bg-green-500' : 'bg-[#697357]'}`} style={{ width: `${Math.round((challenge.current / challenge.target) * 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {!user ? (
           <p className="text-slate-500 text-sm">Connectez-vous pour voir le classement et votre position.</p>
         ) : loading ? (

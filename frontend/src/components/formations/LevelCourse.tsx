@@ -9,7 +9,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2,
+  Sparkles, Send, Loader2, Award,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -215,6 +215,18 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const allDone = passed.size >= modules.length
   const progress = Math.round((passed.size / modules.length) * 100)
 
+  const downloadCertificate = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/formations/certificate/${level}`, { headers: await authHeaders() })
+      if (!res.ok) { alert('Validez d\'abord tous les modules du niveau.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `certificat-niveau-${level}.pdf`; a.click()
+      URL.revokeObjectURL(url)
+    } catch { alert('Erreur lors du téléchargement du certificat.') }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white">
@@ -252,11 +264,17 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 border ${allDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
           {allDone ? <Unlock className="w-6 h-6 text-green-600 shrink-0" /> : <Lock className="w-6 h-6 text-slate-400 shrink-0" />}
-          <div className="text-sm">
+          <div className="text-sm flex-1">
             {allDone
               ? <span className="text-green-700 font-semibold">🎉 Niveau {level} validé ! La demande de financement {ceilingText.toLowerCase()} est débloquée.</span>
               : <span className="text-slate-600">Validez tous les modules (cours + QCM) pour débloquer le palier de financement.</span>}
           </div>
+          {allDone && user && (
+            <button onClick={downloadCertificate}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
+              <Award className="w-4 h-4" /> Certificat
+            </button>
+          )}
         </div>
 
         <div className="space-y-3">
