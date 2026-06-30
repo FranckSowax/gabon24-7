@@ -359,6 +359,98 @@ function buildAdvice(b) {
 }
 
 // =====================================================================
+// Volet FORMATION du BCEG Score
+// La formation suivie devient un critère de préqualification : le score
+// final = 60 % projet + 40 % formation (modules validés + QCM + profil).
+// =====================================================================
+const TOTAL_FORMATION_MODULES = 15; // 3 niveaux × 5 modules
+const SCORE_WEIGHTS = { project: 0.6, formation: 0.4 };
+
+function colorFor(score) {
+  return score >= 70 ? 'green' : score >= 45 ? 'orange' : 'red';
+}
+
+async function computeFormationScore(userId) {
+  const empty = {
+    score: 0,
+    breakdown: { formation_modules: 0, resultats_qcm: 0, profil_complet: 0 },
+    meta: { passed: 0, total: TOTAL_FORMATION_MODULES, avgQcm: null, hasProfile: false },
+  };
+  if (!userId) return empty;
+
+  try {
+    // Progression : modules validés + scores QCM
+    const { data: rows } = await supabase
+      .from('formation_progress')
+      .select('score, passed')
+      .eq('user_id', userId)
+      .eq('passed', true);
+    const passed = (rows || []).length;
+    const scored = (rows || []).filter(r => typeof r.score === 'number');
+    const avgQcm = scored.length
+      ? Math.round(scored.reduce((s, r) => s + r.score, 0) / scored.length)
+      : null;
+
+    // Profil : candidature formation renseignée
+    const { data: cand } = await supabase
+      .from('formation_candidates')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    const hasProfile = !!cand;
+
+    const formation_modules = Math.min(55, Math.round((passed / TOTAL_FORMATION_MODULES) * 55));
+    const resultats_qcm = avgQcm != null ? Math.min(35, Math.round((avgQcm / 100) * 35)) : 0;
+    const profil_complet = hasProfile ? 10 : 0;
+    const score = Math.min(100, formation_modules + resultats_qcm + profil_complet);
+
+    return {
+      score,
+      breakdown: { formation_modules, resultats_qcm, profil_complet },
+      meta: { passed, total: TOTAL_FORMATION_MODULES, avgQcm, hasProfile },
+    };
+  } catch (e) {
+    console.warn('⚠️ computeFormationScore:', e.message);
+    return empty;
+  }
+}
+
+// Mélange projet + formation et enrichit le breakdown/conseils
+function blendScore(project, formation) {
+  const final = Math.round(SCORE_WEIGHTS.project * project.score + SCORE_WEIGHTS.formation * formation.score);
+  const advice = [...(project.advice || [])];
+  if (formation.meta.passed < TOTAL_FORMATION_MODULES) {
+    advice.unshift({
+      axis: 'Formation',
+      tip: `Validez les modules de formation BCEG (${formation.meta.passed}/${TOTAL_FORMATION_MODULES}) pour augmenter votre score.`,
+    });
+  }
+  if (!formation.meta.hasProfile) {
+    advice.push({ axis: 'Profil', tip: 'Complétez votre candidature formation pour gagner des points de préqualification.' });
+  }
+  return {
+    score: final,
+    color: colorFor(final),
+    breakdown: {
+      ...project.breakdown,
+      formation: formation.breakdown,
+      project_score: project.score,
+      formation_score: formation.score,
+      weights: SCORE_WEIGHTS,
+    },
+    advice: advice.slice(0, 4),
+  };
+}
+
+// Score complet (projet + formation) pour un utilisateur donné
+async function buildScoreWithFormation(formData, userId) {
+  const project = computeBcegScore(formData);
+  const formation = await computeFormationScore(userId);
+  return blendScore(project, formation);
+}
+
+// =====================================================================
 // POST /api/bceg/simulate
 // =====================================================================
 router.post('/simulate', validateBody(simulateSchema), async (req, res) => {
@@ -452,7 +544,9 @@ router.post('/score', validateBody(scoreSchema), async (req, res) => {
   try {
     const { project_id = null, step = 1, persist = false, ...formData } = req.body || {};
 
-    const result = computeBcegScore(formData);
+    const result = req.user?.id
+      ? await buildScoreWithFormation(formData, req.user.id)
+      : computeBcegScore(formData);
 
     if (persist && req.user?.id) {
       const { error } = await supabase.from('bceg_scores').insert({
@@ -521,7 +615,31 @@ router.get('/my-score', requireAuth, async (req, res) => {
       .maybeSingle();
 
     if (error) throw error;
-    res.json({ success: true, score: data });
+    if (!data) return res.json({ success: true, score: null });
+
+    // Recalcule la part formation en temps réel et re-mélange avec la part
+    // projet stockée → le score reflète immédiatement la progression formation.
+    const formation = await computeFormationScore(req.user.id);
+    const projectScore = (data.breakdown && typeof data.breakdown.project_score === 'number')
+      ? data.breakdown.project_score
+      : data.score; // ancien format : data.score = part projet pure
+    const final = Math.round(SCORE_WEIGHTS.project * projectScore + SCORE_WEIGHTS.formation * formation.score);
+
+    res.json({
+      success: true,
+      score: {
+        ...data,
+        score: final,
+        color: colorFor(final),
+        breakdown: {
+          ...(data.breakdown || {}),
+          formation: formation.breakdown,
+          project_score: projectScore,
+          formation_score: formation.score,
+          weights: SCORE_WEIGHTS,
+        },
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

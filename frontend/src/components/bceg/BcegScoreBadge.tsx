@@ -11,6 +11,14 @@ export interface BcegBreakdown {
   secteur_prioritaire?: number
   capacite_remboursement?: number
   garanties_completude?: number
+  // Volet formation (préqualification)
+  formation?: {
+    formation_modules?: number
+    resultats_qcm?: number
+    profil_complet?: number
+  }
+  project_score?: number
+  formation_score?: number
 }
 
 interface BcegScoreBadgeProps {
@@ -107,10 +115,25 @@ export default function BcegScoreBadge({
           </div>
           {showBreakdown && breakdown && (
             <ul className="mt-2 space-y-0.5 text-[11px] text-white/70">
+              {typeof breakdown.project_score === 'number' && typeof breakdown.formation_score === 'number' && (
+                <li className="flex items-center justify-between gap-2 pb-1 mb-1 border-b border-white/10 text-white/80">
+                  <span>Projet 60% · Formation 40%</span>
+                  <span className="tabular-nums">{breakdown.project_score} · {breakdown.formation_score}</span>
+                </li>
+              )}
+              <li className="text-white/50 uppercase tracking-wide text-[9px] pt-0.5">Projet</li>
               <BreakdownRow label="Viabilité financière" value={breakdown.viabilite_financiere} />
               <BreakdownRow label="Secteur prioritaire" value={breakdown.secteur_prioritaire} />
               <BreakdownRow label="Capacité de remb." value={breakdown.capacite_remboursement} />
               <BreakdownRow label="Complétude dossier" value={breakdown.garanties_completude} />
+              {breakdown.formation && (
+                <>
+                  <li className="text-white/50 uppercase tracking-wide text-[9px] pt-1">Formation</li>
+                  <BreakdownRow label="Modules validés" value={breakdown.formation.formation_modules} max={55} />
+                  <BreakdownRow label="Résultats QCM" value={breakdown.formation.resultats_qcm} max={35} />
+                  <BreakdownRow label="Profil complété" value={breakdown.formation.profil_complet} max={10} />
+                </>
+              )}
             </ul>
           )}
           {advice && advice.length > 0 && size === 'lg' && (
@@ -129,8 +152,7 @@ export default function BcegScoreBadge({
   )
 }
 
-function BreakdownRow({ label, value = 0 }: { label: string; value?: number }) {
-  const max = 25
+function BreakdownRow({ label, value = 0, max = 25 }: { label: string; value?: number; max?: number }) {
   return (
     <li className="flex items-center justify-between gap-2">
       <span className="truncate">{label}</span>
