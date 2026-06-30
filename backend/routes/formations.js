@@ -468,11 +468,15 @@ router.get('/courses', async (req, res) => {
     if (req.query.level) q = q.eq('level', parseInt(req.query.level, 10));
     q = q.order('order_index', { ascending: true });
     const { data, error } = await q;
-    if (error) throw error;
+    if (error) {
+      // Table absente / non migrée → repli silencieux sur le contenu statique côté front
+      console.warn('⚠️ formations/courses indisponible (migration ?):', error.message);
+      return res.json({ success: true, courses: [] });
+    }
     res.json({ success: true, courses: (data || []).map(dbToModule) });
   } catch (error) {
     console.error('❌ formations/courses GET:', error);
-    res.status(500).json({ success: false, error: 'Erreur serveur', courses: [] });
+    res.json({ success: true, courses: [] });
   }
 });
 
