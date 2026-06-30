@@ -120,6 +120,7 @@ function timeAgo(iso: string | null | undefined): string {
 export function BcegReviewDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [commission, setCommission] = useState<{ total_commission: number; pending_commission: number; count: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all')
@@ -142,14 +143,16 @@ export function BcegReviewDashboard() {
     setLoading(true)
     try {
       const headers = await authHeaders()
-      const [subRes, statRes] = await Promise.all([
+      const [subRes, statRes, comRes] = await Promise.all([
         fetch(`${API}/api/bceg/admin/submissions`, { headers }),
         fetch(`${API}/api/bceg/admin/stats`, { headers }),
+        fetch(`${API}/api/bceg/admin/commissions`, { headers }).catch(() => null),
       ])
       const subJson = await subRes.json()
       const statJson = await statRes.json()
       if (subJson?.success) setSubmissions(subJson.submissions || [])
       if (statJson?.success) setStats(statJson.stats)
+      try { const cj = comRes && await comRes.json(); if (cj?.success) setCommission(cj.summary) } catch {}
     } catch (e: any) {
       showBanner('error', e?.message || 'Erreur chargement')
     } finally {
@@ -330,12 +333,13 @@ export function BcegReviewDashboard() {
 
         {/* KPIs */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
             <KpiCard label="Total dossiers" value={stats.total} />
             <KpiCard label="En revue" value={stats.by_status.in_review} accent="amber" />
             <KpiCard label="Acceptés" value={stats.by_status.accepted} accent="emerald" />
             <KpiCard label="Taux acceptation" value={stats.acceptance_rate !== null ? `${stats.acceptance_rate} %` : '—'} accent="emerald" />
             <KpiCard label="Montants financés" value={formatXaf(stats.total_funded_xaf)} accent="green-bceg" />
+            <KpiCard label="Commissions" value={formatXaf(commission?.total_commission || 0)} accent="green-bceg" />
           </div>
         )}
 

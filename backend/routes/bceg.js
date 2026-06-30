@@ -496,6 +496,29 @@ function assessRisk({ score, montant, formationPassed = 0 }) {
   };
 }
 
+// Enregistre/maj la commission d'un dossier accepté (best-effort)
+// Taux configurable : BCEG_COMMISSION_RATE (défaut 0.03 = 3 %).
+async function recordCommissionForAccepted(submission) {
+  try {
+    if (!submission || submission.status !== 'accepted') return;
+    const rate = Number(process.env.BCEG_COMMISSION_RATE || 0.03);
+    const montant = Number(submission.montant_demande || 0);
+    if (!montant) return;
+    await supabase.from('bceg_commissions').upsert({
+      submission_id: submission.id,
+      project_id: submission.project_id || null,
+      user_id: submission.user_id || null,
+      montant_finance: montant,
+      taux: rate,
+      montant_commission: Math.round(montant * rate),
+      status: 'pending',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'submission_id' });
+  } catch (e) {
+    console.warn('⚠️ recordCommissionForAccepted:', e.message);
+  }
+}
+
 // Map user_id -> nb de modules de formation validés (en lot)
 async function formationPassedByUsers(userIds) {
   const map = {};
@@ -917,6 +940,9 @@ router.patch('/admin/submissions/:id/status', requireBcegAccess, validateBody(su
     if (error) throw error;
 
     console.log(`📋 Submission ${id} → ${status} (admin: ${req.user.id})`);
+
+    // Enregistre la commission si le dossier est accepté
+    if (status === 'accepted') await recordCommissionForAccepted(data);
 
     // Annonce la décision au porteur (in-app + WhatsApp + email), best-effort
     let notified = null;
@@ -2068,12 +2094,67 @@ router.patch('/partner/submissions/:id', requirePartnerKey, async (req, res) => 
       .from('bceg_submissions').update(update).eq('id', req.params.id).select().single();
     if (error) throw error;
 
-    // Notifie le porteur (in-app + WhatsApp + email), best-effort
+    // Commission si accepté + notification du porteur (best-effort)
+    if (status === 'accepted') await recordCommissionForAccepted(data);
     const notified = await notifyApplicantOfDecision({ submission: data, status });
     console.log(`🤝 [partner] Submission ${req.params.id} → ${status}`);
     res.json({ success: true, submission: data, notified });
   } catch (error) {
     console.error('Erreur PATCH /partner/submissions/:id:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =====================================================================
+// COMMISSIONS BCEG — suivi des commissions sur dossiers financés
+// =====================================================================
+
+// GET /api/bceg/admin/commissions — liste + résumé
+router.get('/admin/commissions', requireBcegAccess, async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('bceg_commissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const rows = data || [];
+    const sum = (key, pred = () => true) => rows.filter(pred).reduce((s, r) => s + Number(r[key] || 0), 0);
+    res.json({
+      success: true,
+      commissions: rows,
+      summary: {
+        count: rows.length,
+        rate_default: Number(process.env.BCEG_COMMISSION_RATE || 0.03),
+        total_finance: sum('montant_finance'),
+        total_commission: sum('montant_commission'),
+        pending_commission: sum('montant_commission', r => r.status === 'pending'),
+        paid_commission: sum('montant_commission', r => r.status === 'paid'),
+      },
+    });
+  } catch (error) {
+    console.error('Erreur /admin/commissions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/bceg/admin/commissions/:id — changer le statut (pending/invoiced/paid/cancelled)
+router.patch('/admin/commissions/:id', requireBcegAccess, async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    const valid = ['pending', 'invoiced', 'paid', 'cancelled'];
+    if (!valid.includes(status)) {
+      return res.status(400).json({ success: false, error: `status doit être l'un de ${valid.join(', ')}` });
+    }
+    const { data, error } = await supabase
+      .from('bceg_commissions')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, commission: data });
+  } catch (error) {
+    console.error('Erreur PATCH /admin/commissions/:id:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
