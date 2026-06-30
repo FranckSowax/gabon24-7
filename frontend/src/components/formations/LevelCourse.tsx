@@ -170,7 +170,24 @@ interface LevelCourseProps {
 
 export default function LevelCourse({ level, title, ceilingText, modules, nextHref, nextLabel }: LevelCourseProps) {
   const { user } = useAuth()
+  // Cours depuis la base (éditables) avec repli sur le contenu statique fourni en prop
+  const [courses, setCourses] = useState<FormationModule[]>(modules)
   const [openId, setOpenId] = useState<string | null>(modules[0]?.id || null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/formations/courses?level=${level}`)
+        const data = await res.json()
+        if (!cancelled && data?.success && Array.isArray(data.courses) && data.courses.length) {
+          setCourses(data.courses)
+          setOpenId(data.courses[0]?.id || null)
+        }
+      } catch { /* repli statique */ }
+    })()
+    return () => { cancelled = true }
+  }, [level])
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [xp, setXp] = useState(0)
   const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
@@ -189,7 +206,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         const res = await fetch(`${API_URL}/api/formations/progress`, { headers: await authHeaders() })
         const data = await res.json()
         if (!cancelled && data?.success && Array.isArray(data.passedModuleIds)) {
-          const mine = data.passedModuleIds.filter((id: string) => modules.some(m => m.id === id))
+          const mine = data.passedModuleIds.filter((id: string) => courses.some(m => m.id === id))
           setPassed(new Set(mine))
           setXp(data.xp || 0)
           setBadges(data.badges || [])
@@ -197,7 +214,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
       } catch { /* noop */ }
     })()
     return () => { cancelled = true }
-  }, [user?.id, authHeaders, modules])
+  }, [user?.id, authHeaders, courses])
 
   const markPassed = useCallback(async (id: string, score: number) => {
     setPassed(prev => new Set(prev).add(id))
@@ -212,8 +229,8 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     } catch { /* la progression locale reste affichée */ }
   }, [user?.id, authHeaders, level])
 
-  const allDone = passed.size >= modules.length
-  const progress = Math.round((passed.size / modules.length) * 100)
+  const allDone = passed.size >= courses.length
+  const progress = Math.round((passed.size / courses.length) * 100)
 
   const downloadCertificate = async () => {
     try {
@@ -235,10 +252,10 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
             <ArrowLeft className="w-4 h-4" /> Programme
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black">{title}</h1>
-          <p className="text-white/80 mt-1 text-sm sm:text-base">Validez les {modules.length} modules pour débloquer la demande de financement {ceilingText.toLowerCase()}.</p>
+          <p className="text-white/80 mt-1 text-sm sm:text-base">Validez les {courses.length} modules pour débloquer la demande de financement {ceilingText.toLowerCase()}.</p>
           <div className="mt-4 max-w-md">
             <div className="flex justify-between text-xs text-white/70 mb-1">
-              <span>{passed.size}/{modules.length} modules validés</span><span>{progress} %</span>
+              <span>{passed.size}/{courses.length} modules validés</span><span>{progress} %</span>
             </div>
             <div className="h-2 bg-white/20 rounded-full overflow-hidden">
               <div className="h-full bg-amber-300 rounded-full transition-all" style={{ width: `${progress}%` }} />
@@ -278,7 +295,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         </div>
 
         <div className="space-y-3">
-          {modules.map((m) => {
+          {courses.map((m) => {
             const isOpen = openId === m.id
             const isPassed = passed.has(m.id)
             return (

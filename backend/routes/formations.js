@@ -447,4 +447,111 @@ router.get('/challenge', requireAuth, async (req, res) => {
   }
 });
 
+// ---------- COURS EN BASE (éditables) ----------
+function dbToModule(c) {
+  return {
+    id: c.id,
+    level: c.level,
+    order: c.order_index,
+    title: c.title,
+    summary: c.summary || '',
+    durationMin: c.duration_min || 20,
+    content: c.content || '',
+    quiz: c.quiz || { passScore: 70, questions: [] },
+  };
+}
+
+// PUBLIC : cours publiés (option ?level=N)
+router.get('/courses', async (req, res) => {
+  try {
+    let q = supabase.from('formation_courses').select('*').eq('is_published', true);
+    if (req.query.level) q = q.eq('level', parseInt(req.query.level, 10));
+    q = q.order('order_index', { ascending: true });
+    const { data, error } = await q;
+    if (error) throw error;
+    res.json({ success: true, courses: (data || []).map(dbToModule) });
+  } catch (error) {
+    console.error('❌ formations/courses GET:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', courses: [] });
+  }
+});
+
+// ADMIN : tous les cours (publiés ou non)
+router.get('/admin/courses', requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('formation_courses').select('*').order('level').order('order_index');
+    if (error) throw error;
+    res.json({ success: true, courses: data || [] });
+  } catch (error) {
+    console.error('❌ formations/admin/courses GET:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// ADMIN : créer / mettre à jour un cours
+router.post('/admin/courses', requireAdmin, async (req, res) => {
+  try {
+    const { id, level, order_index, title, summary, duration_min, content, quiz, is_published } = req.body || {};
+    if (!id || !level || !title || !content) {
+      return res.status(400).json({ success: false, error: 'id, level, title, content requis' });
+    }
+    const row = {
+      id, level: parseInt(level, 10),
+      order_index: parseInt(order_index, 10) || 0,
+      title, summary: summary || null,
+      duration_min: parseInt(duration_min, 10) || 20,
+      content,
+      quiz: quiz || { passScore: 70, questions: [] },
+      is_published: is_published !== false,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('formation_courses').upsert(row, { onConflict: 'id' }).select().single();
+    if (error) throw error;
+    res.json({ success: true, course: data });
+  } catch (error) {
+    console.error('❌ formations/admin/courses POST:', error);
+    res.status(500).json({ success: false, error: 'Erreur enregistrement' });
+  }
+});
+
+// ADMIN : supprimer un cours
+router.delete('/admin/courses/:id', requireAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from('formation_courses').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ formations/admin/courses DELETE:', error);
+    res.status(500).json({ success: false, error: 'Erreur suppression' });
+  }
+});
+
+// ADMIN : import en masse du contenu de démarrage (depuis le front)
+router.post('/admin/courses/seed', requireAdmin, async (req, res) => {
+  try {
+    const { modules } = req.body || {};
+    if (!Array.isArray(modules) || !modules.length) {
+      return res.status(400).json({ success: false, error: 'modules[] requis' });
+    }
+    const rows = modules.map((m) => ({
+      id: m.id,
+      level: m.level,
+      order_index: m.order || 0,
+      title: m.title,
+      summary: m.summary || null,
+      duration_min: m.durationMin || 20,
+      content: m.content,
+      quiz: m.quiz || { passScore: 70, questions: [] },
+      is_published: true,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase.from('formation_courses').upsert(rows, { onConflict: 'id' });
+    if (error) throw error;
+    res.json({ success: true, imported: rows.length });
+  } catch (error) {
+    console.error('❌ formations/admin/courses/seed:', error);
+    res.status(500).json({ success: false, error: 'Erreur import' });
+  }
+});
+
 module.exports = router;
