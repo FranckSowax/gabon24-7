@@ -49,6 +49,13 @@ export default function FormationsPage() {
     <div className="min-h-screen bg-slate-50">
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#4d553e] via-[#697357] to-[#3a4030] text-white">
+        {/* Fond vidéo animé (boucle, thème BCEG) */}
+        <video
+          src="/covers/formations/hero.mp4"
+          autoPlay muted loop playsInline preload="metadata"
+          className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#4d553e]/85 via-[#697357]/80 to-[#3a4030]/90 pointer-events-none" />
         <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-amber-300/10 blur-3xl" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur text-xs sm:text-sm font-semibold mb-5">
@@ -106,6 +113,15 @@ export default function FormationsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {FORMATION_LEVELS.map((lvl) => (
             <div key={lvl.level} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              {/* Cover animée (boucle, thème BCEG) */}
+              <div className="relative aspect-[16/9] overflow-hidden bg-[#4d553e]">
+                <video
+                  src={`/covers/formations/niveau-${lvl.level}.mp4`}
+                  autoPlay muted loop playsInline preload="metadata"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
+              </div>
               <div className={`bg-gradient-to-br ${lvl.color} text-white p-5`}>
                 <div className="flex items-center justify-between">
                   <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-black text-lg">{lvl.level}</span>
