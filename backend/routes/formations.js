@@ -98,7 +98,7 @@ router.post('/candidates', async (req, res) => {
   try {
     const {
       full_name, email, phone, province, city, sector,
-      project_title, project_stage, preferred_format, motivation, user_id,
+      project_title, project_stage, preferred_format, motivation, user_id, source,
     } = req.body || {};
 
     if (!full_name || !email) {
@@ -119,6 +119,7 @@ router.post('/candidates', async (req, res) => {
         project_stage: project_stage || null,
         preferred_format: preferred_format || null,
         motivation: motivation ? String(motivation).slice(0, 4000) : null,
+        source: source ? String(source).slice(0, 120) : null,
         status: 'pending',
       })
       .select('id')

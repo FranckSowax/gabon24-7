@@ -30,10 +30,12 @@ export default function FormationsPage() {
     if (!form.full_name || !form.email) { setError('Nom et e-mail sont requis.'); return }
     setSubmitting(true); setError('')
     try {
+      const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+      const source = sp?.get('src') || sp?.get('utm_source') || 'direct'
       const res = await fetch(`${API_URL}/api/formations/candidates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, user_id: user?.id || null }),
+        body: JSON.stringify({ ...form, user_id: user?.id || null, source }),
       })
       const data = await res.json()
       if (data.success) setDone(true)
