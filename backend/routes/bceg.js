@@ -8,6 +8,7 @@
  *   GET  /api/bceg/leaderboard Top projets anonymisés (Phase 5 — placeholder ici)
  */
 
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
@@ -2075,6 +2076,83 @@ router.patch('/partner/submissions/:id', requirePartnerKey, async (req, res) => 
     console.error('Erreur PATCH /partner/submissions/:id:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// =====================================================================
+// SSO BCEG (niveau 3) — pont d'authentification par jeton signé HMAC
+// La BCEG signe un jeton { email, name?, exp } avec un secret partagé
+// (BCEG_SSO_SECRET, à défaut BCEG_PARTNER_API_KEY) au format :
+//   base64url(payload) + "." + base64url(HMAC_SHA256(payload, secret))
+// puis ouvre : GET /api/bceg/sso?token=...  → l'utilisateur arrive connecté.
+// =====================================================================
+
+function ssoSecret() {
+  return process.env.BCEG_SSO_SECRET || process.env.BCEG_PARTNER_API_KEY || null;
+}
+
+function verifySsoToken(token) {
+  const secret = ssoSecret();
+  if (!secret) return { error: 'SSO non configuré (BCEG_SSO_SECRET manquant).' };
+  const parts = String(token || '').split('.');
+  if (parts.length !== 2) return { error: 'Jeton mal formé.' };
+  const [p, sig] = parts;
+  const expected = crypto.createHmac('sha256', secret).update(p).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { error: 'Signature invalide.' };
+  let payload;
+  try { payload = JSON.parse(Buffer.from(p, 'base64url').toString('utf8')); }
+  catch { return { error: 'Payload illisible.' }; }
+  if (!payload?.email) return { error: 'email requis dans le jeton.' };
+  if (payload.exp && Date.now() / 1000 > Number(payload.exp)) return { error: 'Jeton expiré.' };
+  return { payload };
+}
+
+// GET /api/bceg/sso?token=...&redirect=... — connexion via jeton BCEG
+router.get('/sso', async (req, res) => {
+  try {
+    const { token, redirect } = req.query;
+    const { payload, error } = verifySsoToken(token);
+    if (error) return res.status(401).json({ success: false, error });
+
+    const email = String(payload.email).toLowerCase().trim();
+    const base = (process.env.FRONTEND_URL || 'https://gaboninsight.com').replace(/\/$/, '');
+    const redirectTo = (redirect && String(redirect).startsWith(base)) ? String(redirect) : `${base}/business/mes-projets`;
+
+    // Crée le compte s'il n'existe pas (ignore l'erreur "déjà inscrit")
+    await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { name: payload.name || null, source: 'bceg_sso' },
+    }).catch(() => {});
+
+    // Génère un magic link qui connecte puis redirige vers l'app
+    const { data, error: linkErr } = await supabase.auth.admin.generateLink({
+      type: 'magiclink', email, options: { redirectTo },
+    });
+    if (linkErr) throw linkErr;
+    const actionLink = data?.properties?.action_link || data?.action_link;
+    if (!actionLink) throw new Error('Lien de connexion non généré.');
+
+    return res.redirect(302, actionLink);
+  } catch (e) {
+    console.error('Erreur /bceg/sso:', e);
+    res.status(500).json({ success: false, error: 'Échec de la connexion SSO.' });
+  }
+});
+
+// GET /api/bceg/sso/test-token?email=...&name=...  (ADMIN) — pour tester l'intégration
+router.get('/sso/test-token', requireAdmin, (req, res) => {
+  const secret = ssoSecret();
+  if (!secret) return res.status(503).json({ success: false, error: 'SSO non configuré.' });
+  const email = String(req.query.email || '').toLowerCase().trim();
+  if (!email) return res.status(400).json({ success: false, error: 'email requis' });
+  const payload = { email, name: req.query.name || null, exp: Math.floor(Date.now() / 1000) + 300 };
+  const p = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(p).digest('base64url');
+  const token = `${p}.${sig}`;
+  const apiBase = `${req.protocol}://${req.get('host')}`;
+  res.json({ success: true, token, sso_url: `${apiBase}/api/bceg/sso?token=${token}`, expires_in: 300 });
 });
 
 module.exports = router;

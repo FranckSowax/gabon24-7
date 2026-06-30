@@ -9,7 +9,8 @@ l'application/back-office BCEG et Gabon Insight.
 |---|---|
 | `BCEG_PARTNER_API_KEY` | Clé API machine-to-machine pour le back-office BCEG (niveau 4). **À générer et partager de façon sécurisée.** |
 | `BCEG_PORTAL_CODE` | Code portail existant (alternative à la clé). |
-| `FRONTEND_URL` | Base des deep-links (ex. `https://gaboninsight.com`). |
+| `BCEG_SSO_SECRET` | Secret HMAC pour le SSO (niveau 3). À défaut, `BCEG_PARTNER_API_KEY` est utilisé. |
+| `FRONTEND_URL` | Base des deep-links et redirection SSO (ex. `https://gaboninsight.com`). |
 
 Authentification de l'API partenaire : header `x-bceg-api-key: <clé>`
 (ou `x-bceg-code: <code>`). Aucune session utilisateur requise.
@@ -23,10 +24,30 @@ dans le navigateur. URLs fournies par `GET /api/bceg/partner/deep-link`.
 ## Niveau 2 — Webview
 Charger les mêmes URLs dans une webview intégrée à l'app BCEG.
 
-## Niveau 3 — SSO (à cadrer avec la DSI)
-Échange de jeton entre comptes BCEG et Gabon Insight. Non implémenté côté
-plateforme : nécessite un accord sur le protocole (OIDC/OAuth2 ou jeton signé
-partagé). La base machine-to-machine (niveau 4) est déjà disponible.
+## Niveau 3 — SSO par jeton signé (disponible)
+La BCEG connecte un de ses utilisateurs sur Gabon Insight via un jeton signé
+(HMAC-SHA256, secret partagé `BCEG_SSO_SECRET`, à défaut `BCEG_PARTNER_API_KEY`).
+
+**Format du jeton** : `base64url(payload) + "." + base64url(HMAC_SHA256(payload, secret))`
+où `payload = { "email": "...", "name": "...", "exp": <unix_seconds> }`.
+
+**Flux** : la BCEG ouvre `GET /api/bceg/sso?token=<jeton>&redirect=<url_app_optionnelle>`.
+La plateforme vérifie la signature + l'expiration, crée le compte si besoin,
+puis redirige l'utilisateur **déjà connecté** vers l'app (`/business/mes-projets`
+par défaut, ou `redirect` s'il pointe vers `FRONTEND_URL`).
+
+**Test (admin)** : `GET /api/bceg/sso/test-token?email=...` renvoie un jeton +
+`sso_url` valide 5 min pour vérifier l'intégration.
+
+Exemple de génération de jeton (Node) :
+```js
+const crypto = require('crypto');
+const payload = { email, name, exp: Math.floor(Date.now()/1000) + 300 };
+const p = Buffer.from(JSON.stringify(payload)).toString('base64url');
+const sig = crypto.createHmac('sha256', SECRET).update(p).digest('base64url');
+const token = `${p}.${sig}`; // → /api/bceg/sso?token=${token}
+```
+*(OIDC/OAuth2 complet reste possible ultérieurement si la DSI le souhaite.)*
 
 ## Niveau 4 — API dossier (disponible)
 Le back-office BCEG consomme les dossiers soumis et renvoie ses décisions.
