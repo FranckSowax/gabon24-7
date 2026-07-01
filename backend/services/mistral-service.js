@@ -26,14 +26,27 @@ async function chat({ system, user, temperature = 0.6, maxTokens = 1200, json = 
   const body = { model: model(), temperature, max_tokens: maxTokens, messages };
   if (json) body.response_format = { type: 'json_object' };
 
-  const res = await fetch(MISTRAL_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  // Timeout dur (évite les requêtes qui pendent indéfiniment)
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.MISTRAL_TIMEOUT_MS || 45000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(MISTRAL_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Mistral timeout (${timeoutMs}ms)`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const txt = await res.text().catch(() => '');

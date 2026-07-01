@@ -26,6 +26,7 @@ export default function CoursAdminPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
 
   const headers = useCallback(async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -75,42 +76,68 @@ export default function CoursAdminPage() {
     } catch { alert('Erreur réseau') } finally { setBusy(null) }
   }
 
-  const generate = async (c: Course) => {
-    if (!confirm(`Régénérer le contenu de « ${c.title} » via IA (Mistral) ?\nLe contenu actuel sera remplacé.`)) return
-    setBusy(`gen-${c.id}`)
+  // ---- Enrichissement paragraphe par paragraphe (appels courts + progression) ----
+  const splitBlocks = (content: string) => (content || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+  const isEnrichable = (b: string) => {
+    const t = b.trim()
+    const headingOnly = /^#{1,3}\s/.test(t) && !t.includes('\n')
+    return !headingOnly && t.replace(/[#>*\-\s]/g, '').length > 60
+  }
+
+  const enrichParagraph = async (h: Record<string, string>, c: Course, paragraph: string): Promise<string> => {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 55000)
     try {
-      const res = await fetch(`${API_URL}/api/formations/admin/courses/generate`, {
-        method: 'POST', headers: await headers(),
-        body: JSON.stringify({
-          id: c.id, level: c.level, title: c.title, summary: c.summary,
-          sector: c.sector, quiz: c.quiz, order: c.order_index, durationMin: c.duration_min, save: true,
-        }),
+      const res = await fetch(`${API_URL}/api/formations/admin/courses/enrich-paragraph`, {
+        method: 'POST', headers: h, signal: ctrl.signal,
+        body: JSON.stringify({ paragraph, moduleTitle: c.title, level: c.level, sector: c.sector }),
       })
       const data = await res.json()
-      if (data.success) { patch(c.id, { content: data.content }); alert(`✅ Contenu régénéré (${data.model || 'IA'}).`) }
-      else alert(data.error || 'Échec génération')
-    } catch { alert('Erreur réseau') } finally { setBusy(null) }
+      return data?.success && data.text ? data.text : paragraph
+    } catch { return paragraph } finally { clearTimeout(t) }
+  }
+
+  const enrichModule = async (c: Course, h: Record<string, string>, prefix = '') => {
+    const blocks = splitBlocks(c.content)
+    const out: string[] = []
+    for (let i = 0; i < blocks.length; i++) {
+      setProgress(`${prefix}Paragraphe ${i + 1}/${blocks.length} — « ${c.title} »`)
+      const enriched = isEnrichable(blocks[i]) ? await enrichParagraph(h, c, blocks[i]) : blocks[i]
+      out.push(enriched)
+      patch(c.id, { content: [...out, ...blocks.slice(i + 1)].join('\n\n') }) // aperçu live
+    }
+    const finalContent = out.join('\n\n')
+    await fetch(`${API_URL}/api/formations/admin/courses`, {
+      method: 'POST', headers: h,
+      body: JSON.stringify({
+        id: c.id, level: c.level, order_index: c.order_index, title: c.title,
+        summary: c.summary, duration_min: c.duration_min, content: finalContent,
+        sector: c.sector, quiz: c.quiz, is_published: c.is_published,
+      }),
+    })
+    patch(c.id, { content: finalContent })
+  }
+
+  const generate = async (c: Course) => {
+    if (!confirm(`Enrichir « ${c.title} » paragraphe par paragraphe via IA ?`)) return
+    setBusy(`gen-${c.id}`)
+    try { await enrichModule(c, await headers()); alert('✅ Module enrichi.') }
+    catch { alert('Erreur enrichissement') } finally { setBusy(null); setProgress(null) }
   }
 
   const generateAll = async () => {
     if (!courses.length) { alert('Aucun cours en base. Cliquez d\'abord sur « Importer le contenu de démarrage ».'); return }
-    if (!confirm(`Régénérer le contenu des ${courses.length} cours via IA ?\nCela peut prendre 1-2 min. Les contenus actuels seront remplacés.`)) return
+    if (!confirm(`Enrichir les ${courses.length} cours paragraphe par paragraphe via IA ?\nCela peut prendre plusieurs minutes — laissez cet onglet ouvert.`)) return
     setBusy('gen-all')
-    let ok = 0
     try {
       const h = await headers()
-      for (const c of courses) {
-        try {
-          const res = await fetch(`${API_URL}/api/formations/admin/courses/generate`, {
-            method: 'POST', headers: h,
-            body: JSON.stringify({ id: c.id, level: c.level, title: c.title, summary: c.summary, sector: c.sector, quiz: c.quiz, order: c.order_index, durationMin: c.duration_min, save: true }),
-          })
-          const data = await res.json()
-          if (data.success) { patch(c.id, { content: data.content }); ok++ }
-        } catch { /* continue */ }
+      const list = [...courses]
+      for (let k = 0; k < list.length; k++) {
+        await enrichModule(list[k], h, `Module ${k + 1}/${list.length} · `)
       }
-      alert(`✅ ${ok}/${courses.length} cours enrichis via IA.`)
-    } finally { setBusy(null) }
+      alert('✅ Tous les cours ont été enrichis.')
+    } catch { alert('Enrichissement interrompu — relancez pour terminer.') }
+    finally { setBusy(null); setProgress(null) }
   }
 
   const del = async (id: string) => {
@@ -141,6 +168,12 @@ export default function CoursAdminPage() {
           </button>
         </div>
       </header>
+
+      {progress && (
+        <div className="flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" /> Enrichissement en cours — {progress}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Chargement…</div>

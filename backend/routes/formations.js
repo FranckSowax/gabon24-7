@@ -664,4 +664,35 @@ Exigences STRICTES :
   }
 });
 
+// ADMIN : enrichit UN paragraphe (auto-formation, appels courts et progressifs)
+router.post('/admin/courses/enrich-paragraph', requireAdmin, async (req, res) => {
+  try {
+    if (!mistral.isConfigured()) {
+      return res.status(503).json({ success: false, error: 'MISTRAL_API_KEY non configurée' });
+    }
+    const { paragraph, moduleTitle, level, sector } = req.body || {};
+    if (!paragraph || !String(paragraph).trim()) {
+      return res.status(400).json({ success: false, error: 'paragraph requis' });
+    }
+    const system = `Tu es un concepteur pédagogique expert en entrepreneuriat au Gabon (FCFA, OHADA, financement BCEG).
+Tu réécris des paragraphes de cours pour des entrepreneurs qui s'auto-forment.`;
+    const user = `Contexte : module "${moduleTitle || ''}"${level ? ` (niveau ${level})` : ''}${sector ? `, secteur ${sector}` : ''}.
+Réécris le paragraphe ci-dessous en PLUS RICHE et pédagogique :
+- garde le même sujet (et le sous-titre "### " s'il existe) ;
+- densifie en 2-3 phrases concrètes (pas de remplissage) ;
+- ajoute une puce "💡 **Tip :** …" (actionnable) et une puce "➡️ **Essentiel :** …" (argument clé) ;
+- exemple gabonais avec chiffres FCFA si pertinent.
+Réponds UNIQUEMENT avec le markdown réécrit, sans phrase d'introduction.
+
+Paragraphe :
+"""${String(paragraph).slice(0, 1500)}"""`;
+
+    const text = await aiComplete({ system, user, temperature: 0.5, maxTokens: 550 });
+    res.json({ success: true, text: text && text.length > 20 ? text : paragraph });
+  } catch (error) {
+    console.error('❌ formations/admin/courses/enrich-paragraph:', error);
+    res.status(500).json({ success: false, error: 'Erreur enrichissement' });
+  }
+});
+
 module.exports = router;
