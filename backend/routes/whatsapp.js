@@ -2,8 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { z } = require('zod');
 const whapiService = require('../services/whapiService');
+const whatsappBot = require('../services/whatsapp-bot');
 const { requireAdmin } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
+
+// Webhook entrant WHAPI — bot d'auto-formation (public).
+// Configurer dans Whapi.cloud : URL = {API}/api/whatsapp/webhook
+// Option : protéger avec ?token=... si WHAPI_WEBHOOK_TOKEN est défini.
+router.get('/webhook', (req, res) => res.json({ ok: true })); // vérification
+router.post('/webhook', (req, res) => {
+  const expected = process.env.WHAPI_WEBHOOK_TOKEN;
+  if (expected && req.query.token !== expected) return res.status(401).json({ ok: false });
+  res.status(200).json({ ok: true }); // ACK immédiat pour WHAPI
+  // Traitement asynchrone (les réponses IA peuvent prendre quelques secondes)
+  Promise.resolve().then(() => whatsappBot.handleIncoming(req.body || {})).catch(e =>
+    console.error('❌ webhook whatsapp:', e.message));
+});
 
 // Schéma de validation pour le trigger
 const triggerSchema = z.object({
