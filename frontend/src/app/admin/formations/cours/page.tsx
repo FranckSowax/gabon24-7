@@ -93,7 +93,7 @@ export default function CoursAdminPage() {
   }
 
   const generateAll = async () => {
-    if (!courses.length) return
+    if (!courses.length) { alert('Aucun cours en base. Cliquez d\'abord sur « Importer le contenu de démarrage ».'); return }
     if (!confirm(`Régénérer le contenu des ${courses.length} cours via IA ?\nCela peut prendre 1-2 min. Les contenus actuels seront remplacés.`)) return
     setBusy('gen-all')
     let ok = 0
@@ -135,7 +135,7 @@ export default function CoursAdminPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50">
             {busy === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Importer le contenu de démarrage
           </button>
-          <button onClick={generateAll} disabled={!!busy || courses.length === 0}
+          <button onClick={generateAll} disabled={!!busy}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:opacity-50">
             {busy === 'gen-all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Tout enrichir via IA
           </button>
