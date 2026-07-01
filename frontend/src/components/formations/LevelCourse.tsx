@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2, Award, Lightbulb, Layers,
+  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -219,6 +219,49 @@ function CourseContent({ content, moduleTitle, level }: { content: string; modul
   )
 }
 
+/* ---------- Écoute audio du module (synthèse vocale du navigateur, hors-ligne) ---------- */
+function ListenButton({ text, title }: { text: string; title: string }) {
+  const [state, setState] = useState<'idle' | 'playing' | 'paused'>('idle')
+  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+  useEffect(() => () => { try { window.speechSynthesis?.cancel() } catch { /* noop */ } }, [])
+
+  if (!supported) return null
+
+  const clean = (t: string) => `${title}. ${t}`.replace(/[#>*_`]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ').slice(0, 4800)
+
+  const play = () => {
+    const synth = window.speechSynthesis
+    if (state === 'paused') { synth.resume(); setState('playing'); return }
+    synth.cancel()
+    const u = new SpeechSynthesisUtterance(clean(text))
+    u.lang = 'fr-FR'; u.rate = 1
+    u.onend = () => setState('idle'); u.onerror = () => setState('idle')
+    synth.speak(u); setState('playing')
+  }
+  const pause = () => { window.speechSynthesis.pause(); setState('paused') }
+  const stop = () => { window.speechSynthesis.cancel(); setState('idle') }
+
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      {state === 'playing' ? (
+        <button onClick={pause} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#697357] text-white text-sm font-semibold">
+          <Pause className="w-4 h-4" /> Pause
+        </button>
+      ) : (
+        <button onClick={play} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#697357]/10 text-[#4d553e] border border-[#697357]/25 hover:bg-[#697357]/20 text-sm font-semibold">
+          <Volume2 className="w-4 h-4" /> {state === 'paused' ? 'Reprendre' : 'Écouter'}
+        </button>
+      )}
+      {state !== 'idle' && (
+        <button onClick={stop} className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200" title="Arrêter">
+          <Square className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
 /* ---------- Page de niveau réutilisable ---------- */
 interface LevelCourseProps {
   level: number
@@ -254,8 +297,36 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
   const [showQuiz, setShowQuiz] = useState(false)
 
-  // Le QCM ne s'affiche qu'après lecture : on le masque à chaque changement de module
-  useEffect(() => { setShowQuiz(false) }, [openId])
+  // Le QCM ne s'affiche qu'après lecture ; on masque le QCM et on coupe l'audio
+  // à chaque changement de module. On mémorise aussi le dernier module ouvert.
+  useEffect(() => {
+    setShowQuiz(false)
+    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
+    try { if (openId) localStorage.setItem(`fmt-last-${level}`, openId) } catch { /* noop */ }
+  }, [openId, level])
+
+  // Reprise : restaure le dernier module ouvert (hors-ligne friendly)
+  const restored = useRef(false)
+  useEffect(() => {
+    if (restored.current || !courses.length) return
+    try {
+      const saved = localStorage.getItem(`fmt-last-${level}`)
+      if (saved && courses.some(c => c.id === saved)) setOpenId(saved)
+    } catch { /* noop */ }
+    restored.current = true
+  }, [courses, level])
+
+  // Téléchargement du niveau pour lecture hors-ligne (fichier HTML autonome)
+  const downloadOffline = () => {
+    const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const sections = courses.map(m => `<h2>${esc(m.title)}</h2><pre>${esc(m.content)}</pre>`).join('<hr/>')
+    const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>body{font-family:system-ui,-apple-system,sans-serif;max-width:820px;margin:2rem auto;padding:0 1rem;line-height:1.6;color:#1f2937}h1{color:#4d553e}h2{color:#697357;margin-top:2rem}pre{white-space:pre-wrap;font-family:inherit}hr{border:none;border-top:1px solid #e5e7eb;margin:2.5rem 0}</style></head><body><h1>${esc(title)}</h1><p>Formations Entrepreneur BCEG — lecture hors-ligne.</p>${sections}</body></html>`
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `formation-niveau-${level}.html`; a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -324,6 +395,10 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
             <h1 className="text-lg sm:text-xl font-black truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={downloadOffline} title="Télécharger ce niveau pour le lire sans connexion"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold">
+              <DownloadCloud className="w-4 h-4" /> <span className="hidden sm:inline">Hors-ligne</span>
+            </button>
             {user && (
               <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
                 <Trophy className="w-4 h-4" /> {xp} XP
@@ -385,7 +460,10 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                 <BookOpen className="w-3.5 h-3.5" /> Module {activeIdx + 1}/{courses.length} · {active.durationMin} min
                 {passed.has(active.id) && <span className="text-green-600 font-semibold">· ✓ validé</span>}
               </div>
-              <h2 className="text-2xl font-black text-slate-900 mb-4">{active.title}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h2 className="text-2xl font-black text-slate-900">{active.title}</h2>
+                <ListenButton text={active.content} title={active.title} />
+              </div>
               <CourseContent content={active.content} moduleTitle={active.title} level={level} />
 
               <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
