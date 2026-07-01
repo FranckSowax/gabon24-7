@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import {
   ArrowRight, GraduationCap, Sparkles, Building2, TrendingUp, FileCheck,
-  HandCoins, CheckCircle2, Megaphone,
+  Coins, CheckCircle2, Megaphone,
 } from 'lucide-react'
 
 const CYCLE = [
-  { n: 1, icon: HandCoins, title: 'La BCEG finance les formations', desc: "La banque finance l'accès aux formations pour ses clients, prospects et publics prioritaires." },
+  { n: 1, icon: Coins, title: 'La BCEG finance les formations', desc: "La banque finance l'accès aux formations pour ses clients, prospects et publics prioritaires." },
   { n: 2, icon: GraduationCap, title: 'Les entrepreneurs se forment', desc: 'Formations à distance ou en présentiel : gestion, finance, business plan, IA, secteur d\'activité.' },
   { n: 3, icon: Sparkles, title: 'Gabon Insight structure le projet', desc: 'Business plan, plan d\'action, documents et analyse générés avec l\'IA.' },
   { n: 4, icon: FileCheck, title: 'Un dossier mûr est soumis', desc: 'Dossier complet, scoré et préqualifié transmis à la BCEG.' },
