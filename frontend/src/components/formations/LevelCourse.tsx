@@ -27,33 +27,160 @@ function renderInline(text: string) {
     </>
   )
 }
+/* Encadrés pédagogiques : Astuce / À retenir / Exemple / Attention */
+type CalloutType = 'tip' | 'key' | 'example' | 'warn' | 'note'
+const CALLOUT_META: Record<CalloutType, { emoji: string; label: string; box: string; txt: string }> = {
+  tip: { emoji: '💡', label: 'Astuce', box: 'bg-amber-50 border-amber-200 border-l-amber-400', txt: 'text-amber-700' },
+  key: { emoji: '⭐', label: 'À retenir', box: 'bg-[#697357]/5 border-[#697357]/20 border-l-[#697357]', txt: 'text-[#4d553e]' },
+  example: { emoji: '📌', label: 'Exemple', box: 'bg-sky-50 border-sky-200 border-l-sky-400', txt: 'text-sky-700' },
+  warn: { emoji: '⚠️', label: 'Attention', box: 'bg-red-50 border-red-200 border-l-red-400', txt: 'text-red-600' },
+  note: { emoji: '💬', label: 'Bon à savoir', box: 'bg-slate-50 border-slate-200 border-l-slate-400', txt: 'text-slate-600' },
+}
+
+function Callout({ type, text }: { type: CalloutType; text: string }) {
+  const meta = CALLOUT_META[type]
+  return (
+    <div className={`my-3 rounded-xl border border-l-4 p-3.5 ${meta.box}`}>
+      <span className={`block text-[11px] font-black uppercase tracking-wide mb-1 ${meta.txt}`}>
+        {meta.emoji} {meta.label}
+      </span>
+      <div className="text-slate-700 leading-relaxed">{renderInline(text)}</div>
+    </div>
+  )
+}
+
+// Détecte « Tip/Astuce/Essentiel/Exemple/Attention… : » (avec ou sans emoji/gras devant)
+const CALLOUT_RE = /^\**\s*(tip|astuce|conseil|essentiel|important|retenez|[àa] retenir|exemple(?:\s+(?:concret|gabonais|chiffr[ée]))?|attention|erreurs?(?:\s+(?:fr[ée]quentes?|courantes?))?(?:\s+[àa]\s+[ée]viter)?|pi[èe]ges?(?:\s+[àa]\s+[ée]viter)?|[àa] [ée]viter)\s*\**\s*:\s*/i
+function splitCallout(text: string): { type: CalloutType; body: string } | null {
+  // retire tirets, chevrons, emojis et symboles de tête pour tester le mot-clé
+  const stripped = text.replace(/^[-\s>]+/, '')
+  let i = 0
+  while (i < stripped.length) {
+    const c = stripped.codePointAt(i) || 0
+    if ((c >= 65 && c <= 122) || c === 42 || (c >= 0xc0 && c <= 0xff)) break // lettre ou *
+    i += c > 0xffff ? 2 : 1
+  }
+  const candidate = stripped.slice(i)
+  const m = candidate.match(CALLOUT_RE)
+  if (!m) return null
+  const k = m[1].toLowerCase()
+  const type: CalloutType =
+    /tip|astuce|conseil/.test(k) ? 'tip'
+      : /exemple/.test(k) ? 'example'
+        : /attention|erreur|pi[èe]ge|[ée]viter/.test(k) ? 'warn'
+          : 'key'
+  const body = candidate.slice(m[0].length).replace(/^\*+\s*/, '')
+  return { type, body }
+}
+
+// Emoji de titre selon le sujet (si le titre n'en a pas déjà un)
+const HEADING_EMOJIS: [RegExp, string][] = [
+  [/prix|tarif|marge|co[ûu]t|argent|fcfa|financ|budget|tr[ée]so|cr[ée]dit/i, '💰'],
+  [/client|march[ée]|vente|vendre|commercial|concurren/i, '🎯'],
+  [/erreur|[ée]viter|pi[èe]ge|risque/i, '⚠️'],
+  [/exemple|cas pratique/i, '📌'],
+  [/[ée]tape|plan|action|comment|m[ée]thode|outil|pratique/i, '🛠️'],
+  [/r[ée]sum[ée]|retenir|essentiel|conclusion|synth/i, '⭐'],
+  [/d[ée]finition|qu'est|c'est quoi|comprendre|introduction|pourquoi|base/i, '📖'],
+  [/compta|gestion|stock|organis|s[ée]parer/i, '📒'],
+  [/id[ée]e|innovation|opportunit/i, '💡'],
+  [/[ée]quipe|personnel|recrut|associ/i, '👥'],
+]
+function headingEmoji(title: string): string {
+  if ((title.codePointAt(0) || 0) > 0x2100) return '' // commence déjà par un emoji/symbole
+  for (const [re, e] of HEADING_EMOJIS) if (re.test(title)) return e
+  return '🔹'
+}
+
 function Markdown({ md }: { md: string }) {
   const lines = md.split('\n')
   const blocks: React.ReactNode[] = []
-  let list: string[] = []
-  const flush = () => {
-    if (list.length) {
-      blocks.push(
-        <ul key={`ul-${blocks.length}`} className="list-disc pl-5 space-y-1 my-2 text-slate-700">
-          {list.map((li, i) => <li key={i}>{renderInline(li)}</li>)}
-        </ul>
-      )
-      list = []
-    }
+  let ul: string[] = []
+  let ol: string[] = []
+  let quote: string[] = []
+
+  const flushUl = () => {
+    if (!ul.length) return
+    blocks.push(
+      <ul key={`ul-${blocks.length}`} className="my-3 space-y-2">
+        {ul.map((li, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-slate-700 leading-relaxed">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#697357] mt-2.5 shrink-0" />
+            <span className="min-w-0">{renderInline(li)}</span>
+          </li>
+        ))}
+      </ul>
+    )
+    ul = []
   }
+  const flushOl = () => {
+    if (!ol.length) return
+    blocks.push(
+      <ol key={`ol-${blocks.length}`} className="my-3 space-y-2.5">
+        {ol.map((li, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-slate-700 leading-relaxed">
+            <span className="w-6 h-6 rounded-full bg-[#697357]/10 text-[#4d553e] text-xs font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+            <span className="min-w-0">{renderInline(li)}</span>
+          </li>
+        ))}
+      </ol>
+    )
+    ol = []
+  }
+  const flushQuote = () => {
+    if (!quote.length) return
+    const text = quote.join(' ')
+    const co = splitCallout(text)
+    blocks.push(<Callout key={`q-${blocks.length}`} type={co?.type || 'note'} text={co?.body ?? text} />)
+    quote = []
+  }
+  const flushAll = () => { flushUl(); flushOl(); flushQuote() }
+
   lines.forEach((raw, idx) => {
     const l = raw.trimEnd()
-    if (!l.trim()) { flush(); return }
-    if (l.startsWith('- ')) { list.push(l.slice(2)); return }
-    flush()
-    if (l.startsWith('# ')) blocks.push(<h1 key={idx} className="text-2xl font-black text-slate-900 mt-2 mb-3">{l.slice(2)}</h1>)
-    else if (l.startsWith('## ')) blocks.push(<h2 key={idx} className="text-lg font-bold text-[#4d553e] mt-5 mb-2">{l.slice(3)}</h2>)
-    else if (l.startsWith('### ')) blocks.push(<h3 key={idx} className="font-bold text-slate-900 mt-4 mb-1">{l.slice(4)}</h3>)
-    else if (l.startsWith('> ')) blocks.push(<blockquote key={idx} className="border-l-4 border-[#697357] bg-[#697357]/5 rounded-r-lg px-4 py-2 my-3 text-slate-700">{renderInline(l.slice(2))}</blockquote>)
-    else blocks.push(<p key={idx} className="text-slate-700 leading-relaxed my-2">{renderInline(l)}</p>)
+    if (!l.trim()) { flushAll(); return }
+
+    if (/^>\s?/.test(l)) { flushUl(); flushOl(); quote.push(l.replace(/^>\s?/, '')); return }
+
+    if (l.startsWith('- ') || l.startsWith('• ')) {
+      flushOl(); flushQuote()
+      const item = l.slice(2)
+      const co = splitCallout(item)
+      if (co) { flushUl(); blocks.push(<Callout key={`c-${idx}`} type={co.type} text={co.body} />) }
+      else ul.push(item)
+      return
+    }
+
+    const om = l.match(/^\d+[.)]\s+(.*)/)
+    if (om) { flushUl(); flushQuote(); ol.push(om[1]); return }
+
+    flushAll()
+
+    if (l.startsWith('### ')) {
+      const t = l.slice(4)
+      blocks.push(
+        <h3 key={idx} className="flex items-center gap-2 font-bold text-slate-900 mt-5 mb-2 text-[16px]">
+          <span aria-hidden>{headingEmoji(t) || null}</span>{t}
+        </h3>
+      )
+    } else if (l.startsWith('## ')) {
+      const t = l.slice(3)
+      blocks.push(
+        <h2 key={idx} className="flex items-center gap-2.5 text-lg font-black text-[#3a4030] mt-6 mb-3">
+          <span aria-hidden className="w-9 h-9 rounded-xl bg-[#697357]/10 flex items-center justify-center text-lg shrink-0">{headingEmoji(t) || '📘'}</span>
+          <span className="min-w-0">{t}</span>
+        </h2>
+      )
+    } else if (l.startsWith('# ')) {
+      blocks.push(<h1 key={idx} className="text-2xl font-black text-slate-900 mt-2 mb-3">{l.slice(2)}</h1>)
+    } else {
+      const co = splitCallout(l)
+      if (co) blocks.push(<Callout key={`p-${idx}`} type={co.type} text={co.body} />)
+      else blocks.push(<p key={idx} className="text-slate-700 leading-relaxed my-2.5">{renderInline(l)}</p>)
+    }
   })
-  flush()
-  return <div>{blocks}</div>
+  flushAll()
+  return <div className="text-[15px]">{blocks}</div>
 }
 
 /* ---------- QCM (corrigé côté serveur ; repli local pour le contenu statique) ---------- */
@@ -409,7 +536,7 @@ function LessonList({ courses, activeId, passed, onSelect }: {
 }
 
 /* ---------- Auto-formation : un bloc de contenu + 2 boutons IA ---------- */
-function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle: string; level: number }) {
+function ContentBlock({ text, moduleTitle, level, withAi }: { text: string; moduleTitle: string; level: number; withAi: boolean }) {
   const [loading, setLoading] = useState<'deepen' | 'simplify' | null>(null)
   const [resp, setResp] = useState<{ action: 'deepen' | 'simplify'; text: string } | null>(null)
 
@@ -430,7 +557,8 @@ function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle:
 
   const trimmed = text.trim()
   const headingOnly = /^#{1,3}\s/.test(trimmed) && !trimmed.includes('\n')
-  const actionable = !headingOnly && trimmed.replace(/[#>*\-\s]/g, '').length > 60
+  // Boutons IA uniquement sous les vrais paragraphes (jamais sous les encadrés ni l'introduction)
+  const actionable = withAi && !headingOnly && trimmed.replace(/[#>*\-\s]/g, '').length > 60
 
   return (
     <div className="group/blk">
@@ -460,11 +588,37 @@ function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle:
 }
 
 /* ---------- Contenu d'un cours découpé en blocs (boutons IA par paragraphe) ---------- */
+// Un segment mérite les boutons IA seulement s'il contient du vrai texte de cours :
+// pas d'encadré (Astuce/À retenir/Exemple/Attention), pas de citation, pas que des titres/listes.
+function segmentHasPlainParagraph(seg: string): boolean {
+  const lines = seg.split('\n').map(x => x.trim()).filter(Boolean)
+  let hasPlain = false
+  for (const l of lines) {
+    if (/^#{1,3}\s/.test(l)) continue
+    if (/^>/.test(l)) return false // citation → rendue en encadré
+    if (l.startsWith('- ') || l.startsWith('• ')) {
+      if (splitCallout(l.slice(2))) return false // tip/essentiel en liste → encadré
+      continue
+    }
+    if (/^\d+[.)]\s/.test(l)) continue
+    if (splitCallout(l)) return false // encadré en paragraphe
+    hasPlain = true
+  }
+  return hasPlain
+}
+
 function CourseContent({ content, moduleTitle, level }: { content: string; moduleTitle: string; level: number }) {
   const segments = (content || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+  let paragraphsSeen = 0
   return (
     <article className="max-w-none">
-      {segments.map((seg, i) => <ContentBlock key={i} text={seg} moduleTitle={moduleTitle} level={level} />)}
+      {segments.map((seg, i) => {
+        const qualifies = segmentHasPlainParagraph(seg)
+        if (qualifies) paragraphsSeen += 1
+        // le 1er paragraphe = introduction de la leçon → pas de boutons
+        const withAi = qualifies && paragraphsSeen > 1
+        return <ContentBlock key={i} text={seg} moduleTitle={moduleTitle} level={level} withAi={withAi} />
+      })}
     </article>
   )
 }

@@ -928,7 +928,7 @@ Titre : "${title}" — niveau ${level}${sector ? ` — secteur ${sector}` : ''}.
 ${summary ? `Résumé : ${summary}\n` : ''}
 Exigences STRICTES :
 - 5 à 7 sections, chacune avec un sous-titre "### ".
-- Dans chaque section : 2 à 3 paragraphes DENSES (pas de phrases creuses) + une puce "💡 **Tip :** …" (conseil actionnable) + une puce "➡️ **Essentiel :** …" (l'argument clé à retenir).
+- Dans chaque section : 2 à 3 paragraphes COURTS et denses (2-3 phrases chacun, lecture sur téléphone) + une puce "💡 **Astuce :** …" (conseil actionnable) + une puce "⭐ **À retenir :** …" (l'argument clé) ; si utile, "📌 **Exemple :** …" (cas gabonais chiffré) ou "⚠️ **Attention :** …" (erreur fréquente).
 - Contenu indispensable et arguments essentiels du sujet, avec exemples concrets gabonais (chiffres en FCFA si utile).
 - Markdown uniquement : ## (titre module), ### (sous-titres), - (listes), **gras**. PAS de QCM, PAS de conclusion générique.
 - Longueur riche mais lisible (~700 à 1000 mots).`;
@@ -979,9 +979,9 @@ Tu réécris des paragraphes de cours pour des entrepreneurs qui s'auto-forment.
     const user = `Contexte : module "${moduleTitle || ''}"${level ? ` (niveau ${level})` : ''}${sector ? `, secteur ${sector}` : ''}.
 Réécris le paragraphe ci-dessous en PLUS RICHE et pédagogique :
 - garde le même sujet (et le sous-titre "### " s'il existe) ;
-- densifie en 2-3 phrases concrètes (pas de remplissage) ;
-- ajoute une puce "💡 **Tip :** …" (actionnable) et une puce "➡️ **Essentiel :** …" (argument clé) ;
-- exemple gabonais avec chiffres FCFA si pertinent.
+- des PHRASES COURTES et des paragraphes de 2-3 phrases max (lecture sur téléphone) ;
+- ajoute une puce "💡 **Astuce :** …" (conseil actionnable) et une puce "⭐ **À retenir :** …" (l'argument clé) ;
+- si pertinent : une puce "📌 **Exemple :** …" (cas gabonais chiffré en FCFA) ou "⚠️ **Attention :** …" (erreur fréquente) ;
 Réponds UNIQUEMENT avec le markdown réécrit, sans phrase d'introduction.
 
 Paragraphe :
