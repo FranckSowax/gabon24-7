@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  GraduationCap, Trophy, Target, Rocket, CheckCircle2, MapPin, Wifi,
-  Calendar, Sparkles, Award, BookOpen, ListChecks, Users, ArrowRight, Loader2, Medal,
+  GraduationCap, Trophy, Rocket, CheckCircle2, MapPin,
+  Sparkles, Award, BookOpen, ListChecks, Users, ArrowRight, Loader2, Medal,
 } from 'lucide-react'
 import {
   FORMATION_LEVELS, GABON_PROVINCES, FORMATION_SECTORS, PROJECT_STAGES, FORMATION_FORMATS,
@@ -68,30 +68,33 @@ export default function FormationsPage() {
             Devenez un entrepreneur finançable en <span className="text-amber-300">3 mois</span>
           </h1>
           <p className="mt-4 text-base sm:text-xl text-white/85 max-w-2xl">
-            Une formation gratuite et sélective, partout au Gabon : apprenez à lancer et gérer
+            Une formation <b>100 % gratuite, ouverte à tous</b>, partout au Gabon : apprenez à lancer et gérer
             votre business, validez vos niveaux, et débloquez l'accès au financement BCEG.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <button onClick={scrollToForm}
+            <Link href="/formations/niveau-1"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-amber-300 text-[#3a4030] font-bold hover:bg-amber-200 transition-colors shadow-lg">
-              Candidater maintenant <ArrowRight className="w-5 h-5" />
-            </button>
-            <a href="#programme"
+              Commencer gratuitement <ArrowRight className="w-5 h-5" />
+            </Link>
+            <button onClick={scrollToForm}
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
-              Découvrir le programme
-            </a>
+              <Users className="w-5 h-5 text-amber-200" /> Cohorte accompagnée
+            </button>
             <Link href="/formations/classement"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
               <Trophy className="w-5 h-5 text-amber-200" /> Classement
             </Link>
           </div>
+          <p className="mt-3 text-sm text-white/70">
+            Sans inscription préalable — commencez le niveau 1 maintenant, créez votre compte quand vous validez votre premier module.
+          </p>
           {/* Key facts */}
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
             {[
-              { icon: Calendar, label: '3 mois', sub: 'de parcours' },
-              { icon: Wifi, label: 'Distanciel', sub: 'ou présentiel' },
+              { icon: Award, label: '100 % gratuit', sub: 'aucun frais' },
+              { icon: Medal, label: 'Certificats', sub: 'à chaque niveau' },
               { icon: MapPin, label: '9 provinces', sub: 'tout le Gabon' },
-              { icon: Trophy, label: 'Gamifié', sub: 'défis & badges' },
+              { icon: Trophy, label: 'Financement', sub: 'paliers BCEG' },
             ].map((f, i) => (
               <div key={i} className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/15">
                 <f.icon className="w-5 h-5 text-amber-200 mb-1" />
@@ -188,9 +191,9 @@ export default function FormationsPage() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {[
-            { n: '01', icon: Target, t: 'Candidatez', d: 'Remplissez le formulaire. Un panel de candidats est sélectionné dans tout le pays.' },
-            { n: '02', icon: BookOpen, t: 'Formez-vous', d: '3 mois de cours en distanciel ou présentiel, à votre rythme, avec l\'IA.' },
-            { n: '03', icon: Rocket, t: 'Financez', d: 'Validez vos niveaux et débloquez vos demandes de financement BCEG.' },
+            { n: '01', icon: BookOpen, t: 'Formez-vous gratuitement', d: 'Commencez le niveau 1 immédiatement, à votre rythme, avec l\'assistant IA. Aucune sélection pour apprendre.' },
+            { n: '02', icon: ListChecks, t: 'Validez vos niveaux', d: 'Réussissez les QCM de chaque module, gagnez des XP et obtenez un certificat à chaque niveau.' },
+            { n: '03', icon: Rocket, t: 'Financez votre projet', d: 'Chaque niveau validé débloque un palier de demande de financement BCEG, jusqu\'à 5M FCFA et plus.' },
           ].map((s, i) => (
             <div key={i} className="relative bg-white rounded-2xl border border-slate-200 p-6">
               <span className="absolute top-4 right-5 text-4xl font-black text-[#697357]/10">{s.n}</span>
@@ -208,9 +211,19 @@ export default function FormationsPage() {
       <section id="candidater" className="bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="text-center mb-8">
-            <Award className="w-10 h-10 text-amber-300 mx-auto mb-3" />
-            <h2 className="text-2xl sm:text-4xl font-black">Candidater au programme</h2>
-            <p className="mt-2 text-white/80">Sélection sur dossier. C'est gratuit — il suffit d'avoir un projet et la motivation.</p>
+            <Users className="w-10 h-10 text-amber-300 mx-auto mb-3" />
+            <h2 className="text-2xl sm:text-4xl font-black">Rejoindre la prochaine cohorte accompagnée</h2>
+            <p className="mt-2 text-white/80">
+              La formation en ligne est <b>ouverte à tous, sans candidature</b>. La cohorte, elle, offre en plus un
+              accompagnement renforcé sur 3 mois (présentiel ou distanciel, mentorat, suivi de dossier) — sélection sur dossier, gratuite.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
+              {['Un projet ou une idée concrète', 'De la motivation', 'Disponibilité sur 3 mois'].map((c, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 px-3 py-1.5 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-300" /> {c}
+                </span>
+              ))}
+            </div>
           </div>
 
           {done ? (

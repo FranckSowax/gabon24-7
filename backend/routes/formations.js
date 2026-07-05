@@ -3,9 +3,10 @@
  * Candidature publique + gestion/sélection admin.
  */
 const express = require('express');
+const crypto = require('crypto');
 const OpenAI = require('openai');
 const supabaseService = require('../supabase-config');
-const { requireAdmin, requireAuth } = require('../middleware/auth');
+const { requireAdmin, requireAuth, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const { supabase } = supabaseService;
@@ -223,51 +224,144 @@ router.get('/progress', requireAuth, async (req, res) => {
   }
 });
 
+// Enregistre un ou plusieurs modules validés puis retourne la progression (+ notification de niveau)
+async function recordPassedModules(userId, entries) {
+  const before = await buildProgress(userId);
+
+  const rows = entries.map((e) => ({
+    user_id: userId,
+    module_id: e.module_id,
+    level: parseInt(e.level, 10),
+    passed: true,
+    score: typeof e.score === 'number' ? e.score : null,
+    completed_at: new Date().toISOString(),
+  }));
+  await supabase.from('formation_progress').upsert(rows, { onConflict: 'user_id,module_id' });
+
+  const p = await buildProgress(userId);
+
+  // Refléter le niveau débloqué sur l'inscription (best-effort)
+  await supabase
+    .from('formation_enrollments')
+    .upsert({ user_id: userId, level_unlocked: p.levelUnlocked, status: 'active', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+  // Notification si un nouveau niveau vient d'être validé
+  if (p.levelUnlocked > before.levelUnlocked) {
+    try {
+      await notificationService.sendUserNotification(userId, {
+        title: `🎉 Niveau ${p.levelUnlocked} validé !`,
+        message: `Bravo ! Vous avez validé le niveau ${LEVEL_TITLES[p.levelUnlocked] || p.levelUnlocked}. Demande de financement ${p.ceiling.label.toLowerCase()} débloquée. Téléchargez votre certificat.`,
+        type: 'success',
+        category: 'formation',
+        actionUrl: '/formations',
+        actionLabel: 'Voir mon certificat',
+      });
+    } catch { /* best-effort */ }
+  }
+
+  return { ...p, newLevel: p.levelUnlocked > before.levelUnlocked };
+}
+
 // POST /progress : enregistrer un module validé (QCM réussi)
+// Conservé pour le contenu statique (non importé en base) et les anciens bundles ;
+// le parcours principal passe par /quiz/submit (correction côté serveur).
 router.post('/progress', requireAuth, async (req, res) => {
   try {
     const { module_id, level, score } = req.body || {};
     if (!module_id || !level) {
       return res.status(400).json({ success: false, error: 'module_id et level requis' });
     }
-
-    const before = await buildProgress(req.user.id);
-
-    await supabase
-      .from('formation_progress')
-      .upsert({
-        user_id: req.user.id,
-        module_id,
-        level: parseInt(level, 10),
-        passed: true,
-        score: typeof score === 'number' ? score : null,
-        completed_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,module_id' });
-
-    const p = await buildProgress(req.user.id);
-
-    // Refléter le niveau débloqué sur l'inscription (best-effort)
-    await supabase
-      .from('formation_enrollments')
-      .upsert({ user_id: req.user.id, level_unlocked: p.levelUnlocked, status: 'active', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-
-    // Notification si un nouveau niveau vient d'être validé
-    if (p.levelUnlocked > before.levelUnlocked) {
-      try {
-        await notificationService.sendUserNotification(req.user.id, {
-          title: `🎉 Niveau ${p.levelUnlocked} validé !`,
-          message: `Bravo ! Vous avez validé le niveau ${LEVEL_TITLES[p.levelUnlocked] || p.levelUnlocked}. Demande de financement ${p.ceiling.label.toLowerCase()} débloquée. Téléchargez votre certificat.`,
-          type: 'success',
-          category: 'formation',
-          actionUrl: '/formations',
-          actionLabel: 'Voir mon certificat',
-        });
-      } catch { /* best-effort */ }
-    }
-
-    res.json({ success: true, ...p, newLevel: p.levelUnlocked > before.levelUnlocked });
+    const p = await recordPassedModules(req.user.id, [{ module_id, level, score }]);
+    res.json({ success: true, ...p });
   } catch (error) {
     console.error('❌ formations/progress POST:', error);
+    res.status(500).json({ success: false, error: 'Erreur enregistrement' });
+  }
+});
+
+// ---------- QCM corrigé côté serveur ----------
+// Jetons de validation anonymes : un visiteur non connecté qui réussit un QCM reçoit
+// un jeton signé (HMAC) qu'il pourra « réclamer » après création de compte.
+function quizSecret() {
+  return process.env.FORMATION_QUIZ_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'gabon-insight-quiz';
+}
+function signPassToken(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', quizSecret()).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+function verifyPassToken(token) {
+  try {
+    const [body, sig] = String(token || '').split('.');
+    if (!body || !sig) return null;
+    const expected = crypto.createHmac('sha256', quizSecret()).update(body).digest('base64url');
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!p.m || !p.l) return null;
+    if (Date.now() - (p.t || 0) > 180 * 24 * 3600 * 1000) return null; // 6 mois max
+    return p;
+  } catch { return null; }
+}
+
+// POST /quiz/submit : correction serveur (public, auth optionnelle).
+// Connecté + réussi → progression enregistrée directement.
+// Anonyme + réussi → pass_token à réclamer via /progress/claim après inscription.
+router.post('/quiz/submit', optionalAuth, async (req, res) => {
+  try {
+    const { module_id, level, answers } = req.body || {};
+    if (!module_id) return res.status(400).json({ success: false, error: 'module_id requis' });
+
+    const { data: course } = await supabase
+      .from('formation_courses')
+      .select('id, level, quiz')
+      .eq('id', module_id)
+      .eq('is_published', true)
+      .maybeSingle();
+
+    const qs = course?.quiz?.questions;
+    if (!Array.isArray(qs) || !qs.length) {
+      // Cours non importé en base → le front corrige localement (contenu statique)
+      return res.json({ success: true, fallback: true });
+    }
+
+    const arr = Array.isArray(answers) ? answers : [];
+    const correct = qs.reduce((n, q, i) => n + (Number(arr[i]) === q.correctIndex ? 1 : 0), 0);
+    const score = Math.round((correct / qs.length) * 100);
+    const passScore = course.quiz.passScore || 70;
+    const passed = score >= passScore;
+    const corrections = qs.map((q) => ({ correctIndex: q.correctIndex, explanation: q.explanation || null }));
+    const lvl = parseInt(level, 10) || course.level;
+
+    const out = { success: true, score, passed, passScore, corrections };
+    if (passed && req.user?.id) {
+      const p = await recordPassedModules(req.user.id, [{ module_id, level: lvl, score }]);
+      Object.assign(out, { recorded: true, ...p });
+    } else if (passed) {
+      out.pass_token = signPassToken({ m: module_id, l: lvl, s: score, t: Date.now() });
+    }
+    res.json(out);
+  } catch (error) {
+    console.error('❌ formations/quiz/submit:', error);
+    res.status(500).json({ success: false, error: 'Erreur correction' });
+  }
+});
+
+// POST /progress/claim : rattacher au compte les QCM réussis en anonyme (jetons signés)
+router.post('/progress/claim', requireAuth, async (req, res) => {
+  try {
+    const tokens = Array.isArray(req.body?.tokens) ? req.body.tokens.slice(0, 60) : [];
+    const claims = tokens.map(verifyPassToken).filter(Boolean);
+    if (!claims.length) {
+      const p = await buildProgress(req.user.id);
+      return res.json({ success: true, claimed: 0, ...p });
+    }
+    const p = await recordPassedModules(
+      req.user.id,
+      claims.map((c) => ({ module_id: c.m, level: c.l, score: c.s }))
+    );
+    res.json({ success: true, claimed: claims.length, ...p });
+  } catch (error) {
+    console.error('❌ formations/progress/claim:', error);
     res.status(500).json({ success: false, error: 'Erreur enregistrement' });
   }
 });
@@ -504,7 +598,12 @@ function dbToModule(c) {
     durationMin: c.duration_min || 20,
     content: c.content || '',
     sector: c.sector || null,
-    quiz: c.quiz || { passScore: 70, questions: [] },
+    // Les réponses (correctIndex/explanation) ne sont JAMAIS envoyées au client :
+    // la correction se fait côté serveur via POST /quiz/submit.
+    quiz: {
+      passScore: c.quiz?.passScore || 70,
+      questions: (c.quiz?.questions || []).map((q) => ({ question: q.question, options: q.options })),
+    },
   };
 }
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { FormationModule } from '@/lib/formations-content'
@@ -54,17 +56,59 @@ function Markdown({ md }: { md: string }) {
   return <div>{blocks}</div>
 }
 
-/* ---------- QCM ---------- */
-function Quiz({ module, onPass }: { module: FormationModule; onPass: (score: number) => void }) {
+/* ---------- QCM (corrigé côté serveur ; repli local pour le contenu statique) ---------- */
+type QuizCorrection = { correctIndex?: number; explanation?: string | null }
+type QuizSubmitResult = {
+  recorded?: boolean
+  pass_token?: string
+  xp?: number
+  badges?: { id: string; label: string; emoji: string }[]
+  score: number
+}
+
+function Quiz({ module, level, onPass }: { module: FormationModule; level: number; onPass: (score: number, submitRes?: QuizSubmitResult | null) => void }) {
   const qs = module.quiz.questions
   const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [submitted, setSubmitted] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ score: number; passed: boolean; corrections: QuizCorrection[] } | null>(null)
+  const submitted = !!result
 
-  const correct = qs.filter((q, i) => answers[i] === q.correctIndex).length
-  const score = Math.round((correct / qs.length) * 100)
-  const passed = score >= module.quiz.passScore
+  // Le contenu statique (non importé en base) embarque encore les réponses → correction locale possible
+  const hasLocalKey = qs.some(q => typeof q.correctIndex === 'number')
 
-  const submit = () => { setSubmitted(true); if (score >= module.quiz.passScore) onPass(score) }
+  const gradeLocally = () => {
+    const correct = qs.filter((q, i) => answers[i] === q.correctIndex).length
+    const score = Math.round((correct / qs.length) * 100)
+    const passed = score >= module.quiz.passScore
+    setResult({ score, passed, corrections: qs.map(q => ({ correctIndex: q.correctIndex, explanation: q.explanation })) })
+    if (passed) onPass(score, null)
+  }
+
+  const submit = async () => {
+    if (checking) return
+    setChecking(true); setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${API_URL}/api/formations/quiz/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ module_id: module.id, level, answers: qs.map((_, i) => answers[i] ?? -1) }),
+      })
+      const data = await res.json()
+      if (data?.success && !data.fallback) {
+        setResult({ score: data.score, passed: data.passed, corrections: data.corrections || [] })
+        if (data.passed) onPass(data.score, data)
+      } else if (hasLocalKey) {
+        gradeLocally()
+      } else {
+        setError('Correction impossible pour le moment. Réessayez dans un instant.')
+      }
+    } catch {
+      if (hasLocalKey) gradeLocally()
+      else setError('Connexion instable — impossible de corriger le QCM. Vérifiez votre réseau et réessayez.')
+    } finally { setChecking(false) }
+  }
 
   return (
     <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-5">
@@ -78,7 +122,7 @@ function Quiz({ module, onPass }: { module: FormationModule; onPass: (score: num
             <div className="space-y-1.5">
               {q.options.map((opt, oi) => {
                 const chosen = answers[qi] === oi
-                const isCorrect = oi === q.correctIndex
+                const isCorrect = submitted && result?.corrections[qi]?.correctIndex === oi
                 let cls = 'border-slate-200 hover:border-[#697357]/50'
                 if (submitted) {
                   if (isCorrect) cls = 'border-green-400 bg-green-50'
@@ -93,21 +137,25 @@ function Quiz({ module, onPass }: { module: FormationModule; onPass: (score: num
                 )
               })}
             </div>
-            {submitted && <p className="text-xs text-slate-500 mt-1.5 italic">💡 {q.explanation}</p>}
+            {submitted && result?.corrections[qi]?.explanation && (
+              <p className="text-xs text-slate-500 mt-1.5 italic">💡 {result.corrections[qi].explanation}</p>
+            )}
           </div>
         ))}
       </div>
 
+      {error && <p className="mt-4 text-sm text-red-600 text-center">{error}</p>}
+
       {!submitted ? (
-        <button onClick={submit} disabled={Object.keys(answers).length < qs.length}
-          className="mt-5 w-full py-3 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-bold disabled:opacity-50">
-          Valider mes réponses
+        <button onClick={submit} disabled={checking || Object.keys(answers).length < qs.length}
+          className="mt-5 w-full py-3 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+          {checking ? <><Loader2 className="w-5 h-5 animate-spin" /> Correction…</> : 'Valider mes réponses'}
         </button>
       ) : (
-        <div className={`mt-5 rounded-xl p-4 text-center font-semibold ${passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-          {passed ? `✅ Réussi — ${score} % ! Module validé.` : `❌ ${score} %. Reprenez le cours et réessayez.`}
-          {!passed && (
-            <button onClick={() => { setSubmitted(false); setAnswers({}) }}
+        <div className={`mt-5 rounded-xl p-4 text-center font-semibold ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {result.passed ? `✅ Réussi — ${result.score} % ! Module validé.` : `❌ ${result.score} %. Reprenez le cours et réessayez.`}
+          {!result.passed && (
+            <button onClick={() => { setResult(null); setAnswers({}) }}
               className="block mx-auto mt-2 text-sm underline">Recommencer le QCM</button>
           )}
         </div>
@@ -296,6 +344,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const [xp, setXp] = useState(0)
   const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
   const [showQuiz, setShowQuiz] = useState(false)
+  const [showSaveModal, setShowSaveModal] = useState(false)
 
   // Le QCM ne s'affiche qu'après lecture ; on masque le QCM et on coupe l'audio
   // à chaque changement de module. On mémorise aussi le dernier module ouvert.
@@ -315,6 +364,32 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     } catch { /* noop */ }
     restored.current = true
   }, [courses, level])
+
+  // Tour guidé à la première visite du player
+  useEffect(() => {
+    if (!courses.length) return
+    try { if (localStorage.getItem('fmt-tour-done')) return } catch { return }
+    const t = setTimeout(() => {
+      try {
+        driver({
+          showProgress: true,
+          progressText: '{{current}}/{{total}}',
+          nextBtnText: 'Suivant',
+          prevBtnText: 'Retour',
+          doneBtnText: "C'est parti !",
+          steps: [
+            { element: '[data-tour="lecons"]', popover: { title: 'Vos leçons', description: 'Suivez votre progression et naviguez librement entre les modules du niveau.' } },
+            { element: '[data-tour="ecouter"]', popover: { title: 'Écoutez le cours', description: 'Chaque module peut être écouté en audio — pratique en déplacement ou en faible débit.' } },
+            { element: '[data-tour="ia"]', popover: { title: 'Votre coach IA', description: 'Sous chaque point du cours : « Approfondir » pour les détails, « Expliquer simplement » pour un exemple concret.' } },
+            { element: '[data-tour="horsligne"]', popover: { title: 'Mode hors-ligne', description: 'Téléchargez tout le niveau pour continuer à lire sans connexion.' } },
+            { element: '[data-tour="qcm"]', popover: { title: 'Validez le module', description: 'Terminez la lecture puis réussissez le QCM pour gagner des XP et débloquer votre palier de financement.' } },
+          ],
+          onDestroyed: () => { try { localStorage.setItem('fmt-tour-done', '1') } catch { /* noop */ } },
+        }).drive()
+      } catch { /* décoratif */ }
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [courses.length])
 
   // Téléchargement du niveau pour lecture hors-ligne (fichier HTML autonome)
   const downloadOffline = () => {
@@ -352,18 +427,83 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     return () => { cancelled = true }
   }, [user?.id, authHeaders, courses])
 
-  const markPassed = useCallback(async (id: string, score: number) => {
+  // 🎉 Confettis (import dynamique — ne pèse rien tant qu'on ne valide pas)
+  const celebrate = useCallback((big: boolean) => {
+    import('canvas-confetti').then(({ default: confetti }) => {
+      const colors = ['#697357', '#8a9576', '#fbbf24', '#f59e0b']
+      confetti({ particleCount: big ? 160 : 80, spread: big ? 100 : 70, origin: { y: 0.7 }, colors })
+      if (big) {
+        setTimeout(() => confetti({ particleCount: 90, angle: 60, spread: 80, origin: { x: 0, y: 0.8 }, colors }), 250)
+        setTimeout(() => confetti({ particleCount: 90, angle: 120, spread: 80, origin: { x: 1, y: 0.8 }, colors }), 400)
+      }
+    }).catch(() => { /* décoratif */ })
+  }, [])
+
+  const markPassed = useCallback(async (id: string, score: number, submitRes?: QuizSubmitResult | null) => {
+    const levelDone = !passed.has(id) && passed.size + 1 >= courses.length
     setPassed(prev => new Set(prev).add(id))
-    if (!user?.id) return // non connecté → progression locale seulement
+    celebrate(levelDone)
+
+    if (user?.id) {
+      // Déjà enregistré côté serveur par /quiz/submit ; sinon repli sur /progress (contenu statique)
+      if (submitRes?.recorded) { setXp(submitRes.xp || 0); setBadges(submitRes.badges || []); return }
+      try {
+        const res = await fetch(`${API_URL}/api/formations/progress`, {
+          method: 'POST', headers: await authHeaders(),
+          body: JSON.stringify({ module_id: id, level, score }),
+        })
+        const data = await res.json()
+        if (data?.success) { setXp(data.xp || 0); setBadges(data.badges || []) }
+      } catch { /* la progression locale reste affichée */ }
+      return
+    }
+
+    // Anonyme : progression locale + jeton signé à réclamer après inscription
     try {
-      const res = await fetch(`${API_URL}/api/formations/progress`, {
-        method: 'POST', headers: await authHeaders(),
-        body: JSON.stringify({ module_id: id, level, score }),
-      })
-      const data = await res.json()
-      if (data?.success) { setXp(data.xp || 0); setBadges(data.badges || []) }
-    } catch { /* la progression locale reste affichée */ }
-  }, [user?.id, authHeaders, level])
+      const key = `fmt-passed-${level}`
+      const cur: string[] = JSON.parse(localStorage.getItem(key) || '[]')
+      if (!cur.includes(id)) localStorage.setItem(key, JSON.stringify([...cur, id]))
+      if (submitRes?.pass_token) {
+        const toks: string[] = JSON.parse(localStorage.getItem('fmt-pass-tokens') || '[]')
+        localStorage.setItem('fmt-pass-tokens', JSON.stringify([...toks, submitRes.pass_token].slice(-60)))
+      }
+    } catch { /* noop */ }
+    try { if (!sessionStorage.getItem('fmt-save-nudge')) setShowSaveModal(true) } catch { setShowSaveModal(true) }
+  }, [user?.id, authHeaders, level, passed, courses.length, celebrate])
+
+  // Anonyme : restaurer la progression locale du niveau
+  useEffect(() => {
+    if (user?.id || !courses.length) return
+    try {
+      const saved: string[] = JSON.parse(localStorage.getItem(`fmt-passed-${level}`) || '[]')
+      const mine = saved.filter(id => courses.some(c => c.id === id))
+      if (mine.length) setPassed(new Set(mine))
+    } catch { /* noop */ }
+  }, [user?.id, courses, level])
+
+  // Connecté : réclamer les QCM réussis en anonyme (jetons signés), puis nettoyer
+  useEffect(() => {
+    if (!user?.id || !courses.length) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const toks: string[] = JSON.parse(localStorage.getItem('fmt-pass-tokens') || '[]')
+        if (!toks.length) return
+        const res = await fetch(`${API_URL}/api/formations/progress/claim`, {
+          method: 'POST', headers: await authHeaders(), body: JSON.stringify({ tokens: toks }),
+        })
+        const data = await res.json()
+        if (data?.success) {
+          localStorage.removeItem('fmt-pass-tokens')
+          if (!cancelled && Array.isArray(data.passedModuleIds)) {
+            const mine = data.passedModuleIds.filter((id: string) => courses.some(m => m.id === id))
+            setPassed(new Set(mine)); setXp(data.xp || 0); setBadges(data.badges || [])
+          }
+        }
+      } catch { /* réessaiera à la prochaine visite */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, authHeaders, courses])
 
   const allDone = passed.size >= courses.length
   const progress = Math.round((passed.size / courses.length) * 100)
@@ -395,7 +535,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
             <h1 className="text-lg sm:text-xl font-black truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={downloadOffline} title="Télécharger ce niveau pour le lire sans connexion"
+            <button onClick={downloadOffline} title="Télécharger ce niveau pour le lire sans connexion" data-tour="horsligne"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold">
               <DownloadCloud className="w-4 h-4" /> <span className="hidden sm:inline">Hors-ligne</span>
             </button>
@@ -416,7 +556,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
         {/* Sidebar leçons */}
         <aside className="lg:sticky lg:top-6 self-start space-y-3">
-          <div className="bg-white rounded-2xl border border-slate-200 p-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-3" data-tour="lecons">
             <div className="flex justify-between text-xs text-slate-500 mb-1 px-1">
               <span>{passed.size}/{courses.length} validés</span><span>{progress} %</span>
             </div>
@@ -462,11 +602,11 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h2 className="text-2xl font-black text-slate-900">{active.title}</h2>
-                <ListenButton text={active.content} title={active.title} />
+                <div data-tour="ecouter"><ListenButton text={active.content} title={active.title} /></div>
               </div>
               <CourseContent content={active.content} moduleTitle={active.title} level={level} />
 
-              <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3" data-tour="ia">
                 <Sparkles className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
                 <span>Sous chaque point : <b>Approfondir</b> pour les détails et arguments clés, <b>Expliquer simplement</b> pour un exemple concret. Auto-formez-vous à votre rythme.</span>
               </div>
@@ -474,9 +614,9 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               <AiAssistant module={active} />
 
               {showQuiz ? (
-                <Quiz key={active.id} module={active} onPass={(score) => markPassed(active.id, score)} />
+                <Quiz key={active.id} module={active} level={level} onPass={(score, r) => markPassed(active.id, score, r)} />
               ) : (
-                <button onClick={() => setShowQuiz(true)}
+                <button onClick={() => setShowQuiz(true)} data-tour="qcm"
                   className="mt-6 w-full py-3 rounded-xl border-2 border-[#697357] text-[#4d553e] font-bold hover:bg-[#697357]/5 inline-flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-5 h-5" /> J'ai terminé la lecture — Passer au QCM
                 </button>
@@ -508,6 +648,33 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
           )}
         </main>
       </div>
+
+      {/* Invitation à sauvegarder la progression (après un 1er QCM réussi en anonyme) */}
+      {showSaveModal && !user && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div className="text-4xl mb-2">🎉</div>
+            <h3 className="text-lg font-black text-slate-900">Module validé — bien joué !</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Créez un compte gratuit en 30 secondes pour <b>sauvegarder votre progression</b>, cumuler vos XP
+              et débloquer votre palier de financement BCEG. Vos modules déjà validés seront conservés.
+            </p>
+            <Link href={`/auth/signup?redirectTo=/formations/niveau-${level}/apprendre`}
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-bold">
+              Créer mon compte gratuit
+            </Link>
+            <Link href={`/auth/signin?redirectTo=/formations/niveau-${level}/apprendre`}
+              className="mt-2 block text-sm text-[#4d553e] underline">
+              J'ai déjà un compte
+            </Link>
+            <button
+              onClick={() => { setShowSaveModal(false); try { sessionStorage.setItem('fmt-save-nudge', '1') } catch { /* noop */ } }}
+              className="mt-3 text-xs text-slate-400 hover:text-slate-600">
+              Plus tard
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
