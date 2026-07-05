@@ -11,7 +11,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud, Flame, Brain,
+  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud, Flame, Brain, ChevronDown,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -384,6 +384,30 @@ function Workshop({ module, level }: { module: FormationModule; level: number })
   )
 }
 
+/* ---------- Liste des leçons (réutilisée sur mobile + desktop) ---------- */
+function LessonList({ courses, activeId, passed, onSelect }: {
+  courses: FormationModule[]
+  activeId?: string
+  passed: Set<string>
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="space-y-1">
+      {courses.map((m, i) => {
+        const isActive = m.id === activeId
+        const isPassed = passed.has(m.id)
+        return (
+          <button key={m.id} onClick={() => onSelect(m.id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? 'bg-[#697357]/10 ring-1 ring-[#697357]/30' : 'hover:bg-slate-50'}`}>
+            {isPassed ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0" />}
+            <span className={`text-sm flex-1 min-w-0 truncate ${isActive ? 'font-bold text-[#4d553e]' : 'text-slate-700'}`}>{i + 1}. {m.title}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ---------- Auto-formation : un bloc de contenu + 2 boutons IA ---------- */
 function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle: string; level: number }) {
   const [loading, setLoading] = useState<'deepen' | 'simplify' | null>(null)
@@ -524,6 +548,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const [showQuiz, setShowQuiz] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [streakInfo, setStreakInfo] = useState<{ current: number; dueReviews: number } | null>(null)
+  const [showLessons, setShowLessons] = useState(false) // sélecteur de leçons repliable (mobile)
 
   // Le QCM ne s'affiche qu'après lecture ; on masque le QCM et on coupe l'audio
   // à chaque changement de module. On mémorise aussi le dernier module ouvert.
@@ -772,8 +797,9 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               </span>
             )}
             {user && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
-                <Trophy className="w-4 h-4" /> {xp} XP
+              <span title="Vos points — vous en gagnez à chaque leçon validée"
+                className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
+                <Trophy className="w-4 h-4" /> {xp} pts
               </span>
             )}
             {allDone && user && (
@@ -786,28 +812,16 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-        {/* Sidebar leçons */}
-        <aside className="lg:sticky lg:top-6 self-start space-y-3">
-          <div className="bg-white rounded-2xl border border-slate-200 p-3" data-tour="lecons">
+        {/* Sidebar leçons — desktop uniquement */}
+        <aside className="hidden lg:block lg:sticky lg:top-6 self-start space-y-3" data-tour="lecons">
+          <div className="bg-white rounded-2xl border border-slate-200 p-3">
             <div className="flex justify-between text-xs text-slate-500 mb-1 px-1">
               <span>{passed.size}/{courses.length} leçons terminées</span><span>{progress} %</span>
             </div>
             <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
               <div className="h-full bg-[#697357] rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <div className="space-y-1">
-              {courses.map((m, i) => {
-                const isActive = m.id === active?.id
-                const isPassed = passed.has(m.id)
-                return (
-                  <button key={m.id} onClick={() => setOpenId(m.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? 'bg-[#697357]/10 ring-1 ring-[#697357]/30' : 'hover:bg-slate-50'}`}>
-                    {isPassed ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0" />}
-                    <span className={`text-sm flex-1 min-w-0 truncate ${isActive ? 'font-bold text-[#4d553e]' : 'text-slate-700'}`}>{i + 1}. {m.title}</span>
-                  </button>
-                )
-              })}
-            </div>
+            <LessonList courses={courses} activeId={active?.id} passed={passed} onSelect={setOpenId} />
           </div>
           {user && streakInfo && streakInfo.dueReviews > 0 && (
             <Link href="/formations/revisions"
@@ -827,6 +841,34 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
 
         {/* Contenu du module actif */}
         <main className="min-w-0">
+          {/* Progression + liste des leçons — mobile uniquement */}
+          <div className="lg:hidden mb-4 space-y-2">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3">
+              <button onClick={() => setShowLessons(v => !v)} className="w-full flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-slate-800">Leçon {activeIdx + 1} sur {courses.length}</span>
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-[#4d553e]">
+                  {passed.size}/{courses.length} terminées
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showLessons ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden mt-2">
+                <div className="h-full bg-[#697357] rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              {showLessons && (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <LessonList courses={courses} activeId={active?.id} passed={passed}
+                    onSelect={(id) => { setOpenId(id); setShowLessons(false) }} />
+                </div>
+              )}
+            </div>
+            {user && streakInfo && streakInfo.dueReviews > 0 && (
+              <Link href="/formations/revisions"
+                className="flex items-center gap-2 bg-amber-50 rounded-xl border-2 border-amber-300 p-3 text-sm font-bold text-[#3a4030]">
+                <Brain className="w-5 h-5 text-amber-500 shrink-0" /> {streakInfo.dueReviews} question{streakInfo.dueReviews > 1 ? 's' : ''} à réviser (2 min)
+              </Link>
+            )}
+          </div>
+
           {allDone && (
             <div className="mb-4 rounded-2xl p-4 flex flex-wrap items-center gap-3 border bg-green-50 border-green-200">
               <Unlock className="w-6 h-6 text-green-600 shrink-0" />
@@ -850,20 +892,35 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               </div>
               <CourseContent content={active.content} moduleTitle={active.title} level={level} />
 
-              <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3" data-tour="ia">
-                <Sparkles className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
-                <span>Un passage difficile ? Sous chaque paragraphe, appuyez sur <b>Expliquer simplement</b> pour un exemple concret, ou <b>En savoir plus</b> pour les détails.</span>
+              {/* Aide facultative pendant la lecture */}
+              <div data-tour="ia">
+                <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
+                  <Sparkles className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
+                  <span>Un passage difficile ? Sous chaque paragraphe, appuyez sur <b>Expliquer simplement</b>.</span>
+                </div>
+                <AiAssistant module={active} />
               </div>
 
-              <AiAssistant module={active} />
-
+              {/* Étape suivante : le petit test — action principale bien visible */}
               {showQuiz ? (
                 <Quiz key={active.id} module={active} level={level} onPass={(score, r) => markPassed(active.id, score, r)} />
               ) : (
-                <button onClick={() => setShowQuiz(true)} data-tour="qcm"
-                  className="mt-6 w-full py-3 rounded-xl border-2 border-[#697357] text-[#4d553e] font-bold hover:bg-[#697357]/5 inline-flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> J'ai fini de lire — Faire le petit test
-                </button>
+                <div className="mt-6" data-tour="qcm">
+                  {!passed.has(active.id) ? (
+                    <>
+                      <button onClick={() => setShowQuiz(true)}
+                        className="w-full py-4 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-black text-base inline-flex items-center justify-center gap-2 shadow-sm">
+                        <CheckCircle2 className="w-5 h-5" /> J'ai fini de lire — Faire le petit test
+                      </button>
+                      <p className="text-center text-xs text-slate-400 mt-2">Quelques questions pour valider la leçon. Vous pouvez recommencer autant de fois qu'il faut.</p>
+                    </>
+                  ) : (
+                    <button onClick={() => setShowQuiz(true)}
+                      className="w-full py-3 rounded-xl border border-slate-300 text-slate-600 font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-slate-50">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" /> Leçon validée — refaire le test
+                    </button>
+                  )}
+                </div>
               )}
 
               <Workshop key={`ws-${active.id}`} module={active} level={level} />
@@ -876,7 +933,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                 {activeIdx < courses.length - 1 ? (
                   <button onClick={() => setOpenId(courses[activeIdx + 1]?.id)}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
-                    Suivant <ArrowRight className="w-4 h-4" />
+                    Leçon suivante <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (allDone && nextHref) ? (
                   <Link href={nextHref} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold">
@@ -888,9 +945,10 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
           )}
 
           {!user && (
-            <p className="mt-4 text-center text-sm text-slate-500">
-              <BookOpen className="w-4 h-4 inline mr-1" /> Connectez-vous pour enregistrer votre progression et débloquer votre palier.
-            </p>
+            <div className="mt-4 rounded-xl bg-white border border-slate-200 p-4 text-center text-sm text-slate-600">
+              Vous pouvez apprendre sans compte. Pour <b>garder votre progression</b> et débloquer votre financement,{' '}
+              <Link href={`/auth/signup?redirectTo=/formations/niveau-${level}/apprendre`} className="text-[#4d553e] font-semibold underline">créez un compte gratuit</Link>.
+            </div>
           )}
         </main>
       </div>
