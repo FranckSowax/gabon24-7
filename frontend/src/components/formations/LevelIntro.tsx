@@ -94,14 +94,14 @@ export default function LevelIntro({ level }: { level: number }) {
             </span>
           </div>
           <div className="mt-6 flex flex-wrap gap-4 text-sm text-white/80">
-            <span className="inline-flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> {modules.length} modules</span>
+            <span className="inline-flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> {modules.length} leçons</span>
             <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4" /> ~{Math.round(totalMin / 60 * 10) / 10} h de contenu</span>
             <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4" /> XP, badges & certificat</span>
           </div>
           {started && (
             <div className="mt-5 max-w-sm">
               <div className="flex justify-between text-xs text-white/80 mb-1">
-                <span>{passedCount}/{modules.length} modules validés</span>
+                <span>{passedCount}/{modules.length} leçons terminées</span>
                 <span>{Math.round((passedCount / Math.max(modules.length, 1)) * 100)} %</span>
               </div>
               <div className="h-2 bg-white/20 rounded-full overflow-hidden">

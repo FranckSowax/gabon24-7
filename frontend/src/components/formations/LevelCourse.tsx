@@ -112,9 +112,10 @@ function Quiz({ module, level, onPass }: { module: FormationModule; level: numbe
 
   return (
     <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-5">
-      <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
-        <Trophy className="w-5 h-5 text-[#697357]" /> QCM — validez le module (≥ {module.quiz.passScore} %)
+      <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-1">
+        <Trophy className="w-5 h-5 text-[#697357]" /> Petit test — {qs.length} question{qs.length > 1 ? 's' : ''}
       </h3>
+      <p className="text-xs text-slate-500 mb-4">Répondez à chaque question puis validez. Il faut {module.quiz.passScore} % de bonnes réponses — vous pouvez recommencer autant de fois que nécessaire.</p>
       <div className="space-y-5">
         {qs.map((q, qi) => (
           <div key={qi}>
@@ -153,10 +154,10 @@ function Quiz({ module, level, onPass }: { module: FormationModule; level: numbe
         </button>
       ) : (
         <div className={`mt-5 rounded-xl p-4 text-center font-semibold ${result.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-          {result.passed ? `✅ Réussi — ${result.score} % ! Module validé.` : `❌ ${result.score} %. Reprenez le cours et réessayez.`}
+          {result.passed ? `✅ Bravo — ${result.score} % ! Leçon validée.` : `❌ ${result.score} %. Relisez la leçon et réessayez — c'est normal d'avoir besoin de plusieurs essais.`}
           {!result.passed && (
             <button onClick={() => { setResult(null); setAnswers({}) }}
-              className="block mx-auto mt-2 text-sm underline">Recommencer le QCM</button>
+              className="block mx-auto mt-2 text-sm underline">Recommencer le test</button>
           )}
         </div>
       )}
@@ -194,18 +195,32 @@ function AiAssistant({ module }: { module: FormationModule }) {
     } catch { setAnswer('Erreur réseau, réessayez.') } finally { setLoading(false) }
   }
 
+  const [openBox, setOpenBox] = useState(false)
+
+  if (!openBox) {
+    return (
+      <button onClick={() => setOpenBox(true)}
+        className="mt-6 w-full flex items-center justify-between gap-2 rounded-2xl border border-[#697357]/20 bg-[#697357]/5 hover:bg-[#697357]/10 p-4 text-left transition-colors">
+        <span className="font-bold text-slate-900 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-[#697357]" /> Une question sur cette leçon ? Demandez ici
+        </span>
+        <span className="text-xs text-[#4d553e] font-semibold shrink-0">Ouvrir →</span>
+      </button>
+    )
+  }
+
   return (
     <div className="mt-6 rounded-2xl border border-[#697357]/20 bg-[#697357]/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-[#697357]" /> Assistant IA — une question sur ce module ?
+          <Sparkles className="w-5 h-5 text-[#697357]" /> Posez votre question sur cette leçon
         </h3>
         <div className="inline-flex rounded-full border border-[#697357]/25 bg-white p-0.5 text-xs font-semibold">
           <button onClick={() => switchMode('direct')}
             className={`px-2.5 py-1 rounded-full transition-colors ${mode === 'direct' ? 'bg-[#697357] text-white' : 'text-[#4d553e] hover:bg-[#697357]/10'}`}>
             Réponse directe
           </button>
-          <button onClick={() => switchMode('socratic')} title="L'IA vous guide par questions au lieu de donner la réponse"
+          <button onClick={() => switchMode('socratic')} title="L'assistant vous guide par questions au lieu de donner la réponse"
             className={`px-2.5 py-1 rounded-full transition-colors ${mode === 'socratic' ? 'bg-[#697357] text-white' : 'text-[#4d553e] hover:bg-[#697357]/10'}`}>
             🧠 Me faire réfléchir
           </button>
@@ -291,15 +306,15 @@ function Workshop({ module, level }: { module: FormationModule; level: number })
     <div className="mt-6 rounded-2xl border-2 border-amber-300/70 bg-amber-50/50 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          🛠️ Atelier pratique — appliquez ce module à votre projet
+          ✍️ Exercice pratique — pour VOTRE projet
         </h3>
         <span className="text-[11px] font-bold uppercase tracking-wide bg-amber-300 text-[#3a4030] px-2.5 py-1 rounded-full">
-          Pièce de votre dossier BCEG
+          Compte pour votre dossier
         </span>
       </div>
       <p className="text-sm text-slate-600 mt-1">
-        Un exercice concret corrigé par l'IA avec une note et des conseils. Chaque atelier réussi est une pièce
-        de votre futur dossier de financement.
+        Appliquez ce que vous venez d'apprendre à votre propre projet. Vous recevez une note et des conseils,
+        et chaque exercice réussi prépare votre dossier de financement.
       </p>
 
       {!user ? (
@@ -310,7 +325,7 @@ function Workshop({ module, level }: { module: FormationModule; level: number })
       ) : !open ? (
         <button onClick={openWorkshop}
           className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-bold">
-          Ouvrir l'atelier <ArrowRight className="w-4 h-4" />
+          Commencer l'exercice <ArrowRight className="w-4 h-4" />
         </button>
       ) : (
         <div className="mt-3 space-y-3">
@@ -400,7 +415,7 @@ function ContentBlock({ text, moduleTitle, level }: { text: string; moduleTitle:
         <div className="flex flex-wrap gap-2 mt-1 mb-3 opacity-90">
           <button onClick={() => run('deepen')} disabled={!!loading}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#697357]/10 text-[#4d553e] border border-[#697357]/25 hover:bg-[#697357]/20 disabled:opacity-50">
-            {loading === 'deepen' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />} Approfondir
+            {loading === 'deepen' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />} En savoir plus
           </button>
           <button onClick={() => run('simplify')} disabled={!!loading}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 disabled:opacity-50">
@@ -542,11 +557,11 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
           prevBtnText: 'Retour',
           doneBtnText: "C'est parti !",
           steps: [
-            { element: '[data-tour="lecons"]', popover: { title: 'Vos leçons', description: 'Suivez votre progression et naviguez librement entre les modules du niveau.' } },
-            { element: '[data-tour="ecouter"]', popover: { title: 'Écoutez le cours', description: 'Chaque module peut être écouté en audio — pratique en déplacement ou en faible débit.' } },
-            { element: '[data-tour="ia"]', popover: { title: 'Votre coach IA', description: 'Sous chaque point du cours : « Approfondir » pour les détails, « Expliquer simplement » pour un exemple concret.' } },
-            { element: '[data-tour="horsligne"]', popover: { title: 'Mode hors-ligne', description: 'Téléchargez tout le niveau pour continuer à lire sans connexion.' } },
-            { element: '[data-tour="qcm"]', popover: { title: 'Validez le module', description: 'Terminez la lecture puis réussissez le QCM pour gagner des XP et débloquer votre palier de financement.' } },
+            { element: '[data-tour="lecons"]', popover: { title: 'Vos leçons', description: 'La liste de vos leçons. Une coche verte = leçon terminée. Touchez une leçon pour l\'ouvrir.' } },
+            { element: '[data-tour="ecouter"]', popover: { title: 'Écouter la leçon', description: 'Pas envie de lire ? Appuyez ici et la leçon vous est lue à voix haute, comme la radio.' } },
+            { element: '[data-tour="ia"]', popover: { title: 'De l\'aide à chaque paragraphe', description: 'Un passage compliqué ? « Expliquer simplement » vous donne un exemple concret en FCFA.' } },
+            { element: '[data-tour="horsligne"]', popover: { title: 'Lire sans connexion', description: 'Appuyez ici pour garder tout le niveau sur votre téléphone et lire même sans réseau.' } },
+            { element: '[data-tour="qcm"]', popover: { title: 'Le petit test', description: 'Quand vous avez fini de lire, répondez à quelques questions pour valider la leçon. On peut recommencer !' } },
           ],
           onDestroyed: () => { try { localStorage.setItem('fmt-tour-done', '1') } catch { /* noop */ } },
         }).drive()
@@ -775,7 +790,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         <aside className="lg:sticky lg:top-6 self-start space-y-3">
           <div className="bg-white rounded-2xl border border-slate-200 p-3" data-tour="lecons">
             <div className="flex justify-between text-xs text-slate-500 mb-1 px-1">
-              <span>{passed.size}/{courses.length} validés</span><span>{progress} %</span>
+              <span>{passed.size}/{courses.length} leçons terminées</span><span>{progress} %</span>
             </div>
             <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
               <div className="h-full bg-[#697357] rounded-full transition-all" style={{ width: `${progress}%` }} />
@@ -826,7 +841,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
           {active && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-7">
               <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
-                <BookOpen className="w-3.5 h-3.5" /> Module {activeIdx + 1}/{courses.length} · {active.durationMin} min
+                <BookOpen className="w-3.5 h-3.5" /> Leçon {activeIdx + 1}/{courses.length} · {active.durationMin} min de lecture
                 {passed.has(active.id) && <span className="text-green-600 font-semibold">· ✓ validé</span>}
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -837,7 +852,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
 
               <div className="mt-3 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3" data-tour="ia">
                 <Sparkles className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
-                <span>Sous chaque point : <b>Approfondir</b> pour les détails et arguments clés, <b>Expliquer simplement</b> pour un exemple concret. Auto-formez-vous à votre rythme.</span>
+                <span>Un passage difficile ? Sous chaque paragraphe, appuyez sur <b>Expliquer simplement</b> pour un exemple concret, ou <b>En savoir plus</b> pour les détails.</span>
               </div>
 
               <AiAssistant module={active} />
@@ -847,7 +862,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               ) : (
                 <button onClick={() => setShowQuiz(true)} data-tour="qcm"
                   className="mt-6 w-full py-3 rounded-xl border-2 border-[#697357] text-[#4d553e] font-bold hover:bg-[#697357]/5 inline-flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> J'ai terminé la lecture — Passer au QCM
+                  <CheckCircle2 className="w-5 h-5" /> J'ai fini de lire — Faire le petit test
                 </button>
               )}
 

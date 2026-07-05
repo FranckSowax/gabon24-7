@@ -1,20 +1,121 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import {
-  GraduationCap, Trophy, Rocket, CheckCircle2, MapPin,
-  Sparkles, Award, BookOpen, ListChecks, Users, ArrowRight, Loader2, Medal,
+  GraduationCap, Trophy, Rocket, CheckCircle2, MapPin, Sparkles, Award, BookOpen,
+  ListChecks, Users, ArrowRight, Loader2, Medal, Flame, Brain, PlayCircle, Headphones, MessageCircle,
 } from 'lucide-react'
 import {
   FORMATION_LEVELS, GABON_PROVINCES, FORMATION_SECTORS, PROJECT_STAGES, FORMATION_FORMATS,
 } from '@/lib/formations'
+import { MODULES_BY_LEVEL } from '@/lib/formations-content'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
+/* ---------- « Reprendre » : la page reconnaît l'apprenant et lui dit où il en est ---------- */
+type ResumeState = {
+  level: number
+  done: number
+  total: number
+  streak: number
+  dueReviews: number
+}
+
+function useResume(): ResumeState | null {
+  const { user } = useAuth()
+  const [state, setState] = useState<ResumeState | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const totalFor = (lvl: number) => (MODULES_BY_LEVEL[lvl] || []).length || 5
+
+    ;(async () => {
+      // Connecté : progression + série depuis le serveur
+      if (user?.id) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          const headers: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+          const [pRes, sRes] = await Promise.all([
+            fetch(`${API_URL}/api/formations/progress`, { headers }),
+            fetch(`${API_URL}/api/formations/streak`, { headers }),
+          ])
+          const p = await pRes.json()
+          const s = await sRes.json().catch(() => ({}))
+          if (cancelled || !p?.success) return
+          const byLevel: Record<number, number> = p.passedByLevel || {}
+          const anyProgress = [1, 2, 3].some((l) => (byLevel[l] || 0) > 0)
+          if (!anyProgress) return
+          const level = Math.min((p.levelUnlocked || 0) + 1, 3)
+          setState({
+            level,
+            done: byLevel[level] || 0,
+            total: totalFor(level),
+            streak: s?.current || 0,
+            dueReviews: s?.dueReviews || 0,
+          })
+          return
+        } catch { /* repli local */ }
+      }
+      // Anonyme : progression locale
+      try {
+        for (const lvl of [3, 2, 1]) {
+          const saved: string[] = JSON.parse(localStorage.getItem(`fmt-passed-${lvl}`) || '[]')
+          if (saved.length) {
+            if (!cancelled) setState({ level: lvl, done: saved.length, total: totalFor(lvl), streak: 0, dueReviews: 0 })
+            return
+          }
+        }
+      } catch { /* noop */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  return state
+}
+
+function ResumeCard({ resume }: { resume: ResumeState }) {
+  const pct = Math.min(100, Math.round((resume.done / Math.max(resume.total, 1)) * 100))
+  return (
+    <div className="relative -mt-8 z-10 max-w-3xl mx-auto px-4 sm:px-6">
+      <div className="bg-white rounded-2xl border-2 border-amber-300 shadow-xl p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-black text-slate-900 text-lg">👋 Content de vous revoir !</p>
+            <p className="text-sm text-slate-600 mt-0.5">
+              Vous en êtes au <b>Niveau {resume.level}</b> — {resume.done}/{resume.total} leçons terminées.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {resume.streak > 0 && (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold">
+                <Flame className="w-3.5 h-3.5" /> {resume.streak} jour{resume.streak > 1 ? 's' : ''}
+              </span>
+            )}
+            {resume.dueReviews > 0 && (
+              <Link href="/formations/revisions" className="inline-flex items-center gap-1 bg-[#697357]/10 text-[#4d553e] px-2.5 py-1 rounded-full text-xs font-bold hover:bg-[#697357]/20">
+                <Brain className="w-3.5 h-3.5" /> {resume.dueReviews} à réviser
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="mt-3 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full bg-[#697357] rounded-full transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <Link href={`/formations/niveau-${resume.level}/apprendre`}
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white font-bold text-base">
+          <PlayCircle className="w-5 h-5" /> Continuer ma formation
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export default function FormationsPage() {
   const { user } = useAuth()
+  const resume = useResume()
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', province: '', city: '', sector: '',
     project_title: '', project_stage: '', preferred_format: '', motivation: '',
@@ -45,56 +146,49 @@ export default function FormationsPage() {
     } finally { setSubmitting(false) }
   }
 
-  const scrollToForm = () => document.getElementById('candidater')?.scrollIntoView({ behavior: 'smooth' })
-
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* HERO */}
+      {/* HERO — un seul message, une seule action */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#4d553e] via-[#697357] to-[#3a4030] text-white">
-        {/* Fond vidéo animé (boucle, thème BCEG) */}
         <video
           src="/covers/formations/hero.mp4"
           autoPlay muted loop playsInline preload="metadata"
           className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[#4d553e]/85 via-[#697357]/80 to-[#3a4030]/90 pointer-events-none" />
-        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-amber-300/10 blur-3xl" />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20 pb-16 sm:pb-20 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur text-xs sm:text-sm font-semibold mb-5">
             <GraduationCap className="w-4 h-4 text-amber-200" />
             Programme Entrepreneur BCEG × Gabon Insight
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black leading-tight max-w-3xl">
-            Devenez un entrepreneur finançable en <span className="text-amber-300">3 mois</span>
+          <h1 className="text-3xl sm:text-5xl font-black leading-tight max-w-3xl mx-auto">
+            Apprenez à gérer votre business.<br className="hidden sm:block" />
+            <span className="text-amber-300">Débloquez votre financement.</span>
           </h1>
-          <p className="mt-4 text-base sm:text-xl text-white/85 max-w-2xl">
-            Une formation <b>100 % gratuite, ouverte à tous</b>, partout au Gabon : apprenez à lancer et gérer
-            votre business, validez vos niveaux, et débloquez l'accès au financement BCEG.
+          <p className="mt-4 text-base sm:text-xl text-white/85 max-w-2xl mx-auto">
+            Des cours simples et <b>100 % gratuits</b>, sur votre téléphone.
+            À la fin de chaque niveau : un certificat, et le droit de demander un financement BCEG.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/formations/niveau-1"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-amber-300 text-[#3a4030] font-bold hover:bg-amber-200 transition-colors shadow-lg">
-              Commencer gratuitement <ArrowRight className="w-5 h-5" />
-            </Link>
-            <button onClick={scrollToForm}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
-              <Users className="w-5 h-5 text-amber-200" /> Cohorte accompagnée
-            </button>
-            <Link href="/formations/classement"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur text-white font-semibold hover:bg-white/25 transition-colors">
-              <Trophy className="w-5 h-5 text-amber-200" /> Classement
-            </Link>
-          </div>
-          <p className="mt-3 text-sm text-white/70">
-            Sans inscription préalable — commencez le niveau 1 maintenant, créez votre compte quand vous validez votre premier module.
-          </p>
-          {/* Key facts */}
-          <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
+          {!resume && (
+            <>
+              <div className="mt-8">
+                <Link href="/formations/niveau-1"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-amber-300 text-[#3a4030] font-black text-lg hover:bg-amber-200 transition-colors shadow-xl">
+                  <PlayCircle className="w-6 h-6" /> Commencer — c'est gratuit
+                </Link>
+              </div>
+              <p className="mt-3 text-sm text-white/70">
+                Pas besoin de compte pour essayer. Pas besoin de carte bancaire. Juste vous et votre projet.
+              </p>
+            </>
+          )}
+          {/* Réassurance */}
+          <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto text-left">
             {[
-              { icon: Award, label: '100 % gratuit', sub: 'aucun frais' },
-              { icon: Medal, label: 'Certificats', sub: 'à chaque niveau' },
-              { icon: MapPin, label: '9 provinces', sub: 'tout le Gabon' },
-              { icon: Trophy, label: 'Financement', sub: 'paliers BCEG' },
+              { icon: Award, label: '100 % gratuit', sub: 'aucun frais, jamais' },
+              { icon: Medal, label: 'Certificat', sub: 'à chaque niveau réussi' },
+              { icon: MapPin, label: '9 provinces', sub: 'partout au Gabon' },
+              { icon: Trophy, label: 'Financement', sub: 'jusqu\'à 5M FCFA et +' },
             ].map((f, i) => (
               <div key={i} className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/15">
                 <f.icon className="w-5 h-5 text-amber-200 mb-1" />
@@ -106,119 +200,100 @@ export default function FormationsPage() {
         </div>
       </section>
 
-      {/* PALIERS / NIVEAUX */}
-      <section id="programme" className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900">3 niveaux, 3 paliers de financement</h2>
-          <p className="mt-3 text-slate-600">
-            Chaque niveau se valide par des cours et des QCM. Une fois validé, il débloque un palier
-            de demande de financement auprès de la BCEG.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {FORMATION_LEVELS.map((lvl) => (
-            <div key={lvl.level} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-              {/* Cover animée (boucle, thème BCEG) */}
-              <div className="relative aspect-[16/9] overflow-hidden bg-[#4d553e]">
-                <video
-                  src={`/covers/formations/niveau-${lvl.level}.mp4`}
-                  autoPlay muted loop playsInline preload="metadata"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
-              </div>
-              <div className={`bg-gradient-to-br ${lvl.color} text-white p-5`}>
-                <div className="flex items-center justify-between">
-                  <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-black text-lg">{lvl.level}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wide bg-amber-300/90 text-[#3a4030] px-2.5 py-1 rounded-full">
-                    {lvl.financingCeiling}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-lg font-bold leading-tight">{lvl.title}</h3>
-                <p className="text-white/80 text-sm mt-1">{lvl.tagline}</p>
-              </div>
-              <ul className="p-5 space-y-2 flex-1">
-                {lvl.topics.map((t, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                    <CheckCircle2 className="w-4 h-4 text-[#697357] shrink-0 mt-0.5" />
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="px-5 pb-5">
-                <Link href={`/formations/niveau-${lvl.level}`}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold transition-colors">
-                  Aperçu du Niveau {lvl.level} <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+      {/* REPRENDRE — la page vous reconnaît */}
+      {resume && <ResumeCard resume={resume} />}
+
+      {/* COMMENT ÇA MARCHE — le modèle mental d'abord, en 3 phrases */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 text-center">Comment ça marche ?</h2>
+        <p className="mt-2 text-slate-600 text-center max-w-xl mx-auto">C'est simple : vous apprenez, vous validez, vous demandez votre financement.</p>
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { n: 1, icon: BookOpen, t: 'Suivez les leçons', d: 'Des cours courts et concrets, à lire ou à écouter, à votre rythme. Même hors connexion.' },
+            { n: 2, icon: ListChecks, t: 'Réussissez les petits tests', d: 'Après chaque leçon, quelques questions pour vérifier que c\'est acquis. Vous pouvez recommencer.' },
+            { n: 3, icon: Rocket, t: 'Demandez votre financement', d: 'Chaque niveau terminé vous donne un certificat et ouvre un montant de financement BCEG.' },
+          ].map((s) => (
+            <div key={s.n} className="relative bg-white rounded-2xl border border-slate-200 p-6 text-center">
+              <span className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-[#697357] to-[#4d553e] flex items-center justify-center text-white font-black text-lg mb-3">{s.n}</span>
+              <h3 className="font-bold text-slate-900 text-lg">{s.t}</h3>
+              <p className="text-sm text-slate-600 mt-1.5">{s.d}</p>
             </div>
           ))}
         </div>
-        <p className="text-center text-xs text-slate-500 mt-5">
-          🔒 La demande de financement d'un palier n'est débloquée qu'après validation du niveau correspondant.
+      </section>
+
+      {/* LES 3 NIVEAUX — l'objectif financier bien visible */}
+      <section id="programme" className="bg-white border-y border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 text-center">Votre parcours en 3 niveaux</h2>
+          <p className="mt-2 text-slate-600 text-center max-w-xl mx-auto">
+            Plus vous avancez, plus le montant que vous pouvez demander augmente.
+          </p>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {FORMATION_LEVELS.map((lvl) => (
+              <Link key={lvl.level} href={`/formations/niveau-${lvl.level}`}
+                className="group bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:border-[#697357]/40 transition-all">
+                <div className="relative aspect-[16/9] overflow-hidden bg-[#4d553e]">
+                  <video
+                    src={`/covers/formations/niveau-${lvl.level}.mp4`}
+                    autoPlay muted loop playsInline preload="metadata"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                  <span className="absolute top-3 left-3 w-9 h-9 rounded-xl bg-white/90 text-[#4d553e] flex items-center justify-center font-black">{lvl.level}</span>
+                </div>
+                <div className="p-5 flex-1 flex flex-col">
+                  <span className="self-start text-[11px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full mb-2">
+                    💰 {lvl.financingCeiling}
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900 leading-tight">{lvl.title}</h3>
+                  <p className="text-sm text-slate-500 mt-1 flex-1">{lvl.tagline}</p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-[#4d553e] group-hover:gap-2.5 transition-all">
+                    Voir le niveau {lvl.level} <ArrowRight className="w-4 h-4" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <p className="text-center text-xs text-slate-500 mt-5">
+            🔒 Un montant se débloque quand le niveau correspondant est terminé — c'est ce qui rassure la banque.
+          </p>
+        </div>
+      </section>
+
+      {/* VOUS N'ÊTES PAS SEUL — les 3 aides, en langage simple */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 text-center">Vous n'êtes jamais seul</h2>
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { icon: Sparkles, t: 'Posez vos questions', d: 'Un assistant répond à toutes vos questions pendant les leçons, avec des exemples du Gabon en FCFA. Sous chaque paragraphe, un bouton « Expliquer simplement ».' },
+            { icon: Headphones, t: 'Écoutez les cours', d: 'Chaque leçon peut être écoutée comme la radio — pratique dans le taxi, au marché ou quand la lecture fatigue.' },
+            { icon: MessageCircle, t: 'Formez-vous sur WhatsApp', d: 'Toute la formation existe aussi sur WhatsApp : leçons, tests et rappels de révision, même avec une petite connexion.' },
+          ].map((c, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="w-11 h-11 rounded-xl bg-[#697357]/10 flex items-center justify-center mb-3">
+                <c.icon className="w-5 h-5 text-[#697357]" />
+              </div>
+              <h3 className="font-bold text-slate-900">{c.t}</h3>
+              <p className="text-sm text-slate-600 mt-1">{c.d}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-sm text-slate-500 mt-6">
+          Et pour se motiver : des points, des badges et un{' '}
+          <Link href="/formations/classement" className="text-[#4d553e] font-semibold underline">classement national</Link> des apprenants.
         </p>
       </section>
 
-      {/* COMMENT ÇA MARCHE */}
-      <section className="bg-white border-y border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900">Une plateforme sérieuse et motivante</h2>
-            <p className="mt-3 text-slate-600">Des cours structurés, des évaluations, et de la gamification pour aller au bout.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { icon: BookOpen, title: 'Cours adaptés', desc: 'Modules clairs, exemples concrets du contexte gabonais (FCFA, OHADA, marché local).' },
-              { icon: ListChecks, title: 'Tests & QCM', desc: 'Validez chaque module par des quiz. Pas de QCM réussi, pas de niveau validé.' },
-              { icon: Sparkles, title: 'Assistant IA', desc: 'Une IA vous accompagne, répond à vos questions et adapte les exemples à votre projet.' },
-              { icon: Trophy, title: 'Défis & points', desc: 'Gagnez des points (XP), relevez des défis hebdomadaires et progressez en vous challengeant.' },
-              { icon: Medal, title: 'Badges & certificats', desc: 'Débloquez des badges et obtenez un certificat à chaque niveau validé.' },
-              { icon: Users, title: 'Classement national', desc: 'Comparez-vous aux entrepreneurs de tout le pays et grimpez dans le classement.' },
-            ].map((c, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
-                <div className="w-11 h-11 rounded-xl bg-[#697357]/10 flex items-center justify-center mb-3">
-                  <c.icon className="w-5 h-5 text-[#697357]" />
-                </div>
-                <h3 className="font-bold text-slate-900">{c.title}</h3>
-                <p className="text-sm text-slate-600 mt-1">{c.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* DÉROULÉ */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {[
-            { n: '01', icon: BookOpen, t: 'Formez-vous gratuitement', d: 'Commencez le niveau 1 immédiatement, à votre rythme, avec l\'assistant IA. Aucune sélection pour apprendre.' },
-            { n: '02', icon: ListChecks, t: 'Validez vos niveaux', d: 'Réussissez les QCM de chaque module, gagnez des XP et obtenez un certificat à chaque niveau.' },
-            { n: '03', icon: Rocket, t: 'Financez votre projet', d: 'Chaque niveau validé débloque un palier de demande de financement BCEG, jusqu\'à 5M FCFA et plus.' },
-          ].map((s, i) => (
-            <div key={i} className="relative bg-white rounded-2xl border border-slate-200 p-6">
-              <span className="absolute top-4 right-5 text-4xl font-black text-[#697357]/10">{s.n}</span>
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#697357] to-[#4d553e] flex items-center justify-center mb-3">
-                <s.icon className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg">{s.t}</h3>
-              <p className="text-sm text-slate-600 mt-1">{s.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* SIMULATEUR BANQUIER */}
+      {/* SIMULATEUR BANQUIER — présenté comme l'étape d'après */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-14">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#697357] to-[#4d553e] text-white p-6 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-5">
           <span className="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-4xl shrink-0">🏦</span>
           <div className="flex-1">
-            <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide mb-2">
-              <Sparkles className="w-3.5 h-3.5" /> Nouveau
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black">Entraînez-vous face à un banquier IA</h2>
+            <h2 className="text-xl sm:text-2xl font-black">Avant le vrai rendez-vous : entraînez-vous avec un banquier</h2>
             <p className="mt-1 text-white/85 text-sm sm:text-base max-w-xl">
-              M. Ndong, chargé d'affaires BCEG virtuel, challenge votre projet et vos chiffres, puis vous note
-              sur 100 avec ses recommandations — avant le vrai rendez-vous.
+              M. Ndong vous pose les vraies questions d'un entretien de financement, puis vous donne une note
+              et des conseils. Recommencez autant de fois que vous voulez — c'est un entraînement.
             </p>
           </div>
           <Link href="/formations/simulateur"
@@ -228,15 +303,16 @@ export default function FormationsPage() {
         </div>
       </section>
 
-      {/* CANDIDATURE */}
+      {/* COHORTE ACCOMPAGNÉE */}
       <section id="candidater" className="bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="text-center mb-8">
             <Users className="w-10 h-10 text-amber-300 mx-auto mb-3" />
-            <h2 className="text-2xl sm:text-4xl font-black">Rejoindre la prochaine cohorte accompagnée</h2>
+            <h2 className="text-2xl sm:text-4xl font-black">Envie d'être accompagné de plus près ?</h2>
             <p className="mt-2 text-white/80">
-              La formation en ligne est <b>ouverte à tous, sans candidature</b>. La cohorte, elle, offre en plus un
-              accompagnement renforcé sur 3 mois (présentiel ou distanciel, mentorat, suivi de dossier) — sélection sur dossier, gratuite.
+              La formation en ligne est <b>ouverte à tous, sans inscription préalable</b>. En plus, nous formons des
+              groupes accompagnés pendant 3 mois (en présentiel ou à distance, avec un mentor et un suivi de dossier).
+              C'est gratuit — la sélection se fait sur dossier.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs">
               {['Un projet ou une idée concrète', 'De la motivation', 'Disponibilité sur 3 mois'].map((c, i) => (
@@ -252,6 +328,9 @@ export default function FormationsPage() {
               <CheckCircle2 className="w-14 h-14 text-[#697357] mx-auto mb-3" />
               <h3 className="text-xl font-bold">Candidature envoyée 🎉</h3>
               <p className="text-slate-600 mt-2">Merci ! Nous étudions les candidatures et revenons vers les profils sélectionnés par e-mail.</p>
+              <Link href="/formations/niveau-1" className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#697357] text-white font-bold">
+                En attendant, commencez le niveau 1 <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           ) : (
             <form onSubmit={submit} className="bg-white rounded-2xl p-5 sm:p-7 text-slate-800 space-y-4 shadow-2xl">
