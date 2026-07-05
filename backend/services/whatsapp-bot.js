@@ -7,6 +7,7 @@ const supabaseService = require('../supabase-config');
 const supabase = supabaseService.supabase;
 const whapi = require('./whapiService');
 const mistral = require('./mistral-service');
+const banker = require('./banker-service');
 
 let openai = null;
 try {
@@ -35,8 +36,70 @@ Répondez par un chiffre :
 2️⃣ Ma progression / BCEG Score
 3️⃣ Poser une question à l'IA
 4️⃣ Déposer un dossier de financement
+5️⃣ 🏦 Simuler un entretien banquier
 
 Ou posez directement votre question 👇`;
+}
+
+// ---------- Simulateur banquier (sessions en mémoire, TTL 30 min) ----------
+const bankerSessions = new Map(); // phone -> { history: [{role, content}], t }
+const BANKER_TTL_MS = 30 * 60 * 1000;
+
+function cleanBankerSessions() {
+  const now = Date.now();
+  for (const [k, s] of bankerSessions) if (now - s.t > BANKER_TTL_MS) bankerSessions.delete(k);
+}
+
+function startBankerSession(phone) {
+  cleanBankerSessions();
+  bankerSessions.set(phone, { history: [], t: Date.now() });
+  return `🏦 *Simulation d'entretien BCEG*
+Je suis M. Ndong, chargé d'affaires. Je vais challenger votre projet comme lors d'un vrai entretien de financement — entraînez-vous sans risque.
+
+Pour commencer : présentez-moi votre projet en quelques phrases (activité, clients visés, montant recherché).
+
+_(À tout moment : *bilan* pour votre évaluation, *stop* pour quitter.)_`;
+}
+
+async function bankerTurn(phone, text) {
+  cleanBankerSessions();
+  const s = bankerSessions.get(phone);
+  if (!s) return null;
+  s.t = Date.now();
+
+  const t = String(text || '').trim().toLowerCase();
+  if (['stop', 'menu', 'quitter', 'fin'].includes(t)) {
+    bankerSessions.delete(phone);
+    return `Entretien interrompu.\n\n${menuText()}`;
+  }
+  if (['bilan', 'evaluation', 'évaluation', 'terminer', 'conclure'].includes(t)) {
+    if (s.history.filter((m) => m.role === 'user').length < 3) {
+      return `Répondez d'abord à quelques questions (au moins 3) avant de demander votre *bilan*.`;
+    }
+    const ev = await banker.bankerEvaluate({ history: s.history });
+    bankerSessions.delete(phone);
+    const grid = (ev.grid || []).map((g) => `• ${g.critere} : *${g.note}/20*`).join('\n');
+    const recos = (ev.recommandations || []).slice(0, 4).map((r) => `→ ${r}`).join('\n');
+    const decision = ev.decision === 'favorable' ? '✅ avis favorable'
+      : ev.decision === 'favorable_avec_reserves' ? '🟡 favorable avec réserves' : '🔴 à retravailler';
+    return `🏦 *Bilan de votre entretien BCEG*
+Note globale : *${ev.global_score}/100* — ${decision}
+
+${grid}
+
+*À travailler avant de déposer votre dossier :*
+${recos}
+
+Déposez votre dossier ici : ${FRONT}/business/mes-projets
+(Tapez *menu* pour les options.)`;
+  }
+
+  s.history.push({ role: 'user', content: String(text).slice(0, 1200) });
+  const reply = await banker.bankerReply({ history: s.history });
+  s.history.push({ role: 'assistant', content: reply });
+  const nUser = s.history.filter((m) => m.role === 'user').length;
+  const hint = nUser >= 4 ? '\n\n_(Tapez *bilan* pour votre évaluation, ou *stop* pour arrêter.)_' : '';
+  return `🏦 ${reply}${hint}`;
 }
 
 async function aiAnswer(question) {
@@ -82,6 +145,16 @@ async function progressByPhone(phone) {
 
 async function replyFor(text, phone) {
   const t = String(text || '').trim().toLowerCase();
+
+  // Entretien banquier en cours : tout message alimente la simulation
+  if (bankerSessions.has(phone)) {
+    const r = await bankerTurn(phone, text);
+    if (r) return r;
+  }
+
+  if (t === '5' || t.includes('banquier') || t.includes('entretien') || t.includes('simul')) {
+    return startBankerSession(phone);
+  }
 
   if (['menu', 'bonjour', 'bonsoir', 'salut', 'start', 'aide', 'hello', 'hi', '0'].includes(t)) {
     return menuText();

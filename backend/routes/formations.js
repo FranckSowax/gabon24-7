@@ -14,6 +14,7 @@ const { supabase } = supabaseService;
 const notificationService = require('../services/notification-service');
 const { renderHtmlToPdf } = require('../services/businessPlanPdf');
 const mistral = require('../services/mistral-service');
+const bankerService = require('../services/banker-service');
 
 // Assistant IA des formations (gratuit, gpt-4.1-mini)
 let openai = null;
@@ -448,22 +449,169 @@ const FORMATEUR_SYSTEM = `Tu es un formateur en entrepreneuriat, expert du conte
 Tu formes des entrepreneurs en autonomie. Sois concret, pédagogique et actionnable.
 Donne des exemples adaptés au Gabon. Utilise un ton encourageant. Formate en markdown léger (listes à puces, **gras** pour les points clés).`;
 
+// Mode « me faire réfléchir » : le tuteur guide sans donner la réponse (pattern socratique)
+const SOCRATIQUE_SYSTEM = `Tu es un tuteur socratique en entrepreneuriat, expert du contexte gabonais (FCFA, OHADA, financement BCEG).
+Tu ne donnes JAMAIS la réponse directement. À la place :
+1) reformule la question de l'apprenant en une phrase pour vérifier sa compréhension,
+2) pose 2-3 questions courtes qui le font raisonner par étapes,
+3) donne UN indice concret (exemple gabonais ou ordre de grandeur en FCFA),
+4) termine en l'invitant à proposer SA réponse.
+Ton encourageant, 5-8 phrases max, markdown léger.`;
+
 // ---------- ASSISTANT IA (gratuit) ----------
 router.post('/ai-assist', requireAuth, async (req, res) => {
   try {
-    const { question, moduleTitle, moduleSummary, projectContext } = req.body || {};
+    const { question, moduleTitle, moduleSummary, projectContext, mode } = req.body || {};
     if (!question || !String(question).trim()) {
       return res.status(400).json({ success: false, error: 'Question requise' });
     }
+    const socratic = mode === 'socratic';
     const user = `Module en cours : "${moduleTitle || 'Formation entrepreneur'}"${moduleSummary ? ` (${moduleSummary})` : ''}.
 ${projectContext ? `Projet de l'apprenant : ${projectContext}.\n` : ''}Question : ${question}
 
-Réponds en 5-8 phrases max, concret et adapté au Gabon.`;
-    const answer = await aiComplete({ system: FORMATEUR_SYSTEM, user, temperature: 0.5, maxTokens: 600 });
-    res.json({ success: true, answer: answer || "Désolé, je n'ai pas pu répondre." });
+${socratic ? 'Guide-moi sans me donner la réponse.' : 'Réponds en 5-8 phrases max, concret et adapté au Gabon.'}`;
+    const answer = await aiComplete({ system: socratic ? SOCRATIQUE_SYSTEM : FORMATEUR_SYSTEM, user, temperature: 0.5, maxTokens: 600 });
+    res.json({ success: true, answer: answer || "Désolé, je n'ai pas pu répondre.", mode: socratic ? 'socratic' : 'direct' });
   } catch (error) {
     console.error('❌ formations/ai-assist:', error);
     res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Erreur de l\'assistant' });
+  }
+});
+
+// ---------- ATELIERS PRATIQUES (livrable par module, corrigé par IA) ----------
+// Le fil rouge du parcours : chaque module produit une pièce du dossier de financement.
+
+// POST /deliverable/brief : consigne de l'atelier (cache en base si possible) + dernière soumission
+router.post('/deliverable/brief', requireAuth, async (req, res) => {
+  try {
+    const { module_id, moduleTitle, moduleSummary, level } = req.body || {};
+    if (!module_id) return res.status(400).json({ success: false, error: 'module_id requis' });
+
+    // 1) Brief en cache sur le cours (colonne deliverable_brief, migration optionnelle)
+    let brief = null; let title = moduleTitle; let summary = moduleSummary;
+    try {
+      const { data: course } = await supabase
+        .from('formation_courses')
+        .select('title, summary, deliverable_brief')
+        .eq('id', module_id)
+        .maybeSingle();
+      if (course) { brief = course.deliverable_brief || null; title = course.title; summary = course.summary; }
+    } catch { /* colonne/table absente → on génère */ }
+
+    if (!brief) {
+      brief = await aiComplete({
+        system: FORMATEUR_SYSTEM,
+        user: `Module "${title || module_id}"${summary ? ` — ${summary}` : ''} (niveau ${level || '?'} de la formation Entrepreneur BCEG).
+Rédige la consigne d'un ATELIER PRATIQUE court que l'apprenant applique à SON propre projet, dont le résultat servira de pièce à son dossier de financement BCEG.
+Format STRICT :
+**🎯 Votre mission :** <1-2 phrases, action concrète appliquée à SON projet>
+**À inclure :** liste de 3-4 puces précises (avec chiffres en FCFA quand pertinent)
+**Exemple de format attendu :** <2-3 lignes montrant à quoi ressemble une bonne réponse>
+Pas d'autre texte.`,
+        temperature: 0.4, maxTokens: 450,
+      });
+      // Persistance best-effort (ne bloque jamais)
+      try { await supabase.from('formation_courses').update({ deliverable_brief: brief }).eq('id', module_id); } catch { /* noop */ }
+    }
+
+    // 2) Dernière soumission de l'utilisateur (best-effort si table absente)
+    let last = null;
+    try {
+      const { data } = await supabase
+        .from('formation_deliverables')
+        .select('content, score, feedback, updated_at')
+        .eq('user_id', req.user.id)
+        .eq('module_id', module_id)
+        .maybeSingle();
+      last = data || null;
+    } catch { /* migration pas encore passée */ }
+
+    res.json({ success: true, brief, last });
+  } catch (error) {
+    console.error('❌ formations/deliverable/brief:', error);
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Erreur atelier' });
+  }
+});
+
+// POST /deliverable/submit : correction IA avec grille + persistance
+router.post('/deliverable/submit', requireAuth, async (req, res) => {
+  try {
+    const { module_id, level, brief, text, moduleTitle } = req.body || {};
+    if (!module_id || !text || String(text).trim().length < 30) {
+      return res.status(400).json({ success: false, error: 'Rédigez votre réponse (au moins quelques phrases) avant d\'envoyer.' });
+    }
+
+    const feedback = await bankerService.completeJSON({
+      system: `Tu es un formateur-évaluateur BCEG. Tu corriges le travail pratique d'un entrepreneur gabonais avec bienveillance et exigence.
+Réponds en JSON STRICT :
+{
+  "score": <0-100>,
+  "verdict": "<1 phrase de synthèse>",
+  "strengths": ["<2-3 points forts>"],
+  "improvements": ["<2-4 améliorations concrètes, chiffrées si possible>"],
+  "next_step": "<la prochaine action à faire pour son dossier BCEG, 1 phrase>"
+}
+Barème : pertinence pour SON projet (40), chiffres réalistes en FCFA (30), clarté/structure (30). Un travail vague ou hors-sujet ne dépasse pas 40.`,
+      user: `Module "${moduleTitle || module_id}" (niveau ${level || '?'}).
+Consigne de l'atelier :
+"""${String(brief || '').slice(0, 1500)}"""
+
+Travail rendu par l'apprenant :
+"""${String(text).slice(0, 4000)}"""`,
+      temperature: 0.3, maxTokens: 700,
+    });
+
+    feedback.score = Math.max(0, Math.min(100, parseInt(feedback.score, 10) || 0));
+
+    // Persistance best-effort (la table peut ne pas encore exister)
+    try {
+      await supabase.from('formation_deliverables').upsert({
+        user_id: req.user.id,
+        module_id,
+        level: parseInt(level, 10) || 1,
+        content: String(text).slice(0, 8000),
+        score: feedback.score,
+        feedback,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,module_id' });
+    } catch (e) { console.warn('⚠️ formation_deliverables (migration ?):', e.message); }
+
+    res.json({ success: true, feedback });
+  } catch (error) {
+    console.error('❌ formations/deliverable/submit:', error);
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Erreur de correction' });
+  }
+});
+
+// ---------- SIMULATEUR D'ENTRETIEN BANQUIER BCEG ----------
+router.post('/banker/chat', requireAuth, async (req, res) => {
+  try {
+    const { messages, project } = req.body || {};
+    const history = (Array.isArray(messages) ? messages : [])
+      .filter((m) => m && typeof m.content === 'string' && ['user', 'assistant'].includes(m.role))
+      .slice(-24);
+    const reply = await bankerService.bankerReply({ history, project });
+    res.json({ success: true, reply });
+  } catch (error) {
+    console.error('❌ formations/banker/chat:', error);
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Le banquier est indisponible, réessayez.' });
+  }
+});
+
+router.post('/banker/evaluate', requireAuth, async (req, res) => {
+  try {
+    const { messages, project } = req.body || {};
+    const history = (Array.isArray(messages) ? messages : [])
+      .filter((m) => m && typeof m.content === 'string' && ['user', 'assistant'].includes(m.role))
+      .slice(-30);
+    if (history.filter((m) => m.role === 'user').length < 3) {
+      return res.status(400).json({ success: false, error: 'Répondez à au moins 3 questions du banquier avant l\'évaluation.' });
+    }
+    const evaluation = await bankerService.bankerEvaluate({ history, project });
+    res.json({ success: true, evaluation });
+  } catch (error) {
+    console.error('❌ formations/banker/evaluate:', error);
+    res.status(error.message?.includes('configuré') ? 503 : 500).json({ success: false, error: 'Évaluation indisponible, réessayez.' });
   }
 });
 

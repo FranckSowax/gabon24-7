@@ -207,6 +207,27 @@ export default function FormationsPage() {
         </div>
       </section>
 
+      {/* SIMULATEUR BANQUIER */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-14">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#697357] to-[#4d553e] text-white p-6 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <span className="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-4xl shrink-0">🏦</span>
+          <div className="flex-1">
+            <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide mb-2">
+              <Sparkles className="w-3.5 h-3.5" /> Nouveau
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black">Entraînez-vous face à un banquier IA</h2>
+            <p className="mt-1 text-white/85 text-sm sm:text-base max-w-xl">
+              M. Ndong, chargé d'affaires BCEG virtuel, challenge votre projet et vos chiffres, puis vous note
+              sur 100 avec ses recommandations — avant le vrai rendez-vous.
+            </p>
+          </div>
+          <Link href="/formations/simulateur"
+            className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-amber-300 text-[#3a4030] font-bold hover:bg-amber-200 transition-colors shadow-lg">
+            Passer l'entretien <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+      </section>
+
       {/* CANDIDATURE */}
       <section id="candidater" className="bg-gradient-to-br from-[#4d553e] to-[#3a4030] text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20">

@@ -169,6 +169,15 @@ function AiAssistant({ module }: { module: FormationModule }) {
   const [q, setQ] = useState('')
   const [answer, setAnswer] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<'direct' | 'socratic'>('direct')
+
+  useEffect(() => {
+    try { if (localStorage.getItem('fmt-ai-mode') === 'socratic') setMode('socratic') } catch { /* noop */ }
+  }, [])
+  const switchMode = (m: 'direct' | 'socratic') => {
+    setMode(m)
+    try { localStorage.setItem('fmt-ai-mode', m) } catch { /* noop */ }
+  }
 
   const ask = async () => {
     if (!q.trim() || loading) return
@@ -178,7 +187,7 @@ function AiAssistant({ module }: { module: FormationModule }) {
       const res = await fetch(`${API_URL}/api/formations/ai-assist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-        body: JSON.stringify({ question: q, moduleTitle: module.title, moduleSummary: module.summary }),
+        body: JSON.stringify({ question: q, moduleTitle: module.title, moduleSummary: module.summary, mode }),
       })
       const data = await res.json()
       setAnswer(data?.success ? data.answer : (data?.error || 'Erreur'))
@@ -187,9 +196,21 @@ function AiAssistant({ module }: { module: FormationModule }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-[#697357]/20 bg-[#697357]/5 p-4">
-      <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-2">
-        <Sparkles className="w-5 h-5 text-[#697357]" /> Assistant IA — une question sur ce module ?
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-[#697357]" /> Assistant IA — une question sur ce module ?
+        </h3>
+        <div className="inline-flex rounded-full border border-[#697357]/25 bg-white p-0.5 text-xs font-semibold">
+          <button onClick={() => switchMode('direct')}
+            className={`px-2.5 py-1 rounded-full transition-colors ${mode === 'direct' ? 'bg-[#697357] text-white' : 'text-[#4d553e] hover:bg-[#697357]/10'}`}>
+            Réponse directe
+          </button>
+          <button onClick={() => switchMode('socratic')} title="L'IA vous guide par questions au lieu de donner la réponse"
+            className={`px-2.5 py-1 rounded-full transition-colors ${mode === 'socratic' ? 'bg-[#697357] text-white' : 'text-[#4d553e] hover:bg-[#697357]/10'}`}>
+            🧠 Me faire réfléchir
+          </button>
+        </div>
+      </div>
       <div className="flex gap-2">
         <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && ask()}
           placeholder="Ex : comment calculer ma marge sur mon produit ?"
@@ -201,6 +222,148 @@ function AiAssistant({ module }: { module: FormationModule }) {
       </div>
       {answer && (
         <div className="mt-3 bg-white rounded-xl border border-slate-200 p-3 text-sm text-slate-700 whitespace-pre-wrap">{answer}</div>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Atelier pratique : livrable appliqué à SON projet, corrigé par IA ---------- */
+type WorkshopFeedback = {
+  score: number
+  verdict?: string
+  strengths?: string[]
+  improvements?: string[]
+  next_step?: string
+}
+
+function Workshop({ module, level }: { module: FormationModule; level: number }) {
+  const { user } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [brief, setBrief] = useState('')
+  const [loadingBrief, setLoadingBrief] = useState(false)
+  const [text, setText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [fb, setFb] = useState<WorkshopFeedback | null>(null)
+  const [err, setErr] = useState('')
+
+  const headers = async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }
+  }
+
+  const openWorkshop = async () => {
+    setOpen(true)
+    if (brief || loadingBrief) return
+    setLoadingBrief(true); setErr('')
+    try {
+      const res = await fetch(`${API_URL}/api/formations/deliverable/brief`, {
+        method: 'POST', headers: await headers(),
+        body: JSON.stringify({ module_id: module.id, moduleTitle: module.title, moduleSummary: module.summary, level }),
+      })
+      const data = await res.json()
+      if (data?.success) {
+        setBrief(data.brief || '')
+        if (data.last) {
+          setText(data.last.content || '')
+          if (data.last.feedback) setFb(data.last.feedback as WorkshopFeedback)
+        }
+      } else setErr(data?.error || 'Erreur de chargement de l\'atelier.')
+    } catch { setErr('Erreur réseau, réessayez.') } finally { setLoadingBrief(false) }
+  }
+
+  const submit = async () => {
+    if (sending || text.trim().length < 30) return
+    setSending(true); setErr('')
+    try {
+      const res = await fetch(`${API_URL}/api/formations/deliverable/submit`, {
+        method: 'POST', headers: await headers(),
+        body: JSON.stringify({ module_id: module.id, level, brief, text, moduleTitle: module.title }),
+      })
+      const data = await res.json()
+      if (data?.success && data.feedback) setFb(data.feedback as WorkshopFeedback)
+      else setErr(data?.error || 'Erreur de correction, réessayez.')
+    } catch { setErr('Erreur réseau, réessayez.') } finally { setSending(false) }
+  }
+
+  const scoreColor = (s: number) => s >= 70 ? 'bg-green-100 text-green-700' : s >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'
+
+  return (
+    <div className="mt-6 rounded-2xl border-2 border-amber-300/70 bg-amber-50/50 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          🛠️ Atelier pratique — appliquez ce module à votre projet
+        </h3>
+        <span className="text-[11px] font-bold uppercase tracking-wide bg-amber-300 text-[#3a4030] px-2.5 py-1 rounded-full">
+          Pièce de votre dossier BCEG
+        </span>
+      </div>
+      <p className="text-sm text-slate-600 mt-1">
+        Un exercice concret corrigé par l'IA avec une note et des conseils. Chaque atelier réussi est une pièce
+        de votre futur dossier de financement.
+      </p>
+
+      {!user ? (
+        <p className="mt-3 text-sm text-slate-600 bg-white rounded-xl border border-amber-200 p-3">
+          <Link href={`/auth/signin?redirectTo=/formations/niveau-${level}/apprendre`} className="font-semibold text-[#4d553e] underline">Connectez-vous</Link> pour
+          faire l'atelier et conserver vos travaux dans votre dossier.
+        </p>
+      ) : !open ? (
+        <button onClick={openWorkshop}
+          className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-bold">
+          Ouvrir l'atelier <ArrowRight className="w-4 h-4" />
+        </button>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {loadingBrief ? (
+            <p className="text-sm text-slate-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Préparation de votre mission…</p>
+          ) : brief && (
+            <div className="bg-white rounded-xl border border-amber-200 p-3.5 text-sm">
+              <Markdown md={brief} />
+            </div>
+          )}
+
+          {!loadingBrief && (
+            <>
+              <textarea value={text} onChange={e => setText(e.target.value)} rows={6}
+                placeholder="Rédigez ici votre réponse, appliquée à VOTRE projet (avec vos chiffres en FCFA)…"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#697357] focus:ring-1 focus:ring-[#697357] bg-white" />
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={submit} disabled={sending || text.trim().length < 30}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-bold disabled:opacity-50">
+                  {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Correction en cours…</> : <>Envoyer pour correction <Send className="w-4 h-4" /></>}
+                </button>
+                {text.trim().length < 30 && <span className="text-xs text-slate-400">Quelques phrases minimum.</span>}
+              </div>
+            </>
+          )}
+
+          {err && <p className="text-sm text-red-600">{err}</p>}
+
+          {fb && (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-black ${scoreColor(fb.score)}`}>{fb.score}/100</span>
+                {fb.verdict && <span className="text-sm text-slate-700 font-semibold">{fb.verdict}</span>}
+              </div>
+              {!!fb.strengths?.length && (
+                <ul className="space-y-1">
+                  {fb.strengths.map((s, i) => <li key={i} className="text-sm text-slate-700 flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />{s}</li>)}
+                </ul>
+              )}
+              {!!fb.improvements?.length && (
+                <ul className="space-y-1">
+                  {fb.improvements.map((s, i) => <li key={i} className="text-sm text-slate-700 flex items-start gap-2"><Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />{s}</li>)}
+                </ul>
+              )}
+              {fb.next_step && (
+                <p className="text-sm text-[#4d553e] font-semibold bg-[#697357]/5 border border-[#697357]/20 rounded-lg p-2.5">
+                  ➡️ Prochaine étape : {fb.next_step}
+                </p>
+              )}
+              <p className="text-xs text-slate-400">Améliorez votre réponse ci-dessus et renvoyez-la pour progresser.</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -587,9 +750,12 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         {/* Contenu du module actif */}
         <main className="min-w-0">
           {allDone && (
-            <div className="mb-4 rounded-2xl p-4 flex items-center gap-3 border bg-green-50 border-green-200">
+            <div className="mb-4 rounded-2xl p-4 flex flex-wrap items-center gap-3 border bg-green-50 border-green-200">
               <Unlock className="w-6 h-6 text-green-600 shrink-0" />
-              <div className="text-sm flex-1 text-green-700 font-semibold">🎉 Niveau {level} validé ! Financement {ceilingText.toLowerCase()} débloqué.</div>
+              <div className="text-sm flex-1 min-w-[200px] text-green-700 font-semibold">🎉 Niveau {level} validé ! Financement {ceilingText.toLowerCase()} débloqué.</div>
+              <Link href="/formations/simulateur" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-300 hover:bg-amber-200 text-[#3a4030] text-sm font-bold">
+                🏦 Entretien banquier
+              </Link>
               {user && <button onClick={downloadCertificate} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold"><Award className="w-4 h-4" /> Certificat</button>}
             </div>
           )}
@@ -621,6 +787,8 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
                   <CheckCircle2 className="w-5 h-5" /> J'ai terminé la lecture — Passer au QCM
                 </button>
               )}
+
+              <Workshop key={`ws-${active.id}`} module={active} level={level} />
 
               <div className="mt-6 flex items-center justify-between">
                 <button disabled={activeIdx <= 0} onClick={() => setOpenId(courses[activeIdx - 1]?.id)}
