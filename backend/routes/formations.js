@@ -15,6 +15,7 @@ const notificationService = require('../services/notification-service');
 const { renderHtmlToPdf } = require('../services/businessPlanPdf');
 const mistral = require('../services/mistral-service');
 const bankerService = require('../services/banker-service');
+const reviewService = require('../services/review-service');
 
 // Assistant IA des formations (gratuit, gpt-4.1-mini)
 let openai = null;
@@ -260,6 +261,8 @@ async function recordPassedModules(userId, entries) {
     } catch { /* best-effort */ }
   }
 
+  await reviewService.recordActivity(userId); // streak 🔥
+
   return { ...p, newLevel: p.levelUnlocked > before.levelUnlocked };
 }
 
@@ -334,6 +337,12 @@ router.post('/quiz/submit', optionalAuth, async (req, res) => {
     const lvl = parseInt(level, 10) || course.level;
 
     const out = { success: true, score, passed, passScore, corrections };
+    if (req.user?.id) {
+      // Révision espacée : chaque question ratée devient une carte (J+1, J+3, J+7, J+21)
+      await reviewService.recordFailedQuestions(req.user.id, module_id, lvl, qs, arr);
+      await reviewService.recordActivity(req.user.id);
+      out.reviewsAdded = qs.length - correct;
+    }
     if (passed && req.user?.id) {
       const p = await recordPassedModules(req.user.id, [{ module_id, level: lvl, score }]);
       Object.assign(out, { recorded: true, ...p });
@@ -344,6 +353,48 @@ router.post('/quiz/submit', optionalAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ formations/quiz/submit:', error);
     res.status(500).json({ success: false, error: 'Erreur correction' });
+  }
+});
+
+// ---------- STREAK & RÉVISION ESPACÉE ----------
+// GET /streak : série de jours d'activité (🔥) + révisions dues
+router.get('/streak', requireAuth, async (req, res) => {
+  try {
+    const [streak, dueCount] = await Promise.all([
+      reviewService.computeStreak(req.user.id),
+      reviewService.countDue(req.user.id),
+    ]);
+    res.json({ success: true, ...streak, dueReviews: dueCount });
+  } catch (error) {
+    console.error('❌ formations/streak:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// GET /reviews/due : cartes à réviser aujourd'hui (sans les réponses)
+router.get('/reviews/due', requireAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 30);
+    const items = await reviewService.getDue(req.user.id, limit);
+    const total = await reviewService.countDue(req.user.id);
+    res.json({ success: true, items, total });
+  } catch (error) {
+    console.error('❌ formations/reviews/due:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// POST /reviews/answer : corrige une carte et la reprogramme (Leitner)
+router.post('/reviews/answer', requireAuth, async (req, res) => {
+  try {
+    const { review_id, answer } = req.body || {};
+    if (!review_id) return res.status(400).json({ success: false, error: 'review_id requis' });
+    const result = await reviewService.answerReview(req.user.id, review_id, answer);
+    if (!result) return res.status(404).json({ success: false, error: 'Carte introuvable' });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('❌ formations/reviews/answer:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 });
 
@@ -575,6 +626,8 @@ Travail rendu par l'apprenant :
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,module_id' });
     } catch (e) { console.warn('⚠️ formation_deliverables (migration ?):', e.message); }
+
+    await reviewService.recordActivity(req.user.id); // streak 🔥
 
     res.json({ success: true, feedback });
   } catch (error) {

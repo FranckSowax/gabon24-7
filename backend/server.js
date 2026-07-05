@@ -4438,6 +4438,19 @@ cron.schedule('0 6 * * *', async () => {
   }
 }, { timezone: 'Africa/Libreville' });
 
+// 🧠 CRON: RAPPEL QUOTIDIEN DES RÉVISIONS (formations) — WhatsApp à 18h WAT
+console.log('⏰ Planification rappel révisions formations (18h WAT)...');
+cron.schedule('0 18 * * *', async () => {
+  console.log('🧠 Cron: rappel des révisions espacées...');
+  try {
+    const reviewService = require('./services/review-service');
+    const result = await reviewService.sendDailyReviewReminders();
+    console.log(`✅ Cron: rappels révisions envoyés à ${result.sent} apprenant(s)`);
+  } catch (error) {
+    console.error('❌ Cron: erreur rappel révisions:', error.message);
+  }
+}, { timezone: 'Africa/Libreville' });
+
 // 📺 CRON: EXTRACTION DU JOURNAL TV (après chaque publication: 13h, 18h, 21h, 23h)
 // Extraction à 14h, 19h, 21h et 0h (minuit) pour récupérer les journaux publiés
 console.log('⏰ Planification extraction journal TV (14h, 19h, 21h, 0h WAT)...');

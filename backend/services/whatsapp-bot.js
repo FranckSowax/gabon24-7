@@ -8,6 +8,7 @@ const supabase = supabaseService.supabase;
 const whapi = require('./whapiService');
 const mistral = require('./mistral-service');
 const banker = require('./banker-service');
+const reviewService = require('./review-service');
 
 let openai = null;
 try {
@@ -37,6 +38,7 @@ Répondez par un chiffre :
 3️⃣ Poser une question à l'IA
 4️⃣ Déposer un dossier de financement
 5️⃣ 🏦 Simuler un entretien banquier
+6️⃣ 🧠 Réviser mes questions du jour
 
 Ou posez directement votre question 👇`;
 }
@@ -118,8 +120,8 @@ Réponds sur WhatsApp : court (5-7 phrases max), concret, encourageant, avec un 
   return "L'assistant IA est momentanément indisponible. Réessayez plus tard.";
 }
 
-// Progression formation à partir du numéro de téléphone
-async function progressByPhone(phone) {
+// Candidat (user_id + nom) à partir du numéro de téléphone
+async function candidateByPhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   const tail = digits.slice(-8); // 8 derniers chiffres (Gabon)
   if (!tail) return null;
@@ -129,8 +131,18 @@ async function progressByPhone(phone) {
       .select('user_id, full_name, phone')
       .not('phone', 'is', null)
       .limit(1000);
-    const match = (cands || []).find(c => String(c.phone || '').replace(/\D/g, '').endsWith(tail));
-    if (!match?.user_id) return { name: match?.full_name || null, passed: 0, found: !!match };
+    return (cands || []).find(c => String(c.phone || '').replace(/\D/g, '').endsWith(tail)) || null;
+  } catch (e) {
+    console.warn('⚠️ candidateByPhone:', e.message);
+    return null;
+  }
+}
+
+// Progression formation à partir du numéro de téléphone
+async function progressByPhone(phone) {
+  const match = await candidateByPhone(phone);
+  if (!match?.user_id) return { name: match?.full_name || null, passed: 0, found: !!match };
+  try {
     const { data: rows } = await supabase
       .from('formation_progress')
       .select('id')
@@ -143,6 +155,81 @@ async function progressByPhone(phone) {
   }
 }
 
+// ---------- Révisions espacées sur WhatsApp (sessions en mémoire, TTL 15 min) ----------
+const reviewSessions = new Map(); // phone -> { userId, queue, idx, good, t }
+const REVIEW_TTL_MS = 15 * 60 * 1000;
+
+function cleanReviewSessions() {
+  const now = Date.now();
+  for (const [k, s] of reviewSessions) if (now - s.t > REVIEW_TTL_MS) reviewSessions.delete(k);
+}
+
+function formatReviewQ(item, pos, total) {
+  const opts = (item.options || []).map((o, i) => `${i + 1}. ${o}`).join('\n');
+  return `🧠 *Révision ${pos}/${total}*
+${item.question}
+
+${opts}
+
+_Répondez par le numéro (1-${(item.options || []).length}). *stop* pour quitter._`;
+}
+
+async function startReviewSession(phone) {
+  cleanReviewSessions();
+  const cand = await candidateByPhone(phone);
+  if (!cand?.user_id) {
+    return `🧠 Je ne trouve pas encore votre profil.
+Créez votre compte et candidatez : ${FRONT}/formations
+Vos questions ratées aux QCM reviendront ici en révision (J+1, J+3, J+7, J+21).`;
+  }
+  const queue = await reviewService.getDue(cand.user_id, 5);
+  if (!queue.length) {
+    return `🎉 Rien à réviser aujourd'hui — tout est à jour !
+Continuez un module pour garder votre série : ${FRONT}/formations`;
+  }
+  reviewSessions.set(phone, { userId: cand.user_id, queue, idx: 0, good: 0, t: Date.now() });
+  return formatReviewQ(queue[0], 1, queue.length);
+}
+
+async function reviewTurn(phone, text) {
+  cleanReviewSessions();
+  const s = reviewSessions.get(phone);
+  if (!s) return null;
+  s.t = Date.now();
+
+  const t = String(text || '').trim().toLowerCase();
+  if (['stop', 'menu', 'quitter', 'fin'].includes(t)) {
+    reviewSessions.delete(phone);
+    return `Révision interrompue.\n\n${menuText()}`;
+  }
+
+  const item = s.queue[s.idx];
+  const n = parseInt(t, 10);
+  if (!item || !Number.isInteger(n) || n < 1 || n > (item.options || []).length) {
+    return `Répondez par le numéro de votre choix (1-${(item?.options || []).length || 4}), ou *stop* pour quitter.`;
+  }
+
+  const r = await reviewService.answerReview(s.userId, item.id, n - 1);
+  let fb = r?.correct
+    ? `✅ Correct !${r.mastered ? ' 🏆 Question maîtrisée.' : ` Prochaine révision dans ${r.nextInDays} j.`}`
+    : `❌ La bonne réponse était : *${(item.options || [])[r?.correctIndex] || '—'}*. Elle reviendra demain.`;
+  if (r?.explanation) fb += `\n💡 ${r.explanation}`;
+  if (r?.correct) s.good += 1;
+
+  s.idx += 1;
+  if (s.idx >= s.queue.length) {
+    const score = `${s.good}/${s.queue.length}`;
+    reviewSessions.delete(phone);
+    return `${fb}
+
+🏁 *Révision terminée : ${score}* — votre série 🔥 continue !
+(Tapez *6* pour une nouvelle série s'il en reste, ou *menu*.)`;
+  }
+  return `${fb}
+
+${formatReviewQ(s.queue[s.idx], s.idx + 1, s.queue.length)}`;
+}
+
 async function replyFor(text, phone) {
   const t = String(text || '').trim().toLowerCase();
 
@@ -152,8 +239,18 @@ async function replyFor(text, phone) {
     if (r) return r;
   }
 
+  // Session de révision en cours : les réponses numériques alimentent le quiz
+  if (reviewSessions.has(phone)) {
+    const r = await reviewTurn(phone, text);
+    if (r) return r;
+  }
+
   if (t === '5' || t.includes('banquier') || t.includes('entretien') || t.includes('simul')) {
     return startBankerSession(phone);
+  }
+
+  if (t === '6' || t.startsWith('revis') || t.startsWith('révis')) {
+    return await startReviewSession(phone);
   }
 
   if (['menu', 'bonjour', 'bonsoir', 'salut', 'start', 'aide', 'hello', 'hi', '0'].includes(t)) {

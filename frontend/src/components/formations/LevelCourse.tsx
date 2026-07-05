@@ -11,7 +11,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud,
+  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud, Flame, Brain,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -508,6 +508,7 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
   const [badges, setBadges] = useState<{ id: string; label: string; emoji: string }[]>([])
   const [showQuiz, setShowQuiz] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
+  const [streakInfo, setStreakInfo] = useState<{ current: number; dueReviews: number } | null>(null)
 
   // Le QCM ne s'affiche qu'après lecture ; on masque le QCM et on coupe l'audio
   // à chaque changement de module. On mémorise aussi le dernier module ouvert.
@@ -601,6 +602,20 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
       }
     }).catch(() => { /* décoratif */ })
   }, [])
+
+  // Streak 🔥 + révisions dues (rafraîchi après chaque module validé)
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/formations/streak`, { headers: await authHeaders() })
+        const data = await res.json()
+        if (!cancelled && data?.success) setStreakInfo({ current: data.current || 0, dueReviews: data.dueReviews || 0 })
+      } catch { /* noop */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, authHeaders, passed.size])
 
   const markPassed = useCallback(async (id: string, score: number, submitRes?: QuizSubmitResult | null) => {
     const levelDone = !passed.has(id) && passed.size + 1 >= courses.length
@@ -702,6 +717,12 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-semibold">
               <DownloadCloud className="w-4 h-4" /> <span className="hidden sm:inline">Hors-ligne</span>
             </button>
+            {user && streakInfo && streakInfo.current > 0 && (
+              <span title={`${streakInfo.current} jour${streakInfo.current > 1 ? 's' : ''} d'activité d'affilée`}
+                className="inline-flex items-center gap-1 bg-white/15 text-amber-200 px-3 py-1.5 rounded-full text-sm font-black">
+                <Flame className="w-4 h-4" /> {streakInfo.current}
+              </span>
+            )}
             {user && (
               <span className="inline-flex items-center gap-1.5 bg-amber-300 text-[#3a4030] px-3 py-1.5 rounded-full text-sm font-bold">
                 <Trophy className="w-4 h-4" /> {xp} XP
@@ -740,6 +761,15 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
               })}
             </div>
           </div>
+          {user && streakInfo && streakInfo.dueReviews > 0 && (
+            <Link href="/formations/revisions"
+              className="block bg-amber-50 rounded-2xl border-2 border-amber-300 p-3.5 hover:bg-amber-100 transition-colors">
+              <span className="flex items-center gap-2 font-bold text-[#3a4030] text-sm">
+                <Brain className="w-5 h-5 text-amber-500" /> {streakInfo.dueReviews} question{streakInfo.dueReviews > 1 ? 's' : ''} à réviser
+              </span>
+              <span className="block text-xs text-slate-500 mt-0.5">2 min pour ancrer vos acquis et garder votre série 🔥</span>
+            </Link>
+          )}
           {user && badges.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-3 flex flex-wrap gap-1.5">
               {badges.map(b => <span key={b.id} title={b.label} className="inline-flex items-center gap-1 bg-[#697357]/10 text-[#4d553e] px-2 py-1 rounded-full text-xs font-semibold">{b.emoji} {b.label}</span>)}
