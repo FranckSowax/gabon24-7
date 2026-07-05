@@ -230,6 +230,198 @@ async function reviewTurn(phone, text) {
 ${formatReviewQ(s.queue[s.idx], s.idx + 1, s.queue.length)}`;
 }
 
+// ---------- Micro-modules : se former entièrement sur WhatsApp ----------
+const learnSessions = new Map(); // phone -> { stage, level, modules, moduleIdx, chunks, chunkIdx, quiz, qIdx, good, answers, userId, t }
+const LEARN_TTL_MS = 30 * 60 * 1000;
+
+function cleanLearnSessions() {
+  const now = Date.now();
+  for (const [k, s] of learnSessions) if (now - s.t > LEARN_TTL_MS) learnSessions.delete(k);
+}
+
+// Markdown des cours → mise en forme WhatsApp
+function mdToWhatsApp(text) {
+  return String(text || '')
+    .replace(/^#{1,3}\s*(.+)$/gm, '*$1*')
+    .replace(/\*\*(.+?)\*\*/g, '*$1*')
+    .replace(/^>\s?/gm, '💡 ')
+    .replace(/^- /gm, '• ')
+    .replace(/`/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function chunkText(text, size = 1300) {
+  const paras = String(text || '').split(/\n\n+/);
+  const chunks = [];
+  let cur = '';
+  for (const p of paras) {
+    if (cur && (cur.length + p.length + 2) > size) { chunks.push(cur); cur = p; }
+    else cur = cur ? `${cur}\n\n${p}` : p;
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+function formatLearnQ(q, pos, total) {
+  const opts = (q.options || []).map((o, i) => `${i + 1}. ${o}`).join('\n');
+  return `❓ *Question ${pos}/${total}*
+${q.question}
+
+${opts}
+
+_Répondez par le numéro._`;
+}
+
+function moduleListText(s) {
+  const list = s.modules.map((m, i) => `${i + 1}. ${m.title}`).join('\n');
+  return `📚 *Niveau ${s.level} — choisissez un module :*
+${list}
+
+_Répondez par le numéro du module. *stop* pour quitter._`;
+}
+
+async function startLearnSession(phone) {
+  cleanLearnSessions();
+  bankerSessions.delete(phone); reviewSessions.delete(phone);
+  learnSessions.set(phone, { stage: 'level', t: Date.now() });
+  const tip = TIPS[Math.floor((Date.now() / 86400000)) % TIPS.length];
+  return `🎓 *Formation Entrepreneur BCEG — sur WhatsApp*
+Quel niveau voulez-vous suivre ?
+1️⃣ Fondamentaux → financement jusqu'à 1 000 000 FCFA
+2️⃣ Développement → jusqu'à 5 000 000 FCFA
+3️⃣ Croissance → au-delà
+
+💡 Astuce du jour : ${tip}
+
+_Répondez 1, 2 ou 3. *stop* pour quitter._`;
+}
+
+async function learnTurn(phone, text) {
+  cleanLearnSessions();
+  const s = learnSessions.get(phone);
+  if (!s) return null;
+  s.t = Date.now();
+  const t = String(text || '').trim().toLowerCase();
+
+  if (['stop', 'menu', 'quitter', 'fin'].includes(t)) {
+    learnSessions.delete(phone);
+    return `Formation mise en pause — reprenez quand vous voulez (tapez *1*).\n\n${menuText()}`;
+  }
+
+  // 1) Choix du niveau
+  if (s.stage === 'level') {
+    const lvl = parseInt(t, 10);
+    if (![1, 2, 3].includes(lvl)) return 'Répondez 1, 2 ou 3 (ou *stop*).';
+    try {
+      const { data } = await supabase
+        .from('formation_courses')
+        .select('id, title, summary, content, quiz, order_index')
+        .eq('level', lvl)
+        .eq('is_published', true)
+        .order('order_index');
+      if (!data || !data.length) {
+        learnSessions.delete(phone);
+        return `Le contenu du niveau ${lvl} arrive bientôt sur WhatsApp. En attendant :
+👉 ${FRONT}/formations/niveau-${lvl}`;
+      }
+      s.level = lvl; s.modules = data; s.stage = 'module';
+      return moduleListText(s);
+    } catch {
+      learnSessions.delete(phone);
+      return `Petit souci technique — suivez la formation ici : ${FRONT}/formations/niveau-${lvl}`;
+    }
+  }
+
+  // 2) Choix du module
+  if (s.stage === 'module') {
+    const n = parseInt(t, 10);
+    if (!Number.isInteger(n) || n < 1 || n > s.modules.length) {
+      return `Répondez par un numéro entre 1 et ${s.modules.length} (ou *stop*).`;
+    }
+    s.moduleIdx = n - 1;
+    const m = s.modules[s.moduleIdx];
+    s.chunks = chunkText(mdToWhatsApp(m.content));
+    s.chunkIdx = Math.min(2, s.chunks.length);
+    s.stage = 'reading';
+    const out = [`📖 *${m.title}*`, ...s.chunks.slice(0, 2)];
+    out.push(s.chunkIdx < s.chunks.length
+      ? `_Tapez *suite* pour continuer (${s.chunks.length - s.chunkIdx} partie(s) restante(s)), ou *quiz* pour valider._`
+      : `_Lecture terminée ! Tapez *quiz* pour valider ce module._`);
+    return out;
+  }
+
+  // 3) Lecture par blocs
+  if (s.stage === 'reading') {
+    if (t === 'suite') {
+      if (s.chunkIdx >= s.chunks.length) return `_Lecture déjà terminée ! Tapez *quiz* pour valider, ou *modules* pour la liste._`;
+      const out = s.chunks.slice(s.chunkIdx, s.chunkIdx + 2);
+      s.chunkIdx += out.length;
+      out.push(s.chunkIdx < s.chunks.length
+        ? `_*suite* pour continuer (${s.chunks.length - s.chunkIdx} restante(s)), ou *quiz* pour valider._`
+        : `_Lecture terminée ! Tapez *quiz* pour valider ce module._`);
+      return out;
+    }
+    if (t === 'modules') { s.stage = 'module'; return moduleListText(s); }
+    if (t === 'quiz') {
+      const m = s.modules[s.moduleIdx];
+      const qs = m.quiz?.questions || [];
+      if (!qs.length) return `Pas encore de QCM pour ce module. Tapez *modules* pour en choisir un autre.`;
+      s.quiz = qs; s.qIdx = 0; s.good = 0; s.answers = [];
+      s.userId = (await candidateByPhone(phone))?.user_id || null;
+      s.stage = 'quiz';
+      return formatLearnQ(qs[0], 1, qs.length);
+    }
+    return `Tapez *suite* (lecture), *quiz* (valider), *modules* (liste) ou *stop*.`;
+  }
+
+  // 4) QCM question par question
+  if (s.stage === 'quiz') {
+    const q = s.quiz[s.qIdx];
+    const n = parseInt(t, 10);
+    if (!Number.isInteger(n) || n < 1 || n > (q.options || []).length) {
+      return `Répondez par le numéro (1-${(q.options || []).length}).`;
+    }
+    const correct = (n - 1) === q.correctIndex;
+    if (correct) s.good += 1;
+    s.answers.push(n - 1);
+    let fb = correct ? '✅ Correct !' : `❌ La bonne réponse : *${q.options[q.correctIndex]}*`;
+    if (q.explanation) fb += `\n💡 ${q.explanation}`;
+
+    s.qIdx += 1;
+    if (s.qIdx < s.quiz.length) return [fb, formatLearnQ(s.quiz[s.qIdx], s.qIdx + 1, s.quiz.length)];
+
+    // Fin du QCM
+    const m = s.modules[s.moduleIdx];
+    const score = Math.round((s.good / s.quiz.length) * 100);
+    const passScore = m.quiz?.passScore || 70;
+    const passed = score >= passScore;
+    let extra = '';
+    if (s.userId) {
+      try {
+        // Les questions ratées partent en révision espacée (J+1, J+3, J+7, J+21)
+        await reviewService.recordFailedQuestions(s.userId, m.id, s.level, s.quiz, s.answers);
+        await reviewService.recordActivity(s.userId);
+        if (passed) {
+          await supabase.from('formation_progress').upsert({
+            user_id: s.userId, module_id: m.id, level: s.level,
+            passed: true, score, completed_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,module_id' });
+          extra = '\n📈 Progression enregistrée sur votre compte — série 🔥 maintenue !';
+        }
+      } catch { /* best-effort */ }
+    } else if (passed) {
+      extra = `\n💡 Créez votre compte pour cumuler vos XP et débloquer le financement : ${FRONT}/formations`;
+    }
+    s.stage = 'module';
+    return [
+      `🏁 *QCM terminé : ${score} %* ${passed ? '— module validé ✅' : `— il faut ≥ ${passScore} %. Relisez le module et retentez !`}${extra}`,
+      moduleListText(s),
+    ];
+  }
+  return null;
+}
+
 async function replyFor(text, phone) {
   const t = String(text || '').trim().toLowerCase();
 
@@ -242,6 +434,12 @@ async function replyFor(text, phone) {
   // Session de révision en cours : les réponses numériques alimentent le quiz
   if (reviewSessions.has(phone)) {
     const r = await reviewTurn(phone, text);
+    if (r) return r;
+  }
+
+  // Formation en cours : niveau → module → lecture → QCM
+  if (learnSessions.has(phone)) {
+    const r = await learnTurn(phone, text);
     if (r) return r;
   }
 
@@ -258,16 +456,7 @@ async function replyFor(text, phone) {
   }
 
   if (t === '1' || t.startsWith('form')) {
-    const tip = TIPS[Math.floor((Date.now() / 86400000)) % TIPS.length];
-    return `🎓 *Formations Entrepreneur BCEG*
-• Niveau 1 — Fondamentaux → financement jusqu'à 1 000 000 FCFA
-• Niveau 2 — Développement → jusqu'à 5 000 000 FCFA
-• Niveau 3 — Croissance → au-delà
-
-👉 Continuez ici : ${FRONT}/formations
-
-💡 Astuce : ${tip}
-(Tapez *menu* pour revenir aux options.)`;
+    return await startLearnSession(phone);
   }
 
   if (t === '2' || t.includes('score') || t.includes('progress')) {
@@ -314,7 +503,12 @@ async function handleIncoming(payload) {
       const from = m.from || (m.chat_id ? String(m.chat_id).split('@')[0] : null);
       if (!from || !body) continue;
       const reply = await replyFor(body, from);
-      if (reply) await whapi.sendWhatsAppMessage(from, reply);
+      // Une réponse peut être multi-messages (lecture de module par blocs)
+      if (Array.isArray(reply)) {
+        for (const part of reply) if (part) await whapi.sendWhatsAppMessage(from, part);
+      } else if (reply) {
+        await whapi.sendWhatsAppMessage(from, reply);
+      }
     } catch (e) {
       console.error('❌ whatsapp-bot message:', e.message);
     }

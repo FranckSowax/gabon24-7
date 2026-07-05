@@ -603,6 +603,31 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
     }).catch(() => { /* décoratif */ })
   }, [])
 
+  // Rejoue les validations non synchronisées (QCM validé pendant une coupure réseau)
+  useEffect(() => {
+    if (!user?.id) return
+    const replay = async () => {
+      try {
+        const q: { module_id: string; level: number; score: number }[] = JSON.parse(localStorage.getItem('fmt-progress-queue') || '[]')
+        if (!q.length) return
+        const rest: typeof q = []
+        for (const item of q) {
+          try {
+            const res = await fetch(`${API_URL}/api/formations/progress`, {
+              method: 'POST', headers: await authHeaders(), body: JSON.stringify(item),
+            })
+            const data = await res.json()
+            if (!data?.success) rest.push(item)
+          } catch { rest.push(item) }
+        }
+        localStorage.setItem('fmt-progress-queue', JSON.stringify(rest))
+      } catch { /* noop */ }
+    }
+    replay()
+    window.addEventListener('online', replay)
+    return () => window.removeEventListener('online', replay)
+  }, [user?.id, authHeaders])
+
   // Streak 🔥 + révisions dues (rafraîchi après chaque module validé)
   useEffect(() => {
     if (!user?.id) return
@@ -632,7 +657,15 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
         })
         const data = await res.json()
         if (data?.success) { setXp(data.xp || 0); setBadges(data.badges || []) }
-      } catch { /* la progression locale reste affichée */ }
+        else throw new Error('non enregistré')
+      } catch {
+        // Réseau coupé → file de resynchronisation (rejouée au retour du réseau)
+        try {
+          const q = JSON.parse(localStorage.getItem('fmt-progress-queue') || '[]')
+          q.push({ module_id: id, level, score })
+          localStorage.setItem('fmt-progress-queue', JSON.stringify(q.slice(-60)))
+        } catch { /* la progression locale reste affichée */ }
+      }
       return
     }
 

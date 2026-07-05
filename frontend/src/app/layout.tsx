@@ -9,8 +9,13 @@ import { CreditAlertProvider } from '@/contexts/CreditAlertContext'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { ModalProvider } from '@/contexts/ModalContext'
 import Analytics from '@/components/Analytics'
+import PwaRegister from '@/components/PwaRegister'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const viewport = {
+  themeColor: '#4d553e',
+}
 
 export const metadata: Metadata = {
   title: {
@@ -35,6 +40,12 @@ export const metadata: Metadata = {
   authors: [{ name: 'Gabon Insight' }],
   creator: 'Gabon Insight',
   publisher: 'Gabon Insight',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Gabon Insight',
+  },
   icons: {
     icon: '/LOGO GABON INSIGHT ORANGE psd.png',
     shortcut: '/LOGO GABON INSIGHT ORANGE psd.png',
@@ -130,6 +141,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Analytics />
+        <PwaRegister />
         <QueryProvider>
           <ToastProvider>
             <AuthProvider>

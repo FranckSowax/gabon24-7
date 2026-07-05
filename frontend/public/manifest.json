@@ -1,0 +1,21 @@
+{
+  "name": "Gabon Insight — Formations Entrepreneur BCEG",
+  "short_name": "Gabon Insight",
+  "description": "Actualités du Gabon et formations entrepreneur BCEG : cours, QCM, révisions, BCEG Score et financement.",
+  "start_url": "/formations/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#4d553e",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mes révisions du jour", "url": "/formations/revisions/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Simulateur banquier", "url": "/formations/simulateur/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
