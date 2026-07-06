@@ -535,20 +535,13 @@ function LessonList({ courses, activeId, passed, onSelect }: {
   )
 }
 
-/* ---------- Aperçu vidéo animé en tête de leçon (HTML autonome dans une iframe isolée) ---------- */
+/* ---------- Motion design (vidéo muette, en boucle) en tête de leçon ---------- */
 function LessonIntroVideo({ src, storageKey }: { src: string; storageKey: string }) {
-  const [html, setHtml] = useState('')
   const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
     try { if (localStorage.getItem(storageKey) === '1') setHidden(true) } catch { /* noop */ }
   }, [storageKey])
-
-  useEffect(() => {
-    let cancelled = false
-    fetch(src).then(r => r.ok ? r.text() : '').then(t => { if (!cancelled) setHtml(t) }).catch(() => { /* silencieux */ })
-    return () => { cancelled = true }
-  }, [src])
 
   const hide = () => { setHidden(true); try { localStorage.setItem(storageKey, '1') } catch { /* noop */ } }
   const show = () => { setHidden(false); try { localStorage.removeItem(storageKey) } catch { /* noop */ } }
@@ -557,7 +550,7 @@ function LessonIntroVideo({ src, storageKey }: { src: string; storageKey: string
     return (
       <button onClick={show}
         className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#4d553e] hover:underline">
-        🎬 Revoir l'aperçu vidéo de la leçon
+        🎬 Revoir l'animation de la leçon
       </button>
     )
   }
@@ -565,19 +558,16 @@ function LessonIntroVideo({ src, storageKey }: { src: string; storageKey: string
   return (
     <div className="mb-5 rounded-2xl overflow-hidden border border-slate-200 bg-[#14160F] shadow-sm">
       <div className="flex items-center justify-between px-4 py-2 bg-[#20241A] text-white/90">
-        <span className="text-xs font-bold tracking-wide flex items-center gap-1.5">🎬 Aperçu de la leçon <span className="text-white/50 font-normal">· 30 s</span></span>
+        <span className="text-xs font-bold tracking-wide flex items-center gap-1.5">🎬 L'essentiel de la leçon en images</span>
         <button onClick={hide} className="text-xs text-white/60 hover:text-white">Masquer</button>
       </div>
-      <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
-        {html ? (
-          <iframe srcDoc={html} title="Aperçu de la leçon" loading="lazy"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
-        ) : (
-          <div style={{ position: 'absolute', inset: 0 }} className="flex items-center justify-center text-white/40 text-sm">
-            <Loader2 className="w-5 h-5 animate-spin" />
-          </div>
-        )}
-      </div>
+      <video
+        key={src}
+        src={src}
+        autoPlay muted loop playsInline preload="metadata"
+        className="w-full block"
+        style={{ aspectRatio: '16 / 9' }}
+      />
     </div>
   )
 }
@@ -1081,8 +1071,11 @@ export default function LevelCourse({ level, title, ceilingText, modules, nextHr
             </div>
           )}
 
-          {active && level === 1 && activeIdx === 0 && (
-            <LessonIntroVideo src="/covers/formations/apercu-n1l1.html" storageKey="fmt-intro-n1l1" />
+          {active && level === 1 && activeIdx >= 0 && activeIdx < 5 && (
+            <LessonIntroVideo
+              src={`/covers/formations/motion-n1l${activeIdx + 1}.mp4`}
+              storageKey={`fmt-motion-n1l${activeIdx + 1}`}
+            />
           )}
 
           {active && (
