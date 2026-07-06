@@ -19,6 +19,31 @@ router.post('/webhook', (req, res) => {
     console.error('❌ webhook whatsapp:', e.message));
 });
 
+// ---------- Activation du bot de formation WhatsApp (admin) ----------
+// GET : état actuel du bot (formations, questions IA, révisions… par WhatsApp)
+router.get('/bot-status', requireAdmin, async (req, res) => {
+  try {
+    const enabled = await whatsappBot.getBotEnabled();
+    res.json({ success: true, enabled });
+  } catch (error) {
+    console.error('Erreur bot-status WhatsApp:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST : activer / désactiver le bot   body: { enabled: true|false }
+router.post('/bot-toggle', requireAdmin, async (req, res) => {
+  try {
+    const enabled = req.body?.enabled === true || req.body?.enabled === 'true';
+    await whatsappBot.setBotEnabled(enabled);
+    console.log(`🤖 Bot formation WhatsApp ${enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'} par admin ${req.user?.id}`);
+    res.json({ success: true, enabled });
+  } catch (error) {
+    console.error('Erreur bot-toggle WhatsApp:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Schéma de validation pour le trigger
 const triggerSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(5),

@@ -21,6 +21,40 @@ try {
 const FRONT = (process.env.FRONTEND_URL || 'https://gaboninsight.com').replace(/\/$/, '');
 const TOTAL_MODULES = 15;
 
+// ---------- Activation du bot de formation (toggle admin, table app_settings) ----------
+const BOT_ENABLED_KEY = 'whatsapp_formation_bot_enabled';
+let botEnabledCache = null;
+let botEnabledTs = 0;
+const BOT_CACHE_MS = 30000; // 30 s
+
+async function getBotEnabled() {
+  const now = Date.now();
+  if (botEnabledCache !== null && (now - botEnabledTs) < BOT_CACHE_MS) return botEnabledCache;
+  try {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', BOT_ENABLED_KEY)
+      .maybeSingle();
+    // Par défaut activé si la ligne n'existe pas encore
+    botEnabledCache = data ? data.value !== 'false' : true;
+  } catch {
+    botEnabledCache = true; // ne jamais bloquer sur une erreur DB
+  }
+  botEnabledTs = now;
+  return botEnabledCache;
+}
+
+async function setBotEnabled(enabled) {
+  const val = enabled ? 'true' : 'false';
+  await supabase
+    .from('app_settings')
+    .upsert({ key: BOT_ENABLED_KEY, value: val, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  botEnabledCache = !!enabled;
+  botEnabledTs = Date.now();
+  return !!enabled;
+}
+
 const TIPS = [
   'Vendez la solution à un problème, pas juste un produit.',
   'Séparez toujours l\'argent perso de l\'argent de l\'entreprise.',
@@ -491,6 +525,8 @@ Générez votre business plan + plan d'action et soumettez-le à la BCEG :
 
 // Parse le payload WHAPI et répond à chaque message texte entrant
 async function handleIncoming(payload) {
+  // Bot de formation désactivé par l'admin → on n'envoie aucune réponse
+  if (!(await getBotEnabled())) return;
   const messages = Array.isArray(payload?.messages) ? payload.messages : [];
   for (const m of messages) {
     try {
@@ -515,4 +551,4 @@ async function handleIncoming(payload) {
   }
 }
 
-module.exports = { handleIncoming, replyFor };
+module.exports = { handleIncoming, replyFor, getBotEnabled, setBotEnabled };

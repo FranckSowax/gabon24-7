@@ -10,7 +10,10 @@ import {
   Clock,
   Radio,
   Hash,
-  Image
+  Image,
+  GraduationCap,
+  Power,
+  Loader2
 } from 'lucide-react';
 import axios from '@/lib/axios';
 
@@ -33,6 +36,8 @@ export default function WhatsAppAdminPage() {
   const [triggerResult, setTriggerResult] = useState<any>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [botEnabled, setBotEnabled] = useState<boolean | null>(null);
+  const [botToggling, setBotToggling] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -61,11 +66,35 @@ export default function WhatsAppAdminPage() {
     }
   }, []);
 
+  const fetchBotStatus = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/whatsapp/bot-status`);
+      if (typeof response.data?.enabled === 'boolean') setBotEnabled(response.data.enabled);
+    } catch (error) {
+      console.error('Erreur bot-status:', error);
+    }
+  }, []);
+
+  const toggleBot = useCallback(async () => {
+    if (botToggling || botEnabled === null) return;
+    const next = !botEnabled;
+    setBotToggling(true);
+    try {
+      const response = await axios.post(`${API_URL}/api/whatsapp/bot-toggle`, { enabled: next });
+      if (typeof response.data?.enabled === 'boolean') setBotEnabled(response.data.enabled);
+    } catch (error) {
+      console.error('Erreur bot-toggle:', error);
+    } finally {
+      setBotToggling(false);
+    }
+  }, [botToggling, botEnabled]);
+
   useEffect(() => {
     setMounted(true);
     fetchStatus();
     fetchChannels();
-  }, [fetchStatus, fetchChannels]);
+    fetchBotStatus();
+  }, [fetchStatus, fetchChannels, fetchBotStatus]);
 
   const handleTrigger = async () => {
     try {
@@ -114,6 +143,55 @@ export default function WhatsAppAdminPage() {
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Actualiser
         </button>
+      </div>
+
+      {/* Toggle : bot de formation WhatsApp */}
+      <div className={`rounded-xl p-6 shadow-sm border transition-colors ${
+        botEnabled === false ? 'bg-gray-50 border-gray-200' : 'bg-white border-green-200'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-xl ${botEnabled === false ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-600'}`}>
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                Formations par WhatsApp
+                {botEnabled !== null && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    botEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {botEnabled ? 'Activé' : 'Désactivé'}
+                  </span>
+                )}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1 max-w-xl">
+                Quand c'est activé, les utilisateurs peuvent se former, poser des questions à l'IA,
+                réviser et simuler un entretien banquier directement sur WhatsApp. Désactivé, le bot
+                ne répond plus aux messages entrants (les publications d'articles ne sont pas affectées).
+              </p>
+            </div>
+          </div>
+
+          {/* Interrupteur */}
+          <button
+            onClick={toggleBot}
+            disabled={botEnabled === null || botToggling}
+            role="switch"
+            aria-checked={botEnabled === true}
+            className={`relative shrink-0 inline-flex items-center h-9 w-16 rounded-full transition-colors disabled:opacity-50 ${
+              botEnabled ? 'bg-green-500' : 'bg-gray-300'
+            }`}
+          >
+            <span className={`inline-flex items-center justify-center h-7 w-7 bg-white rounded-full shadow transform transition-transform ${
+              botEnabled ? 'translate-x-8' : 'translate-x-1'
+            }`}>
+              {botToggling
+                ? <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                : <Power className={`w-4 h-4 ${botEnabled ? 'text-green-600' : 'text-gray-400'}`} />}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Stats cards */}
