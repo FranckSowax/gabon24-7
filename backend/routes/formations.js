@@ -307,6 +307,37 @@ function verifyPassToken(token) {
   } catch { return null; }
 }
 
+// ---------- Mélange déterministe des options de QCM ----------
+// Garantit que la bonne réponse n'est pas toujours au même rang (ex : « toujours la 2 »),
+// SANS casser la correction : le service (dbToModule) et la correction (/quiz/submit)
+// appliquent EXACTEMENT le même mélange (seed stable = id module + index + libellé question).
+function _hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function _mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffleQuestion(moduleId, qi, q) {
+  const opts = Array.isArray(q?.options) ? q.options : [];
+  if (opts.length < 2) return { ...q };
+  const rnd = _mulberry32(_hashSeed(`${moduleId}:${qi}:${String(q.question || '').slice(0, 48)}`));
+  const order = opts.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = order[i]; order[i] = order[j]; order[j] = t;
+  }
+  const options = order.map((oldI) => opts[oldI]);
+  const correctIndex = order.indexOf(typeof q.correctIndex === 'number' ? q.correctIndex : -1);
+  return { ...q, options, correctIndex };
+}
+
 // POST /quiz/submit : correction serveur (public, auth optionnelle).
 // Connecté + réussi → progression enregistrée directement.
 // Anonyme + réussi → pass_token à réclamer via /progress/claim après inscription.
@@ -322,11 +353,13 @@ router.post('/quiz/submit', optionalAuth, async (req, res) => {
       .eq('is_published', true)
       .maybeSingle();
 
-    const qs = course?.quiz?.questions;
-    if (!Array.isArray(qs) || !qs.length) {
+    const rawQs = course?.quiz?.questions;
+    if (!Array.isArray(rawQs) || !rawQs.length) {
       // Cours non importé en base → le front corrige localement (contenu statique)
       return res.json({ success: true, fallback: true });
     }
+    // Même mélange qu'au service (déterministe) → indices cohérents avec l'affichage
+    const qs = rawQs.map((q, i) => shuffleQuestion(module_id, i, q));
 
     const arr = Array.isArray(answers) ? answers : [];
     const correct = qs.reduce((n, q, i) => n + (Number(arr[i]) === q.correctIndex ? 1 : 0), 0);
@@ -801,9 +834,14 @@ function dbToModule(c) {
     sector: c.sector || null,
     // Les réponses (correctIndex/explanation) ne sont JAMAIS envoyées au client :
     // la correction se fait côté serveur via POST /quiz/submit.
+    // Les options sont mélangées (déterministe) pour éviter que la bonne réponse
+    // soit toujours au même rang — le même mélange est réappliqué à la correction.
     quiz: {
       passScore: c.quiz?.passScore || 70,
-      questions: (c.quiz?.questions || []).map((q) => ({ question: q.question, options: q.options })),
+      questions: (c.quiz?.questions || []).map((q, i) => {
+        const s = shuffleQuestion(c.id, i, q);
+        return { question: s.question, options: s.options };
+      }),
     },
   };
 }
@@ -992,6 +1030,69 @@ Paragraphe :
   } catch (error) {
     console.error('❌ formations/admin/courses/enrich-paragraph:', error);
     res.status(500).json({ success: false, error: 'Erreur enrichissement' });
+  }
+});
+
+// ADMIN : génère un QCM de 10 questions à DIFFICULTÉ CROISSANTE depuis le contenu du module
+router.post('/admin/courses/generate-quiz', requireAdmin, async (req, res) => {
+  try {
+    const { module_id, save = true } = req.body || {};
+    if (!module_id) return res.status(400).json({ success: false, error: 'module_id requis' });
+
+    const { data: course } = await supabase
+      .from('formation_courses')
+      .select('id, level, title, summary, content')
+      .eq('id', module_id)
+      .maybeSingle();
+    if (!course) return res.status(404).json({ success: false, error: 'Cours introuvable' });
+
+    const system = `Tu es concepteur pédagogique BCEG, expert de l'entrepreneuriat au Gabon (FCFA, OHADA, financement). Tu écris des QCM d'évaluation rigoureux et sans ambiguïté.`;
+    const user = `À partir du contenu du module « ${course.title} » (niveau ${course.level}) ci-dessous, rédige EXACTEMENT 10 questions à choix multiple en français.
+Règles impératives :
+- DIFFICULTÉ CROISSANTE : Q1-Q3 faciles (définitions, rappel direct), Q4-Q7 intermédiaires (application concrète), Q8-Q10 difficiles (analyse, calcul, cas chiffrés en FCFA).
+- Chaque question : exactement 4 options plausibles, UNE seule correcte, les 3 autres crédibles (pas d'absurdités).
+- VARIE la position de la bonne réponse d'une question à l'autre (surtout PAS toujours le même rang).
+- Ancre les exemples au Gabon quand c'est pertinent (marchés, FCFA, OHADA).
+- Une explication courte (1 phrase) justifiant la bonne réponse.
+Réponds en JSON STRICT, sans texte autour :
+{"questions":[{"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"...","difficulty":"facile"}]}
+(difficulty ∈ facile|moyen|difficile ; correctIndex = index 0-3 de la bonne option)
+
+CONTENU DU MODULE :
+"""${String(course.content || course.summary || '').slice(0, 6000)}"""`;
+
+    const outJson = await bankerService.completeJSON({ system, user, temperature: 0.4, maxTokens: 3000 });
+    let questions = Array.isArray(outJson?.questions) ? outJson.questions : [];
+    questions = questions.slice(0, 10).map((q) => {
+      const options = (Array.isArray(q.options) ? q.options : []).map((o) => String(o)).slice(0, 4);
+      let ci = parseInt(q.correctIndex, 10);
+      if (!Number.isInteger(ci) || ci < 0 || ci >= options.length) ci = 0;
+      return {
+        question: String(q.question || '').trim(),
+        options,
+        correctIndex: ci,
+        explanation: q.explanation ? String(q.explanation).trim() : null,
+        difficulty: ['facile', 'moyen', 'difficile'].includes(q.difficulty) ? q.difficulty : null,
+      };
+    }).filter((q) => q.question && q.options.length >= 3);
+
+    if (questions.length < 5) {
+      return res.status(502).json({ success: false, error: 'Génération insuffisante, réessayez.' });
+    }
+
+    const quiz = { passScore: 70, questions };
+    if (save) {
+      const { error } = await supabase
+        .from('formation_courses')
+        .update({ quiz, updated_at: new Date().toISOString() })
+        .eq('id', module_id);
+      if (error) throw error;
+    }
+    res.json({ success: true, count: questions.length, quiz });
+  } catch (error) {
+    console.error('❌ formations/admin/courses/generate-quiz:', error);
+    const code = /configuré|fournisseur IA/.test(error.message || '') ? 503 : 500;
+    res.status(code).json({ success: false, error: code === 503 ? 'Aucun fournisseur IA configuré (MISTRAL_API_KEY)' : 'Erreur génération QCM' });
   }
 });
 

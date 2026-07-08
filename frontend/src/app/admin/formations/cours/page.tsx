@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { MODULES_BY_LEVEL } from '@/lib/formations-content'
 import { FORMATION_SECTORS } from '@/lib/formations'
-import { BookOpen, Loader2, Save, Trash2, Download, ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { BookOpen, Loader2, Save, Trash2, Download, ArrowLeft, Eye, EyeOff, Sparkles, ListChecks } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -140,6 +140,41 @@ export default function CoursAdminPage() {
     finally { setBusy(null); setProgress(null) }
   }
 
+  // Génère un QCM de 10 questions à difficulté croissante (IA) pour un module
+  const generateQuiz = async (c: Course): Promise<boolean> => {
+    const res = await fetch(`${API_URL}/api/formations/admin/courses/generate-quiz`, {
+      method: 'POST', headers: await headers(), body: JSON.stringify({ module_id: c.id }),
+    })
+    const data = await res.json()
+    if (data?.success && data.quiz) {
+      setCourses(prev => prev.map(x => x.id === c.id ? { ...x, quiz: data.quiz } : x))
+      return true
+    }
+    throw new Error(data?.error || 'Erreur')
+  }
+
+  const genQuiz = async (c: Course) => {
+    if (!confirm(`Générer un QCM de 10 questions (difficulté croissante) pour « ${c.title} » ?\nCela remplace le QCM actuel.`)) return
+    setBusy(`quiz-${c.id}`)
+    try { const ok = await generateQuiz(c); alert(ok ? '✅ QCM de 10 questions généré.' : 'Erreur') }
+    catch (e: any) { alert('Erreur QCM : ' + (e?.message || '')) } finally { setBusy(null) }
+  }
+
+  const genAllQuiz = async () => {
+    if (!courses.length) { alert('Aucun cours en base. Cliquez d\'abord sur « Importer le contenu de démarrage ».'); return }
+    if (!confirm(`Générer un QCM de 10 questions pour les ${courses.length} cours ?\nCela remplace les QCM actuels et peut prendre quelques minutes.`)) return
+    setBusy('quiz-all')
+    try {
+      const list = [...courses]
+      for (let k = 0; k < list.length; k++) {
+        setProgress(`QCM ${k + 1}/${list.length} · ${list[k].title}`)
+        try { await generateQuiz(list[k]) } catch { /* on continue les suivants */ }
+      }
+      alert('✅ QCM générés pour tous les cours.')
+    } catch { alert('Génération interrompue — relancez pour terminer.') }
+    finally { setBusy(null); setProgress(null) }
+  }
+
   const del = async (id: string) => {
     if (!confirm('Supprimer ce cours ?')) return
     const res = await fetch(`${API_URL}/api/formations/admin/courses/${id}`, { method: 'DELETE', headers: await headers() })
@@ -165,6 +200,10 @@ export default function CoursAdminPage() {
           <button onClick={generateAll} disabled={!!busy}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:opacity-50">
             {busy === 'gen-all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Tout enrichir via IA
+          </button>
+          <button onClick={genAllQuiz} disabled={!!busy}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold disabled:opacity-50">
+            {busy === 'quiz-all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />} Générer tous les QCM (10 Q)
           </button>
         </div>
       </header>
@@ -211,6 +250,10 @@ export default function CoursAdminPage() {
               <button onClick={() => generate(c)} disabled={busy === `gen-${c.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 text-sm font-semibold disabled:opacity-50">
                 {busy === `gen-${c.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Enrichir via IA
+              </button>
+              <button onClick={() => genQuiz(c)} disabled={busy === `quiz-${c.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#697357]/10 text-[#4d553e] hover:bg-[#697357]/20 text-sm font-semibold disabled:opacity-50">
+                {busy === `quiz-${c.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />} QCM 10 Q
               </button>
               <button onClick={() => saveCourse(c)} disabled={busy === c.id}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#697357] hover:bg-[#4d553e] text-white text-sm font-semibold disabled:opacity-50">
