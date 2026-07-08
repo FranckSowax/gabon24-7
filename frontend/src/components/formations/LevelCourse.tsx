@@ -11,7 +11,7 @@ import { FormationModule } from '@/lib/formations-content'
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 import {
   BookOpen, CheckCircle2, Circle, Clock, Trophy, ArrowLeft, ArrowRight, Lock, Unlock,
-  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Square, DownloadCloud, Flame, Brain, ChevronDown,
+  Sparkles, Send, Loader2, Award, Lightbulb, Layers, Volume2, Pause, Play, Square, DownloadCloud, Flame, Brain, ChevronDown,
 } from 'lucide-react'
 
 /* ---------- Mini-rendu markdown (#, ##, ###, -, >, **gras**) ---------- */
@@ -538,13 +538,25 @@ function LessonList({ courses, activeId, passed, onSelect }: {
 /* ---------- Motion design (vidéo muette, en boucle) en tête de leçon ---------- */
 function LessonIntroVideo({ src, storageKey }: { src: string; storageKey: string }) {
   const [hidden, setHidden] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     try { if (localStorage.getItem(storageKey) === '1') setHidden(true) } catch { /* noop */ }
   }, [storageKey])
 
+  // Changement de leçon → on repart en pause (bouton « Lancer » visible)
+  useEffect(() => { setPlaying(false) }, [src])
+
   const hide = () => { setHidden(true); try { localStorage.setItem(storageKey, '1') } catch { /* noop */ } }
   const show = () => { setHidden(false); try { localStorage.removeItem(storageKey) } catch { /* noop */ } }
+
+  const toggle = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) v.play().catch(() => { /* lecture bloquée par le navigateur */ })
+    else v.pause()
+  }
 
   if (hidden) {
     return (
@@ -559,15 +571,36 @@ function LessonIntroVideo({ src, storageKey }: { src: string; storageKey: string
     <div className="mb-5 rounded-2xl overflow-hidden border border-slate-200 bg-[#14160F] shadow-sm">
       <div className="flex items-center justify-between px-4 py-2 bg-[#20241A] text-white/90">
         <span className="text-xs font-bold tracking-wide flex items-center gap-1.5">🎬 L'essentiel de la leçon en images</span>
-        <button onClick={hide} className="text-xs text-white/60 hover:text-white">Masquer</button>
+        <div className="flex items-center gap-3">
+          <button onClick={toggle}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-white/80 hover:text-white">
+            {playing ? <><Pause className="w-3.5 h-3.5" /> Pause</> : <><Play className="w-3.5 h-3.5" /> Lire</>}
+          </button>
+          <button onClick={hide} className="text-xs text-white/60 hover:text-white">Masquer</button>
+        </div>
       </div>
-      <video
-        key={src}
-        src={src}
-        autoPlay muted loop playsInline preload="metadata"
-        className="w-full block"
-        style={{ aspectRatio: '16 / 9' }}
-      />
+      <div className="relative">
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          muted loop playsInline preload="metadata"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onClick={toggle}
+          className="w-full block cursor-pointer"
+          style={{ aspectRatio: '16 / 9' }}
+        />
+        {!playing && (
+          <button onClick={toggle} aria-label="Lancer l'animation"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/35 hover:bg-black/25 transition-colors">
+            <span className="w-16 h-16 rounded-full bg-white/90 text-[#20241A] flex items-center justify-center shadow-lg">
+              <Play className="w-7 h-7" fill="currentColor" style={{ marginLeft: 3 }} />
+            </span>
+            <span className="text-white/90 text-xs font-semibold">Lancer l'animation</span>
+          </button>
+        )}
+      </div>
     </div>
   )
 }
