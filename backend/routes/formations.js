@@ -840,7 +840,8 @@ function dbToModule(c) {
       passScore: c.quiz?.passScore || 70,
       questions: (c.quiz?.questions || []).map((q, i) => {
         const s = shuffleQuestion(c.id, i, q);
-        return { question: s.question, options: s.options };
+        // difficulty n'est pas sensible (contrairement à correctIndex) → envoyé au client
+        return { question: s.question, options: s.options, difficulty: q.difficulty || null };
       }),
     },
   };

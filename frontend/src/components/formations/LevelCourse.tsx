@@ -183,6 +183,22 @@ function Markdown({ md }: { md: string }) {
   return <div className="text-[15px]">{blocks}</div>
 }
 
+/* ---------- Repère de difficulté par question ---------- */
+const DIFFICULTY_META: Record<string, { label: string; cls: string }> = {
+  facile: { label: 'Facile', cls: 'bg-green-100 text-green-700' },
+  moyen: { label: 'Moyen', cls: 'bg-amber-100 text-amber-800' },
+  difficile: { label: 'Difficile', cls: 'bg-red-100 text-red-700' },
+}
+function DifficultyPill({ level }: { level?: string | null }) {
+  const meta = level ? DIFFICULTY_META[level] : null
+  if (!meta) return null
+  return (
+    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${meta.cls}`}>
+      {meta.label}
+    </span>
+  )
+}
+
 /* ---------- QCM (corrigé côté serveur ; repli local pour le contenu statique) ---------- */
 type QuizCorrection = { correctIndex?: number; explanation?: string | null }
 type QuizSubmitResult = {
@@ -246,7 +262,10 @@ function Quiz({ module, level, onPass }: { module: FormationModule; level: numbe
       <div className="space-y-5">
         {qs.map((q, qi) => (
           <div key={qi}>
-            <p className="font-semibold text-slate-800 mb-2">{qi + 1}. {q.question}</p>
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <p className="font-semibold text-slate-800">{qi + 1}. {q.question}</p>
+              <DifficultyPill level={q.difficulty} />
+            </div>
             <div className="space-y-1.5">
               {q.options.map((opt, oi) => {
                 const chosen = answers[qi] === oi

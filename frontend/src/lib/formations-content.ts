@@ -7,6 +7,7 @@ export interface QuizQuestion {
   options: string[]
   correctIndex: number
   explanation: string
+  difficulty?: 'facile' | 'moyen' | 'difficile' | null
 }
 
 export interface FormationModule {
