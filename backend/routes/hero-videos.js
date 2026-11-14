@@ -11,7 +11,13 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const supabaseService = require('../supabase-config');
 const { requireAdmin } = require('../middleware/auth');
-const { splitRecapVideos } = require('../services/recap-video');
+const {
+  splitRecapVideos,
+  isRecapVideo,
+  buildRecapTitle,
+  normalizeRecapHeadlines,
+} = require('../services/recap-video');
+const { requireRecapAgent, recapAgentLimiter } = require('../middleware/recap-agent');
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -130,6 +136,104 @@ router.get('/', requireAdmin, async (req, res) => {
   }
 });
 
+// Compresse le fichier reçu puis le dépose dans l'espace de stockage.
+// Renvoie son adresse publique. `tmpFiles` reçoit les fichiers temporaires à
+// supprimer par l'appelant, que le traitement réussisse ou non.
+async function compressAndStore(file, tmpFiles) {
+  const stamp = Date.now();
+  const inputPath = path.join(os.tmpdir(), `hero-in-${stamp}.mp4`);
+  const outputPath = path.join(os.tmpdir(), `hero-out-${stamp}.mp4`);
+  tmpFiles.push(inputPath, outputPath);
+
+  fs.writeFileSync(inputPath, file.buffer);
+
+  // Compression (qualité conservée)
+  console.log(`🎬 Compression vidéo hero (${(file.size / 1024 / 1024).toFixed(1)} Mo)…`);
+  await compressVideo(inputPath, outputPath);
+  const compressed = fs.readFileSync(outputPath);
+  console.log(`✅ Compressé → ${(compressed.length / 1024 / 1024).toFixed(1)} Mo`);
+
+  const fileName = `hero-${stamp}.mp4`;
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET)
+    .upload(fileName, compressed, { contentType: 'video/mp4', upsert: false });
+  if (upErr) throw new Error(`Upload échoué: ${upErr.message}`);
+
+  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+  return urlData.publicUrl;
+}
+
+// ---------- AGENT : dépôt du récap vidéo quotidien ----------
+// Route réservée à l'agent (en-tête X-Agent-Key = RECAP_AGENT_KEY). La clé est
+// vérifiée AVANT la réception du fichier : sans elle, rien n'est chargé en mémoire.
+// Le serveur fixe lui-même le titre, le lien et l'ordre, puis désactive les
+// récaps précédents : l'agent n'envoie que la vidéo et les titres du jour.
+const RECAP_CTA_LABEL = 'Lire l\'actualité';
+const RECAP_CTA_URL = 'https://gaboninsight.com/';
+
+router.post('/recap', recapAgentLimiter, requireRecapAgent, upload.single('video'), async (req, res) => {
+  const tmpFiles = [];
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Fichier vidéo manquant (champ « video »)' });
+    }
+    if (!/^video\/(mp4|quicktime)$/i.test(req.file.mimetype || '')) {
+      return res.status(400).json({ success: false, error: 'Format non pris en charge : un fichier .mp4 est attendu' });
+    }
+
+    const description = normalizeRecapHeadlines(req.body.headlines !== undefined ? req.body.headlines : req.body.description);
+    if (!description) {
+      return res.status(400).json({ success: false, error: 'Titres du jour manquants (champ « headlines »)' });
+    }
+
+    const videoUrl = await compressAndStore(req.file, tmpFiles);
+
+    const { data: row, error: insErr } = await supabase
+      .from('hero_videos')
+      .insert({
+        title: buildRecapTitle(),
+        description,
+        cta_label: RECAP_CTA_LABEL,
+        cta_url: RECAP_CTA_URL,
+        video_url: videoUrl,
+        order_index: 0,
+        is_active: true,
+      })
+      .select()
+      .single();
+    if (insErr) throw insErr;
+
+    // Un seul récap actif : les précédents sont désactivés (jamais supprimés,
+    // et jamais une vidéo publicitaire). Un échec ici n'annule pas le dépôt.
+    let replaced = 0;
+    try {
+      const previous = (await loadActiveVideos()).filter((video) => isRecapVideo(video) && video.id !== row.id);
+      if (previous.length > 0) {
+        const { error: offErr } = await supabase
+          .from('hero_videos')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .in('id', previous.map((video) => video.id));
+        if (offErr) throw offErr;
+        replaced = previous.length;
+      }
+    } catch (cleanupError) {
+      console.error('⚠️ hero-videos/recap : anciens récaps non désactivés :', cleanupError.message);
+    }
+
+    console.log(`🎬 Récap déposé par l'agent : ${row.title} (${replaced} ancien(s) désactivé(s))`);
+    res.status(201).json({
+      success: true,
+      video: { id: row.id, title: row.title, description: row.description, video_url: row.video_url },
+      replaced,
+    });
+  } catch (error) {
+    console.error('❌ hero-videos/recap (dépôt) :', error.message);
+    res.status(500).json({ success: false, error: 'Dépôt du récap impossible' });
+  } finally {
+    tmpFiles.forEach((f) => { try { fs.unlinkSync(f); } catch {} });
+  }
+});
+
 // ---------- ADMIN : upload + compression ----------
 router.post('/', requireAdmin, upload.single('video'), async (req, res) => {
   const tmpFiles = [];
@@ -139,27 +243,7 @@ router.post('/', requireAdmin, upload.single('video'), async (req, res) => {
     }
     const { title, description, cta_label, cta_url, order_index } = req.body;
 
-    const stamp = Date.now();
-    const inputPath = path.join(os.tmpdir(), `hero-in-${stamp}.mp4`);
-    const outputPath = path.join(os.tmpdir(), `hero-out-${stamp}.mp4`);
-    tmpFiles.push(inputPath, outputPath);
-
-    fs.writeFileSync(inputPath, req.file.buffer);
-
-    // Compression (qualité conservée)
-    console.log(`🎬 Compression vidéo hero (${(req.file.size / 1024 / 1024).toFixed(1)} Mo)…`);
-    await compressVideo(inputPath, outputPath);
-    const compressed = fs.readFileSync(outputPath);
-    console.log(`✅ Compressé → ${(compressed.length / 1024 / 1024).toFixed(1)} Mo`);
-
-    const fileName = `hero-${stamp}.mp4`;
-    const { error: upErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(fileName, compressed, { contentType: 'video/mp4', upsert: false });
-    if (upErr) throw new Error(`Upload échoué: ${upErr.message}`);
-
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
-    const videoUrl = urlData.publicUrl;
+    const videoUrl = await compressAndStore(req.file, tmpFiles);
 
     const { data: row, error: insErr } = await supabase
       .from('hero_videos')
@@ -231,6 +315,19 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     console.error('❌ hero-videos delete:', error);
     res.status(500).json({ success: false, error: 'Erreur suppression' });
   }
+});
+
+// Fichier refusé par multer (trop lourd, champ inattendu) : réponse claire.
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    const tooLarge = err.code === 'LIMIT_FILE_SIZE';
+    return res.status(tooLarge ? 413 : 400).json({
+      success: false,
+      error: tooLarge ? 'Vidéo trop volumineuse (200 Mo maximum)' : 'Envoi de fichier invalide',
+      code: err.code,
+    });
+  }
+  return next(err);
 });
 
 module.exports = router;
