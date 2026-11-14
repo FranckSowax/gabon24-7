@@ -4,7 +4,8 @@ const cheerio = require('cheerio');
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL || 'https://ykytsadwfqoyusleoflf.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlreXRzYWR3ZnFveXVzbGVvZmxmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDc4ODkyNiwiZXhwIjoyMDcwMzY0OTI2fQ.VTlJyoM7Wd8Uf6_rYNdCYOhkPNwJhAZKsZSqJlBVE5E';
+// La clé de service ne doit jamais être écrite dans un fichier du dépôt.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseKey) {
   console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquant dans les variables d\'environnement');

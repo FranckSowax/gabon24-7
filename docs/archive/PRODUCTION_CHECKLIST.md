@@ -40,14 +40,14 @@
 GEMINI_API_KEY=AIza...
 REPLICATE_API_TOKEN=r8_... (Pour TTS et Fallback)
 SUPABASE_SERVICE_ROLE_KEY=eyJ...  # Clé SERVICE_ROLE (pas anon!)
-RAPIDAPI_KEY=c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7
-WHAPI_TOKEN=fKUGctmyoUq5pex25GdAcjrUyjl55nrd
+RAPIDAPI_KEY=<valeur retirée>
+WHAPI_TOKEN=<valeur retirée>
 SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
 NODE_ENV=production
 
 # OPTIONNELLES
 OPENAI_API_KEY=sk-proj-...
-JWT_SECRET=un_secret_fort_32_chars
+JWT_SECRET=<valeur retirée>
 ```
 
 ### 2. Renouveler le token Replicate

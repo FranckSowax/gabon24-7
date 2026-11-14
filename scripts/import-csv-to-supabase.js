@@ -5,7 +5,7 @@ const path = require('path')
 
 // Configuration Supabase - utiliser les variables d'environnement
 const supabaseUrl = 'https://ykytsadwfqoyusleoflf.supabase.co'
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlreXRzYWR3ZnFveXVzbGVvZmxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMzMjk3MjYsImV4cCI6MjAzODkwNTcyNn0.pI0SNv0aLFHtPl7tnN-FUlYzQ-LCwMXN5s_MDLwF4d0'
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Variables d\'environnement Supabase manquantes')

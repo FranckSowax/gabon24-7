@@ -101,6 +101,26 @@ describe('Credit Manager Premium', () => {
       const result = await consumeCredits('user-123', 'chat_message', 100);
 
       expect(result.success).toBe(false);
+      expect(result.error).toBe('Insufficient credits');
+    });
+
+    it('devrait échouer si la base ne confirme pas le débit', async () => {
+      supabaseService.supabase.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+
+      const result = await consumeCredits('user-123', 'chat_message', 10);
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait échouer sur une erreur RPC', async () => {
+      supabaseService.supabase.rpc = jest.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'RPC error' }
+      });
+
+      const result = await consumeCredits('user-123', 'chat_message', 10);
+
+      expect(result).toEqual({ success: false, error: 'RPC error' });
     });
   });
 });

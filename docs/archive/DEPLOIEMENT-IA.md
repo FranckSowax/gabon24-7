@@ -107,7 +107,7 @@ curl -X POST https://gabon24-7-production.up.railway.app/api/generate-article-im
 ```bash
 NEXT_PUBLIC_API_URL=https://gabon24-7-production.up.railway.app
 NEXT_PUBLIC_SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<valeur retirée>
 ```
 
 ### 6. 🧪 Tests End-to-End

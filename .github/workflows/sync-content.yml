@@ -18,6 +18,10 @@ jobs:
     name: Synchronisation Journal TV + Résumés Audio
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Requis par le backend sur les routes déclencheuses (secret GitHub à créer,
+      # même valeur que la variable CRON_SECRET de Railway et de Netlify)
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     
     steps:
       - name: 📺 Extraction Journal TV
@@ -28,6 +32,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "https://gabon24-7-production.up.railway.app/api/youtube/extract" \
             -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
             --max-time 60)
           
           http_code=$(echo "$response" | tail -n1)
@@ -51,6 +56,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
             -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
             -d '{"language":"fr"}' \
             --max-time 180)
           
@@ -75,6 +81,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
             -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
             -d '{"language":"en"}' \
             --max-time 180)
           
@@ -99,6 +106,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
             -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
             -d '{"language":"zh"}' \
             --max-time 180)
           

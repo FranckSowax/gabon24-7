@@ -64,14 +64,14 @@ Génère 3 fichiers audio de test dans `backend/test-audio-output/` :
 ```bash
 REPLICATE_API_TOKEN=r8_xxxxxxxxxxxxxxxxxxxxx
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxx
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 ```
 
 #### Local (.env)
 ```env
 REPLICATE_API_TOKEN=r8_xxxxxxxxxxxxxxxxxxxxx
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxx
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 ```
 
 ### Obtenir les clés API

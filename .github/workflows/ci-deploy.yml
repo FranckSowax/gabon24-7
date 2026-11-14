@@ -104,7 +104,8 @@ jobs:
           echo "🔍 Vérification des endpoints critiques..."
           
           # Check monitoring endpoint
-          curl -f https://gabon24-7-production.up.railway.app/api/monitoring/health || echo "⚠️ Monitoring endpoint failed"
+          # Bloquant : un backend qui ne répond pas doit faire échouer le déploiement.
+          curl -fsS https://gabon24-7-production.up.railway.app/api/monitoring/health
           
           # Check main API
           curl -f https://gabon24-7-production.up.railway.app/api/ || echo "⚠️ Main API failed"

@@ -9,9 +9,29 @@ class PaymentService {
   constructor() {
     this.providers = {
       'card': new CardProvider(),
-      'cash': new CashProvider(),
-      'demo': new DemoProvider()
+      'cash': new CashProvider()
     };
+    // Le fournisseur démo valide un paiement sans encaissement: jamais en production
+    if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEMO_PAYMENTS === 'true') {
+      this.providers.demo = new DemoProvider();
+    }
+  }
+
+  /**
+   * Retourne le fournisseur d'une méthode de paiement.
+   * SECURITE: une méthode inconnue est refusée (auparavant elle retombait sur le
+   * fournisseur démo, qui marquait le paiement comme réussi).
+   */
+  getProvider(method) {
+    const provider = Object.prototype.hasOwnProperty.call(this.providers, method)
+      ? this.providers[method]
+      : null;
+    if (!provider) {
+      const error = new Error('Méthode de paiement non supportée');
+      error.code = 'UNSUPPORTED_PAYMENT_METHOD';
+      throw error;
+    }
+    return provider;
   }
 
   /**
@@ -32,7 +52,7 @@ class PaymentService {
 
     console.log(`🚀 Initiation paiement: ${method} - ${amount} ${currency} (User: ${userId})`);
 
-    const provider = this.providers[method] || this.providers['demo'];
+    const provider = this.getProvider(method);
     
     // 1. Créer l'enregistrement de transaction en base (Pending)
     const { data: transaction, error } = await supabaseService.supabase
@@ -115,7 +135,7 @@ class PaymentService {
 
     if (error || !transaction) throw new Error('Transaction non trouvée');
 
-    const provider = this.providers[transaction.payment_method] || this.providers['demo'];
+    const provider = this.getProvider(transaction.payment_method);
     
     // Vérifier auprès du provider
     const statusResult = await provider.checkStatus(transaction.external_reference || transaction.id);
@@ -206,16 +226,17 @@ class CardProvider extends BaseProvider {
   constructor() { super('Stripe'); }
 
   async initiate({ transactionId, amount, currency }) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return {
-        status: 'pending',
-        externalId: `STRIPE-SIM-${Date.now()}`,
-        redirectUrl: 'https://checkout.stripe.com/test-link', 
-        raw_response: { simulation: true, note: 'Configure STRIPE_SECRET_KEY' }
-      };
+    // Stripe n'est ni configuré ni installé aujourd'hui (le site encaisse via
+    // E-Billing). Refus clair, plutôt qu'un faux lien de paiement ou un plantage.
+    let stripe;
+    try {
+      if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY absent');
+      stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    } catch (setupError) {
+      const error = new Error('Paiement par carte indisponible pour le moment');
+      error.code = 'UNSUPPORTED_PAYMENT_METHOD';
+      throw error;
     }
-
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     try {
       const session = await stripe.checkout.sessions.create({

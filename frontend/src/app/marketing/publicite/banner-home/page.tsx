@@ -6,6 +6,7 @@ import { Upload, X, ArrowLeft, Check, Image as ImageIcon } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
+import { addToCart } from '@/lib/cart'
 
 export default function BannerHomePage() {
   const router = useRouter()
@@ -124,66 +125,69 @@ export default function BannerHomePage() {
         // Upload desktop image
         const desktopFormData = new FormData()
         desktopFormData.append('file', desktopImage)
-        const desktopRes = await fetch(`${API_URL}/api/upload`, { 
-          method: 'POST', 
-          body: desktopFormData 
+        // L'adresse d'envoi est /api/upload/image (l'ancienne, /api/upload,
+        // n'existe pas). Sans adresse renvoyée on s'arrête : l'aperçu local
+        // n'est pas une image publiée et le serveur le refuserait.
+        const desktopRes = await fetch(`${API_URL}/api/upload/image`, {
+          method: 'POST',
+          body: desktopFormData
         })
-        const desktopData = await desktopRes.json()
-        desktopImageUrl = desktopData.url || desktopPreview || ''
+        const desktopData = await desktopRes.json().catch(() => null)
+        if (!desktopRes.ok || !desktopData?.url) {
+          throw new Error(desktopData?.error || 'Envoi de l\'image ordinateur impossible')
+        }
+        desktopImageUrl = desktopData.url
 
         // Upload mobile image
         const mobileFormData = new FormData()
         mobileFormData.append('file', mobileImage)
-        const mobileRes = await fetch(`${API_URL}/api/upload`, { 
-          method: 'POST', 
-          body: mobileFormData 
+        const mobileRes = await fetch(`${API_URL}/api/upload/image`, {
+          method: 'POST',
+          body: mobileFormData
         })
-        const mobileData = await mobileRes.json()
-        mobileImageUrl = mobileData.url || mobilePreview || ''
+        const mobileData = await mobileRes.json().catch(() => null)
+        if (!mobileRes.ok || !mobileData?.url) {
+          throw new Error(mobileData?.error || 'Envoi de l\'image mobile impossible')
+        }
+        mobileImageUrl = mobileData.url
       }
 
       // Calculer le budget total
       const totalBudget = calculateBudget()
 
-      // Créer la campagne
-      const campaignData = {
+      // Ajouter au panier (le serveur recalcule le prix au paiement)
+      addToCart({
         campaign_type: 'banner-home',
         name: formData.name,
-        banner_title: formData.bannerTitle,
-        banner_description: formData.bannerDescription,
-        redirect_url: formData.redirectUrl,
-        start_date: formData.startDate,
-        duration_days: formData.durationDays,
-        desktop_image_url: desktopImageUrl,
-        mobile_image_url: mobileImageUrl,
-        design_request: formData.designRequest,
-        design_request_notes: formData.designNotes,
         budget: totalBudget,
-        status: 'pending'
-      }
-
-      console.log('📤 Envoi campagne:', campaignData)
-
-      // Envoyer au backend
-      const response = await fetch(`${API_URL}/api/campaigns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(campaignData)
+        duration_days: formData.durationDays,
+        start_date: formData.startDate,
+        details: {
+          banner_title: formData.bannerTitle,
+          banner_description: formData.bannerDescription,
+          redirect_url: formData.redirectUrl,
+          desktop_image_url: desktopImageUrl,
+          mobile_image_url: mobileImageUrl,
+          design_request: formData.designRequest,
+          design_request_notes: formData.designNotes
+        }
       })
 
-      const result = await response.json()
+      // Paiement obligatoire : la campagne est créée au moment du paiement,
+      // depuis le panier, comme pour la vidéo et l'article sponsorisé.
+      const goToCheckout = confirm(
+        `✅ Campagne ajoutée au panier!\n\nMontant: ${totalBudget.toLocaleString()} FCFA\n\nVoulez-vous procéder au paiement maintenant?`
+      )
 
-      if (response.ok && result.success) {
-        alert(`✅ Campagne créée avec succès !\n\nBudget total: ${totalBudget.toLocaleString()} FCFA\nDémarrage: ${new Date(formData.startDate).toLocaleDateString('fr-FR')}\n\nVotre campagne sera validée sous 24h.`)
-        router.push('/marketing/publicite')
+      if (goToCheckout) {
+        router.push('/checkout-campaigns')
       } else {
-        throw new Error(result.error || 'Erreur lors de la création')
+        router.push('/marketing/publicite')
       }
     } catch (error) {
       console.error('❌ Erreur:', error)
-      alert('❌ Erreur lors de la création de la campagne. Veuillez réessayer.')
+      const reason = error instanceof Error && error.message ? error.message : 'Veuillez réessayer.'
+      alert(`❌ Erreur lors de la création de la campagne.\n\n${reason}`)
     } finally {
       setLoading(false)
     }
@@ -443,7 +447,7 @@ export default function BannerHomePage() {
                 ) : (
                   <>
                     <Check className="w-5 h-5" />
-                    Soumettre pour validation
+                    Ajouter au panier
                   </>
                 )}
               </button>
@@ -452,7 +456,7 @@ export default function BannerHomePage() {
             {/* Info */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                ℹ️ Votre campagne sera examinée par notre équipe sous 24h. Vous recevrez une notification par email.
+                ℹ️ La campagne est ajoutée à votre panier. Après paiement, elle est examinée par notre équipe sous 24h.
               </p>
             </div>
           </form>

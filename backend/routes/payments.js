@@ -36,8 +36,10 @@ const quizPaymentSchema = z.object({
 });
 
 const campaignPaymentSchema = z.object({
-  campaignIds: z.array(z.string().uuid()).min(1, 'Au moins une campagne requise'),
-  amount: z.number().positive().min(100, 'Montant minimum: 100 FCFA'),
+  campaignIds: z.array(z.string().uuid()).min(1, 'Au moins une campagne requise').max(50),
+  // Indicatif uniquement: le montant facturé est recalculé côté serveur à partir
+  // des campagnes en base. S'il diffère, le paiement est refusé (panier périmé).
+  amount: z.number().positive().optional(),
 });
 
 // ============================================
@@ -54,7 +56,7 @@ router.post('/credits', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message,
+        error: validation.error.issues[0].message,
       });
     }
 
@@ -97,7 +99,7 @@ router.post('/subscription', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message,
+        error: validation.error.issues[0].message,
       });
     }
 
@@ -138,7 +140,7 @@ router.post('/quiz', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message,
+        error: validation.error.issues[0].message,
       });
     }
 
@@ -178,7 +180,7 @@ router.post('/campaign', requireAuth, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: validation.error.errors[0].message,
+        error: validation.error.issues[0].message,
       });
     }
 
@@ -188,7 +190,7 @@ router.post('/campaign', requireAuth, async (req, res) => {
     const result = await ebillingService.initiateCampaignPayment({
       userId,
       campaignIds,
-      amount,
+      expectedAmount: amount,
       userEmail: req.user.email,
       userName: req.user.user_metadata?.full_name || req.user.email,
     });
@@ -229,7 +231,8 @@ router.get('/status/:reference', requireAuth, async (req, res) => {
       });
     }
 
-    const result = await ebillingService.checkPaymentStatus(reference);
+    // Un utilisateur ne peut consulter (et relancer) que ses propres paiements
+    const result = await ebillingService.checkPaymentStatus(reference, req.user.id);
     res.json(result);
 
   } catch (error) {
@@ -326,22 +329,20 @@ router.post('/retry-credits/:reference', requireAuth, async (req, res) => {
  */
 router.post('/ebilling/callback', async (req, res) => {
   try {
-    console.log('📥 Callback E-Billing reçu:', JSON.stringify(req.body, null, 2));
-
+    // Endpoint public non signé: le corps reçu ne prouve rien. Le service relit
+    // le statut réel auprès d'E-Billing avant d'attribuer quoi que ce soit, et la
+    // réponse ne révèle ni l'existence ni l'état d'un paiement.
     const result = await ebillingService.processCallback(req.body);
 
-    res.json({
-      status: 'OK',
-      message: 'Callback traité',
-      ...result,
-    });
+    if (!result.success) {
+      return res.status(500).json({ status: 'ERROR', message: 'Erreur de traitement' });
+    }
+
+    res.json({ status: 'OK', message: 'Callback reçu' });
 
   } catch (error) {
-    console.error('❌ Erreur callback E-Billing:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      message: error.message,
-    });
+    console.error('❌ Erreur callback E-Billing:', error.message);
+    res.status(500).json({ status: 'ERROR', message: 'Erreur de traitement' });
   }
 });
 

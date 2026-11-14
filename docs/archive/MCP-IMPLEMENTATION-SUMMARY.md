@@ -107,9 +107,9 @@ Le module opportunités de Gabon 24/7 a été successfully enrichi avec l'intég
 ```bash
 # Base (existantes)
 SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 OPENAI_API_KEY=sk-...
-DEEPSEEK_API_KEY=sk-4492687aa2f842699975e8f011536252
+DEEPSEEK_API_KEY=<valeur retirée>
 
 # Nouvelles (optionnelles)
 BRAVE_SEARCH_API_KEY=your_brave_search_api_key

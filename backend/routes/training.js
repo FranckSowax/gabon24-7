@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+
+// SECURITE: un :user_id d'URL doit être celui du jeton (sauf admin).
+// L'authentification est imposée au montage dans server.js (requireOwnUser).
+const { ownUserParam } = require('../middleware/auth');
+router.param('user_id', ownUserParam);
+
 const supabaseService = require('../supabase-config');
 const geminiService = require('../services/gemini-service');
 const { trackAIUsage } = require('../utils/track-ai-usage');

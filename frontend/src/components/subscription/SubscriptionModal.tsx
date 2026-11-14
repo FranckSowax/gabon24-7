@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Check, Crown, Zap, Users } from 'lucide-react'
-import { getSubscriptionPlans, createUserSubscription, SubscriptionPlan } from '@/lib/subscription'
+import { getSubscriptionPlans, SubscriptionPlan } from '@/lib/subscription'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface SubscriptionModalProps {
@@ -41,28 +41,26 @@ export default function SubscriptionModal({ isOpen, onClose, onSuccess }: Subscr
       return
     }
 
-    setLoading(true)
     setError('')
 
-    try {
-      const { data, error: subscriptionError } = await createUserSubscription(
-        user.id,
-        planId,
-        billingCycle
-      )
-
-      if (subscriptionError) {
-        setError(subscriptionError.message)
-      } else {
-        await refreshSubscription()
-        onSuccess?.()
-        onClose()
-      }
-    } catch (err) {
-      setError('Erreur lors de la souscription')
-    } finally {
-      setLoading(false)
+    const plan = plans.find((p) => p.id === planId)
+    if (!plan) {
+      setError('Plan introuvable')
+      return
     }
+
+    // Plan gratuit : rien à payer ni à créer, c'est le plan par défaut.
+    if (!plan.price_monthly) {
+      onClose()
+      return
+    }
+
+    // Plan payant : la souscription n'est jamais créée depuis le navigateur.
+    // On envoie vers la page d'abonnement, où le paiement est initié ; le
+    // serveur active l'abonnement une fois le paiement confirmé.
+    setLoading(true)
+    onClose()
+    window.location.assign(`/abonnement?plan=${encodeURIComponent(plan.slug)}&cycle=${billingCycle}`)
   }
 
   const formatPrice = (price: number) => {

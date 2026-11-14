@@ -47,9 +47,9 @@
 
 ```bash
 # 🔑 SUPABASE (CRITIQUE)
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_ANON_KEY=<valeur retirée>
 
 # 🌐 FRONTEND
 FRONTEND_URL=https://gabon24-7.netlify.app

@@ -95,6 +95,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const { data: articles } = await supabase
         .from('articles')
         .select('id, published_at')
+        // Les articles non publiés (sponsorisés en attente) n'ont pas de page
+        .or('is_published.is.null,is_published.eq.true')
         .order('published_at', { ascending: false })
         .limit(500)
 

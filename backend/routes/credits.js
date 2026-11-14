@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
-const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin, optionalAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 
@@ -23,16 +23,10 @@ const consumeCreditsSchema = z.object({
 });
 
 const addCreditsSchema = z.object({
+  userId: z.string().uuid('userId invalide').optional().nullable(),
   amount: z.coerce.number().int().positive('amount positif requis').max(1_000_000),
   source: z.string().max(100).optional().default('manual'),
   referenceId: z.string().max(200).optional().nullable(),
-});
-
-const buyPackageSchema = z.object({
-  userId: z.string().uuid().optional().nullable(),
-  packageId: z.string().max(200),
-  paymentMethod: z.string().max(50).optional().nullable(),
-  paymentReference: z.string().max(200).optional().nullable(),
 });
 
 const manageCreditsSchema = z.object({
@@ -139,15 +133,20 @@ router.post('/consume', requireAuth, validateBody(consumeCreditsSchema), async (
   }
 });
 
-// POST /api/credits/add - Ajouter des crédits
-router.post('/add', requireAuth, validateBody(addCreditsSchema), async (req, res) => {
+// POST /api/credits/add - Créditer manuellement un compte (ADMIN UNIQUEMENT)
+// SECURITE: cette route crée des crédits sans paiement. Elle est donc réservée
+// aux administrateurs (geste commercial, correction). Les achats passent
+// exclusivement par POST /api/payments/credits (E-Billing).
+router.post('/add', requireAdmin, validateBody(addCreditsSchema), async (req, res) => {
   try {
-    const userId = req.user.id; // Extrait du JWT
     const {
       amount,
       source = 'manual',
       referenceId = null
     } = req.body;
+    // Compte crédité: celui désigné par l'admin, sinon l'admin lui-même
+    const userId = req.body.userId || req.user.id;
+    console.warn(`🔐 Crédit manuel admin: ${amount} crédits pour ${userId} par ${req.user.id} (source: ${source})`);
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ success: false, error: 'amount positif requis' });
@@ -314,46 +313,17 @@ router.get('/packages', async (req, res) => {
   }
 });
 
-// POST /api/credits/packages - Acheter un package de crédits
-router.post('/packages', requireAuth, validateBody(buyPackageSchema), async (req, res) => {
-  try {
-    const userId = req.user?.id || req.body.userId;
-    const { packageId, paymentMethod, paymentReference } = req.body;
-
-    const { data: pkg, error: pkgError } = await supabaseService.supabase
-      .from('credit_packages')
-      .select('*')
-      .eq('id', packageId)
-      .single();
-
-    if (pkgError) throw pkgError;
-
-    const { data, error } = await supabaseService.supabase
-      .from('credit_transactions')
-      .insert({
-        user_id: userId,
-        package_id: packageId,
-        credits: pkg.credits,
-        amount: pkg.price,
-        payment_method: paymentMethod,
-        payment_reference: paymentReference,
-        status: 'completed',
-        created_at: new Date().toISOString()
-      })
-      .select();
-
-    if (error) throw error;
-
-    await supabaseService.supabase.rpc('add_user_credits', {
-      p_user_id: userId,
-      p_credits: pkg.credits
-    });
-
-    res.json({ success: true, transaction: data[0] });
-  } catch (error) {
-    console.error('❌ Erreur achat crédits:', error);
-    res.json({ success: false, error: error.message });
-  }
+// POST /api/credits/packages - DÉSACTIVÉ
+// SECURITE: cette route créditait le compte sans aucun paiement (transaction
+// insérée directement en 'completed'). L'achat de crédits passe désormais
+// uniquement par POST /api/payments/credits, qui crée une facture E-Billing
+// et ne crédite qu'après confirmation du paiement.
+router.post('/packages', requireAuth, (req, res) => {
+  res.status(410).json({
+    success: false,
+    error: 'Endpoint désactivé. Utilisez POST /api/payments/credits pour acheter des crédits.',
+    code: 'CREDITS_PURCHASE_MOVED'
+  });
 });
 
 // POST /api/credits/manage - Gérer les crédits (check_balance)

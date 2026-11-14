@@ -2,7 +2,8 @@ name: 🔎 Pull Request Checks
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # `edited` : corriger le titre de la demande de fusion relance sa vérification
+    types: [opened, synchronize, reopened, edited]
 
 jobs:
   # PR Title Check
@@ -110,14 +111,15 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x' # le backend exige Node >= 22 (openai 7, puppeteer 25)
       
       - name: 🧪 Backend Tests
         working-directory: ./backend
         run: |
           npm ci
-          npm test || true
-        continue-on-error: true
+          npm run test:ci
+        env:
+          NODE_ENV: test
       
       - name: 🏗️ Frontend Build
         working-directory: ./frontend
@@ -133,6 +135,11 @@ jobs:
   pr-comment:
     name: PR Summary Comment
     runs-on: ubuntu-latest
+    # Publier le commentaire de synthèse demande un droit d'écriture sur la
+    # demande de fusion ; sans lui, l'étape échouait (403).
+    permissions:
+      pull-requests: write
+      issues: write
     needs: [pr-title-check, changed-files, pr-size-check, pr-tests]
     if: always()
     

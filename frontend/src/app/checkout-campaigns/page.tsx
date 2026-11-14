@@ -1,5 +1,4 @@
 'use client'
-// Mode Demo - Création via RPC Supabase
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,7 +14,8 @@ import {
   getCampaignTypeInfo, 
   formatPrice, 
   calculateEndDate,
-  type CartItem 
+  setCartItemCampaignId,
+  type CartItem
 } from '@/lib/cart'
 
 export const dynamic = 'force-dynamic'
@@ -37,7 +37,7 @@ export default function CheckoutCampaignsPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('mobile_money')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('ebilling')
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -84,14 +84,6 @@ export default function CheckoutCampaignsPage() {
 
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'demo',
-      name: 'Paiement Demo (Test)',
-      icon: <Check className="w-6 h-6" />,
-      description: 'Validation instantanée pour tests',
-      available: true,
-      instructions: 'Votre campagne sera créée et validée instantanément (mode démo)'
-    },
-    {
       id: 'ebilling',
       name: 'Paiement en ligne',
       icon: <CreditCard className="w-6 h-6" />,
@@ -122,135 +114,6 @@ export default function CheckoutCampaignsPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const createCampaignsDirectly = async () => {
-    // Mode DEMO: Création directe via Supabase (bypass API Railway)
-    const createdCampaigns = []
-    
-    for (const item of cart) {
-      const startDateObj = new Date(item.start_date)
-      const endDateObj = new Date(startDateObj)
-      endDateObj.setDate(endDateObj.getDate() + item.duration_days)
-
-      // Cast details en any pour accéder aux propriétés dynamiques
-      const details: any = item.details
-
-      // Construire l'objet campagne
-      const campaignData: any = {
-        user_id: '00000000-0000-0000-0000-000000000001', // User système demo
-        campaign_type: item.campaign_type,
-        name: item.name,
-        redirect_url: details.redirect_url,
-        start_date: startDateObj.toISOString(),
-        end_date: endDateObj.toISOString(),
-        duration_days: item.duration_days,
-        design_request: details.design_request || details.request_creation || false,
-        design_request_notes: details.design_request_notes || details.design_notes || null,
-        budget: item.budget,
-        status: 'pending', // DEMO: directement en pending
-        payment_status: 'completed', // DEMO: paiement validé
-        views: 0,
-        clicks: 0
-      }
-
-      // Ajouter champs spécifiques selon type
-      if (item.campaign_type === 'article-trending') {
-        campaignData.banner_title = details.article_title || item.name
-        campaignData.banner_description = details.article_summary || details.article_subtitle || ''
-      } else {
-        campaignData.banner_title = details.banner_title || ''
-        campaignData.banner_description = details.banner_description || ''
-        if (details.desktop_image_url) campaignData.desktop_image_url = details.desktop_image_url
-        if (details.mobile_image_url) campaignData.mobile_image_url = details.mobile_image_url
-      }
-
-      // Créer la campagne via fonction RPC (bypass RLS)
-      const { data: campaign, error: campaignError } = await supabase
-        .rpc('create_demo_campaign', {
-          campaign_data: campaignData
-        })
-
-      if (campaignError) {
-        console.error('❌ Erreur création campagne:', campaignError)
-        throw new Error(`Erreur création campagne: ${campaignError.message}`)
-      }
-
-      console.log('✅ Campagne créée (DEMO):', campaign)
-      createdCampaigns.push(campaign)
-
-      // Si article sponsorisé, créer l'article
-      if (item.campaign_type === 'article-trending' && details.article_title) {
-        // Vérifier/créer flux Gabon Insight
-        let { data: feed } = await supabase
-          .from('rss_feeds')
-          .select('id')
-          .eq('name', 'Gabon Insight')
-          .single()
-
-        if (!feed) {
-          const { data: newFeed } = await supabase
-            .from('rss_feeds')
-            .insert([{
-              name: 'Gabon Insight',
-              url: 'https://gabon-insight.netlify.app/sponsored',
-              description: 'Articles sponsorisés et contenus partenaires',
-              category: 'Sponsorisé',
-              language: 'fr',
-              country: 'GA',
-              status: 'active',
-              is_premium: true,
-              priority: 1
-            }])
-            .select('id')
-            .single()
-          feed = newFeed
-        }
-
-        // Créer l'article
-        const { data: article, error: articleError } = await supabase
-          .from('articles')
-          .insert([{
-            feed_id: feed?.id,
-            external_id: `sponsored-${campaign.id}`,
-            title: details.article_title,
-            summary: details.article_summary || details.article_subtitle,
-            summary_ai: details.article_summary || details.article_subtitle,
-            content: details.article_content,
-            url: details.redirect_url,
-            author: details.article_author || 'Gabon Insight',
-            published_at: startDateObj.toISOString(),
-            language: 'fr',
-            category: details.article_category || 'business',
-            keywords: [
-              details.company_name,
-              details.product_service,
-              'sponsorisé',
-              'publicité',
-              details.target_audience
-            ].filter(Boolean),
-            sentiment_score: 0.85,
-            read_time_minutes: Math.ceil((details.article_content?.length || 500) / 1000 * 5),
-            image_urls: details.article_image_url ? [details.article_image_url] : 
-                       (details.article_image_preview ? [details.article_image_preview] : []),
-            is_trending: false, // Admin doit valider
-            view_count: 0, // Compteur démarre après validation
-            share_count: 0,
-            whatsapp_share_count: 0,
-            is_published: false // ⚠️ Attente validation admin
-          }])
-          .select()
-          .single()
-
-        if (articleError) {
-          console.error('❌ Erreur création article:', articleError)
-        } else {
-          console.log('✅ Article sponsorisé créé (DEMO):', article.id)
-        }
-      }
-    }
-
-    return createdCampaigns
-  }
-
   const handlePayment = async () => {
     if (!validateForm()) {
       alert('❌ Veuillez remplir tous les champs requis')
@@ -265,71 +128,69 @@ export default function CheckoutCampaignsPage() {
     setLoading(true)
 
     try {
-      // MODE DEMO: Création directe via Supabase
-      if (selectedPaymentMethod === 'demo') {
-        console.log('🎯 Mode DEMO activé - Création directe via Supabase')
-        
-        const campaigns = await createCampaignsDirectly()
-        
-        // Vider le panier
-        clearCart()
-
-        // Redirection vers page succès
-        router.push(`/checkout/success-campaign?method=demo&payment_id=demo-${Date.now()}&count=${campaigns.length}`)
+      // Paiement via E-Billing uniquement. La campagne n'est validée qu'après
+      // confirmation du paiement côté serveur.
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (!token) {
+        alert('❌ Connectez-vous pour finaliser votre commande')
+        router.push('/auth/signin?redirectTo=/checkout-campaigns')
         return
       }
 
-      // MODE NORMAL: Via E-Billing
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://gabon24-7-production.up.railway.app'
 
-      // Créer les campagnes avec status 'unpaid'
-      const campaignPromises = cart.map(async (item) => {
-        const endDate = calculateEndDate(item.start_date, item.duration_days)
+      // Créer les campagnes côté serveur. Le prix, le statut et le propriétaire
+      // sont fixés par le serveur : seuls le type, la durée, la date et le
+      // contenu sont envoyés. Création une par une, et l'identifiant obtenu est
+      // mémorisé dans le panier : en cas d'échec puis de relance, une campagne
+      // déjà créée n'est pas recréée.
+      const campaignIds: string[] = []
+      for (const item of cart) {
+        if (item.campaign_id) {
+          campaignIds.push(item.campaign_id)
+          continue
+        }
 
-        const campaignData = {
+        // L'aperçu local de l'image (encodé, parfois plusieurs Mo) et l'objet
+        // fichier ne sont pas envoyés : le serveur n'accepte que des adresses http(s).
+        const { article_image_preview, article_image_file, ...details } =
+          item.details as Record<string, unknown>
+        const campaignData: Record<string, unknown> = {
+          ...details,
           campaign_type: item.campaign_type,
           name: item.name,
-          budget: item.budget,
           duration_days: item.duration_days,
           start_date: item.start_date,
-          end_date: endDate,
-          status: 'unpaid',
-          ...item.details,
-          payment_method: 'ebilling',
-          payment_status: 'pending',
-          user_email: formData.email,
-          user_phone: formData.phone,
-          user_full_name: formData.fullName
+        }
+        if (typeof article_image_preview === 'string' && /^https?:\/\//.test(article_image_preview)) {
+          campaignData.article_image_url = article_image_preview
         }
 
         const response = await fetch(`${API_URL}/api/campaigns`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(campaignData)
         })
+        const created = await response.json().catch(() => null)
 
-        if (!response.ok) {
-          throw new Error('Erreur création campagne')
+        if (!response.ok || !created?.campaign?.id) {
+          throw new Error(`${item.name} : ${created?.error || 'création de la campagne impossible'}`)
         }
 
-        return await response.json()
-      })
-
-      const createdCampaigns = await Promise.all(campaignPromises)
-
-      // Récupérer le token d'authentification
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
+        setCartItemCampaignId(item.id, created.campaign.id)
+        campaignIds.push(created.campaign.id)
+      }
 
       // Initier le paiement via E-Billing
       const paymentResponse = await fetch(`${API_URL}/api/payments/campaign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          campaignIds: createdCampaigns.map(c => c.campaign?.id || c.id).filter(Boolean),
+          campaignIds,
           amount: total,
         })
       })

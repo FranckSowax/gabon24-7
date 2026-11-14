@@ -24,7 +24,7 @@ OPENAI_API_KEY=sk-proj-...VOTRE_CLE_OPENAI_ICI
 
 # OPTIONNEL - Autres services
 REPLICATE_API_TOKEN=r8_...
-RAPIDAPI_FOOTBALL_KEY=c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7
+RAPIDAPI_FOOTBALL_KEY=<valeur retirée>
 ```
 
 ### 3. Obtenir la Clé Supabase Service Role

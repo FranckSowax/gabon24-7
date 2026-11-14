@@ -5,7 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const supabaseService = require('../../supabase-config');
-const { requireAuth } = require('../../middleware/auth');
+const { requireAuth, requireOwnUser } = require('../../middleware/auth');
+const { projectParam, assertProjectAccess } = require('../../middleware/project-access');
 const {
   sendCollaboratorInvitation,
   sendCommentNotification,
@@ -51,6 +52,39 @@ const upload = multer({
   }
 });
 
+// Tout :projectId d'URL doit désigner un projet accessible à l'utilisateur.
+router.param('projectId', projectParam);
+
+/**
+ * Charge une invitation et vérifie qu'elle est adressée à l'utilisateur
+ * connecté (même compte, ou même adresse e-mail que celle invitée).
+ * WHY: sans ce contrôle, accepter l'invitation d'un autre suffisait pour
+ * entrer dans son projet. En cas de refus la réponse est envoyée et la
+ * fonction renvoie null.
+ */
+async function loadOwnInvitation(req, res, invitationId) {
+  const { data: invitation } = await supabase
+    .from('project_collaborators')
+    .select('id, project_id, collaborator_id, collaborator_email, status')
+    .eq('id', invitationId)
+    .maybeSingle();
+
+  if (!invitation) {
+    res.status(404).json({ success: false, error: 'Invitation introuvable' });
+    return null;
+  }
+
+  const sameAccount = invitation.collaborator_id && invitation.collaborator_id === req.user.id;
+  const sameEmail = invitation.collaborator_email && req.user.email &&
+    String(invitation.collaborator_email).trim().toLowerCase() === String(req.user.email).trim().toLowerCase();
+
+  if (!sameAccount && !sameEmail) {
+    res.status(403).json({ success: false, error: 'Cette invitation ne vous est pas adressée', code: 'INVITATION_NOT_YOURS' });
+    return null;
+  }
+  return invitation;
+}
+
 // Inviter un collaborateur
 // 🔒 SÉCURISÉ: Authentification requise
 router.post('/invite', requireAuth, async (req, res) => {
@@ -65,6 +99,10 @@ router.post('/invite', requireAuth, async (req, res) => {
     if (req.user.id !== ownerId) {
       return res.status(403).json({ success: false, error: 'Non autorisé' });
     }
+
+    // ...et qu'il possède réellement ce projet (sinon on pouvait s'inviter
+    // soi-même dans le projet de n'importe qui).
+    if (!(await assertProjectAccess(req, res, projectId, { ownerOnly: true }))) return;
 
     // Vérifier si le collaborateur existe déjà
     const { data: existing } = await supabase
@@ -186,9 +224,12 @@ router.get('/list/:projectId', requireAuth, async (req, res) => {
 
 // Accepter une invitation
 // 🔒 SÉCURISÉ: Authentification requise
-router.post('/accept', requireAuth, async (req, res) => {
+router.post('/accept', requireOwnUser, async (req, res) => {
   try {
-    const { collaboratorId, userId } = req.body;
+    const { collaboratorId } = req.body;
+    const userId = req.user.id; // Jamais depuis le body
+
+    if (!(await loadOwnInvitation(req, res, collaboratorId))) return;
 
     const { data, error } = await supabase
       .from('project_collaborators')
@@ -262,6 +303,18 @@ router.delete('/remove/:collaboratorId', requireAuth, async (req, res) => {
   try {
     const { collaboratorId } = req.params;
 
+    // Seuls le propriétaire du projet et le collaborateur lui-même peuvent retirer l'accès
+    const { data: collaboration } = await supabase
+      .from('project_collaborators')
+      .select('project_id, collaborator_id')
+      .eq('id', collaboratorId)
+      .maybeSingle();
+    if (!collaboration) {
+      return res.status(404).json({ success: false, error: 'Collaborateur introuvable' });
+    }
+    if (collaboration.collaborator_id !== req.user.id &&
+        !(await assertProjectAccess(req, res, collaboration.project_id, { ownerOnly: true }))) return;
+
     const { error } = await supabase
       .from('project_collaborators')
       .delete()
@@ -279,7 +332,7 @@ router.delete('/remove/:collaboratorId', requireAuth, async (req, res) => {
 
 // Ajouter un commentaire
 // 🔒 SÉCURISÉ: Authentification requise
-router.post('/comment', requireAuth, async (req, res) => {
+router.post('/comment', requireOwnUser, async (req, res) => {
   try {
     const { projectId, userId, userEmail, userName, content, commentType = 'general', targetId, metadata } = req.body;
 
@@ -389,7 +442,14 @@ router.post('/upload-document', requireAuth, upload.single('file'), async (req, 
 
     const { projectId } = req.body;
     if (!projectId) {
+      fs.unlink(req.file.path, () => {});
       return res.status(400).json({ success: false, error: 'Project ID manquant' });
+    }
+
+    // Corps multipart : le garde global n'a pas pu lire projectId, contrôle ici.
+    if (!(await assertProjectAccess(req, res, projectId))) {
+      fs.unlink(req.file.path, () => {}); // ne pas conserver le fichier d'un envoi refusé
+      return;
     }
 
     const filePath = req.file.path;
@@ -619,6 +679,8 @@ router.post('/reject', requireAuth, async (req, res) => {
   try {
     const { collaboratorId } = req.body;
 
+    if (!(await loadOwnInvitation(req, res, collaboratorId))) return;
+
     const { data, error } = await supabase
       .from('project_collaborators')
       .update({
@@ -649,6 +711,13 @@ router.post('/generate-share-link', requireAuth, async (req, res) => {
     if (!projectId || !ownerId) {
       return res.status(400).json({ success: false, error: 'Paramètres manquants' });
     }
+
+    // Seul le propriétaire crée un lien de partage (sinon n'importe qui obtenait
+    // un lien d'accès au projet d'un autre).
+    if (ownerId !== req.user.id && req.user.isAdmin !== true) {
+      return res.status(403).json({ success: false, error: 'Non autorisé' });
+    }
+    if (!(await assertProjectAccess(req, res, projectId, { ownerOnly: true }))) return;
 
     // Générer un token unique
     const shareToken = uuidv4();
@@ -728,7 +797,7 @@ router.post('/generate-share-link', requireAuth, async (req, res) => {
 
 // Rejoindre un projet via lien de partage
 // 🔒 SÉCURISÉ: Authentification requise (l'utilisateur doit avoir un compte)
-router.post('/join-via-link', requireAuth, async (req, res) => {
+router.post('/join-via-link', requireOwnUser, async (req, res) => {
   try {
     const { shareToken, userId, userEmail } = req.body;
 
@@ -904,6 +973,10 @@ router.get('/share-link/:shareToken', async (req, res) => {
 router.get('/shared-with-me/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (userId !== req.user.id && req.user.isAdmin !== true) {
+      return res.status(403).json({ success: false, error: 'Accès refusé', code: 'AUTH_USER_MISMATCH' });
+    }
 
     // Récupérer les collaborations acceptées
     const { data: collaborations, error } = await supabase

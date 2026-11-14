@@ -257,10 +257,11 @@ const {
   campaignCreationLimiter,
   searchLimiter,
   publicReadLimiter,
-  webhookLimiter
+  webhookLimiter,
+  veilleDemoLimiter
 } = require('./middleware/rate-limiter');
 
-const { requireAuth, requireAdmin } = require('./middleware/auth');
+const { requireAuth, requireAdmin, requireOwnUser, requireCronOrAdmin, INTERNAL_CALL_TOKEN } = require('./middleware/auth');
 
 // Appliquer les limiteurs par type d'endpoint
 app.use('/api/', generalLimiter);                          // Général: 1000/15min
@@ -284,6 +285,90 @@ app.use('/api/search', searchLimiter);                     // Recherche: 200/heu
 app.use('/api/webhooks', webhookLimiter);                  // Webhooks: 100/minute
 
 console.log('✅ Rate limiting granulaire activé (10 limiteurs configurés)');
+
+// ============================================================
+// GARDES D'ACCÈS (audit de sécurité du 2026-11-14)
+// ============================================================
+// Déclarés ICI, avant toute route, pour couvrir à la fois les handlers inline
+// de ce fichier et les routeurs montés plus bas (certains chemins ont les deux).
+// Les requêtes OPTIONS (pré-vol CORS) ne portent pas de jeton : elles passent.
+const guard = (middleware) => (req, res, next) =>
+  (req.method === 'OPTIONS' ? next() : middleware(req, res, next));
+
+// 1. Données et fonctions IA d'un utilisateur : JWT obligatoire, et tout
+//    userId reçu (body / query) doit être celui du jeton.
+[
+  '/api/project-documents',
+  '/api/project-chat',
+  '/api/project-timeline',
+  '/api/skill-test',
+  '/api/training',
+  '/api/related-articles',
+  '/api/actu-plus',
+  '/api/reading-history',
+  '/api/article-views',
+  '/api/user/history',
+  '/api/credits/stats',
+  '/api/credits/manage',
+  '/api/project-actions',        // toutes les routes exigent déjà un jeton
+  '/api/action-plans',           // idem ; le userId venait du body / de la query
+].forEach((path) => app.use(path, guard(requireOwnUser)));
+
+// 1 bis. Projets : être connecté ne suffit pas. Tout projectId / project_id reçu
+//    (body / query) doit désigner un projet dont l'utilisateur est propriétaire
+//    ou collaborateur accepté. Les :projectId d'URL et les ressources adressées
+//    par leur propre id (document, note...) sont contrôlés dans chaque routeur.
+const { requireProjectScope } = require('./middleware/project-access');
+[
+  '/api/project-documents',
+  '/api/project-chat',
+  '/api/project-timeline',
+  '/api/project-notes',
+  '/api/project-actions',
+  '/api/project-collaboration',
+].forEach((path) => app.use(path, guard(requireProjectScope)));
+
+// 2. Déclencheurs coûteux (RSS, YouTube, alertes WhatsApp, IA) : réservés aux
+//    tâches planifiées (en-tête X-Cron-Secret = CRON_SECRET) et aux admins.
+[
+  '/api/rss/process',
+  '/api/rss/process-all',        // chemin distinct: app.use ne matche que par segment entier
+  '/api/rss/start',
+  '/api/youtube/extract',
+  '/api/events/sync',
+  '/api/weather/update',
+  '/api/alerts/process',
+  '/api/polls/generate-from-audio',
+].forEach((path) => app.use(path, guard(requireCronOrAdmin)));
+
+// 3. Outils d'administration qui n'étaient protégés que côté interface.
+[
+  '/api/image-extraction/extract',
+  '/api/veille/demo/reset',
+  '/api/ai/admin',
+  '/api/game/generate-daily',
+  '/api/game/generate-questions',
+  '/api/game/generated-questions',
+  '/api/game/sessions/generate-hourly',
+  '/api/game/registrations',     // éliminer un joueur / désigner un gagnant
+  '/api/game/dashboard',
+].forEach((path) => app.use(path, guard(requireAdmin)));
+
+// Création et clôture de sessions de jeu : admin (la consultation reste ouverte aux joueurs)
+app.post('/api/game/sessions', requireAdmin, (req, res, next) => next());
+app.post('/api/game/sessions/:id/complete', requireAdmin, (req, res, next) => next());
+// Liste des inscrits d'une session : noms, numéros WhatsApp et e-mails des
+// joueurs. Réservée à l'administration (l'écran de jeu ne l'utilise pas).
+app.get('/api/game/sessions/:id/registrations', requireAdmin, (req, res, next) => next());
+
+// Démo de veille : publique par conception, mais 5 demandes par heure et par IP
+// (elle envoie un message WhatsApp au numéro fourni).
+app.post('/api/veille/demo', veilleDemoLimiter, (req, res, next) => next());
+
+// 4. Génération IA de sondages : au minimum un compte connecté.
+app.use('/api/polls/generate-ai', guard(requireAuth));
+
+console.log('✅ Gardes d\'accès activés (identité, crons, administration)');
 
 // ============================================
 // 📊 MONITORING APM - Performance tracking
@@ -806,11 +891,17 @@ app.get('/api/articles/home', async (req, res) => {
       tldr_points: article.tldr_points || null  // TL;DR pré-généré
     }));
 
-    console.log(`✅ ${transformedArticles.length} articles uniques envoyés au frontend\n`);
+    // Un seul exemplaire d'un même article d'un même média, puis jamais plus de
+    // deux articles de suite du même média : une rafale ne monopolise plus le
+    // haut de la page. Aucun article n'est retiré par l'alternance.
+    const { dedupeSameStory, spreadBySource } = require('./services/article-feed-order');
+    const orderedArticles = spreadBySource(dedupeSameStory(transformedArticles), { maxConsecutive: 2 });
+
+    console.log(`✅ ${orderedArticles.length} articles uniques envoyés au frontend\n`);
     
     res.json({
       success: true,
-      articles: transformedArticles,
+      articles: orderedArticles,
       filter: 'home',
       timeRange: '< 36h'
     });
@@ -3146,7 +3237,8 @@ app.get('/api/slides', async (req, res) => {
       .eq('is_active', true)
       .eq('campaigns.is_active', true)
       .eq('campaigns.admin_approved', true)
-      .eq('campaigns.payment_status', 'paid')
+      // "paid" (marqué par un administrateur) ou "completed" (confirmé par E-Billing)
+      .in('campaigns.payment_status', ['paid', 'completed'])
       .lte('campaigns.start_date', now.toISOString())
       .gte('campaigns.end_date', now.toISOString())
       .order('display_order', { ascending: true });
@@ -3324,94 +3416,39 @@ app.get('/api/ad-packages', async (req, res) => {
   }
 });
 
-// Route pour créer une nouvelle campagne publicitaire
-app.post('/api/campaigns', requireAuth, async (req, res) => {
+// Route pour créer une nouvelle campagne publicitaire PAR FORFAIT (ad_packages).
+// Les campagnes « à la carte » (avec `campaign_type` : bannière, vidéo, article)
+// sont créées par routes/campaigns.js : cette route leur passe la main. Sans
+// cela elle les refusait toutes, faute de forfait, et l'achat depuis les pages
+// marketing était impossible.
+app.post('/api/campaigns', requireAuth, async (req, res, next) => {
+  if (req.body && req.body.campaign_type) {
+    return next();
+  }
+
+  // Implémentation : services/package-campaign.js (validation, prix du forfait
+  // lu en base, champs des diapositives limités à ceux prévus, compte du jeton).
   try {
-    console.log('📝 Création d\'une nouvelle campagne publicitaire...');
-    
-    const {
-      company_name,
-      contact_email,
-      contact_phone,
-      package_id,
-      start_date,
-      slides_data
-    } = req.body;
+    const result = await require('./services/package-campaign').createPackageCampaign({
+      supabase: supabaseService.supabase,
+      userId: req.user.id,
+      body: req.body,
+    });
 
-    // Validation des données
-    if (!company_name || !contact_email || !package_id || !start_date || !slides_data) {
-      return res.status(400).json({
-        success: false,
-        error: 'Données manquantes pour créer la campagne'
-      });
+    if (!result.ok) {
+      return res.status(result.status).json({ success: false, error: result.error, ...result.details });
     }
 
-    // Récupérer les informations du forfait
-    const { data: package_info, error: packageError } = await supabaseService.supabase
-      .from('ad_packages')
-      .select('*')
-      .eq('id', package_id)
-      .single();
-
-    if (packageError || !package_info) {
-      return res.status(400).json({
-        success: false,
-        error: 'Forfait publicitaire introuvable'
-      });
-    }
-
-    // Calculer la date de fin
-    const startDate = new Date(start_date);
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + package_info.duration_days);
-
-    // Créer la campagne
-    const { data: campaign, error: campaignError } = await supabaseService.supabase
-      .from('campaigns')
-      .insert({
-        company_name,
-        contact_email,
-        contact_phone,
-        package_id,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        total_amount: package_info.price_fcfa,
-        payment_status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (campaignError) throw campaignError;
-
-    // Créer les slides
-    const slidesWithCampaign = slides_data.map((slide, index) => ({
-      ...slide,
-      campaign_id: campaign.id,
-      display_order: index
-    }));
-
-    const { data: slides, error: slidesError } = await supabaseService.supabase
-      .from('promotional_slides')
-      .insert(slidesWithCampaign)
-      .select();
-
-    if (slidesError) throw slidesError;
-
-    console.log(`✅ Campagne créée avec ${slides.length} slides`);
-    
-    res.json({ 
-      success: true, 
-      campaign: campaign,
-      slides: slides,
+    console.log(`✅ Campagne forfait créée avec ${result.slides.length} slides`);
+    res.json({
+      success: true,
+      campaign: result.campaign,
+      slides: result.slides,
       message: 'Campagne créée avec succès. En attente de paiement et d\'approbation.'
     });
-
   } catch (error) {
-    console.error('❌ Erreur création campagne:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message
-    });
+    console.error('❌ Erreur création campagne:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur lors de la création de la campagne' });
   }
 });
 
@@ -3518,6 +3555,25 @@ app.post('/api/campaigns/request', async (req, res) => {
   }
 });
 
+// Garde « campagne payée » : aucune route qui publie une campagne (approbation,
+// validation, activation, réactivation, reprise) ne s'exécute tant que le
+// paiement n'est pas confirmé. Déclaré ici, avant ces routes et avant les
+// routeurs montés plus bas, pour passer en premier. Rejet, pause, clôture et
+// modification restent possibles sans paiement.
+const paidCampaignGuard = require('./middleware/campaign-payment')
+  .requirePaidCampaign(supabaseService.supabase);
+app.post(
+  [
+    '/api/admin/campaigns/:id/approve',
+    '/api/admin/campaigns/:id/activate',
+    '/api/admin/campaigns/:id/reactivate',
+  ],
+  requireAdmin,
+  paidCampaignGuard
+);
+app.patch('/api/admin/campaigns/:id/resume', requireAdmin, paidCampaignGuard);
+app.put('/api/campaigns/:id/validate', requireAdmin, paidCampaignGuard);
+
 // POST /api/admin/campaigns/:id/approve - Approuver une campagne
 app.post('/api/admin/campaigns/:id/approve', requireAdmin, async (req, res) => {
   try {
@@ -3561,6 +3617,7 @@ app.post('/api/admin/campaigns/:id/reject', requireAdmin, async (req, res) => {
       .select();
 
     if (error) throw error;
+    await setSponsoredArticlePublished(supabaseService.supabase, id, false);
     res.json({ success: true, message: 'Campagne rejetée', campaign: data[0] });
   } catch (error) {
     console.error('Erreur rejet campagne:', error);
@@ -3588,6 +3645,7 @@ app.post('/api/admin/campaigns/:id/activate', requireAdmin, async (req, res) => 
       return res.status(400).json({ error: 'Campagne non trouvée ou non approuvée' });
     }
     
+    await setSponsoredArticlePublished(supabaseService.supabase, id, true);
     res.json({ success: true, message: 'Campagne activée', campaign: data[0] });
   } catch (error) {
     console.error('Erreur activation campagne:', error);
@@ -3687,6 +3745,7 @@ app.post('/api/admin/campaigns/:id/reactivate', requireAdmin, async (req, res) =
       .select();
 
     if (error) throw error;
+    await setSponsoredArticlePublished(supabaseService.supabase, id, true);
     res.json({ success: true, message: 'Campagne réactivée', campaign: data[0] });
   } catch (error) {
     console.error('Erreur réactivation campagne:', error);
@@ -4214,7 +4273,8 @@ async function processAlertsAutomatically() {
     console.log(`🔔 Traitement automatique des alertes (${gabonHour}h Gabon)...`);
     const response = await fetch('http://localhost:3001/api/alerts/process', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      // Appel du serveur à lui-même : authentifié par le jeton interne du processus
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Token': INTERNAL_CALL_TOKEN }
     });
 
     if (response.ok) {
@@ -5194,238 +5254,10 @@ app.use((error, req, res, next) => {
 // (removed duplicate simple redirect /api/image-proxy route)
 
 // ==================== ROUTE CAMPAIGNS PUBLICITAIRES ====================
-app.post('/api/campaigns', requireAuth, async (req, res) => {
-  try {
-    console.log('📢 Création nouvelle campagne publicitaire...');
-    
-    const {
-      campaign_type,
-      name,
-      banner_title,
-      banner_description,
-      redirect_url,
-      start_date,
-      duration_days,
-      desktop_image_url,
-      mobile_image_url,
-      design_request,
-      design_request_notes,
-      budget,
-      status = 'pending',
-      // Article Sponsorisé Tendances
-      article_title,
-      article_subtitle,
-      article_content,
-      article_summary,
-      article_author,
-      article_category,
-      article_image_url,
-      article_image_preview,
-      company_name,
-      product_service,
-      target_audience,
-      key_message,
-      call_to_action,
-      request_creation,
-      generate_with_ai
-    } = req.body;
-
-    // Validation
-    if (!campaign_type || !name || !start_date || !duration_days || !budget) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Champs obligatoires manquants' 
-      });
-    }
-
-    // Calculer la date de fin
-    const startDateObj = new Date(start_date);
-    const endDateObj = new Date(startDateObj);
-    endDateObj.setDate(endDateObj.getDate() + duration_days);
-
-    // Vérifier disponibilité créneaux (sauf pour article-trending qui est illimité)
-    const limit = CAMPAIGN_LIMITS[campaign_type];
-    if (limit !== null) {
-      const { data: overlappingCampaigns, error: checkError } = await supabase
-        .from('campaigns')
-        .select('id, name, start_date, end_date')
-        .eq('campaign_type', campaign_type)
-        .in('status', ['active', 'pending'])
-        .or(`and(start_date.lte.${endDateObj.toISOString()},end_date.gte.${startDateObj.toISOString()})`);
-
-      if (checkError) {
-        console.error('❌ Erreur vérification disponibilité:', checkError.message);
-        return res.status(500).json({
-          success: false,
-          error: 'Erreur lors de la vérification de disponibilité'
-        });
-      }
-
-      const currentCount = overlappingCampaigns?.length || 0;
-      if (currentCount >= limit) {
-        console.warn(`⚠️ Limite atteinte pour ${campaign_type}: ${currentCount}/${limit}`);
-        return res.status(409).json({
-          success: false,
-          error: `Limite atteinte: ${currentCount}/${limit} campagnes actives pour cette période`,
-          limit,
-          current_count: currentCount,
-          conflicting_campaigns: overlappingCampaigns
-        });
-      }
-    }
-
-    // Construire l'objet campagne selon le type
-    const campaignData = {
-      campaign_type,
-      name,
-      redirect_url,
-      start_date: startDateObj.toISOString(),
-      end_date: endDateObj.toISOString(),
-      duration_days,
-      design_request: design_request || request_creation || false,
-      design_request_notes: design_request_notes || null,
-      budget,
-      status,
-      views: 0,
-      clicks: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    // Ajouter champs spécifiques selon le type de campagne
-    if (campaign_type === 'article-trending') {
-      // Pour articles sponsorisés: pas d'images de bannières
-      campaignData.banner_title = article_title || name;
-      campaignData.banner_description = article_summary || article_subtitle || '';
-    } else {
-      // Pour bannières et vidéos
-      campaignData.banner_title = banner_title || '';
-      campaignData.banner_description = banner_description || '';
-      if (desktop_image_url) campaignData.desktop_image_url = desktop_image_url;
-      if (mobile_image_url) campaignData.mobile_image_url = mobile_image_url;
-    }
-
-    // Insérer la campagne dans Supabase
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert([campaignData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur insertion campagne:', error.message);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Erreur lors de la création de la campagne' 
-      });
-    }
-
-    console.log(`✅ Campagne créée: ${data.name} (${data.id})`);
-    console.log(`   📅 Démarrage: ${new Date(data.start_date).toLocaleDateString('fr-FR')}`);
-    console.log(`   💰 Budget: ${data.budget} FCFA`);
-    console.log(`   📊 Status: ${data.status}`);
-
-    let sponsoredArticle = null;
-
-    // Si c'est un article sponsorisé, créer l'article dans la table articles
-    if (campaign_type === 'article-trending' && article_title) {
-      console.log('🔥 Création article sponsorisé Gabon Insight...');
-
-      // Créer un flux RSS virtuel "Gabon Insight" s'il n'existe pas
-      let gabonInsightFeed;
-      const { data: existingFeed } = await supabase
-        .from('rss_feeds')
-        .select('id')
-        .eq('name', 'Gabon Insight')
-        .single();
-
-      if (existingFeed) {
-        gabonInsightFeed = existingFeed;
-      } else {
-        const { data: newFeed, error: feedError } = await supabase
-          .from('rss_feeds')
-          .insert([{
-            name: 'Gabon Insight',
-            url: 'https://gabon-insight.netlify.app/sponsored',
-            description: 'Articles sponsorisés et contenus partenaires',
-            category: 'Sponsorisé',
-            language: 'fr',
-            country: 'GA',
-            status: 'active',
-            is_premium: true,
-            priority: 1
-          }])
-          .select('id')
-          .single();
-
-        if (feedError) {
-          console.error('❌ Erreur création flux Gabon Insight:', feedError.message);
-        } else {
-          gabonInsightFeed = newFeed;
-          console.log('✅ Flux Gabon Insight créé');
-        }
-      }
-
-      // Créer l'article sponsorisé
-      const { data: articleData, error: articleError } = await supabase
-        .from('articles')
-        .insert([{
-          feed_id: gabonInsightFeed?.id || null,
-          external_id: `sponsored-${data.id}`,
-          title: article_title,
-          summary: article_summary || article_subtitle || 'Article sponsorisé',
-          summary_ai: article_summary || article_subtitle,
-          content: article_content,
-          url: redirect_url,
-          author: article_author || 'Équipe Gabon Insight',
-          published_at: startDateObj.toISOString(),
-          language: 'fr',
-          category: article_category || 'business',
-          keywords: [company_name, product_service, 'sponsorisé', 'publicité', target_audience].filter(Boolean),
-          sentiment: 'positif',
-          sentiment_confidence: 0.85,
-          read_time_minutes: Math.ceil((article_content?.length || 500) / 1000 * 5),
-          image_urls: article_image_url ? [article_image_url] : (article_image_preview ? [article_image_preview] : []),
-          is_trending: true,
-          view_count: 5000 + Math.floor(Math.random() * 3000), // Boost: 5000-8000 vues
-          share_count: 50 + Math.floor(Math.random() * 50), // 50-100 partages
-          whatsapp_share_count: 30 + Math.floor(Math.random() * 30),
-          is_published: status === 'active',
-          is_premium: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (articleError) {
-        console.error('❌ Erreur création article sponsorisé:', articleError.message);
-      } else {
-        sponsoredArticle = articleData;
-        console.log(`✅ Article sponsorisé créé: ${articleData.title} (ID: ${articleData.id})`);
-        console.log(`   👁️ Vues boostées: ${articleData.view_count}`);
-        console.log(`   🎯 Catégorie: ${articleData.category}`);
-        console.log(`   ✨ Source: Gabon Insight`);
-      }
-    }
-
-    res.json({ 
-      success: true, 
-      campaign: data,
-      sponsored_article: sponsoredArticle,
-      message: campaign_type === 'article-trending' && sponsoredArticle 
-        ? 'Campagne et article sponsorisé créés avec succès' 
-        : 'Campagne créée avec succès'
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur création campagne:', error.message);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur serveur' 
-    });
-  }
-});
+// La création des campagnes « à la carte » (POST /api/campaigns avec
+// `campaign_type`) est dans routes/campaigns.js + services/campaign-creation.js.
+// Un second handler vivait ici : déclaré après le routeur, il n'était jamais
+// atteint. Il a été retiré pour ne garder qu'une seule implémentation.
 
 // GET: Récupérer les campagnes d'un utilisateur
 app.get('/api/campaigns', async (req, res) => {
@@ -5472,12 +5304,8 @@ app.get('/api/campaigns', async (req, res) => {
 // ==================== GESTION CALENDRIER CAMPAGNES ====================
 
 // Configuration des limites par type de campagne
-const CAMPAIGN_LIMITS = {
-  'banner-home': 10,        // Bannière page d'accueil: max 10 simultanées
-  'banner-feed': 1,         // Bannière feed: max 1 simultanée
-  'video-home': 1,          // Vidéo home: max 1 simultanée
-  'article-trending': null  // Article sponsorisé: illimité
-};
+// Source unique : services/campaign-creation.js (aussi appliquée à la création).
+const { CAMPAIGN_LIMITS, occupiesSlot, setSponsoredArticlePublished } = require('./services/campaign-creation');
 
 // GET: Vérifier disponibilité créneaux pour une période
 app.get('/api/campaigns/availability', async (req, res) => {
@@ -5508,10 +5336,13 @@ app.get('/api/campaigns/availability', async (req, res) => {
     // Compter les campagnes actives qui se chevauchent avec la période demandée
     const { data, error } = await supabase
       .from('campaigns')
-      .select('id, name, start_date, end_date, status')
+      .select('id, name, start_date, end_date, status, payment_status, created_at')
       .eq('campaign_type', campaign_type)
       .in('status', ['active', 'pending'])
-      .or(`and(start_date.lte.${end_date},end_date.gte.${start_date})`);
+      // Filtres séparés : les dates de la requête ne sont plus recopiées dans
+      // une expression de filtre (elles pouvaient en modifier le sens).
+      .lte('start_date', end_date)
+      .gte('end_date', start_date);
 
     if (error) {
       console.error('❌ Erreur vérification disponibilité:', error.message);
@@ -5521,7 +5352,12 @@ app.get('/api/campaigns/availability', async (req, res) => {
       });
     }
 
-    const current_count = data?.length || 0;
+    // Un panier abandonné (campagne non payée créée il y a plus de 30 minutes)
+    // n'occupe plus le créneau. Même règle qu'à la création.
+    const occupying = (data || [])
+      .filter((campaign) => occupiesSlot(campaign))
+      .map(({ id, name, start_date: start, end_date: end, status }) => ({ id, name, start_date: start, end_date: end, status }));
+    const current_count = occupying.length;
     const available = current_count < limit;
 
     res.json({
@@ -5530,7 +5366,7 @@ app.get('/api/campaigns/availability', async (req, res) => {
       limit,
       current_count,
       remaining: available ? limit - current_count : 0,
-      conflicting_campaigns: data,
+      conflicting_campaigns: occupying,
       message: available 
         ? `${limit - current_count} créneau(x) disponible(s)`
         : `Limite atteinte (${current_count}/${limit})`
@@ -5560,7 +5396,7 @@ app.get('/api/campaigns/calendar/:campaign_type', async (req, res) => {
 
     // Filtrer par période si spécifiée
     if (start_date && end_date) {
-      query = query.or(`and(start_date.lte.${end_date},end_date.gte.${start_date})`);
+      query = query.lte('start_date', end_date).gte('end_date', start_date);
     }
 
     const { data, error } = await query;
@@ -5618,6 +5454,9 @@ app.put('/api/campaigns/:id/validate', requireAdmin, async (req, res) => {
       });
     }
 
+    // Article sponsorisé : publié en même temps que la campagne est validée.
+    await setSponsoredArticlePublished(supabase, id, true);
+
     console.log(`✅ Campagne validée: ${data.name}`);
     console.log(`   📅 Date validation: ${new Date(data.approval_date).toLocaleDateString('fr-FR')}`);
 
@@ -5663,6 +5502,9 @@ app.put('/api/campaigns/:id/reject', requireAdmin, async (req, res) => {
         error: 'Erreur lors du rejet' 
       });
     }
+
+    // Article sponsorisé : retiré de la publication avec le rejet.
+    await setSponsoredArticlePublished(supabase, id, false);
 
     console.log(`❌ Campagne rejetée: ${data.name}`);
 

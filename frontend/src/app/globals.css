@@ -1,3 +1,6 @@
+/* Les @import doivent précéder toute autre règle CSS. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,7 +8,6 @@
 /* Updated: 2025-09-19 22:33:26 - Force rebuild to deploy MCP-enhanced homepage articles fix */
 /* MCP Enhanced Image System v1.1 - Fixed hybrid RSS + Supabase integration */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 body {
   font-family: 'Inter', sans-serif;

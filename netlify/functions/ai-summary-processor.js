@@ -228,6 +228,8 @@ async function processAISummaries() {
 }
 
 // Handler Netlify
+const { rejectUnlessCron } = require('./utils/cron-auth');
+
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -239,6 +241,11 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
+
+  // Réservé à la tâche planifiée (scheduled-ai-processor) : cette fonction
+  // appelle OpenAI et écrit en base avec la clé service_role.
+  const denied = rejectUnlessCron(event, headers);
+  if (denied) return denied;
 
   try {
     // Vérifier si Kimi est configuré

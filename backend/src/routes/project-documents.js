@@ -2,6 +2,31 @@ const express = require('express');
 const supabaseService = require('../../supabase-config');
 const geminiService = require('../../services/gemini-service');
 const router = express.Router();
+const { projectParam, assertProjectAccess } = require('../../middleware/project-access');
+
+// Tout :projectId d'URL doit désigner un projet accessible à l'utilisateur.
+router.param('projectId', projectParam);
+
+/**
+ * Charge un document et vérifie que l'utilisateur peut y accéder : il en est
+ * l'auteur, ou il a accès au projet auquel le document est rattaché.
+ * En cas de refus la réponse est envoyée et la fonction renvoie null.
+ */
+async function loadAuthorizedDocument(req, res, documentId) {
+  const { data: document, error } = await supabaseService.supabase
+    .from('project_documents')
+    .select('*')
+    .eq('id', documentId)
+    .maybeSingle();
+
+  if (error || !document) {
+    res.status(404).json({ success: false, error: 'Document non trouvé' });
+    return null;
+  }
+  if (document.user_id === req.user.id) return document;
+  if (!(await assertProjectAccess(req, res, document.project_id))) return null;
+  return document;
+}
 
 const { supabase } = supabaseService;
 
@@ -87,16 +112,8 @@ router.get('/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
 
-    const { data, error } = await supabase
-      .from('project_documents')
-      .select('*')
-      .eq('id', documentId)
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur récupération document:', error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    const data = await loadAuthorizedDocument(req, res, documentId);
+    if (!data) return;
 
     res.json({ success: true, document: data });
 
@@ -111,6 +128,8 @@ router.put('/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
     const { content, title, contextAdded, promptUsed } = req.body;
+
+    if (!(await loadAuthorizedDocument(req, res, documentId))) return;
 
     const updateData = {
       updated_at: new Date().toISOString()
@@ -146,11 +165,8 @@ router.put('/:documentId', async (req, res) => {
 router.delete('/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ success: false, error: 'userId requis' });
-    }
+    // Seul l'auteur supprime son document : l'identité vient du jeton, plus de la query.
+    const userId = req.user.id;
 
     const { error } = await supabase
       .from('project_documents')

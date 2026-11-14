@@ -129,48 +129,9 @@ export const getUserSubscription = async (userId: string): Promise<UserSubscript
   }
 }
 
-// Créer un nouvel abonnement utilisateur
-export const createUserSubscription = async (
-  userId: string,
-  planId: string,
-  billingCycle: 'monthly' | 'yearly' = 'monthly'
-): Promise<{ data: UserSubscription | null; error: any }> => {
-  // Désactiver les anciens abonnements
-  await supabase
-    .from('user_subscriptions')
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('status', 'active')
-
-  // Calculer les dates de période
-  const now = new Date()
-  const periodEnd = new Date(now)
-  if (billingCycle === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1)
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1)
-  }
-
-  const { data, error } = await supabase
-    .from('user_subscriptions')
-    .insert({
-      user_id: userId,
-      plan_id: planId,
-      status: 'active',
-      billing_cycle: billingCycle,
-      current_period_start: now.toISOString(),
-      current_period_end: periodEnd.toISOString(),
-      created_at: now.toISOString(),
-      updated_at: now.toISOString()
-    })
-    .select(`
-      *,
-      plan:subscription_plans(*)
-    `)
-    .single()
-
-  return { data, error }
-}
+// createUserSubscription a été retirée : elle créait un abonnement « actif »
+// directement depuis le navigateur, sans paiement. La souscription passe par la
+// page /abonnement puis par le serveur (/api/payments/subscription).
 
 // Vérifier si un utilisateur peut accéder à une fonctionnalité
 export const checkFeatureAccess = (

@@ -51,7 +51,7 @@ router.post('/extract', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Données invalides',
-        details: validation.error.errors
+        details: validation.error.issues
       });
     }
 
@@ -111,7 +111,7 @@ router.post('/batch', requireAdmin, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Données invalides',
-        details: validation.error.errors
+        details: validation.error.issues
       });
     }
 

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const supabaseService = require('./supabase-config');
 const ArticleAIEnrichment = require('./services/article-ai-enrichment');
 const sourceMediaCorrector = require('./services/source-media-corrector');
+const { isJsonFeedUrl, fetchBundleItems, xmlFallbackUrl, limitSourceBursts } = require('./services/bundle-feed');
 
 class RSSAggregator {
   constructor() {
@@ -15,8 +16,10 @@ class RSSAggregator {
       }
     });
     
-    // URL du flux RSS agrégé rss.app
-    this.RSS_FEED_URL = 'https://rss.app/feeds/_SntJgjZXkqIWrDHq.xml';
+    // Bundle rss.app : médias sans flux RSS direct + pages Facebook des ministères.
+    // Version JSON (50 articles, chacun avec son image) ; l'ancienne adresse XML
+    // n'en renvoyait qu'une poignée. Modifiable sans toucher au code : RSS_BUNDLE_URL.
+    this.RSS_FEED_URL = process.env.RSS_BUNDLE_URL || 'https://rss.app/feeds/v1.1/_SntJgjZXkqIWrDHq.json';
     
     this.FETCH_INTERVAL_MINUTES = 20; // Récupération toutes les 20 minutes (optimisé pour économie IA)
     this.isProcessing = false;
@@ -63,7 +66,7 @@ class RSSAggregator {
       let retries = 3;
       while (retries > 0) {
         try {
-          feed = await this.parser.parseURL(this.RSS_FEED_URL);
+          feed = await this.loadBundle();
           break;
         } catch (parseError) {
           retries--;
@@ -84,11 +87,17 @@ class RSSAggregator {
       
       // Filtrer les articles récents (dernières 48h)
       const yesterday = new Date(Date.now() - 48 * 60 * 60 * 1000);
-      const recentItems = feed.items.filter(item => {
+      const datedRecentItems = feed.items.filter(item => {
         if (!item.pubDate && !item.isoDate) return true;
         const itemDate = new Date(item.pubDate || item.isoDate);
         return itemDate >= yesterday;
       });
+      // Un site livré en rafale avec une seule et même date (historique rattrapé
+      // par l'agrégateur) ne garde que ses articles les plus récents.
+      const recentItems = limitSourceBursts(datedRecentItems);
+      if (recentItems.length < datedRecentItems.length) {
+        console.log(`🚿 ${datedRecentItems.length - recentItems.length} article(s) de rafale ignoré(s)`);
+      }
       
       console.log(`📊 ${recentItems.length}/${feed.items.length} articles récents à traiter`);
       
@@ -123,6 +132,26 @@ class RSSAggregator {
       return { success: false, error: error.message };
     } finally {
       this.isProcessing = false;
+    }
+  }
+
+  /**
+   * 📥 CHARGEMENT DU BUNDLE
+   * Adresse JSON : lecture JSON Feed, et repli sur la version XML du même
+   * bundle si le JSON est indisponible. Adresse XML : lecteur RSS habituel.
+   */
+  async loadBundle() {
+    if (!isJsonFeedUrl(this.RSS_FEED_URL)) {
+      return this.parser.parseURL(this.RSS_FEED_URL);
+    }
+
+    try {
+      return { items: await fetchBundleItems(this.RSS_FEED_URL) };
+    } catch (jsonError) {
+      const fallback = xmlFallbackUrl(this.RSS_FEED_URL);
+      if (!fallback) throw jsonError;
+      console.log(`⚠️ ${jsonError.message} — repli sur la version XML du bundle`);
+      return this.parser.parseURL(fallback);
     }
   }
 

@@ -6,8 +6,9 @@ import { X, ArrowLeft, Check, Image as ImageIcon, Loader2 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { getCampaignPrice } from '@/lib/campaign-pricing'
 import axios from '@/lib/axios'
+import { addToCart } from '@/lib/cart'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -21,6 +22,7 @@ export default function BannerFeedPage() {
   const [formData, setFormData] = useState({
     name: '',
     redirectUrl: '',
+    startDate: '',
     durationDays: 7,
     designRequest: false,
     designNotes: ''
@@ -73,6 +75,11 @@ export default function BannerFeedPage() {
       return
     }
 
+    if (!formData.startDate) {
+      alert('Veuillez sélectionner une date de démarrage')
+      return
+    }
+
     if (!user) {
       alert('Vous devez être connecté pour créer une campagne')
       return
@@ -82,9 +89,8 @@ export default function BannerFeedPage() {
 
     try {
       // Calculer le budget basé sur la durée
-      const weeklyPrice = 85000 // Prix spécial
-      const weeks = Math.ceil(formData.durationDays / 7)
-      const totalBudget = weeklyPrice * weeks
+      // Grille commune avec le serveur (qui recalcule le prix de son côté)
+      const totalBudget = getCampaignPrice('banner-feed', formData.durationDays, formData.designRequest)
 
       let mobileImageUrl = ''
       let desktopImageUrl = ''
@@ -95,15 +101,14 @@ export default function BannerFeedPage() {
         if (mobileImage.file) {
           console.log('📤 Upload image mobile...')
           const mobileFormData = new FormData()
-          mobileFormData.append('image', mobileImage.file)
-          mobileFormData.append('imageType', 'feed-mobile')
+          mobileFormData.append('file', mobileImage.file)
 
-          const mobileUploadResponse = await axios.post(`${API_URL}/api/admin/upload-image`, mobileFormData, {
+          const mobileUploadResponse = await axios.post(`${API_URL}/api/upload/image`, mobileFormData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
 
           if (mobileUploadResponse.data.success) {
-            mobileImageUrl = mobileUploadResponse.data.image_url
+            mobileImageUrl = mobileUploadResponse.data.url
             console.log(`✅ Image mobile uploadée: ${mobileImageUrl}`)
           } else {
             throw new Error('Erreur upload image mobile')
@@ -114,15 +119,14 @@ export default function BannerFeedPage() {
         if (desktopImage.file) {
           console.log('📤 Upload image desktop...')
           const desktopFormData = new FormData()
-          desktopFormData.append('image', desktopImage.file)
-          desktopFormData.append('imageType', 'feed-desktop')
+          desktopFormData.append('file', desktopImage.file)
 
-          const desktopUploadResponse = await axios.post(`${API_URL}/api/admin/upload-image`, desktopFormData, {
+          const desktopUploadResponse = await axios.post(`${API_URL}/api/upload/image`, desktopFormData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           })
 
           if (desktopUploadResponse.data.success) {
-            desktopImageUrl = desktopUploadResponse.data.image_url
+            desktopImageUrl = desktopUploadResponse.data.url
             console.log(`✅ Image desktop uploadée: ${desktopImageUrl}`)
           } else {
             throw new Error('Erreur upload image desktop')
@@ -130,44 +134,40 @@ export default function BannerFeedPage() {
         }
       }
 
-      // Créer la campagne dans Supabase
-      const campaignData = {
-        user_id: user.id,
+      // Ajouter au panier (le serveur recalcule le prix au paiement).
+      addToCart({
         campaign_type: 'banner-feed',
         name: formData.name,
-        redirect_url: formData.redirectUrl,
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + formData.durationDays * 24 * 60 * 60 * 1000).toISOString(),
-        banner_image_url: desktopImageUrl || null, // Image desktop (1200x400)
-        mobile_image_url: mobileImageUrl || null, // Image mobile (800x500)
         budget: totalBudget,
-        status: 'pending',
-        views: 0,
-        clicks: 0,
-        feed_position_frequency: 7, // Tous les 7 articles
-        feed_images_count: 2, // 2 visuels (mobile + desktop)
-        design_request: formData.designRequest,
-        design_request_notes: formData.designRequest ? formData.designNotes : null
+        duration_days: formData.durationDays,
+        start_date: formData.startDate,
+        details: {
+          redirect_url: formData.redirectUrl,
+          banner_image_url: desktopImageUrl || undefined, // Image desktop (1200x400)
+          mobile_image_url: mobileImageUrl || undefined, // Image mobile (800x500)
+          design_request: formData.designRequest,
+          design_request_notes: formData.designRequest ? formData.designNotes : undefined
+        }
+      })
+
+      // Paiement obligatoire : la campagne est créée au moment du paiement,
+      // depuis le panier, comme pour la vidéo et l'article sponsorisé.
+      const goToCheckout = confirm(
+        `✅ Campagne ajoutée au panier!\n\nMontant: ${totalBudget.toLocaleString()} FCFA\n\nVoulez-vous procéder au paiement maintenant?`
+      )
+
+      if (goToCheckout) {
+        router.push('/checkout-campaigns')
+      } else {
+        router.push('/marketing/publicite')
       }
-
-      const { data, error } = await supabase
-        .from('campaigns')
-        .insert([campaignData])
-        .select()
-
-      if (error) {
-        console.error('❌ Erreur Supabase:', error)
-        throw error
-      }
-
-      console.log('✅ Campagne créée:', data)
-
-      alert('✅ Campagne créée avec succès ! Elle sera examinée sous 24h.')
-      router.push('/marketing/publicite')
 
     } catch (error) {
       console.error('❌ Erreur:', error)
-      alert('❌ Erreur lors de la création de la campagne')
+      // Message du serveur quand il y en a un (créneau complet, adresse invalide...)
+      const serverMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const reason = serverMessage || (error instanceof Error ? error.message : '')
+      alert(`❌ Erreur lors de l'ajout au panier${reason ? `\n\n${reason}` : ''}`)
     } finally {
       setLoading(false)
     }
@@ -235,6 +235,20 @@ export default function BannerFeedPage() {
                     value={formData.redirectUrl}
                     onChange={(e) => setFormData({ ...formData, redirectUrl: e.target.value })}
                     placeholder="https://votresite.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Date de démarrage *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -407,7 +421,7 @@ export default function BannerFeedPage() {
                 ) : (
                   <>
                     <Check className="w-5 h-5" />
-                    Soumettre pour validation
+                    Ajouter au panier
                   </>
                 )}
               </button>
@@ -416,7 +430,7 @@ export default function BannerFeedPage() {
             {/* Info */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                ℹ️ Votre campagne sera examinée par notre équipe sous 24h. Vous recevrez une notification par email.
+                ℹ️ La campagne est ajoutée à votre panier. Après paiement, elle est examinée par notre équipe sous 24h.
               </p>
             </div>
           </form>

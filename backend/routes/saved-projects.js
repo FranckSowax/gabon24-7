@@ -6,6 +6,12 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { projectParam } = require('../middleware/project-access');
+
+// Tout :projectId d'URL doit désigner un projet dont l'utilisateur est
+// propriétaire ou collaborateur accepté. Les handlers qui exigent le
+// propriétaire (suppression, statistiques...) gardent leur filtre user_id.
+router.param('projectId', projectParam);
 const redisCache = require('../services/redis-cache.service');
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');

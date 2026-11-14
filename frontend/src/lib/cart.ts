@@ -17,6 +17,9 @@ export interface CartItem {
     banner_description?: string
     desktop_image_url?: string
     mobile_image_url?: string
+    banner_image_url?: string
+    // Article sponsorisé : adresse publique de l'image de couverture
+    article_image_url?: string
     // Vidéo
     video_title?: string
     video_description?: string
@@ -27,6 +30,13 @@ export interface CartItem {
     design_request_notes?: string
   }
   added_at: string
+  /**
+   * Identifiant de la campagne déjà créée côté serveur pour cet article du
+   * panier. Renseigné au paiement : si le paiement échoue puis est relancé, la
+   * campagne est réutilisée au lieu d'être créée une seconde fois (un doublon
+   * occuperait le créneau et bloquerait la relance).
+   */
+  campaign_id?: string
 }
 
 const CART_STORAGE_KEY = 'gabon-insight-cart'
@@ -86,6 +96,13 @@ export function removeFromCart(itemId: string): void {
   const cart = getCart()
   const filteredCart = cart.filter(item => item.id !== itemId)
   saveCart(filteredCart)
+}
+
+/**
+ * Mémoriser la campagne créée côté serveur pour un article du panier
+ */
+export function setCartItemCampaignId(itemId: string, campaignId: string): void {
+  saveCart(getCart().map(item => (item.id === itemId ? { ...item, campaign_id: campaignId } : item)))
 }
 
 /**

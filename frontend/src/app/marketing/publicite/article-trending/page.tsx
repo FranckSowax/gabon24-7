@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { addToCart } from '@/lib/cart'
+import { getCampaignPrice } from '@/lib/campaign-pricing'
 import AvailabilityChecker from '@/components/campaigns/AvailabilityChecker'
 
 export default function ArticleTrendingPage() {
@@ -272,9 +273,29 @@ Pour ${formData.targetAudience}, c'est une occasion unique de bénéficier d'une
 
     try {
       // Calculer le budget
-      const baseBudget = 250000 // 250,000 FCFA/semaine
+      // Grille commune avec le serveur (qui recalcule le prix de son côté).
+      // L'ancien calcul n'appliquait pas les remises affichées dans la liste.
       const creationCost = formData.requestCreation ? 150000 : 0 // +150,000 FCFA si demande création
-      const totalBudget = baseBudget * (formData.durationDays / 7) + creationCost
+      const totalBudget = getCampaignPrice('article-trending', formData.durationDays, formData.requestCreation)
+
+      // Image de couverture : le panier ne peut garder qu'une adresse publique.
+      // Un fichier choisi sur l'ordinateur est donc déposé maintenant ; avant,
+      // seul un aperçu local était conservé et l'image n'arrivait jamais au serveur.
+      let articleImageUrl = ''
+      if (articleImage.file) {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const imageFormData = new FormData()
+        imageFormData.append('file', articleImage.file)
+        const uploadResponse = await fetch(`${API_URL}/api/upload/image`, { method: 'POST', body: imageFormData })
+        const uploadData = await uploadResponse.json().catch(() => null)
+        if (!uploadResponse.ok || !uploadData?.url) {
+          throw new Error(uploadData?.error || 'Envoi de l\'image de couverture impossible')
+        }
+        articleImageUrl = uploadData.url
+      } else if (articleImage.preview && /^https?:\/\//.test(articleImage.preview)) {
+        // Image générée par l'IA : déjà une adresse publique
+        articleImageUrl = articleImage.preview
+      }
 
       // Préparer les détails pour le panier
       const cartItem = {
@@ -290,8 +311,7 @@ Pour ${formData.targetAudience}, c'est une occasion unique de bénéficier d'une
           article_author: formData.articleAuthor || 'Équipe Gabon Insight',
           article_content: formData.requestCreation ? 'Brief fourni - Contenu à rédiger par l\'équipe' : (generatedContent || formData.articleContent),
           article_summary: formData.articleSummary || formData.articleSubtitle,
-          article_image_preview: articleImage.preview,
-          article_image_file: articleImage.file,
+          article_image_url: articleImageUrl || undefined,
           company_name: formData.companyName,
           product_service: formData.productService,
           target_audience: formData.targetAudience,

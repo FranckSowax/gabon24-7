@@ -29,6 +29,10 @@ function extractToken(req) {
  */
 async function requireAuth(req, res, next) {
   try {
+    // Déjà authentifié plus haut dans la chaîne (garde global puis routeur) :
+    // inutile de réinterroger Supabase. `authVerified` n'est posé que ci-dessous.
+    if (req.authVerified === true && req.user?.id) return next();
+
     const token = extractToken(req);
     
     if (!token) {
@@ -71,6 +75,7 @@ async function requireAuth(req, res, next) {
       req.user.subscriptionType = userData.subscription_type;
     }
 
+    req.authVerified = true;
     next();
   } catch (error) {
     console.error('❌ Erreur auth middleware:', error);
@@ -257,10 +262,134 @@ function requireRole(...allowedRoles) {
   };
 }
 
+// ============================================================
+// Gardes d'identité et de déclenchement (audit du 2026-11-14)
+// ============================================================
+
+const crypto = require('crypto');
+
+const USER_ID_KEYS = ['userId', 'user_id'];
+
+// Jeton propre à ce processus, régénéré à chaque démarrage et jamais exposé.
+// Il authentifie les appels que le serveur se fait à lui-même (crons internes
+// via http://localhost), sans dépendre d'une variable d'environnement.
+const INTERNAL_CALL_TOKEN = crypto.randomBytes(32).toString('hex');
+
+/** Comparaison en temps constant de deux secrets (longueurs quelconques). */
+function safeEqual(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+/** Vrai si l'utilisateur authentifié est admin (lu en base, mis en cache sur la requête). */
+async function isAdminUser(req) {
+  if (!req.user) return false;
+  if (req.user.isAdmin === true) return true;
+  if (req.user._adminChecked) return false;
+  req.user._adminChecked = true;
+  try {
+    const { data } = await supabaseService.supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', req.user.id)
+      .single();
+    req.user.isAdmin = data?.is_admin === true;
+  } catch (error) {
+    req.user.isAdmin = false;
+  }
+  return req.user.isAdmin;
+}
+
+/**
+ * Middleware: l'utilisateur ne peut agir que sur son propre compte.
+ *
+ * Exige un JWT valide, puis contrôle tout `userId` / `user_id` reçu dans le body
+ * ou la query :
+ *   - différent de l'identité du jeton -> 403 (sauf administrateur) ;
+ *   - identique ou absent              -> la requête passe telle quelle.
+ * Rien n'est injecté dans la requête : les handlers existants restent inchangés.
+ * Les paramètres d'URL (:userId, :user_id) sont couverts par `ownUserParam`.
+ *
+ * @example
+ *   app.use('/api/reading-history', requireOwnUser, readingHistoryRouter);
+ */
+function requireOwnUser(req, res, next) {
+  return requireAuth(req, res, async () => {
+    try {
+      for (const source of ['body', 'query']) {
+        const container = req[source];
+        if (!container || typeof container !== 'object' || Array.isArray(container)) continue;
+        for (const key of USER_ID_KEYS) {
+          const value = container[key];
+          if (value === undefined || value === null || value === '') continue;
+          if (String(value) !== req.user.id && !(await isAdminUser(req))) {
+            return res.status(403).json({
+              success: false,
+              error: 'Accès refusé',
+              code: 'AUTH_USER_MISMATCH'
+            });
+          }
+        }
+      }
+
+      next();
+    } catch (error) {
+      console.error('❌ Erreur requireOwnUser:', error.message);
+      return res.status(500).json({ success: false, error: 'Erreur d\'authentification', code: 'AUTH_ERROR' });
+    }
+  });
+}
+
+/**
+ * Garde pour les paramètres d'URL désignant un utilisateur.
+ * À brancher dans un routeur déjà protégé par requireAuth / requireOwnUser.
+ *
+ * @example
+ *   router.param('userId', ownUserParam);
+ */
+async function ownUserParam(req, res, next, value) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Token d\'authentification requis', code: 'AUTH_TOKEN_MISSING' });
+  }
+  if (String(value) !== req.user.id && !(await isAdminUser(req))) {
+    return res.status(403).json({ success: false, error: 'Accès refusé', code: 'AUTH_USER_MISMATCH' });
+  }
+  next();
+}
+
+/**
+ * Middleware: route déclencheuse (RSS, alertes, extraction...) réservée aux
+ * tâches planifiées et aux administrateurs.
+ *
+ * Accepte l'en-tête `X-Cron-Secret` égal à CRON_SECRET, le jeton interne du
+ * processus (`X-Internal-Token`, appels du serveur à lui-même) ou un JWT admin.
+ * Si CRON_SECRET n'est pas configuré, seule la voie admin fonctionne : les crons
+ * Netlify / GitHub Actions doivent donc envoyer ce secret.
+ */
+function requireCronOrAdmin(req, res, next) {
+  const expected = process.env.CRON_SECRET;
+  const received = req.headers['x-cron-secret'];
+  if (expected && typeof received === 'string' && received.length > 0 && safeEqual(received, expected)) {
+    req.isCron = true;
+    return next();
+  }
+  const internal = req.headers['x-internal-token'];
+  if (typeof internal === 'string' && internal.length > 0 && safeEqual(internal, INTERNAL_CALL_TOKEN)) {
+    req.isCron = true;
+    return next();
+  }
+  return requireAdmin(req, res, next);
+}
+
 module.exports = {
   requireAuth,
   optionalAuth,
   requireAdmin,
   requireRole,
+  requireOwnUser,
+  ownUserParam,
+  requireCronOrAdmin,
+  INTERNAL_CALL_TOKEN,
   extractToken
 };

@@ -1,38 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Head from 'next/head'
 import { ArrowLeft, Share2, Bookmark, Clock, Eye, Calendar } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { supabase } from '@/lib/supabase'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import { articleTrackingService } from '@/lib/article-tracking'
+import { htmlToPlainText, mapArticleRow, type PublicArticle } from '@/lib/article-format'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-interface Article {
-  id: string
-  title: string
-  summary: string
-  content: string
-  source: string
-  publishedAt: string
-  published_at?: string
-  category: string
-  viewCount: string
-  view_count: number
-  url: string
-  imageUrl?: string
-  author?: string
-  trending?: boolean
-}
+type Article = PublicArticle
 
-export function ArticlePageClient() {
+/**
+ * Affichage d'un article. `initialArticle` est fourni par le serveur : le
+ * texte est alors présent dès le HTML livré. Sans lui (base injoignable au
+ * rendu), le navigateur charge l'article comme avant.
+ */
+export function ArticlePageClient({ initialArticle = null }: { initialArticle?: PublicArticle | null }) {
   const params = useParams()
   const router = useRouter()
-  const [article, setArticle] = useState<Article | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [article, setArticle] = useState<Article | null>(initialArticle)
+  const [loading, setLoading] = useState(!initialArticle)
+  // Version mise en forme du contenu, calculée dans le navigateur uniquement
+  const [richHtml, setRichHtml] = useState<string | null>(null)
+  const viewCounted = useRef(false)
+  const historyRecorded = useRef<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [user, setUser] = useState<any>(null)
 
@@ -44,76 +38,83 @@ export function ArticlePageClient() {
     getUser()
   }, [])
 
+  // Chargement par le navigateur uniquement si le serveur n'a pas fourni l'article
   useEffect(() => {
-    const fetchArticle = async () => {
-      if (!params?.id) return
+    if (initialArticle || !params?.id) return
+    let cancelled = false
 
+    const fetchArticle = async () => {
       try {
-        // Récupérer l'article depuis Supabase
         const { data, error } = await supabase
           .from('articles')
           .select('*')
-          .eq('id', params?.id)
+          .eq('id', params.id)
           .single()
 
         if (error) {
           console.error('Erreur récupération article:', error)
           return
         }
-
-        if (data) {
-          setArticle({
-            id: data.id,
-            title: data.title,
-            summary: data.summary || data.description,
-            content: data.content || data.summary || data.description,
-            source: data.source,
-            publishedAt: data.published_at || data.created_at,
-            category: data.category, // ✅ Catégorie IA
-            viewCount: data.view_count?.toString() || '0',
-            view_count: data.view_count || 0,
-            url: data.url || data.link,
-            imageUrl: data.image_url,
-            author: data.author,
-            trending: data.trending || false
-          })
-
-          // Tracker la vue si utilisateur connecté
-          if (user) {
-            await articleTrackingService.recordReadingHistory({
-              userId: user.id,
-              articleId: data.id,
-              articleTitle: data.title,
-              articleContent: data.content || data.summary,
-              articleSummary: data.summary || data.description,
-              articleUrl: data.url || data.link,
-              articleSource: data.source,
-              articleCategory: data.category, // ✅ Catégorie IA
-              articlePublishedAt: data.published_at || data.created_at,
-              readingDuration: 0, // Sera mis à jour au départ
-              deviceType: 'web'
-            })
-          }
-
-          // Incrémenter le compteur de vues
-          const updatedCount = (data.view_count || 0) + 1
-          await supabase
-            .from('articles')
-            .update({ view_count: updatedCount })
-            .eq('id', params?.id)
-
-          // Mettre à jour l'état local pour refléter immédiatement l'incrémentation
-          setArticle(prev => prev ? { ...prev, view_count: updatedCount, viewCount: String(updatedCount) } : prev)
-        }
+        if (data && !cancelled) setArticle(mapArticleRow(data))
       } catch (error) {
         console.error('Erreur:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchArticle()
-  }, [params?.id, user])
+    return () => { cancelled = true }
+  }, [initialArticle, params?.id])
+
+  // Vue comptée une seule fois par affichage, par le serveur. Avant, le
+  // navigateur écrivait lui-même le compteur dans la base, et deux fois par
+  // visite pour un lecteur connecté.
+  useEffect(() => {
+    if (!article?.id || viewCounted.current) return
+    viewCounted.current = true
+
+    fetch(`${API_URL}/api/articles/${article.id}/view`, { method: 'POST' })
+      .then((response) => {
+        if (!response.ok) return
+        setArticle(prev => prev
+          ? { ...prev, view_count: prev.view_count + 1, viewCount: String(prev.view_count + 1) }
+          : prev)
+      })
+      .catch(() => {})
+  }, [article?.id])
+
+  // Historique de lecture du lecteur connecté (une fois par article)
+  useEffect(() => {
+    if (!user || !article || historyRecorded.current === article.id) return
+    historyRecorded.current = article.id
+
+    articleTrackingService.recordReadingHistory({
+      userId: user.id,
+      articleId: article.id,
+      articleTitle: article.title,
+      articleContent: article.content,
+      articleSummary: article.summary,
+      articleUrl: article.url,
+      articleSource: article.source,
+      articleCategory: article.category, // ✅ Catégorie IA
+      articlePublishedAt: article.publishedAt,
+      readingDuration: 0, // Sera mis à jour au départ
+      deviceType: 'web'
+    }).catch(() => {})
+  }, [user, article])
+
+  // Le serveur rend le contenu en texte brut (aucune balise interprétée). Si
+  // le contenu d'origine contient du HTML, le navigateur le remplace après
+  // coup par une version nettoyée, comme avant.
+  useEffect(() => {
+    const content = article?.content || ''
+    if (/<[a-z][\s\S]*>/i.test(content)) {
+      setRichHtml(DOMPurify.sanitize(content.replace(/\n/g, '<br>')))
+    } else {
+      setRichHtml(null)
+    }
+  }, [article?.content])
 
   const handleShare = () => {
     if (!article) return
@@ -158,7 +159,9 @@ export function ArticlePageClient() {
         month: 'long',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        // Fuseau fixé : le serveur et le navigateur affichent la même heure
+        timeZone: 'Africa/Libreville'
       })
     } catch {
       return 'Date inconnue'
@@ -189,28 +192,9 @@ export function ArticlePageClient() {
     )
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    headline: article.title,
-    description: article.summary,
-    datePublished: article.publishedAt,
-    author: { '@type': 'Organization', name: article.source },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Gabon Insight',
-      logo: { '@type': 'ImageObject', url: `${typeof window !== 'undefined' ? window.location.origin : ''}/LOGO GABON INSIGHT ORANGE psd.png` }
-    },
-    ...(article.imageUrl ? { image: article.imageUrl } : {}),
-    mainEntityOfPage: typeof window !== 'undefined' ? window.location.href : '',
-  }
-
+  // Les données structurées (JSON-LD) sont émises par le serveur, dans page.tsx.
   return (
     <div className="min-h-screen bg-gray-50">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
       {/* Header mobile/desktop */}
       <div className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
@@ -314,12 +298,16 @@ export function ArticlePageClient() {
 
             {/* Contenu */}
             <div className="prose prose-sm sm:prose-base lg:prose-lg max-w-none">
-              <div 
-                className="text-gray-800 leading-relaxed whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(article.content.replace(/\n/g, '<br>'))
-                }}
-              />
+              {richHtml ? (
+                <div
+                  className="text-gray-800 leading-relaxed whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: richHtml }}
+                />
+              ) : (
+                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {htmlToPlainText(article.content)}
+                </div>
+              )}
             </div>
 
             {/* Actions en bas */}

@@ -1,5 +1,23 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const { assertPublicUrl, safeRequestOptions } = require('./utils/ssrf-guard');
+
+// Taille maximale d'une image relayée (évite de servir de relais à de gros fichiers)
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+
+/**
+ * SECURITE: le proxy ne relaie que des images. Sans ce contrôle, il renvoyait
+ * n'importe quel contenu (HTML, JSON d'API internes...) avec son type d'origine.
+ */
+function assertImageContentType(contentType) {
+  const type = String(contentType || '').split(';')[0].trim().toLowerCase();
+  if (!type.startsWith('image/')) {
+    const error = new Error(`Contenu non image refusé (${type || 'inconnu'})`);
+    error.code = 'NOT_AN_IMAGE';
+    throw error;
+  }
+  return type;
+}
 
 /**
  * 🖼️ PROXY D'IMAGES AVANCÉ
@@ -50,7 +68,20 @@ class AdvancedImageProxy {
    */
   async proxyImage(url, res) {
     this.stats.total++;
-    
+
+    // SECURITE (SSRF): seules les URL HTTP(S) publiques sont relayées. Le
+    // contrôle DNS et celui des redirections sont faits par safeRequestOptions().
+    try {
+      if (typeof url !== 'string' || url.length > 2048) {
+        throw Object.assign(new Error('URL invalide'), { code: 'SSRF_BLOCKED' });
+      }
+      assertPublicUrl(url);
+    } catch (error) {
+      this.stats.failed++;
+      console.warn(`🚫 Image proxy: URL refusée (${error.message})`);
+      return res.status(400).json({ error: 'URL non autorisée' });
+    }
+
     try {
       // 1. Vérifier le cache
       const cacheKey = this.getCacheKey(url);
@@ -99,6 +130,8 @@ class AdvancedImageProxy {
         responseType: 'arraybuffer', // Utiliser arraybuffer pour caching
         timeout: 15000,
         maxRedirects: 5,
+        maxContentLength: MAX_IMAGE_BYTES,
+        ...safeRequestOptions(),
         validateStatus: (status) => status < 400,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -114,7 +147,7 @@ class AdvancedImageProxy {
         }
       });
 
-      const contentType = response.headers['content-type'] || 'image/jpeg';
+      const contentType = assertImageContentType(response.headers['content-type'] || 'image/jpeg');
       const imageData = Buffer.from(response.data);
 
       // Mettre en cache
@@ -171,6 +204,8 @@ class AdvancedImageProxy {
         responseType: 'arraybuffer',
         timeout: 15000,
         maxRedirects: 10,
+        maxContentLength: MAX_IMAGE_BYTES,
+        ...safeRequestOptions(),
         headers: {
           'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
           'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
@@ -182,7 +217,7 @@ class AdvancedImageProxy {
         }
       });
 
-      const contentType = response.headers['content-type'] || 'image/jpeg';
+      const contentType = assertImageContentType(response.headers['content-type'] || 'image/jpeg');
       const imageData = Buffer.from(response.data);
 
       // Cache les images Facebook aussi

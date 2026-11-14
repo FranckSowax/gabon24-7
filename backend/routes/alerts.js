@@ -7,6 +7,42 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+
+/**
+ * SECURITE: une alerte ne peut être lue, modifiée ou supprimée que par son
+ * propriétaire (ou un administrateur). Répond 404 dans les deux cas "inexistante"
+ * et "appartient à un autre" pour ne pas révéler les identifiants valides.
+ */
+async function loadOwnedAlert(req, res, next) {
+  try {
+    const { data: alert, error } = await supabaseService.supabase
+      .from('user_alerts')
+      .select('id, user_id')
+      .eq('id', req.params.alertId)
+      .single();
+
+    if (error || !alert) {
+      return res.status(404).json({ success: false, error: 'Alerte introuvable' });
+    }
+
+    if (alert.user_id !== req.user.id) {
+      const { data: profile } = await supabaseService.supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', req.user.id)
+        .single();
+      if (profile?.is_admin !== true) {
+        return res.status(404).json({ success: false, error: 'Alerte introuvable' });
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('❌ Erreur vérification propriétaire alerte:', error.message);
+    return res.status(500).json({ success: false, error: 'Erreur de vérification' });
+  }
+}
+const requireAlertOwner = [requireAuth, loadOwnedAlert];
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 
@@ -509,7 +545,7 @@ function matchWithStemAndSynonyms(text, keyword) {
 }
 
 // GET /api/alerts/matches/:alertId - Récupérer matches d'une alerte spécifique
-router.get('/matches/:alertId', async (req, res) => {
+router.get('/matches/:alertId', requireAlertOwner, async (req, res) => {
   try {
     const { alertId } = req.params;
     const { limit = 20, offset = 0 } = req.query;
@@ -611,7 +647,7 @@ router.post('/create', requireAuth, validateBody(createAlertSchema), async (req,
 });
 
 // PUT /api/alerts/:alertId - Mettre à jour une alerte
-router.put('/:alertId', validateBody(updateAlertSchema), async (req, res) => {
+router.put('/:alertId', requireAlertOwner, validateBody(updateAlertSchema), async (req, res) => {
   try {
     const { alertId } = req.params;
     const {
@@ -652,7 +688,7 @@ router.put('/:alertId', validateBody(updateAlertSchema), async (req, res) => {
 });
 
 // PATCH /api/alerts/:alertId - Mettre à jour partiellement une alerte (compatible frontend)
-router.patch('/:alertId', validateBody(updateAlertSchema), async (req, res) => {
+router.patch('/:alertId', requireAlertOwner, validateBody(updateAlertSchema), async (req, res) => {
   try {
     const { alertId } = req.params;
     const {
@@ -865,7 +901,7 @@ router.get('/stats', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/alerts/:alertId - Supprimer une alerte
-router.delete('/:alertId', async (req, res) => {
+router.delete('/:alertId', requireAlertOwner, async (req, res) => {
   try {
     const { alertId } = req.params;
 

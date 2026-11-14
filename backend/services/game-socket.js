@@ -33,6 +33,10 @@ class GameSocketService {
       pingInterval: 25000
     });
 
+    // Toute connexion doit porter le jeton Supabase du joueur (comme les routes
+    // HTTP /api/game, qui exigent déjà un compte connecté).
+    this.io.use((socket, next) => this.authenticateSocket(socket, next));
+
     this.io.on('connection', (socket) => {
       console.log(`🎮 [SOCKET] Nouvelle connexion: ${socket.id}`);
 
@@ -54,6 +58,35 @@ class GameSocketService {
 
     console.log('🎮 [SOCKET] Service WebSocket initialisé');
     return this.io;
+  }
+
+  /**
+   * Authentifie une connexion Socket.IO avec le jeton Supabase transmis dans
+   * `handshake.auth.token`. L'identité est conservée dans `socket.data.userId`.
+   *
+   * WHY: sans identité, un même joueur ouvrait autant de connexions qu'il
+   * voulait (autant de "vies", et de quoi remplir seul le quota d'une session),
+   * et un joueur éliminé revenait en jeu en se reconnectant.
+   */
+  async authenticateSocket(socket, next) {
+    try {
+      const token = socket.handshake && socket.handshake.auth && socket.handshake.auth.token;
+      if (typeof token !== 'string' || token.length === 0) {
+        return next(new Error('AUTH_REQUIRED'));
+      }
+
+      const { data, error } = await require('../supabase-config').supabase.auth.getUser(token);
+      if (error || !data || !data.user) {
+        return next(new Error('AUTH_INVALID'));
+      }
+
+      socket.data = socket.data || {};
+      socket.data.userId = data.user.id;
+      next();
+    } catch (e) {
+      console.error('🎮 [SOCKET] Erreur authentification:', e.message);
+      next(new Error('AUTH_ERROR'));
+    }
   }
 
   /**
@@ -93,20 +126,83 @@ class GameSocketService {
   }
 
   /**
+   * Indique si une session peut être rejointe : identifiants spéciaux gérés
+   * côté client (démo, entraînement) ou session présente en base. En cas de
+   * panne de la base on laisse passer, comme le faisait getOrCreateSession.
+   */
+  async sessionExists(sessionId) {
+    if (sessionId === 'demo' || sessionId === 'training') return true;
+    try {
+      const { data, error } = await supabase
+        .from('game_sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .maybeSingle();
+      if (error) return error.code !== '22P02'; // identifiant mal formé = inconnue
+      return Boolean(data);
+    } catch (e) {
+      return true;
+    }
+  }
+
+  /**
    * Gérer la connexion d'un participant à une session
    */
-  async handleJoinSession(socket, { sessionId, odId, odName }) {
-    if (!sessionId) return;
+  async handleJoinSession(socket, payload) {
+    const { sessionId } = payload || {};
+    if (typeof sessionId !== 'string' || sessionId.length === 0 || sessionId.length > 64) return;
+
+    // Le nom affiché vient du client et est rediffusé à tous les joueurs :
+    // texte court, sans balises ni caractères de contrôle.
+    const odName = String((payload && (payload.odName || payload.playerName)) || '')
+      .replace(/[<>\u0000-\u001f\u007f]/g, '')
+      .trim()
+      .slice(0, 30);
+
+    // Ne créer un état en mémoire que pour une session réelle : sinon des
+    // identifiants inventés rempliraient la mémoire du serveur.
+    if (!this.sessions.has(sessionId) && !(await this.sessionExists(sessionId))) {
+      socket.emit('session-error', { error: 'Session inconnue' });
+      return;
+    }
+
+    const userId = socket.data && socket.data.userId;
+    if (!userId) {
+      socket.emit('session-error', { error: 'Connexion non authentifiée' });
+      return;
+    }
 
     const session = await this.getOrCreateSession(sessionId);
-    
+
+    // Un compte = un participant par session. Si ce joueur est déjà présent
+    // avec une autre connexion (reconnexion, second onglet), il RETROUVE son
+    // état : un joueur éliminé le reste, un joueur en vie garde son score.
+    let previous = null;
+    for (const [socketId, participant] of session.participants) {
+      if (participant.userId === userId && socketId !== socket.id) {
+        previous = participant;
+        session.participants.delete(socketId);
+        const oldSocket = this.io && this.io.sockets && this.io.sockets.sockets && this.io.sockets.sockets.get(socketId);
+        if (oldSocket) oldSocket.leave(sessionId);
+      }
+    }
+
+    // Session complète : pas de participant au-delà du quota.
+    if (!previous && !session.participants.has(socket.id) && session.participants.size >= session.maxPlayers) {
+      socket.emit('session-error', { error: 'Session complète' });
+      return;
+    }
+
     // Ajouter le participant
     session.participants.set(socket.id, {
-      odId: socket.id,
-      odName: odName || `Joueur ${session.participants.size + 1}`,
       isAlive: true,
       score: 0,
-      joinedAt: Date.now()
+      joinedAt: Date.now(),
+      ...(previous || session.participants.get(socket.id) || {}),
+      odId: socket.id,
+      userId,
+      disconnected: false,
+      odName: odName || (previous && previous.odName) || `Joueur ${session.participants.size + 1}`
     });
 
     // Rejoindre la room Socket.IO
@@ -388,12 +484,19 @@ class GameSocketService {
   /**
    * Gérer la soumission d'une réponse
    */
-  handleSubmitAnswer(socket, { sessionId, odId, answerIndex }) {
+  handleSubmitAnswer(socket, payload) {
+    const { sessionId, answerIndex } = payload || {};
     const session = this.sessions.get(sessionId);
     if (!session || session.phase !== 'question') return;
+    if (!Number.isInteger(answerIndex)) return;
 
     const participant = session.participants.get(socket.id);
     if (!participant || !participant.isAlive) return; // Ignorer si déjà éliminé
+
+    // Une seule réponse par question : sinon renvoyer la bonne réponse en
+    // boucle gonflait le score de 100 points à chaque envoi.
+    if (participant.answeredQuestionIndex === session.currentQuestionIndex) return;
+    participant.answeredQuestionIndex = session.currentQuestionIndex;
 
     const isCorrect = answerIndex === session.currentQuestion.correct_answer_index;
 
@@ -457,7 +560,16 @@ class GameSocketService {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    session.participants.delete(socket.id);
+    // Partie en cours : on conserve l'état du joueur (en vie ou éliminé, score)
+    // pour qu'il le retrouve s'il revient. Le supprimer permettait à un joueur
+    // éliminé de repartir à zéro en se reconnectant.
+    const participant = session.participants.get(socket.id);
+    const gameRunning = session.phase !== 'filling' && session.phase !== 'waiting';
+    if (gameRunning && participant) {
+      participant.disconnected = true;
+    } else {
+      session.participants.delete(socket.id);
+    }
     socket.leave(sessionId);
 
     console.log(`🎮 [SOCKET] ${socket.id} a quitté la session ${sessionId}`);

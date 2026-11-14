@@ -155,6 +155,10 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  // Écrit en base avec la clé service_role : réservé aux appels portant le secret de cron.
+  const denied = require('./utils/cron-auth').rejectUnlessCron(event, headers);
+  if (denied) return denied;
+
   try {
     console.log('🚀 [RSS-BUNDLE-FAST] Début synchronisation RSS bundle ultra-simple...');
     

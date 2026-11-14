@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const uploadService = require('../services/upload-service');
-const { requireAuth } = require('../middleware/auth');
+const multer = require('multer');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 // POST /api/upload/image - Upload une image
 // 🔒 SÉCURISÉ: Authentification requise
@@ -155,8 +156,11 @@ router.post('/multiple', requireAuth, uploadService.upload.array('files', 5), as
 });
 
 // DELETE /api/upload - Supprimer un fichier
-// 🔒 SÉCURISÉ: Authentification requise
-router.delete('/', requireAuth, async (req, res) => {
+// 🔒 SÉCURISÉ: réservé aux administrateurs.
+// WHY: la route supprime, avec les droits du serveur, le fichier désigné par
+// une adresse et un espace de stockage fournis par l'appelant. Ouverte à tout
+// compte connecté, elle permettait de supprimer les fichiers des autres.
+router.delete('/', requireAdmin, async (req, res) => {
   try {
     const { url, bucket } = req.body;
 
@@ -179,6 +183,21 @@ router.delete('/', requireAuth, async (req, res) => {
       details: error.message 
     });
   }
+});
+
+// Fichier refusé par multer : réponse claire au lieu d'une erreur 500 générique.
+// Les formulaires affichent ce message à l'utilisateur.
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ success: false, error: 'Fichier trop volumineux (50 Mo maximum)' });
+    }
+    return res.status(400).json({ success: false, error: 'Envoi de fichier invalide', code: err.code });
+  }
+  if (err && /Type de fichier non autorisé/.test(err.message || '')) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+  return next(err);
 });
 
 module.exports = router;

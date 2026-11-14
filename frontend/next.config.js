@@ -13,19 +13,20 @@ const nextConfig = {
   // Header X-Powered-By désactivé (réduit fingerprinting)
   poweredByHeader: false,
 
-  experimental: {
-    outputFileTracingRoot: process.cwd(),
-  },
+  // Next 16 : option sortie de `experimental`.
+  outputFileTracingRoot: process.cwd(),
 
+  // SÉCURITÉ : l'optimiseur d'images de Next 14 est fermé.
+  // WHY: les failles connues de `next` 14 (optimisation AVIF/SVG, corrigées
+  // seulement en Next 16) passent par `/_next/image`, et l'ancien réglage
+  // `hostname: '**'` en faisait en plus un proxy d'images ouvert à tout domaine.
+  // `unoptimized` fait servir les images telles quelles par <Image> et désactive
+  // la route `/_next/image` (404 vérifié, y compris sous Next 16).
+  // La migration vers Next 16 est faite : l'optimiseur peut être rouvert, mais
+  // uniquement avec une liste de domaines précise dans `remotePatterns`.
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60,
+    unoptimized: true,
+    remotePatterns: [],
   },
 
   env: {

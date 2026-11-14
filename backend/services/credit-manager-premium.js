@@ -83,13 +83,28 @@ async function consumeCredits(userId, serviceName, amount = null, description = 
       return { success: false, error: error.message };
     }
 
+    // WHY: la fonction SQL consume_credits ne lève pas d'erreur quand le solde
+    // est insuffisant ou le compte introuvable : elle renvoie { success: false }.
+    // Sans ce contrôle, un service payant était rendu sans aucun débit.
+    if (data?.success !== true) {
+      return {
+        success: false,
+        error: data?.error || 'Consommation de crédits refusée',
+        balance: data?.balance,
+        bonus_balance: data?.bonus_balance
+      };
+    }
+
     return {
       success: true,
       transaction_id: data?.transaction_id,
       balance: data?.balance,
       bonus_balance: data?.bonus_balance,
       total_balance: data?.total_balance,
-      consumed: creditsToConsume
+      consumed: creditsToConsume,
+      // Répartition du débit, à repasser à refundCredits en cas de remboursement
+      from_bonus: data?.from_bonus,
+      from_balance: data?.from_balance
     };
   } catch (err) {
     console.error('❌ Erreur consumeCredits:', err);
@@ -103,21 +118,82 @@ async function consumeCredits(userId, serviceName, amount = null, description = 
  * @param {number} amount - Montant à rembourser
  * @param {string} reason - Raison du remboursement
  * @param {string} originalTransactionId - ID de la transaction originale
+ * @param {{fromBonus: number, fromBalance: number}} split - Répartition du débit
+ *   d'origine (champs from_bonus / from_balance renvoyés par consume_credits).
+ *   Fournie et cohérente avec `amount`, chaque part retourne sur son solde
+ *   d'origine. Absente, tout est recrédité sur le solde principal.
  * @returns {Promise<{success: boolean, transaction_id?: string, error?: string}>}
+ *
+ * @example
+ *   await refundCredits(userId, 5, 'Échec IA', debit.transaction_id,
+ *     { fromBonus: debit.from_bonus, fromBalance: debit.from_balance });
  */
-async function refundCredits(userId, amount, reason, originalTransactionId = null) {
+async function refundCredits(userId, amount, reason, originalTransactionId = null, split = null) {
   try {
+    const fromBonus = split?.fromBonus;
+    const fromBalance = split?.fromBalance;
+    const splitIsUsable =
+      Number.isInteger(fromBonus) && Number.isInteger(fromBalance) &&
+      fromBonus >= 0 && fromBalance >= 0 && fromBonus + fromBalance === amount;
+
+    if (splitIsUsable) {
+      const { data: splitData, error: splitError } = await supabaseService.supabase
+        .rpc('refund_credits_split', {
+          p_user_id: userId,
+          p_from_balance: fromBalance,
+          p_from_bonus: fromBonus,
+          p_description: reason,
+          p_reference_id: originalTransactionId
+        });
+
+      // WHY: tant que la migration 20261115_refund_credits_split.sql n'est pas
+      // appliquée, la fonction n'existe pas. On retombe alors sur l'ancien
+      // remboursement (tout sur le solde principal) plutôt que de ne rien rendre.
+      const functionMissing = splitError && (
+        splitError.code === 'PGRST202' || splitError.code === '42883' ||
+        /refund_credits_split/.test(splitError.message || '')
+      );
+
+      if (!functionMissing) {
+        if (splitError) {
+          console.error('❌ Erreur remboursement crédits:', splitError);
+          return { success: false, error: splitError.message };
+        }
+        if (splitData?.success !== true) {
+          return { success: false, error: splitData?.error || 'Remboursement refusé' };
+        }
+        return {
+          success: true,
+          transaction_id: splitData.transaction_id,
+          balance: splitData.balance,
+          bonus_balance: splitData.bonus_balance,
+          total_balance: splitData.total_balance,
+          to_bonus: fromBonus,
+          to_balance: fromBalance
+        };
+      }
+      console.warn('⚠️ refund_credits_split absente (migration non appliquée) : remboursement sur le solde principal');
+    }
+
     const { data, error } = await supabaseService.supabase
       .rpc('refund_credits', {
         p_user_id: userId,
         p_amount: amount,
-        p_reason: reason,
-        p_original_transaction_id: originalTransactionId
+        // Noms attendus par la fonction SQL refund_credits(uuid, integer, text, text).
+        // Les anciens noms (p_reason, p_original_transaction_id) ne correspondaient
+        // à aucune fonction : tout remboursement échouait.
+        p_description: reason,
+        p_reference_id: originalTransactionId
       });
 
     if (error) {
       console.error('❌ Erreur remboursement crédits:', error);
       return { success: false, error: error.message };
+    }
+
+    // Même règle que consumeCredits : un refus signalé par la base n'est pas un succès.
+    if (data?.success === false) {
+      return { success: false, error: data.error || 'Remboursement refusé' };
     }
 
     return {

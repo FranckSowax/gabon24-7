@@ -51,8 +51,8 @@ OPENAI_API_KEY=sk-proj-... (votre clé OpenAI)
 
 ```
 Project URL: https://ykytsadwfqoyusleoflf.supabase.co
-anon/public key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-service_role key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+anon/public key: <valeur retirée>
+service_role key: <valeur retirée>
 ```
 
 ### **OpenAI**
@@ -111,12 +111,12 @@ node enrich-articles-batch.js
 
 ```env
 # 🔑 CLÉS API
-OPENAI_API_KEY=sk-proj-abc123xyz789...
+OPENAI_API_KEY=<valeur retirée>
 
 # 📊 SUPABASE
 SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl...
+SUPABASE_ANON_KEY=<valeur retirée>
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 
 # 🌐 URLs
 API_URL=http://localhost:3001

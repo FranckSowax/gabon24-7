@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import SourcePlaceholder from '@/components/features/SourcePlaceholder'
 import { Image as PhotoIcon } from 'lucide-react'
 import { TLDRButton } from './TLDRButton'
 import { AudioPlayButton } from './AudioPlayButton'
@@ -388,8 +389,9 @@ export function ArticleCard({
               referrerPolicy="no-referrer"
             />
           ) : null}
-          <div className={`${proxiedImageSrc ? 'hidden' : ''} bg-gradient-to-br from-green-400 to-blue-500 h-full w-full flex items-center justify-center absolute inset-0`}>
-            <PhotoIcon className="h-8 sm:h-12 w-8 sm:w-12 text-white opacity-70" />
+          {/* Article sans image (ou image qui ne se charge pas) : logo du média d'origine */}
+          <div className={`${proxiedImageSrc ? 'hidden' : ''} h-full w-full absolute inset-0`}>
+            <SourcePlaceholder source={article.source} size="large" />
           </div>
           
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 sm:p-3 md:p-4">
@@ -530,8 +532,8 @@ export function ArticleCard({
               referrerPolicy="no-referrer"
             />
           ) : null}
-          <div className={`fallback-icon ${proxiedImageSrc ? 'hidden' : ''} w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center absolute inset-0`}>
-            <span className="text-lg sm:text-xl text-white">📰</span>
+          <div className={`fallback-icon ${proxiedImageSrc ? 'hidden' : ''} w-full h-full absolute inset-0`}>
+            <SourcePlaceholder source={article.source} size="small" />
           </div>
         </div>
         

@@ -5,10 +5,11 @@ const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
+const crypto = require('crypto');
 
 // ==================== SCHÉMAS DE VALIDATION ====================
 const purchaseSchema = z.object({
-  userId: z.string().uuid('userId invalide'),
+  userId: z.string().uuid('userId invalide').optional().nullable(), // ignoré: l'identité vient du JWT
   packageId: z.string().min(1).max(200),
   paymentMethod: z.string().max(50).optional().nullable(),
   phoneNumber: z.string().max(40).optional().nullable(),
@@ -22,7 +23,7 @@ const mobileMoneyWebhookSchema = z.object({
 }).passthrough();
 
 const consumePremiumSchema = z.object({
-  userId: z.string().uuid('userId invalide'),
+  userId: z.string().uuid('userId invalide').optional().nullable(), // ignoré: l'identité vient du JWT
   serviceName: z.string().max(100).optional().nullable(),
   amount: z.coerce.number().int().positive('amount positif requis').max(1_000_000),
   description: z.string().max(500).optional().nullable(),
@@ -53,10 +54,11 @@ router.get('/packages', async (req, res) => {
 // ============================================
 router.post('/purchase', requireAuth, validateBody(purchaseSchema), async (req, res) => {
   try {
-    const { userId, packageId, paymentMethod, phoneNumber, mobileOperator } = req.body;
+    const userId = req.user.id; // Jamais depuis le body
+    const { packageId, paymentMethod, phoneNumber, mobileOperator } = req.body;
 
-    if (!userId || !packageId) {
-      return res.status(400).json({ success: false, error: 'userId et packageId requis' });
+    if (!packageId) {
+      return res.status(400).json({ success: false, error: 'packageId requis' });
     }
 
     if (!paymentMethod || paymentMethod === 'demo') {
@@ -68,6 +70,7 @@ router.post('/purchase', requireAuth, validateBody(purchaseSchema), async (req, 
       .from('credit_packages')
       .select('*')
       .eq('id', packageId)
+      .eq('is_active', true)
       .single();
 
     if (pkgError || !pkg) return res.status(404).json({ success: false, error: 'Package introuvable' });
@@ -98,6 +101,9 @@ router.post('/purchase', requireAuth, validateBody(purchaseSchema), async (req, 
     });
 
   } catch (error) {
+    if (error.code === 'UNSUPPORTED_PAYMENT_METHOD') {
+      return res.status(400).json({ success: false, error: error.message });
+    }
     console.error('❌ Erreur achat package:', error);
     res.status(500).json({ success: false, error: error.message });
   }
@@ -106,10 +112,27 @@ router.post('/purchase', requireAuth, validateBody(purchaseSchema), async (req, 
 // ============================================
 // 3. POST /api/credits-premium/webhook/mobile-money - Callback pour Mobile Money
 // ============================================
-router.post('/webhook/mobile-money', validateBody(mobileMoneyWebhookSchema), async (req, res) => {
+// SECURITE: webhook authentifié par secret partagé (en-tête X-Webhook-Secret,
+// variable MOBILE_MONEY_WEBHOOK_SECRET). Sans secret configuré, il est fermé:
+// auparavant n'importe qui pouvait passer une transaction en 'completed'.
+function verifyMobileMoneyWebhook(req, res, next) {
+  const expected = process.env.MOBILE_MONEY_WEBHOOK_SECRET;
+  if (!expected) {
+    return res.status(503).json({ error: 'Webhook non configuré' });
+  }
+  const received = String(req.headers['x-webhook-secret'] || '');
+  const a = crypto.createHash('sha256').update(received).digest();
+  const b = crypto.createHash('sha256').update(expected).digest();
+  if (!crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: 'Signature invalide' });
+  }
+  next();
+}
+
+router.post('/webhook/mobile-money', verifyMobileMoneyWebhook, validateBody(mobileMoneyWebhookSchema), async (req, res) => {
   try {
-    const { transactionId, status, externalReference } = req.body;
-    console.log('📩 Webhook Mobile Money reçu:', req.body);
+    const { transactionId, status } = req.body;
+    console.log('📩 Webhook Mobile Money reçu:', { transactionId, status });
 
     await paymentService.updateTransactionStatus(
       transactionId, 
@@ -119,8 +142,8 @@ router.post('/webhook/mobile-money', validateBody(mobileMoneyWebhookSchema), asy
 
     res.json({ received: true });
   } catch (error) {
-    console.error('❌ Erreur webhook:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Erreur webhook:', error.message);
+    res.status(500).json({ error: 'Erreur de traitement' });
   }
 });
 
@@ -130,6 +153,9 @@ router.post('/webhook/mobile-money', validateBody(mobileMoneyWebhookSchema), asy
 router.get('/balance/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
+    if (userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Accès refusé' });
+    }
     const { data: userCredits } = await supabaseService.supabase
       .from('user_credits')
       .select('*')
@@ -155,7 +181,8 @@ router.get('/balance/:userId', requireAuth, async (req, res) => {
 // ============================================
 router.post('/consume', requireAuth, validateBody(consumePremiumSchema), async (req, res) => {
   try {
-    const { userId, serviceName, amount, description } = req.body;
+    const userId = req.user.id; // Jamais depuis le body: on ne débite que son propre compte
+    const { serviceName, amount, description } = req.body;
 
     const { data, error } = await supabaseService.supabase
       .rpc('consume_credits', {

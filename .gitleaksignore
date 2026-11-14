@@ -1,0 +1,9 @@
+# Détections gitleaks acceptées (une empreinte par ligne).
+# Jetons d'accès aux images d'une documentation publique (GitBook), sans valeur de secret.
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:265
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:398
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:445
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:488
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:661
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:712
+docs/archive/backend/Channel_whapi (1).md:generic-api-key:716

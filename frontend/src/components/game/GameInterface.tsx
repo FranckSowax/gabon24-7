@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { io, type Socket } from 'socket.io-client'
+import { socketAuth } from '@/lib/socket-auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Users, Skull, Crown, Zap, Clock, CheckCircle, XCircle, Star, Gift, MessageCircle, ArrowRight, Sparkles } from 'lucide-react'
 
@@ -562,6 +563,7 @@ export default function GameInterface({ initialSessionId }: { initialSessionId?:
 
     console.log('🔌 Connexion Socket.IO:', API_URL)
     const newSocket: Socket = io(API_URL, {
+      auth: socketAuth, // jeton Supabase exigé par le serveur de jeu
       withCredentials: true,
       transports: ['websocket', 'polling'],
       autoConnect: true

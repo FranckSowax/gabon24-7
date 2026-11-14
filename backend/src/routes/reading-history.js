@@ -2,6 +2,12 @@ const express = require('express');
 const supabaseService = require('../../supabase-config');
 const router = express.Router();
 
+// SECURITE: un :userId d'URL doit être celui du jeton (sauf admin).
+// L'authentification est imposée au montage dans server.js (requireOwnUser).
+const { ownUserParam } = require('../../middleware/auth');
+router.param('userId', ownUserParam);
+
+
 const { supabase } = supabaseService;
 
 // Endpoint pour enregistrer un article lu avec contenu complet

@@ -4,11 +4,18 @@ const cheerio = require('cheerio');
 const cron = require('node-cron');
 const OpenAIService = require('./openai-service');
 const SupabaseService = require('./supabase-config');
+const {
+  isGoogleNewsUrl,
+  publisherUrlFromFeedItem,
+  resolvePublisherArticle,
+} = require('./services/publisher-article-resolver');
 
 class RSSParserService {
   constructor(supabaseService) {
     this.parser = new Parser({
       timeout: 10000,
+      // Balise <source url="..."> des flux Google Actualités : adresse du média d'origine
+      customFields: { item: [['source', 'gnSource']] },
       headers: {
         'User-Agent': 'GabonNews RSS Reader 1.0'
       }
@@ -300,6 +307,29 @@ class RSSParserService {
 
           // 🖼️ EXTRACTION D'IMAGE PRINCIPALE - MÉTHODE ROBUSTE
           let mainImageUrl = null;
+
+          // Lien Google Actualités : il mène à une page de redirection de Google,
+          // pas à l'article. On retrouve l'article chez le média lui-même ; sans
+          // cela l'image récupérée était le logo de Google Actualités, ou rien.
+          let scrapeUrl = item.link;
+          let articleUrl = item.link || '';
+          if (isGoogleNewsUrl(item.link)) {
+            scrapeUrl = null;
+            const original = await resolvePublisherArticle({
+              title: item.title,
+              publisherUrl: publisherUrlFromFeedItem(item, feed.url),
+              sourceName: feed.name,
+              cacheKey: item.guid || item.link,
+            });
+            if (original) {
+              scrapeUrl = original.url;
+              articleUrl = original.url;
+              if (original.imageUrl) {
+                mainImageUrl = original.imageUrl;
+                console.log('🖼️ Image trouvée chez le média d\'origine:', mainImageUrl);
+              }
+            }
+          }
           
           // 1. Chercher dans enclosure
           if (item.enclosure && item.enclosure.url && this.isImageUrl(item.enclosure.url)) {
@@ -328,13 +358,13 @@ class RSSParserService {
           }
           
           // 4. SCRAPING WEB SYSTÉMATIQUE si pas d'image trouvée
-          if (!mainImageUrl && item.link) {
+          if (!mainImageUrl && scrapeUrl) {
             try {
-              console.log(`🌐 Scraping web pour récupérer l'image: ${item.link}`);
+              console.log(`🌐 Scraping web pour récupérer l'image: ${scrapeUrl}`);
               const axios = require('axios');
               const cheerio = require('cheerio');
               
-              const response = await axios.get(item.link, {
+              const response = await axios.get(scrapeUrl, {
                 timeout: 8000,
                 headers: {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -363,13 +393,13 @@ class RSSParserService {
               if (!mainImageUrl) {
                 let selectors = [];
                 
-                if (item.link.includes('gabonactu.com')) {
+                if (scrapeUrl.includes('gabonactu.com')) {
                   selectors = ['.post-thumbnail img', '.featured-image img', '.wp-post-image'];
-                } else if (item.link.includes('gabon-insight.com')) {
+                } else if (scrapeUrl.includes('gabon-insight.com')) {
                   selectors = ['.article-image img', '.post-image img', '.content img:first-of-type'];
-                } else if (item.link.includes('rfi.fr')) {
+                } else if (scrapeUrl.includes('rfi.fr')) {
                   selectors = ['.article-media img', '.m-figure img'];
-                } else if (item.link.includes('infosgabon.com')) {
+                } else if (scrapeUrl.includes('infosgabon.com')) {
                   selectors = ['.wp-post-image', '.featured-image img', '.post-thumbnail img', 'article img:first-of-type'];
                 } else {
                   // Sélecteurs génériques WordPress
@@ -393,7 +423,7 @@ class RSSParserService {
               }
               
             } catch (scrapingError) {
-              console.log(`⚠️ Erreur scraping pour ${item.link}:`, scrapingError.message);
+              console.log(`⚠️ Erreur scraping pour ${scrapeUrl}:`, scrapingError.message);
             }
           }
           
@@ -428,7 +458,7 @@ class RSSParserService {
             summary: cleanedContent || 'Résumé non disponible',
             summary_ai: aiSummary,
             content: item.content || item.description || '',
-            url: item.link || '',
+            url: articleUrl,
             author: item.creator || item['dc:creator'] || 'Rédaction',
             published_at: originalPublishDate || item.pubDate || item.isoDate || new Date().toISOString(),
             language: 'fr',
@@ -580,6 +610,12 @@ class RSSParserService {
     let successfulFeeds = 0;
     
     for (const feed of this.feedsCache) {
+      // Un flux désactivé n'est plus lu. Avant, le statut n'était pas regardé :
+      // passer un flux à « inactive » dans la base n'arrêtait pas son import.
+      if (feed.status === 'inactive') {
+        continue;
+      }
+
       try {
         const newArticles = await this.parseFeed(feed);
         totalNewArticles += newArticles.length;

@@ -5,56 +5,24 @@ const { supabase } = require('../config/supabase');
 const uploadService = require('../services/upload-service');
 const { requireAuth, optionalAuth, requireAdmin } = require('../middleware/auth');
 const { validateBody, validateQuery } = require('../middleware/validation');
+const { CAMPAIGN_TYPES, normalizeCampaignType } = require('../services/campaign-pricing');
+const { createCampaign } = require('../services/campaign-creation');
+const { campaignCreationLimiter } = require('../middleware/rate-limiter');
 
 // ==================== SCHÉMAS DE VALIDATION ====================
 
-// Schéma pour la création de campagne
-const createCampaignSchema = z.object({
-  campaign_type: z.enum(['banner_home', 'banner_feed', 'video_home', 'article_trending'], {
-    errorMap: () => ({ message: 'Type de campagne invalide' })
-  }),
-  name: z.string().min(3, 'Nom trop court').max(100, 'Nom trop long'),
-  budget: z.number().min(0).max(100000000).optional().default(0),
-  duration_days: z.number().int().min(1).max(365).optional().default(7),
-
-  // Bannière Page d'Accueil
-  desktop_image_url: z.string().url().max(2000).optional().nullable(),
-  mobile_image_url: z.string().url().max(2000).optional().nullable(),
-  banner_title: z.string().max(200).optional().nullable(),
-  banner_description: z.string().max(1000).optional().nullable(),
-
-  // Bannière Feed
-  feed_image_1_url: z.string().url().max(2000).optional().nullable(),
-  feed_image_2_url: z.string().url().max(2000).optional().nullable(),
-  feed_image_3_url: z.string().url().max(2000).optional().nullable(),
-
-  // Vidéo Home
-  video_url: z.string().url().max(2000).optional().nullable(),
-  video_title: z.string().max(200).optional().nullable(),
-  video_description: z.string().max(1000).optional().nullable(),
-
-  // Article Sponsorisé
-  article_title: z.string().max(200).optional().nullable(),
-  article_subtitle: z.string().max(300).optional().nullable(),
-  article_content: z.string().max(50000).optional().nullable(),
-  article_category: z.string().max(50).optional().nullable(),
-  article_company_name: z.string().max(100).optional().nullable(),
-  article_product_service: z.string().max(200).optional().nullable(),
-  article_target_audience: z.string().max(500).optional().nullable(),
-  article_key_message: z.string().max(500).optional().nullable(),
-  article_call_to_action: z.string().max(200).optional().nullable(),
-  article_image_url: z.string().url().max(2000).optional().nullable(),
-
-  // Commun
-  redirect_url: z.string().url().max(2000).optional().nullable(),
-  design_request: z.boolean().optional().default(false),
-  design_request_notes: z.string().max(2000).optional().nullable(),
-});
+// Le schéma de création est dans services/campaign-creation.js.
+// Les types sont stockés avec des tirets (`banner-home`), comme les envoie
+// l'interface. L'ancienne écriture avec soulignés est acceptée et convertie.
+const campaignTypeSchema = z.preprocess(
+  normalizeCampaignType,
+  z.enum(CAMPAIGN_TYPES, { error: 'Type de campagne invalide' })
+);
 
 // Schéma pour les query params de liste
 const listCampaignsQuerySchema = z.object({
   status: z.enum(['draft', 'pending', 'active', 'paused', 'completed', 'rejected']).optional(),
-  campaign_type: z.enum(['banner_home', 'banner_feed', 'video_home', 'article_trending']).optional(),
+  campaign_type: campaignTypeSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
 });
 
@@ -174,36 +142,33 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/campaigns - Créer une nouvelle campagne
 // 🔒 SÉCURISÉ: Authentification + validation complète des inputs
-router.post('/', requireAuth, validateBody(createCampaignSchema), async (req, res) => {
+// Implémentation unique : services/campaign-creation.js (validation, prix de
+// la grille serveur, créneau disponible, statut « pending », compte du jeton).
+// Les achats par forfait (sans `campaign_type`) sont traités avant, dans server.js.
+// Limite : 10 créations par jour et par compte (après requireAuth pour compter
+// par compte et non par adresse IP). Une campagne en attente réserve un créneau.
+router.post('/', requireAuth, campaignCreationLimiter, async (req, res) => {
   try {
-    const userId = req.user.id; // Extrait du JWT par le middleware
+    const result = await createCampaign({ supabase, userId: req.user.id, body: req.body });
 
-    // Les données sont déjà validées et nettoyées par le middleware
-    const campaignData = {
-      user_id: userId,
-      status: 'pending',
-      ...req.body, // Données validées par Zod
-    };
+    if (!result.ok) {
+      return res.status(result.status).json({ success: false, error: result.error, ...result.details });
+    }
 
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert([campaignData])
-      .select()
-      .single();
+    console.log('✅ Campagne créée:', result.campaign.id, result.campaign.campaign_type);
 
-    if (error) throw error;
-
-    console.log('✅ Campagne créée:', data.id, campaignData.campaign_type);
-
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      campaign: data,
-      message: 'Campagne créée avec succès'
+      campaign: result.campaign,
+      sponsored_article: result.sponsoredArticle,
+      price: result.price,
+      message: result.sponsoredArticle
+        ? 'Campagne et article sponsorisé créés avec succès'
+        : 'Campagne créée avec succès',
     });
-
   } catch (error) {
-    console.error('❌ Erreur création campagne:', error);
-    res.status(500).json({ error: 'Erreur lors de la création' });
+    console.error('❌ Erreur création campagne:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur lors de la création' });
   }
 });
 
