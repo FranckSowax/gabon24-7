@@ -12,7 +12,7 @@
 URL API        : https://stg.billing-easy.com/api/v1/merchant/e_bills
 URL Portail    : https://staging.billing-easy.net
 Utilisateur    : Sowax
-Clé API        : ca492d78-cbeb-4513-9525-c23b8f0ce0c1
+Clé API        : <valeur retirée>
 Auth           : Basic (base64 de "Sowax:ca492d78-cbeb-4513-9525-c23b8f0ce0c1")
 ```
 
@@ -39,7 +39,7 @@ L'API E-Billing utilise **Basic Authentication**. Le header est construit comme 
 ```typescript
 // Credentials
 const USER = 'Sowax';
-const KEY  = 'ca492d78-cbeb-4513-9525-c23b8f0ce0c1';
+const KEY  = 'VALEUR_RETIREE';
 
 // Encodage Base64 de "Sowax:ca492d78-cbeb-4513-9525-c23b8f0ce0c1"
 const auth = `Basic ${base64Encode(`${USER}:${KEY}`)}`;
@@ -458,7 +458,7 @@ const EBILLING = {
   URL: 'https://stg.billing-easy.com/api/v1/merchant/e_bills',
   PORTAL: 'https://staging.billing-easy.net',
   USER: 'Sowax',
-  KEY: 'ca492d78-cbeb-4513-9525-c23b8f0ce0c1',
+  KEY: 'VALEUR_RETIREE',
 };
 
 const BACKEND_URL = 'https://emoneygabon.alwaysdata.net/la-map-gabon/api/payment';

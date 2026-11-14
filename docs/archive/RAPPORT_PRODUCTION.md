@@ -141,7 +141,7 @@ WHAPI_TOKEN=...                   # WhatsApp notifications
 NODE_ENV=production
 API_URL=https://votre-backend.railway.app
 FRONTEND_URL=https://votre-site.netlify.app
-JWT_SECRET=un_secret_fort_32_chars
+JWT_SECRET=<valeur retirée>
 ```
 
 ### ⚠️ NETLIFY (Frontend) - OBLIGATOIRES

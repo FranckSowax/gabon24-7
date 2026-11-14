@@ -11,7 +11,7 @@ Prévisions 5 jours: https://open-weather13.p.rapidapi.com/fivedaysforcast
 ### Headers requis
 ```javascript
 const headers = {
-  'X-RapidAPI-Key': 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7',
+  'X-RapidAPI-Key': 'VALEUR_RETIREE',
   'X-RapidAPI-Host': 'open-weather13.p.rapidapi.com'
 };
 ```

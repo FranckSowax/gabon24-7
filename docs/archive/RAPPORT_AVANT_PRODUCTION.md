@@ -135,9 +135,9 @@ Middleware: 26.6 kB
 
 ```env
 # EXPOSÉES (À RÉGÉNÉRER IMMÉDIATEMENT)
-GEMINI_API_KEY=AIzaSyDxR_fCMOx-vl8HP3YixQtkVbk-lJOYNx0
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-OPENAI_API_KEY=sk-proj-8Mb52RfJfM0aBuDDXzLWrScfgLqnHHU...
+GEMINI_API_KEY=<valeur retirée>
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
+OPENAI_API_KEY=<valeur retirée>
 ```
 
 **Action requise:**

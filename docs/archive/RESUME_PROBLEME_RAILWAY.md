@@ -102,9 +102,9 @@ Le flag `x-railway-fallback: true` signifie que **Railway ne peut pas router ver
 ### CRITIQUES (sans elles, le serveur crashe)
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<valeur retirée>
 SUPABASE_URL=https://ykytsadwfqoyusleoflf.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_ANON_KEY=<valeur retirée>
 ```
 
 ### IMPORTANTES (pour le bon fonctionnement)

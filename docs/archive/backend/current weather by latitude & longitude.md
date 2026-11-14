@@ -8,7 +8,7 @@ const options \= {
 	port: null,  
 	path: '/latlon?latitude=40.730610\&longitude=-73.935242\&lang=EN',  
 	headers: {  
-		'x-rapidapi-key': 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7',  
+		'x-rapidapi-key': 'VALEUR_RETIREE',  
 		'x-rapidapi-host': 'open-weather13.p.rapidapi.com'  
 	}  
 };
@@ -38,7 +38,7 @@ const options \= {
 	port: null,  
 	path: '/fivedaysforcast?latitude=40.730610\&longitude=-73.935242\&lang=EN',  
 	headers: {  
-		'x-rapidapi-key': 'c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7',  
+		'x-rapidapi-key': 'VALEUR_RETIREE',  
 		'x-rapidapi-host': 'open-weather13.p.rapidapi.com'  
 	}  
 };

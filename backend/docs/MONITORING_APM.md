@@ -301,7 +301,7 @@ Toutes les requêtes HTTP sont automatiquement trackées.
 
 ```bash
 # Obtenir les métriques en temps réel
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
   http://localhost:3001/api/monitoring/metrics
 
 # Vérifier la santé

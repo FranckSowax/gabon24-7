@@ -33,7 +33,7 @@ Le widget FootballScores affiche les matchs de football **EN DIRECT** en temps r
 Ajoutez dans votre fichier `backend/.env` :
 
 ```bash
-RAPIDAPI_FOOTBALL_KEY=c681296a52mshc2c73586baf893bp135671jsn76eb375db9e7
+RAPIDAPI_FOOTBALL_KEY=<valeur retirée>
 ```
 
 **Note:** La clé API est déjà configurée dans le code avec une valeur par défaut, mais il est recommandé de la mettre dans `.env` pour la production.
