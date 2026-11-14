@@ -1,12 +1,15 @@
 // Fonction programmée pour traitement des résumés IA
 const aiProcessorFunction = require('./ai-summary-processor');
+const { cronHeaders } = require('./utils/cron-auth');
 
 exports.handler = async (event, context) => {
   console.log('🤖 Traitement programmé résumés IA démarré');
   
   // Simuler un événement POST
+  // ai-summary-processor n'accepte que les appels portant le secret de cron.
   const simulatedEvent = {
-    httpMethod: 'POST'
+    httpMethod: 'POST',
+    headers: cronHeaders()
   };
   
   try {

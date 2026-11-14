@@ -6,6 +6,11 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { requireAuth } = require('../middleware/auth');
+const { projectParam } = require('../middleware/project-access');
+
+// Tout :projectId d'URL doit désigner un projet accessible à l'utilisateur.
+// (Le projectId du body est contrôlé par requireProjectScope dans server.js.)
+router.param('projectId', projectParam);
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 

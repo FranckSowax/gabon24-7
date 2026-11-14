@@ -5,7 +5,12 @@
 const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, ownUserParam } = require('../middleware/auth');
+const { projectParam, assertProjectAccess } = require('../middleware/project-access');
+
+// :projectId -> projet accessible ; :userId -> soi-même (ou administrateur)
+router.param('projectId', projectParam);
+router.param('userId', ownUserParam);
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 
@@ -221,6 +226,17 @@ router.patch('/:actionId/status', validateBody(actionStatusSchema), async (req, 
   try {
     const { actionId } = req.params;
     const { status, referenceId } = req.body;
+
+    // L'action doit appartenir à un projet accessible à l'utilisateur
+    const { data: existingAction } = await supabaseService.supabase
+      .from('project_actions')
+      .select('project_id')
+      .eq('id', actionId)
+      .maybeSingle();
+    if (!existingAction) {
+      return res.status(404).json({ success: false, error: 'Action non trouvée' });
+    }
+    if (!(await assertProjectAccess(req, res, existingAction.project_id))) return;
 
     const updateData = {
       action_status: status,

@@ -9,7 +9,13 @@ const supabaseService = require('../supabase-config');
 const { checkOpenAIError, checkUsageThreshold } = require('../utils/quota-monitor');
 const aiValidation = require('../middleware/ai-validation');
 const { trackAIUsage } = require('../utils/track-ai-usage');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireOwnUser } = require('../middleware/auth');
+
+// Routes IA gratuites, ouvertes aux visiteurs : sans userId elles restent
+// anonymes ; avec un userId, il doit être celui du jeton (pas d'usage imputé
+// au compte d'un tiers).
+const ownUserIfProvided = (req, res, next) =>
+  (req.body && req.body.userId ? requireOwnUser(req, res, next) : next());
 const { validateBody } = require('../middleware/validation');
 const { z } = require('zod');
 
@@ -230,7 +236,9 @@ async function callAIPropositions(prompt, options = {}) {
 }
 
 // POST /api/opportunities/analyze - Analyser une opportunité
-router.post('/analyze', validateBody(analyzeOppSchema), async (req, res) => {
+// WHY requireOwnUser : service payant, débité sur le userId du body. Sans jeton,
+// on pouvait faire payer l'analyse au compte de n'importe qui.
+router.post('/analyze', requireOwnUser, validateBody(analyzeOppSchema), async (req, res) => {
   // Déclarées hors du try pour rester accessibles dans le catch (fallback)
   const { article } = req.body;
   let articleTitle = article?.title || '';
@@ -506,25 +514,59 @@ router.options('/generate-proposals', (req, res) => {
 });
 
 // POST /api/opportunities/generate-proposals - Générer propositions de projets (Netlify compatible)
-router.post('/generate-proposals', validateBody(generateProposalsSchema), async (req, res) => {
+// WHY requireAuth : le service est payant. Le compte débité est celui du jeton,
+// jamais un `userId` reçu dans le body (sinon : gratuit sans userId, ou débit du
+// compte d'un tiers).
+router.post('/generate-proposals', requireAuth, validateBody(generateProposalsSchema), async (req, res) => {
+  const REQUIRED_CREDITS = 5;
+  let debited = false;
+  let debit = null; // Réponse de consume_credits : id de transaction et répartition bonus / principal
+
+  // Rembourse le débit quand la génération échoue après paiement. Ne lève jamais :
+  // un remboursement raté est journalisé pour traitement manuel et signalé au client.
+  const refundDebit = async (reason) => {
+    if (!debited) return false;
+    debited = false; // Un seul remboursement par requête
+    try {
+      const { refundCredits } = require('../services/credit-manager-premium');
+      // Chaque part retourne sur son solde d'origine (bonus ou principal).
+      const result = await refundCredits(
+        req.user.id,
+        REQUIRED_CREDITS,
+        `Remboursement génération propositions: ${reason}`,
+        debit?.transaction_id || null,
+        { fromBonus: debit?.from_bonus, fromBalance: debit?.from_balance }
+      );
+      if (result.success) return true;
+      console.error(`❌ REMBOURSEMENT ÉCHOUÉ user=${req.user.id} montant=${REQUIRED_CREDITS}:`, result.error);
+    } catch (refundErr) {
+      console.error(`❌ REMBOURSEMENT ÉCHOUÉ user=${req.user.id} montant=${REQUIRED_CREDITS}:`, refundErr.message);
+    }
+    return false;
+  };
+
   try {
     const {
-      userId,
       secteur,
       budget,
       problematique,
       userContext,
       article
     } = req.body;
+    const userId = req.user.id;
 
     console.log('🚀 Génération propositions pour secteur:', secteur, 'budget:', budget);
 
+    // Valider AVANT de débiter : une requête incomplète ne doit rien coûter.
+    if (!secteur || !budget || !problematique) {
+      return res.status(400).json({ success: false, error: 'Champs requis manquants: secteur, budget, problematique' });
+    }
+
     // Vérifier et déduire les crédits (5 crédits pour génération propositions)
-    const REQUIRED_CREDITS = 5;
-    
-    if (userId) {
+    // (coût : REQUIRED_CREDITS, déclaré en tête du handler)
+
+    {
       try {
-        const supabaseService = require('../supabase-config');
         const { data: creditResult, error: creditError } = await supabaseService.supabase
           .rpc('consume_credits', {
             p_user_id: userId,
@@ -535,23 +577,34 @@ router.post('/generate-proposals', validateBody(generateProposalsSchema), async 
             p_metadata: { secteur, budget }
           });
 
-        if (creditError || !creditResult?.success) {
-          console.error('❌ Erreur déduction crédits:', creditError || creditResult?.error);
+        // Panne du système de crédits : on bloque, le service n'est jamais rendu sans débit.
+        if (creditError) {
+          console.error('❌ Erreur système crédits:', creditError.message);
+          return res.status(503).json({
+            success: false,
+            error: 'Système de crédits momentanément indisponible. Réessayez dans quelques instants.',
+            code: 'CREDITS_UNAVAILABLE'
+          });
+        }
+        if (creditResult?.success !== true) {
+          console.error('❌ Débit de crédits refusé:', creditResult?.error);
           return res.status(400).json({
             success: false,
             error: creditResult?.error || 'Crédits insuffisants pour générer des propositions',
             credits_required: REQUIRED_CREDITS
           });
         }
+        debited = true;
+        debit = creditResult;
         console.log(`💰 ${REQUIRED_CREDITS} crédits déduits - Solde: ${creditResult.total_balance}`);
       } catch (creditErr) {
-        console.error('❌ Erreur système crédits:', creditErr);
-        // Continuer sans bloquer si erreur système crédits
+        console.error('❌ Erreur système crédits:', creditErr.message);
+        return res.status(503).json({
+          success: false,
+          error: 'Système de crédits momentanément indisponible. Réessayez dans quelques instants.',
+          code: 'CREDITS_UNAVAILABLE'
+        });
       }
-    }
-
-    if (!secteur || !budget || !problematique) {
-      return res.status(400).json({ success: false, error: 'Champs requis manquants: secteur, budget, problematique' });
     }
 
     // Adapter le prompt selon le budget (logique Netlify)
@@ -648,24 +701,40 @@ IMPORTANT: Reponds UNIQUEMENT avec le JSON demande.`;
           parsed = JSON.parse(match[0]);
         } catch (e) {
           console.warn('⚠️ Parsing JSON échoué, retour erreur');
-          return res.status(500).json({ success: false, error: 'Format de réponse AI invalide' });
+          const refunded = await refundDebit('réponse IA illisible');
+          return res.status(500).json({ success: false, error: 'Format de réponse AI invalide', credits_refunded: refunded });
         }
       } else {
-        return res.status(500).json({ success: false, error: 'Aucune proposition générée' });
+        const refunded = await refundDebit('aucune proposition générée');
+        return res.status(500).json({ success: false, error: 'Aucune proposition générée', credits_refunded: refunded });
       }
     }
 
+    if (!Array.isArray(parsed.propositions) || parsed.propositions.length === 0) {
+      const refunded = await refundDebit('aucune proposition générée');
+      return res.status(500).json({ success: false, error: 'Aucune proposition générée', credits_refunded: refunded });
+    }
+
+    // Le service est rendu : plus aucun remboursement après ce point (un échec
+    // du simple suivi d'usage ne doit pas rendre la génération gratuite).
+    debited = false;
+
     console.log('✅ Propositions générées:', parsed.propositions?.length || 0);
 
-    // Track AI usage
-    await trackAIUsage({
-      userId: userId || null,
-      serviceName: 'generate-proposals',
-      description: `Génération propositions - Secteur: ${secteur}`,
-      creditsUsed: 5,
-      usage,
-      metadata: { secteur, budget }
-    });
+    // Track AI usage — un échec du suivi ne doit pas priver l'utilisateur du
+    // résultat qu'il vient de payer.
+    try {
+      await trackAIUsage({
+        userId: userId || null,
+        serviceName: 'generate-proposals',
+        description: `Génération propositions - Secteur: ${secteur}`,
+        creditsUsed: REQUIRED_CREDITS,
+        usage,
+        metadata: { secteur, budget }
+      });
+    } catch (trackErr) {
+      console.warn('⚠️ Suivi d\'usage IA indisponible:', trackErr.message);
+    }
 
     res.json({
       success: true,
@@ -675,12 +744,19 @@ IMPORTANT: Reponds UNIQUEMENT avec le JSON demande.`;
 
   } catch (error) {
     console.error('❌ Erreur generate-proposals:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const wasDebited = debited;
+    const refunded = await refundDebit('échec de la génération IA');
+    if (res.headersSent) return;
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ...(wasDebited ? { credits_refunded: refunded } : {})
+    });
   }
 });
 
 // POST /api/opportunities/generate-by-budget - Générer idées par budget
-router.post('/generate-by-budget', validateBody(generateByBudgetSchema), async (req, res) => {
+router.post('/generate-by-budget', ownUserIfProvided, validateBody(generateByBudgetSchema), async (req, res) => {
   try {
     const {
       userId,
@@ -756,7 +832,7 @@ Format: JSON array avec structure {title, description, investment, profitability
 });
 
 // POST /api/opportunities/enhance - Enrichir une opportunité
-router.post('/enhance', validateBody(enhanceOppSchema), async (req, res) => {
+router.post('/enhance', ownUserIfProvided, validateBody(enhanceOppSchema), async (req, res) => {
   try {
     let {
       userId,
@@ -845,7 +921,7 @@ router.post('/enhance', validateBody(enhanceOppSchema), async (req, res) => {
 });
 
 // POST /api/opportunities/business-ideas - Générer idées d'affaires
-router.post('/business-ideas', validateBody(businessIdeasSchema), async (req, res) => {
+router.post('/business-ideas', ownUserIfProvided, validateBody(businessIdeasSchema), async (req, res) => {
   try {
     const {
       userId,

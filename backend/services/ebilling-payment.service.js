@@ -23,6 +23,7 @@
 const { supabase } = require('../config/supabase');
 const axios = require('axios');
 const whapiService = require('./whapiService');
+const { computeCampaignPrice } = require('./campaign-pricing');
 
 // Configuration E-Billing
 if (process.env.NODE_ENV === 'production') {
@@ -424,8 +425,72 @@ class EBillingPaymentService {
     }
   }
 
-  async initiateCampaignPayment({ userId, campaignIds, amount, userEmail, userName }) {
+  /**
+   * Paiement de campagnes publicitaires.
+   * SECURITE: le montant n'est jamais pris du client. Il est recalculé à partir
+   * des campagnes en base (grille serveur ou total_amount). `expectedAmount` (montant
+   * affiché côté client) sert uniquement à détecter un panier désynchronisé.
+   */
+  async initiateCampaignPayment({ userId, campaignIds, expectedAmount, userEmail, userName }) {
     try {
+      const uniqueIds = [...new Set(campaignIds || [])];
+      if (uniqueIds.length === 0) {
+        return { success: false, error: 'Au moins une campagne requise' };
+      }
+
+      const { data: campaigns, error: campaignsError } = await this.supabase
+        .from('campaigns')
+        .select('*')
+        .in('id', uniqueIds);
+
+      if (campaignsError) {
+        console.error('❌ Erreur lecture campagnes:', campaignsError);
+        return { success: false, error: 'Impossible de vérifier les campagnes' };
+      }
+      if (!campaigns || campaigns.length !== uniqueIds.length) {
+        return { success: false, error: 'Campagne introuvable' };
+      }
+
+      let amount = 0;
+      for (const campaign of campaigns) {
+        // Une campagne rattachée à un compte ne peut être payée que par ce compte
+        if (campaign.user_id && campaign.user_id !== userId) {
+          return { success: false, error: 'Campagne introuvable' };
+        }
+        if (['completed', 'paid'].includes(campaign.payment_status)) {
+          return { success: false, error: 'Cette campagne est déjà payée' };
+        }
+        // Deux générations de campagnes coexistent :
+        //  - avec `campaign_type` : le prix est celui de la grille serveur
+        //    (campaign-pricing.js). Le `budget` enregistré n'est PAS cru : il a
+        //    pu être fourni par le navigateur.
+        //  - par forfait (sans type) : `total_amount`, fixé par le serveur à la
+        //    création depuis ad_packages.price_fcfa.
+        let price;
+        if (campaign.campaign_type) {
+          const pricing = computeCampaignPrice(campaign);
+          if (!pricing.ok) {
+            return { success: false, error: 'Tarif introuvable pour cette campagne' };
+          }
+          price = pricing.price;
+        } else {
+          price = Number(campaign.total_amount);
+        }
+        if (!Number.isFinite(price) || price <= 0) {
+          return { success: false, error: 'Montant de campagne invalide' };
+        }
+        amount += price;
+      }
+      amount = Math.round(amount);
+
+      if (expectedAmount != null && Math.round(Number(expectedAmount)) !== amount) {
+        return {
+          success: false,
+          error: 'Le montant ne correspond pas aux campagnes sélectionnées. Actualisez votre panier.',
+          expected_amount: amount,
+        };
+      }
+
       const reference = this.generateReference('CMP');
 
       return await this.initiatePayment({
@@ -433,7 +498,7 @@ class EBillingPaymentService {
         amount,
         reference,
         type: 'campaign',
-        campaignIds,
+        campaignIds: uniqueIds,
         description: `Gabon Insight - Campagne publicitaire`,
         userEmail,
         userName,
@@ -539,7 +604,59 @@ class EBillingPaymentService {
   // VÉRIFICATION DE STATUT & CALLBACKS
   // =====================================================
 
-  async checkPaymentStatus(reference) {
+  /**
+   * Interroge les sources de vérité (API E-Billing, puis backend PHP) pour
+   * connaître le statut réel d'un paiement. Ne se fie à aucune donnée client.
+   * @returns {Promise<{status: string|null, data: object|null, reason?: string}>}
+   *   status = 'completed' | 'failed' | 'cancelled', ou null si toujours en attente
+   */
+  async resolveRemoteStatus(payment) {
+    let resolvedStatus = null;
+    let resolvedData = null;
+
+    if (payment.bill_id) {
+      const statusResult = await this.checkInvoiceStatus(payment.bill_id);
+      if (statusResult.success && statusResult.status !== 'pending') {
+        resolvedStatus = statusResult.status;
+        resolvedData = statusResult.data;
+
+        // La facture confirmée doit être celle de ce paiement, au bon montant
+        if (resolvedStatus === 'completed') {
+          const remoteRef = resolvedData?.external_reference;
+          if (remoteRef && String(remoteRef) !== String(payment.reference)) {
+            console.error(`🚨 Facture ${payment.bill_id}: référence ${remoteRef} ≠ ${payment.reference}, paiement non validé`);
+            return { status: null, data: resolvedData, reason: 'reference_mismatch' };
+          }
+          const remoteAmount = Number(resolvedData?.amount);
+          if (Number.isFinite(remoteAmount) && remoteAmount > 0 && remoteAmount < Number(payment.amount)) {
+            console.error(`🚨 Facture ${payment.bill_id}: montant payé ${remoteAmount} < attendu ${payment.amount}, paiement non validé`);
+            return { status: null, data: resolvedData, reason: 'amount_mismatch' };
+          }
+        }
+      }
+    }
+
+    // Vérifier aussi via le backend PHP multi-app (double vérification)
+    if (!resolvedStatus) {
+      const phpStatus = await this.checkPhpPaymentStatus(payment.reference);
+      if (phpStatus.success && ['completed', 'failed', 'cancelled'].includes(phpStatus.status)) {
+        resolvedStatus = phpStatus.status;
+        const phpAmount = Number(phpStatus.amount);
+        if (resolvedStatus === 'completed' && Number.isFinite(phpAmount) && phpAmount > 0 && phpAmount < Number(payment.amount)) {
+          console.error(`🚨 PHP ${payment.reference}: montant ${phpAmount} < attendu ${payment.amount}, paiement non validé`);
+          return { status: null, data: null, reason: 'amount_mismatch' };
+        }
+      }
+    }
+
+    return { status: resolvedStatus, data: resolvedData };
+  }
+
+  /**
+   * @param {string} reference
+   * @param {string} [userId] si fourni, le paiement doit appartenir à cet utilisateur
+   */
+  async checkPaymentStatus(reference, userId) {
     try {
       const { data: payment, error } = await this.supabase
         .from('ebilling_payments')
@@ -548,6 +665,8 @@ class EBillingPaymentService {
         .single();
 
       if (error || !payment) return { success: false, error: 'Paiement non trouvé' };
+      // Même réponse que "non trouvé" pour ne pas révéler l'existence d'une référence
+      if (userId && payment.user_id !== userId) return { success: false, error: 'Paiement non trouvé' };
 
       if (['completed', 'failed', 'cancelled'].includes(payment.status)) {
         // Si completed mais crédits pas encore accordés, relancer le traitement
@@ -565,27 +684,7 @@ class EBillingPaymentService {
         };
       }
 
-      // Vérifier via E-Billing API
-      let resolvedStatus = null;
-      let resolvedData = null;
-
-      if (payment.bill_id) {
-        const statusResult = await this.checkInvoiceStatus(payment.bill_id);
-        if (statusResult.success && statusResult.status !== 'pending') {
-          resolvedStatus = statusResult.status;
-          resolvedData = statusResult.data;
-        }
-      }
-
-      // Vérifier aussi via le backend PHP multi-app (double vérification)
-      if (!resolvedStatus || resolvedStatus === 'pending') {
-        const phpStatus = await this.checkPhpPaymentStatus(reference);
-        if (phpStatus.success && phpStatus.status === 'completed') {
-          resolvedStatus = 'completed';
-        } else if (phpStatus.success && (phpStatus.status === 'failed' || phpStatus.status === 'cancelled')) {
-          resolvedStatus = phpStatus.status;
-        }
-      }
+      const { status: resolvedStatus, data: resolvedData } = await this.resolveRemoteStatus(payment);
 
       if (resolvedStatus && resolvedStatus !== 'pending') {
         const updateData = {
@@ -627,31 +726,39 @@ class EBillingPaymentService {
     }
   }
 
+  /**
+   * Traite une notification E-Billing.
+   * SECURITE: l'endpoint est public et E-Billing ne signe pas ses callbacks.
+   * Le contenu reçu n'est donc JAMAIS une preuve de paiement: il sert uniquement
+   * à retrouver le paiement concerné, dont le statut réel est ensuite relu
+   * auprès d'E-Billing (resolveRemoteStatus) avant toute attribution.
+   */
   async processCallback(callbackData) {
     try {
-      const billId = callbackData.bill_id || callbackData.e_bill_id || callbackData.id;
-      const externalRef = callbackData.external_reference || callbackData.reference;
-      const status = (callbackData.status || callbackData.e_bill_status || '').toLowerCase();
+      const data = callbackData && typeof callbackData === 'object' ? callbackData : {};
+      const billId = data.bill_id || data.e_bill_id || data.id;
+      const externalRef = data.external_reference || data.reference;
+      const claimedStatus = String(data.status || data.e_bill_status || '').toLowerCase();
 
-      console.log('📥 Callback E-Billing reçu:', { billId, externalRef, status });
+      console.log('📥 Callback E-Billing reçu:', { billId, externalRef, claimedStatus });
 
       await this.supabase.from('ebilling_callback_logs').insert({
-        bill_id: billId, reference: externalRef, status, raw_data: callbackData, processed: false,
+        bill_id: billId, reference: externalRef, status: claimedStatus, raw_data: data, processed: false,
       });
 
       let payment = null;
       if (externalRef) {
-        const { data } = await this.supabase.from('ebilling_payments').select('*').eq('reference', externalRef).single();
-        payment = data;
+        const { data: found } = await this.supabase.from('ebilling_payments').select('*').eq('reference', externalRef).single();
+        payment = found;
       }
       if (!payment && billId) {
-        const { data } = await this.supabase.from('ebilling_payments').select('*').eq('bill_id', billId).single();
-        payment = data;
+        const { data: found } = await this.supabase.from('ebilling_payments').select('*').eq('bill_id', billId).single();
+        payment = found;
       }
 
       if (!payment) {
         console.warn('⚠️ Paiement non trouvé pour callback:', { billId, externalRef });
-        return { success: true, message: 'Paiement non trouvé mais callback enregistré' };
+        return { success: true, message: 'Callback enregistré' };
       }
       if (payment.status === 'completed') {
         // Même si déjà completed, relancer si crédits pas accordés
@@ -659,31 +766,42 @@ class EBillingPaymentService {
           console.log(`🔄 Callback: paiement ${payment.reference} déjà completed mais credits_granted=false, relance...`);
           await this.processCompletedPayment(payment);
         }
-        return { success: true, message: 'Paiement déjà traité' };
+        return { success: true, message: 'Callback enregistré' };
+      }
+      if (['failed', 'cancelled'].includes(payment.status)) {
+        return { success: true, message: 'Callback enregistré' };
       }
 
-      const statusMap = {
-        'paid': 'completed', 'completed': 'completed', 'success': 'completed',
-        'failed': 'failed', 'expired': 'failed',
-        'cancelled': 'cancelled', 'canceled': 'cancelled',
-      };
-      const internalStatus = statusMap[status] || 'pending';
+      // Statut réel relu à la source: le statut annoncé dans le callback est ignoré
+      const { status: verifiedStatus, data: verifiedData, reason } = await this.resolveRemoteStatus(payment);
 
-      const updateData = { status: internalStatus, callback_data: callbackData, updated_at: new Date().toISOString() };
-      if (internalStatus === 'completed') updateData.completed_at = new Date().toISOString();
+      if (!verifiedStatus) {
+        if (['paid', 'completed', 'success'].includes(claimedStatus)) {
+          console.warn(`⚠️ Callback ${payment.reference}: statut "${claimedStatus}" annoncé mais non confirmé par E-Billing (${reason || 'toujours en attente'})`);
+        }
+        return { success: true, message: 'Callback enregistré' };
+      }
+
+      const updateData = {
+        status: verifiedStatus,
+        callback_data: data,
+        ebilling_status_data: verifiedData,
+        updated_at: new Date().toISOString(),
+      };
+      if (verifiedStatus === 'completed') updateData.completed_at = new Date().toISOString();
 
       await this.supabase.from('ebilling_payments').update(updateData).eq('id', payment.id);
 
-      if (internalStatus === 'completed') await this.processCompletedPayment(payment);
+      if (verifiedStatus === 'completed') await this.processCompletedPayment(payment);
 
       await this.supabase.from('ebilling_callback_logs')
-        .update({ processed: true }).eq('bill_id', billId).eq('reference', externalRef);
+        .update({ processed: true }).eq('reference', payment.reference);
 
-      return { success: true, status: internalStatus, type: payment.payment_type };
+      return { success: true, message: 'Callback enregistré' };
 
     } catch (err) {
       console.error('❌ Erreur traitement callback E-Billing:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: 'Erreur de traitement' };
     }
   }
 
@@ -1058,25 +1176,8 @@ class EBillingPaymentService {
       const results = [];
 
       for (const payment of pendingPayments) {
-        let resolvedStatus = null;
-
-        // 1. Vérifier via E-Billing API
-        if (payment.bill_id) {
-          const statusResult = await this.checkInvoiceStatus(payment.bill_id);
-          if (statusResult.success && statusResult.status !== 'pending') {
-            resolvedStatus = statusResult.status;
-          }
-        }
-
-        // 2. Vérifier via PHP backend
-        if (!resolvedStatus || resolvedStatus === 'pending') {
-          const phpStatus = await this.checkPhpPaymentStatus(payment.reference);
-          if (phpStatus.success && phpStatus.status === 'completed') {
-            resolvedStatus = 'completed';
-          } else if (phpStatus.success && ['failed', 'cancelled'].includes(phpStatus.status)) {
-            resolvedStatus = phpStatus.status;
-          }
-        }
+        // Statut relu à la source (E-Billing puis PHP), avec contrôle du montant
+        const { status: resolvedStatus } = await this.resolveRemoteStatus(payment);
 
         if (resolvedStatus && resolvedStatus !== 'pending') {
           const updateData = {

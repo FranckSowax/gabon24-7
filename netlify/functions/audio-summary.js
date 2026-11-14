@@ -262,6 +262,12 @@ exports.handler = async (event) => {
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers }
 
+  // Réservé à la tâche planifiée (scheduled-audio-daily). Sans ce garde,
+  // n'importe qui pouvait lire les résumés audio d'un utilisateur (GET ?userId=)
+  // ou déclencher une synthèse vocale OpenAI et un envoi WhatsApp (POST).
+  const denied = require('./utils/cron-auth').rejectUnlessCron(event, headers)
+  if (denied) return denied
+
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY

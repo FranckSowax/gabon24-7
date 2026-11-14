@@ -10,6 +10,12 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { validateBody } = require('../middleware/validation');
+const { optionalAuth, requireOwnUser } = require('../middleware/auth');
+
+// Fenêtre pendant laquelle un compte tout juste créé peut compléter son profil
+// sans jeton (inscription avec confirmation d'e-mail: pas encore de session).
+const PROFILE_SETUP_WINDOW_MS = 15 * 60 * 1000;
+const AVATAR_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 const { z } = require('zod');
 
 // ==================== SCHÉMAS DE VALIDATION ====================
@@ -147,9 +153,39 @@ router.post('/verify-turnstile', authRateLimit, validateBody(verifyTurnstileSche
  * Crée le profil utilisateur après inscription Supabase Auth
  * Utilise service_role pour bypass RLS
  */
-router.post('/create-profile', authRateLimit, validateBody(createProfileSchema), async (req, res) => {
+router.post('/create-profile', authRateLimit, optionalAuth, validateBody(createProfileSchema), async (req, res) => {
   try {
-    const { userId, email, fullName, phone, whatsappNumber, subscriptionType } = req.body;
+    // SECURITE: subscriptionType n'est plus lu depuis le client (il permettait de
+    // s'attribuer une offre payante). L'offre ne change que via un paiement confirmé.
+    const { userId, email, fullName, phone, whatsappNumber } = req.body;
+
+    // SECURITE: cette route écrit avec la clé service_role. On vérifie donc que
+    // l'appelant est bien le titulaire du compte:
+    //   - soit il présente un jeton valide pour ce userId ;
+    //   - soit le compte Supabase Auth vient d'être créé (inscription en cours).
+    // Dans tous les cas l'e-mail doit être celui du compte Auth.
+    if (req.user && req.user.id !== userId) {
+      return res.status(403).json({ success: false, error: 'Accès refusé' });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+    const authUser = authData?.user;
+    if (authError || !authUser) {
+      return res.status(403).json({ success: false, error: 'Compte introuvable' });
+    }
+    if (String(authUser.email || '').toLowerCase() !== String(email || '').toLowerCase()) {
+      return res.status(403).json({ success: false, error: 'Accès refusé' });
+    }
+    if (!req.user) {
+      const createdAt = new Date(authUser.created_at).getTime();
+      if (!Number.isFinite(createdAt) || Date.now() - createdAt > PROFILE_SETUP_WINDOW_MS) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentification requise pour modifier ce profil',
+          code: 'AUTH_TOKEN_MISSING'
+        });
+      }
+    }
 
     if (!userId || !email) {
       return res.status(400).json({
@@ -173,7 +209,6 @@ router.post('/create-profile', authRateLimit, validateBody(createProfileSchema),
           full_name: fullName,
           phone: phone,
           whatsapp_number: whatsappNumber,
-          subscription_type: subscriptionType || 'free',
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -198,7 +233,7 @@ router.post('/create-profile', authRateLimit, validateBody(createProfileSchema),
         full_name: fullName,
         phone: phone,
         whatsapp_number: whatsappNumber,
-        subscription_type: subscriptionType || 'free',
+        subscription_type: 'free',
         subscription_status: 'active',
         subscription_start_date: new Date().toISOString(),
         preferred_language: 'fr',
@@ -245,7 +280,7 @@ router.post('/create-profile', authRateLimit, validateBody(createProfileSchema),
  * POST /api/auth/upload-avatar
  * Upload d'avatar utilisateur via le backend (bypass RLS)
  */
-router.post('/upload-avatar', validateBody(uploadAvatarSchema), async (req, res) => {
+router.post('/upload-avatar', requireOwnUser, validateBody(uploadAvatarSchema), async (req, res) => {
   try {
     const { userId, imageData, fileName } = req.body;
 
@@ -269,7 +304,9 @@ router.post('/upload-avatar', validateBody(uploadAvatarSchema), async (req, res)
     }
 
     // Créer le chemin du fichier
-    const fileExt = fileName?.split('.').pop() || 'jpg';
+    // Extension limitée aux formats d'image (le nom vient du client)
+    const requestedExt = String(fileName || '').split('.').pop().toLowerCase();
+    const fileExt = AVATAR_EXTENSIONS.includes(requestedExt) ? requestedExt : 'jpg';
     const uniqueFileName = `${userId}-${Date.now()}.${fileExt}`;
     const filePath = `avatars/${uniqueFileName}`;
 

@@ -208,7 +208,8 @@ exports.handler = async () => {
       try {
         const resp = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // audio-summary n'accepte que les appels portant le secret de cron
+          headers: { 'Content-Type': 'application/json', ...require('./utils/cron-auth').cronHeaders() },
           body: JSON.stringify({ action: 'daily', userId: u.id, optimize: true, sendWhatsApp: true })
         })
         const json = await resp.json().catch(() => ({}))

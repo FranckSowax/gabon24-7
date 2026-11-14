@@ -3,8 +3,12 @@ const multer = require('multer');
 const { createClient } = require('@supabase/supabase-js');
 const supabaseService = require('../../supabase-config');
 const router = express.Router();
+const { projectParam, assertProjectAccess } = require('../../middleware/project-access');
 
 const { supabase } = supabaseService;
+
+// Tout :projectId d'URL (lecture, upload) doit désigner un projet accessible.
+router.param('projectId', projectParam);
 
 // Configuration multer pour upload en mémoire
 const upload = multer({
@@ -73,7 +77,9 @@ router.get('/:projectId', async (req, res) => {
 router.post('/:projectId/upload', upload.single('file'), async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { userId } = req.body;
+    // SECURITE: identité tirée du jeton. Le body multipart est lu après le garde
+    // requireOwnUser (monté dans server.js), qui ne peut donc pas le contrôler.
+    const userId = req.user.id;
     const file = req.file;
 
     if (!file || !userId) {
@@ -222,9 +228,15 @@ router.delete('/:entryId', async (req, res) => {
     // Récupérer l'entrée pour savoir si c'est un fichier
     const { data: entry } = await supabase
       .from('project_timeline')
-      .select('entry_type, reference_id')
+      .select('entry_type, reference_id, project_id')
       .eq('id', entryId)
-      .single();
+      .maybeSingle();
+
+    // L'entrée doit appartenir à un projet accessible à l'utilisateur
+    if (!entry) {
+      return res.status(404).json({ success: false, error: 'Entrée non trouvée' });
+    }
+    if (!(await assertProjectAccess(req, res, entry.project_id))) return;
 
     // Si c'est un fichier, supprimer du storage
     if (entry?.entry_type === 'file_upload' && entry.reference_id) {

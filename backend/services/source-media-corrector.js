@@ -18,7 +18,18 @@ class SourceMediaCorrector {
       'depeches241.com': 'Dépêches 241',
       'courrierdesjournalistes.net': 'Courrier des Journalistes',
       'fr.infosgabon.com': 'Infos Gabon',
-      'biba241.com': 'Biba 241'
+      'biba241.com': 'Biba 241',
+      // Médias du bundle. Sans ces lignes, leurs articles étaient attribués à
+      // la source par défaut « Gabon News ». Les noms reprennent ceux déjà
+      // utilisés en base, pour ne pas créer une seconde source par média.
+      'gabonmediatime.com': 'Gabon Media Time',
+      'union.sonapresse.com': 'L\'Union',
+      'insidenews241.com': 'Inside News 241',
+      'gabonews.com': 'Gabonews',
+      'letouracovert.com': 'Le Touraco Vert',
+      'echosdeleco.com': 'Les Echos de l\'eco',
+      'vxp241.com': 'Vox Populi',
+      'gabon24.tv': 'Gabon 24'
     };
   }
 

@@ -171,7 +171,9 @@ async function renderHtmlToPdf(html) {
       printBackground: true,
       margin: { top: '16mm', bottom: '16mm', left: '15mm', right: '15mm' },
     });
-    return pdf;
+    // Puppeteer récent renvoie un Uint8Array : sans conversion, res.send()
+    // l'enverrait en JSON au lieu du fichier PDF.
+    return Buffer.from(pdf);
   } finally {
     await browser.close().catch(() => {});
   }

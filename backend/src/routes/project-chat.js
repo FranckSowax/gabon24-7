@@ -5,8 +5,33 @@ const aiConfigService = require('../../services/ai-config-service');
 const { checkUserCredits, deductCredits } = require('../../middleware/ai-validation');
 const pricingService = require('../../services/pricing-service');
 const router = express.Router();
+const { projectParam } = require('../../middleware/project-access');
 
 const { supabase } = supabaseService;
+
+// Tout :projectId d'URL doit désigner un projet accessible à l'utilisateur.
+// (Le projectId du body est contrôlé par requireProjectScope dans server.js.)
+router.param('projectId', projectParam);
+
+/**
+ * Une conversation ne peut être utilisée que dans le projet auquel elle
+ * appartient : sinon, avec un projet à soi et l'id de la conversation d'un
+ * autre, on lirait ou on clôturerait ses échanges.
+ * En cas de refus la réponse est envoyée et la fonction renvoie false.
+ */
+async function conversationBelongsToProject(res, conversationId, projectId) {
+  const { data: conversation } = await supabase
+    .from('project_chat_conversations')
+    .select('project_id')
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (!conversation || String(conversation.project_id) !== String(projectId)) {
+    res.status(404).json({ success: false, error: 'Conversation non trouvée' });
+    return false;
+  }
+  return true;
+}
 
 // Initialiser OpenAI GPT-4.1-mini
 let openai = null;
@@ -77,6 +102,8 @@ router.post('/send-message', async (req, res) => {
     }
 
     let currentConversationId = conversationId;
+
+    if (currentConversationId && !(await conversationBelongsToProject(res, currentConversationId, projectId))) return;
 
     // Créer nouvelle conversation si nécessaire
     if (!currentConversationId) {
@@ -245,6 +272,8 @@ router.post('/end-conversation', async (req, res) => {
     if (!conversationId || !projectId) {
       return res.status(400).json({ success: false, error: 'Paramètres manquants' });
     }
+
+    if (!(await conversationBelongsToProject(res, conversationId, projectId))) return;
 
     // Récupérer tous les messages
     const { data: messages } = await supabase

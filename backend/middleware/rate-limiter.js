@@ -264,7 +264,29 @@ const webhookLimiter = rateLimit({
 // EXPORT DES LIMITEURS
 // ============================================
 
+/**
+ * Démo gratuite de veille : route publique qui envoie un message WhatsApp au
+ * numéro fourni et crée un compte. Limite stricte par adresse IP pour qu'elle
+ * ne serve pas à envoyer des messages en masse à des numéros arbitraires.
+ */
+const veilleDemoLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 heure
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip,
+  handler: (req, res) => {
+    logger.logWarning('Rate limit dépassé - Démo veille', { ip: req.ip });
+    res.status(429).json({
+      success: false,
+      error: 'Trop de demandes de démo depuis cette connexion. Réessayez dans une heure.',
+      retryAfter: '1 heure'
+    });
+  }
+});
+
 module.exports = {
+  veilleDemoLimiter,
   generalLimiter,
   aiLimiter,
   authLimiter,

@@ -12,6 +12,35 @@ const { z } = require('zod');
 // Plans d'action user-bound + génération IA → auth obligatoire
 router.use(requireAuth);
 
+// Un élément (:itemId) ne peut être coché, commenté ou complété que par le
+// propriétaire du plan auquel il appartient. Sans ce contrôle, l'id d'un
+// élément suffisait pour modifier le plan d'un autre utilisateur.
+router.param('itemId', async (req, res, next, itemId) => {
+  try {
+    const { data: item } = await supabaseService.supabase
+      .from('action_items')
+      .select('plan_id')
+      .eq('id', itemId)
+      .maybeSingle();
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Action non trouvée' });
+    }
+
+    const { data: plan } = await supabaseService.supabase
+      .from('action_plans')
+      .select('user_id')
+      .eq('id', item.plan_id)
+      .maybeSingle();
+    if (!plan || (plan.user_id !== req.user.id && req.user.isAdmin !== true)) {
+      return res.status(403).json({ success: false, error: 'Accès refusé', code: 'AUTH_USER_MISMATCH' });
+    }
+    next();
+  } catch (error) {
+    console.error('❌ Contrôle d\'accès action:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur de vérification d\'accès' });
+  }
+});
+
 // ==================== SCHÉMAS DE VALIDATION ====================
 const generatePlanSchema = z.object({
   userId: z.string().uuid('userId invalide'),
