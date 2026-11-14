@@ -110,14 +110,15 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x' # le backend exige Node >= 22 (openai 7, puppeteer 25)
       
       - name: 🧪 Backend Tests
         working-directory: ./backend
         run: |
           npm ci
-          npm test || true
-        continue-on-error: true
+          npm run test:ci
+        env:
+          NODE_ENV: test
       
       - name: 🏗️ Frontend Build
         working-directory: ./frontend

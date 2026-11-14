@@ -16,7 +16,9 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        # Backend : Node 22 uniquement, comme en production (Railway, image node:22).
+        # openai 7 et puppeteer 25 exigent Node >= 22.
+        node-version: [22.x]
     
     steps:
       - name: 📥 Checkout code
@@ -33,17 +35,16 @@ jobs:
         working-directory: ./backend
         run: npm ci
       
-      # Cible volontairement les tests d'intégration sains (post-audit 2026-06-03).
-      # Les anciens tests services/auth.test.js et credit-manager-premium.test.js sont
-      # rouges depuis longtemps — à réparer (cf. backlog) avant de revenir à `npm test`.
-      - name: 🧪 Run integration tests (blocking)
+      # Toute la suite Jest, bloquante, y compris les tests de sécurité (paiement,
+      # crédits, gardes d'accès, SSRF). Aucun fichier de test n'est exclu.
+      - name: 🧪 Run tests (blocking)
         working-directory: ./backend
-        run: npm run test:integration
+        run: npm run test:ci
         env:
           NODE_ENV: test
       
       - name: 📊 Upload coverage
-        if: matrix.node-version == '20.x'
+        if: matrix.node-version == '22.x'
         uses: codecov/codecov-action@v4
         with:
           directory: ./backend/coverage
@@ -58,7 +59,9 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        # Node 18 retiré : fin de vie, et sharp/nodemailer/supabase-js exigent Node >= 20.
+        # Production : Node 22 (Railway) et Node 20 (Netlify).
+        node-version: [20.x, 22.x]
     
     steps:
       - name: 📥 Checkout code
@@ -75,9 +78,11 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
-      - name: 🔍 Lint check
+      # `next lint` n'a pas de configuration ESLint dans ce projet et s'arrête sur
+      # une question interactive. Le contrôle bloquant est la vérification des types.
+      - name: 🔍 Type check
         working-directory: ./frontend
-        run: npm run lint
+        run: npx tsc --noEmit
       
       - name: 🏗️ Build check
         working-directory: ./frontend
@@ -100,7 +105,7 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       
@@ -108,10 +113,11 @@ jobs:
         working-directory: ./backend
         run: npm ci
       
-      - name: 🔍 Run ESLint
+      # Vérification de syntaxe de tous les fichiers JS (bloquante). L'ancien
+      # `eslint src/**/*.ts` ne visait aucun fichier : le backend est en JavaScript.
+      - name: 🔍 Syntax check
         working-directory: ./backend
-        run: npm run lint || true
-        continue-on-error: true
+        run: npm run lint
 
   # Security Audit
   security-audit:
@@ -133,7 +139,11 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=critical
 
+      # ATTENDU ROUGE tant que `next` reste en 14.x : ses avis critiques ne sont
+      # corrigés qu'en Next 16. `if: always()` pour que l'audit frontend s'exécute
+      # même si l'audit backend échoue.
       - name: 🔒 Frontend Security Audit (critical = blocking)
+        if: always()
         working-directory: ./frontend
         run: npm audit --audit-level=critical
 
@@ -203,8 +213,8 @@ jobs:
           echo "Security Audit: ${{ needs.security-audit.result }}"
           echo ""
           
-          if [ "${{ needs.backend-tests.result }}" == "failure" ] || [ "${{ needs.frontend-tests.result }}" == "failure" ]; then
-            echo "❌ ÉCHEC: Des tests ont échoué"
+          if [ "${{ needs.backend-tests.result }}" != "success" ] || [ "${{ needs.frontend-tests.result }}" != "success" ] || [ "${{ needs.backend-lint.result }}" != "success" ] || [ "${{ needs.security-audit.result }}" != "success" ]; then
+            echo "❌ ÉCHEC: au moins un contrôle n'a pas réussi"
             exit 1
           else
             echo "✅ SUCCÈS: Tous les tests ont réussi"
