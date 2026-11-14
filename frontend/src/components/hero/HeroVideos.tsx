@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Volume2, VolumeX } from 'lucide-react'
+import { isRecapVideo } from '@/lib/recap-video'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -40,7 +41,13 @@ export default function HeroVideos() {
     let cancelled = false
     fetch(`${API_URL}/api/hero-videos/active`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && d?.success && Array.isArray(d.videos)) setVideos(d.videos) })
+      .then((d) => {
+        if (cancelled || !d?.success || !Array.isArray(d.videos)) return
+        // Le récap d'actualité a son propre module (RecapVideoModule) : il ne
+        // tourne plus dans ce carrousel. Filtré ici aussi, au cas où le serveur
+        // ne serait pas encore à jour.
+        setVideos(d.videos.filter((video: HeroVideo) => !isRecapVideo(video)))
+      })
       .catch(() => {})
     return () => { cancelled = true }
   }, [])

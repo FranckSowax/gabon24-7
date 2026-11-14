@@ -11,6 +11,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const supabaseService = require('../supabase-config');
 const { requireAdmin } = require('../middleware/auth');
+const { splitRecapVideos } = require('../services/recap-video');
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -44,19 +45,40 @@ function compressVideo(inputPath, outputPath) {
 }
 
 // ---------- PUBLIC : vidéos actives ----------
+const PUBLIC_COLUMNS = 'id, title, description, cta_label, cta_url, video_url, order_index, created_at';
+
+async function loadActiveVideos() {
+  const { data, error } = await supabase
+    .from('hero_videos')
+    .select(PUBLIC_COLUMNS)
+    .eq('is_active', true)
+    .order('order_index', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// Section d'accueil : vidéos publicitaires et de présentation. Le récap
+// d'actualité n'y figure plus (il a son module : voir /recap ci-dessous).
 router.get('/active', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('hero_videos')
-      .select('id, title, description, cta_label, cta_url, video_url, order_index')
-      .eq('is_active', true)
-      .order('order_index', { ascending: true })
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    res.json({ success: true, videos: data || [] });
+    const { heroVideos } = splitRecapVideos(await loadActiveVideos());
+    res.json({ success: true, videos: heroVideos });
   } catch (error) {
     console.error('❌ hero-videos/active:', error);
     res.status(500).json({ success: false, error: 'Erreur serveur', videos: [] });
+  }
+});
+
+// Récap vidéo de l'actualité : le plus récent, ou null s'il n'y en a pas ou
+// s'il date de plus de trois jours (le module se masque alors).
+router.get('/recap', async (req, res) => {
+  try {
+    const { recap } = splitRecapVideos(await loadActiveVideos());
+    res.json({ success: true, video: recap });
+  } catch (error) {
+    console.error('❌ hero-videos/recap:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', video: null });
   }
 });
 
