@@ -47,4 +47,49 @@ function splitRecapVideos(videos, now = new Date()) {
   return { recap: fresh ? latest.video : null, heroVideos };
 }
 
-module.exports = { isRecapVideo, splitRecapVideos, RECAP_MAX_AGE_HOURS };
+/**
+ * Titre d'un récap pour une date donnée : « Récap 24 h — JJ/MM/AAAA », à l'heure
+ * de Libreville. Le serveur le construit lui-même : le module reconnaît le récap
+ * à ce titre, et il ne dépend ainsi plus de ce qu'envoie l'agent.
+ */
+function buildRecapTitle(date = new Date()) {
+  const day = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Africa/Libreville',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+  return `Récap 24 h — ${day}`;
+}
+
+const MAX_HEADLINES = 6;
+const MAX_HEADLINE_LENGTH = 160;
+
+/**
+ * Met en forme les titres du jour envoyés par l'agent : une liste (tableau, ou
+ * texte séparé par « · » ou des retours à la ligne) devient
+ * « Titre 1 · Titre 2 · Titre 3 ». Renvoie '' s'il n'y a aucun titre exploitable.
+ * Les balises et les caractères de contrôle sont retirés.
+ */
+function normalizeRecapHeadlines(input) {
+  const parts = Array.isArray(input) ? input : String(input == null ? '' : input).split(/\s+·\s+|\r?\n/);
+  return parts
+    .map((part) => String(part == null ? '' : part)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s*·\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, MAX_HEADLINE_LENGTH))
+    .filter((part) => part.length > 0)
+    .slice(0, MAX_HEADLINES)
+    .join(' · ');
+}
+
+module.exports = {
+  isRecapVideo,
+  splitRecapVideos,
+  buildRecapTitle,
+  normalizeRecapHeadlines,
+  RECAP_MAX_AGE_HOURS,
+};
