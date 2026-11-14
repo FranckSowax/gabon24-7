@@ -43,6 +43,8 @@ export default function AdvertisePage() {
 
   // État du formulaire
   const [errors, setErrors] = useState<{[key: string]: string}>({})
+  // Campagne déjà créée côté serveur (évite un doublon si le paiement est relancé)
+  const [createdCampaign, setCreatedCampaign] = useState<{ id: string; total_amount: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   // Récupérer les forfaits disponibles
@@ -158,16 +160,45 @@ export default function AdvertisePage() {
         slides: slides
       }
 
-      const response = await axios.post(`${API_URL}/api/campaigns`, campaignData)
-      
-      if (response.data.success) {
-        setStep('confirmation')
-      } else {
-        alert('Erreur lors de la création de la campagne')
+      // 1. Créer la campagne (une seule fois : si le paiement échoue puis est
+      //    relancé, la campagne déjà créée est réutilisée).
+      let campaign = createdCampaign
+      if (!campaign) {
+        const response = await axios.post(`${API_URL}/api/campaigns`, campaignData)
+        if (!response.data?.success || !response.data.campaign?.id) {
+          throw new Error(response.data?.error || 'Création de la campagne impossible')
+        }
+        campaign = { id: response.data.campaign.id, total_amount: Number(response.data.campaign.total_amount) }
+        setCreatedCampaign(campaign)
       }
+
+      // 2. Payer en ligne. Le montant est celui du forfait enregistré par le
+      //    serveur, qui le revérifie avant d'ouvrir le paiement.
+      const payment = await axios.post(`${API_URL}/api/payments/campaign`, {
+        campaignIds: [campaign.id],
+        amount: campaign.total_amount,
+      })
+      if (!payment.data?.success || !payment.data.data?.reference) {
+        throw new Error(payment.data?.error || 'Ouverture du paiement impossible')
+      }
+
+      const { reference, payment_url: paymentUrl } = payment.data.data
+      localStorage.setItem('ebilling_payment_reference', reference)
+      localStorage.setItem('ebilling_payment_type', 'campaign')
+      if (paymentUrl) {
+        localStorage.setItem('ebilling_payment_url', paymentUrl)
+        window.open(paymentUrl, '_blank')
+      }
+      window.location.assign(`/paiement/attente?reference=${encodeURIComponent(reference)}`)
     } catch (error) {
       console.error('Erreur soumission:', error)
-      alert('Erreur lors de la soumission')
+      const response = (error as { response?: { status?: number; data?: { error?: string } } })?.response
+      if (response?.status === 401) {
+        alert('Connectez-vous pour commander une campagne.')
+      } else {
+        const reason = response?.data?.error || (error instanceof Error ? error.message : '')
+        alert(`Erreur lors de la commande${reason ? `\n\n${reason}` : ''}`)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -618,7 +649,7 @@ export default function AdvertisePage() {
                 disabled={submitting}
                 className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Création en cours...' : 'Créer la campagne'}
+                {submitting ? 'Ouverture du paiement...' : 'Payer la campagne'}
               </button>
             </div>
           </div>

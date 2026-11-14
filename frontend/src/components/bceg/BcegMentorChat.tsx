@@ -164,7 +164,7 @@ function ChatBody({
 }: {
   messages: Message[]
   loading: boolean
-  scrollRef: React.RefObject<HTMLDivElement>
+  scrollRef: React.RefObject<HTMLDivElement | null>
   onSuggestion: (s: string) => void
 }) {
   if (messages.length === 0) {

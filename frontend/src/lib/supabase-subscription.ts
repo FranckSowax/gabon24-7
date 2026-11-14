@@ -94,37 +94,7 @@ export const subscriptionHelpers = {
     return data;
   },
 
-  async updateSubscriptionStatus(subscriptionId: string, status: string) {
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', subscriptionId);
-
-    if (error) {
-      console.error('Error updating subscription status:', error);
-      return false;
-    }
-
-    return true;
-  },
-
-  async recordPayment(subscriptionId: string, amount: number, status: string, transactionRef?: string) {
-    const { error } = await supabase
-      .from('payment_history')
-      .insert({
-        subscription_id: subscriptionId,
-        amount,
-        currency: 'XAF',
-        status,
-        payment_method: 'mobile_money',
-        transaction_reference: transactionRef,
-      });
-
-    if (error) {
-      console.error('Error recording payment:', error);
-      return false;
-    }
-
-    return true;
-  }
+  // updateSubscriptionStatus et recordPayment ont été retirées : aucune page ne
+  // les appelait, et changer le statut d'un abonnement ou inscrire un paiement
+  // depuis le navigateur n'est pas permis (réservé au serveur après paiement).
 };

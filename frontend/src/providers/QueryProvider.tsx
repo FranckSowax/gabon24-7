@@ -8,6 +8,9 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// Effet de bord : ajoute le jeton Supabase aux appels vers l'API backend.
+// Importé ici car ce provider est le plus externe du layout racine.
+import '@/lib/api-auth-bridge';
 
 // Configuration du client React Query
 function makeQueryClient() {

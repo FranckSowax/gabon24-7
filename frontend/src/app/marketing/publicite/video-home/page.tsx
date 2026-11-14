@@ -8,6 +8,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import AvailabilityChecker from '@/components/campaigns/AvailabilityChecker'
 import { addToCart } from '@/lib/cart'
+import { getCampaignPrice } from '@/lib/campaign-pricing'
 
 export default function VideoHomePage() {
   const router = useRouter()
@@ -99,29 +100,35 @@ export default function VideoHomePage() {
 
       // Upload vidéo si pas de demande de design
       if (!formData.designRequest && video.file) {
+        // Envoi par la route ouverte aux clients connectés. L'ancienne adresse
+        // (/api/admin/upload-video) est réservée aux administrateurs : un client
+        // ne pouvait pas déposer sa vidéo.
         const videoFormData = new FormData()
-        videoFormData.append('video', video.file)
+        videoFormData.append('file', video.file)
 
         console.log('📤 Upload de la vidéo...')
-        const uploadResponse = await fetch(`${API_URL}/api/admin/upload-video`, {
+        const uploadResponse = await fetch(`${API_URL}/api/upload/video`, {
           method: 'POST',
           body: videoFormData
         })
 
         if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json()
-          throw new Error(errorData.message || 'Erreur lors de l\'upload vidéo')
+          const errorData = await uploadResponse.json().catch(() => null)
+          throw new Error(errorData?.error || errorData?.message || 'Erreur lors de l\'upload vidéo')
         }
 
         const uploadData = await uploadResponse.json()
-        videoUrl = uploadData.video_url
+        videoUrl = uploadData.url
+        if (!videoUrl) {
+          throw new Error('Erreur lors de l\'upload vidéo')
+        }
         console.log('✅ Vidéo uploadée:', videoUrl)
       }
 
       // Calculer le budget (inclure création vidéo si demandée)
-      const baseBudget = 450000
-      const designCost = formData.designRequest ? 300000 : 0
-      const totalBudget = baseBudget + designCost
+      // Grille commune avec le serveur (qui recalcule le prix de son côté).
+      // L'ancien calcul facturait 450 000 FCFA quelle que soit la durée.
+      const totalBudget = getCampaignPrice('video-home', formData.durationDays, formData.designRequest)
 
       // Ajouter au panier
       const cartItem = addToCart({

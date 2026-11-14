@@ -37,8 +37,8 @@ interface VeillePlan {
 const FEATURES = [
   {
     icon: Search,
-    title: 'Mots-cles intelligents',
-    description: 'Definissez vos mots-cles et notre IA detecte automatiquement les articles pertinents grace au matching semantique avance.'
+    title: 'Mots-clés intelligents',
+    description: 'Définissez vos mots-clés et notre IA détecte automatiquement les articles pertinents grâce au matching sémantique avancé.'
   },
   {
     icon: MessageSquare,
@@ -47,38 +47,38 @@ const FEATURES = [
   },
   {
     icon: Zap,
-    title: 'IA de matching avancee',
-    description: 'Algorithme de stemming, synonymes gabonais et filtrage par categorie, sentiment et importance.'
+    title: 'IA de matching avancée',
+    description: 'Algorithme de stemming, synonymes gabonais et filtrage par catégorie, sentiment et importance.'
   }
 ]
 
 const STEPS = [
-  { step: '1', title: 'Configurez', description: 'Choisissez vos mots-cles et categories d\'interet' },
-  { step: '2', title: 'Surveillez', description: 'Notre IA scanne les actualites chaque heure de 7h a 22h' },
-  { step: '3', title: 'Recevez', description: 'Alertes WhatsApp en carrousel avec les articles detectes' },
-  { step: '4', title: 'Agissez', description: 'Consultez, analysez et partagez les informations cles' }
+  { step: '1', title: 'Configurez', description: 'Choisissez vos mots-clés et catégories d\'intérêt' },
+  { step: '2', title: 'Surveillez', description: 'Notre IA scanne les actualités chaque heure de 7h à 22h' },
+  { step: '3', title: 'Recevez', description: 'Alertes WhatsApp en carrousel avec les articles détectés' },
+  { step: '4', title: 'Agissez', description: 'Consultez, analysez et partagez les informations clés' }
 ]
 
 const FAQ_ITEMS = [
   {
-    q: 'Comment fonctionne la demo gratuite de 24h ?',
-    a: 'Entrez votre numero WhatsApp et votre email. Une alerte demo est creee automatiquement et vous recevrez des notifications carrousel pendant 24 heures. Aucun paiement requis.'
+    q: 'Comment fonctionne la démo gratuite de 24h ?',
+    a: 'Entrez votre numéro WhatsApp et votre email. Une alerte démo est créée automatiquement et vous recevrez des notifications carrousel pendant 24 heures. Aucun paiement requis.'
   },
   {
-    q: 'Quelles sources sont surveillees ?',
+    q: 'Quelles sources sont surveillées ?',
     a: 'Nous agrégeons plus de 29 sources RSS gabonaises : AGP, Gabon Actu, Gabon Review, Info241, et bien d\'autres. Les articles sont enrichis par notre IA.'
   },
   {
-    q: 'A quelle frequence sont envoyees les alertes ?',
-    a: 'Les alertes sont traitees toutes les heures de 7h a 22h (heure de Libreville). Chaque batch regroupe jusqu\'a 5 articles par carrousel.'
+    q: 'À quelle fréquence sont envoyées les alertes ?',
+    a: 'Les alertes sont traitées toutes les heures de 7h à 22h (heure de Libreville). Chaque envoi regroupe jusqu\'à 5 articles par carrousel.'
   },
   {
-    q: 'Puis-je modifier mes mots-cles apres inscription ?',
-    a: 'Oui, vous pouvez modifier, ajouter ou supprimer vos alertes et mots-cles a tout moment depuis votre tableau de bord.'
+    q: 'Puis-je modifier mes mots-clés après inscription ?',
+    a: 'Oui, vous pouvez modifier, ajouter ou supprimer vos alertes et mots-clés à tout moment depuis votre tableau de bord.'
   },
   {
-    q: 'Quelle est la difference entre Particulier et Entreprise ?',
-    a: 'Le plan Particulier offre jusqu\'a 5 alertes avec 3 mots-cles chacune. Le plan Entreprise offre des alertes et mots-cles illimites, jusqu\'a 10 numeros WhatsApp, un rapport hebdomadaire PDF et un support prioritaire.'
+    q: 'Quelle est la différence entre Particulier et Entreprise ?',
+    a: 'Le plan Particulier offre jusqu\'à 5 alertes avec 3 mots-clés chacune. Le plan Entreprise offre des alertes et mots-clés illimités, jusqu\'à 10 numéros WhatsApp, un rapport hebdomadaire PDF et un support prioritaire.'
   }
 ]
 
@@ -110,7 +110,7 @@ export default function VeilleAlertesLanding() {
       .map(k => k.trim().toLowerCase())
       .filter(k => k.length >= 2)
     if (keywordsList.length < 2 || keywordsList.length > 3) {
-      setDemoError('Entrez 2 ou 3 mots-cles separes par des virgules.')
+      setDemoError('Entrez 2 ou 3 mots-clés séparés par des virgules.')
       return
     }
 
@@ -125,7 +125,7 @@ export default function VeilleAlertesLanding() {
       const data = await res.json()
 
       if (!res.ok || !data.success) {
-        setDemoError(data.error || 'Erreur lors de l\'activation de la demo')
+        setDemoError(data.error || 'Erreur lors de l\'activation de la démo')
         return
       }
 
@@ -134,7 +134,7 @@ export default function VeilleAlertesLanding() {
         router.push(`/veille-alertes/demo?whatsapp=${encodeURIComponent(demoForm.whatsappNumber)}`)
       }, 1500)
     } catch {
-      setDemoError('Erreur de connexion. Veuillez reessayer.')
+      setDemoError('Erreur de connexion. Veuillez réessayer.')
     } finally {
       setDemoLoading(false)
     }
@@ -174,14 +174,14 @@ export default function VeilleAlertesLanding() {
                 Veille & Alertes Intelligentes
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                Surveillez l&apos;actualite gabonaise{' '}
+                Surveillez l&apos;actualité gabonaise{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">
-                  en temps reel
+                  en temps réel
                 </span>
               </h1>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                Recevez des alertes personnalisees par WhatsApp des que l&apos;actualite correspond
-                a vos mots-cles. IA avancee, carrousel interactif, surveillance horaire.
+                Recevez des alertes personnalisées par WhatsApp dès que l&apos;actualité correspond
+                à vos mots-clés. IA avancée, carrousel interactif, surveillance horaire.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
@@ -207,7 +207,7 @@ export default function VeilleAlertesLanding() {
       <section className="py-16 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-12">
-            Comment ca fonctionne
+            Comment ça fonctionne
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             {FEATURES.map((feature, i) => (
@@ -234,7 +234,7 @@ export default function VeilleAlertesLanding() {
       <section className="py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-12">
-            En 4 etapes simples
+            En 4 étapes simples
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {STEPS.map((step, i) => (
@@ -279,8 +279,8 @@ export default function VeilleAlertesLanding() {
               <ul className="space-y-3 mb-8">
                 {(particulierPlan?.features || [
                   '5 alertes actives',
-                  '3 mots-cles par alerte',
-                  '1 numero WhatsApp',
+                  '3 mots-clés par alerte',
+                  '1 numéro WhatsApp',
                   'Notifications carrousel WhatsApp',
                   'Surveillance horaire 7h-22h'
                 ]).map((feature, i) => (
@@ -301,7 +301,7 @@ export default function VeilleAlertesLanding() {
             {/* Entreprise */}
             <div className="rounded-2xl border-2 border-orange-400 p-8 relative hover:shadow-lg transition-shadow">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-4 py-1 rounded-full">
-                RECOMMANDE
+                RECOMMANDÉ
               </div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
@@ -320,9 +320,9 @@ export default function VeilleAlertesLanding() {
               </div>
               <ul className="space-y-3 mb-8">
                 {(entreprisePlan?.features || [
-                  'Alertes illimitees',
-                  'Mots-cles illimites',
-                  'Jusqu\'a 10 numeros WhatsApp',
+                  'Alertes illimitées',
+                  'Mots-clés illimités',
+                  'Jusqu\'à 10 numéros WhatsApp',
                   'Notifications carrousel WhatsApp',
                   'Surveillance horaire 7h-22h',
                   'Rapport hebdomadaire PDF',
@@ -353,7 +353,7 @@ export default function VeilleAlertesLanding() {
               Essayez gratuitement pendant 24h
             </h2>
             <p className="text-gray-400">
-              Aucun paiement requis. Entrez votre numero WhatsApp et recevez vos premieres alertes.
+              Aucun paiement requis. Entrez votre numéro WhatsApp et recevez vos premières alertes.
             </p>
           </div>
 
@@ -362,14 +362,14 @@ export default function VeilleAlertesLanding() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
                 <Check className="w-8 h-8 text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Demo activee !</h3>
-              <p className="text-gray-400">Verifiez votre WhatsApp, vous allez recevoir un message de bienvenue.</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Démo activée !</h3>
+              <p className="text-gray-400">Vérifiez votre WhatsApp, vous allez recevoir un message de bienvenue.</p>
             </div>
           ) : (
             <form onSubmit={handleDemo} className="bg-white/5 backdrop-blur rounded-2xl p-6 sm:p-8 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Numero WhatsApp *
+                  Numéro WhatsApp *
                 </label>
                 <input
                   type="tel"
@@ -407,17 +407,17 @@ export default function VeilleAlertesLanding() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Mots-cles de veille (2 a 3) *
+                  Mots-clés de veille (2 à 3) *
                 </label>
                 <input
                   type="text"
                   value={demoForm.keywords}
                   onChange={e => setDemoForm(f => ({ ...f, keywords: e.target.value }))}
-                  placeholder="ex: petrole, economie, Libreville"
+                  placeholder="ex: pétrole, économie, Libreville"
                   required
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">Separez par des virgules. Vous recevrez les articles contenant ces mots.</p>
+                <p className="text-xs text-gray-500 mt-1">Séparez par des virgules. Vous recevrez les articles contenant ces mots.</p>
               </div>
 
               {demoError && (
@@ -429,12 +429,12 @@ export default function VeilleAlertesLanding() {
                 disabled={demoLoading}
                 className="w-full py-3 px-6 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {demoLoading ? 'Activation...' : 'Demarrer la demo gratuite'}
+                {demoLoading ? 'Activation...' : 'Démarrer la démo gratuite'}
               </button>
 
               <div className="flex items-center gap-2 justify-center text-xs text-gray-500">
                 <Shield className="w-3 h-3" />
-                Aucun paiement requis. Demo valable 24h.
+                Aucun paiement requis. Démo valable 24h.
               </div>
             </form>
           )}
@@ -445,7 +445,7 @@ export default function VeilleAlertesLanding() {
       <section className="py-16 bg-white">
         <div className="max-w-3xl mx-auto px-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-12">
-            Questions frequentes
+            Questions fréquentes
           </h2>
           <div className="space-y-3">
             {FAQ_ITEMS.map((item, i) => (
@@ -476,15 +476,15 @@ export default function VeilleAlertesLanding() {
       <section className="py-12 bg-gray-50 border-t border-gray-200">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="text-gray-500 text-sm mb-4">
-            Des questions ? Contactez-nous a{' '}
+            Des questions ? Contactez-nous à{' '}
             <a href="mailto:contact@gaboninsight.com" className="text-orange-600 hover:underline">
               contact@gaboninsight.com
             </a>
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-            <Link href="/politique-de-confidentialite" className="hover:text-gray-600">Confidentialite</Link>
+            <Link href="/politique-de-confidentialite" className="hover:text-gray-600">Confidentialité</Link>
             <span>|</span>
-            <Link href="/suppression-des-donnees" className="hover:text-gray-600">Suppression des donnees</Link>
+            <Link href="/suppression-des-donnees" className="hover:text-gray-600">Suppression des données</Link>
             <span>|</span>
             <Link href="/" className="hover:text-gray-600">Gabon Insight</Link>
           </div>

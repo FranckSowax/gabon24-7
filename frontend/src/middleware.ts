@@ -1,8 +1,52 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Adresse officielle du site. Les copies servies sur *.netlify.app y renvoient.
+const CANONICAL_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'https://gaboninsight.com').replace(/\/$/, '');
+
+/**
+ * Le même site est aussi servi sur son adresse Netlify d'origine
+ * (gabon24-7.netlify.app), que Google a indexée en double (audit SEO du
+ * 5 août 2026). Renvoie l'adresse officielle correspondante, ou null.
+ * Les prévisualisations Netlify (hôte contenant « -- ») ne sont pas redirigées.
+ * Désactivable sans redéploiement de code : MIRROR_REDIRECT=off.
+ */
+function mirrorRedirectTarget(req: NextRequest): string | null {
+  if (process.env.MIRROR_REDIRECT === 'off') return null
+  if (req.method !== 'GET' && req.method !== 'HEAD') return null
+
+  const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase().split(':')[0]
+  if (!host.endsWith('.netlify.app') || host.includes('--')) return null
+
+  let canonical: URL
+  try {
+    canonical = new URL(CANONICAL_ORIGIN)
+  } catch {
+    return null
+  }
+  // Pas de boucle si l'adresse officielle configurée est elle-même sur netlify.app
+  if (canonical.hostname.endsWith('.netlify.app')) return null
+
+  return `${canonical.origin}${req.nextUrl.pathname}${req.nextUrl.search}`
+}
+
+function isNetlifyPreviewHost(req: NextRequest): boolean {
+  const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase()
+  return host.includes('.netlify.app') && host.includes('--')
+}
+
 export async function middleware(req: NextRequest) {
+  const mirrorTarget = mirrorRedirectTarget(req)
+  if (mirrorTarget) {
+    return NextResponse.redirect(mirrorTarget, 301)
+  }
+
   const res = NextResponse.next();
+
+  // Les prévisualisations Netlify ne doivent jamais être indexées
+  if (isNetlifyPreviewHost(req)) {
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
 
   // Security headers
   res.headers.set('X-Frame-Options', 'DENY');

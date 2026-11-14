@@ -452,7 +452,7 @@ function SignUpContent() {
                   conditions d'utilisation
                 </Link>{' '}
                 et la{' '}
-                <Link href="/privacy" className="text-orange-500 hover:text-orange-400">
+                <Link href="/politique-de-confidentialite" className="text-orange-500 hover:text-orange-400">
                   politique de confidentialité
                 </Link>
               </label>

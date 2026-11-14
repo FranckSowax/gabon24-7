@@ -57,9 +57,10 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://gaboninsight.com'),
-  alternates: {
-    canonical: '/',
-  },
+  // Pas d'adresse canonique ici : déclarée dans ce fichier racine, elle était
+  // héritée par TOUTES les pages sans métadonnées propres, qui se déclaraient
+  // alors comme des doublons de la page d'accueil auprès des moteurs de
+  // recherche. Chaque page se désigne elle-même ; les articles déclarent la leur.
   openGraph: {
     title: 'Gabon Insight | Actualités Gabon & Opportunités d\'Investissement',
     description: 'Toute l\'actualité du Gabon en temps réel : politique, économie, opportunités d\'investissement et business. Analyses IA et alertes.',
@@ -110,16 +111,20 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@graph': [
                 {
-                  '@type': 'Organization',
+                  '@type': 'NewsMediaOrganization',
                   '@id': 'https://gaboninsight.com/#organization',
                   name: 'Gabon Insight',
                   url: 'https://gaboninsight.com',
                   logo: {
                     '@type': 'ImageObject',
-                    url: 'https://gaboninsight.com/LOGO GABON INSIGHT ORANGE psd.png',
+                    url: 'https://gaboninsight.com/logo-gabon-insight.png',
                   },
                   description: 'Plateforme d\'actualités et d\'opportunités d\'investissement au Gabon.',
-                  sameAs: [],
+                  email: 'contact@gaboninsight.com',
+                  areaServed: { '@type': 'Country', name: 'Gabon' },
+                  knowsLanguage: 'fr',
+                  // Profils officiels. Ajouter ici l'adresse LinkedIn définitive de la page entreprise.
+                  sameAs: ['https://www.facebook.com/61550270533108'],
                 },
                 {
                   '@type': 'WebSite',

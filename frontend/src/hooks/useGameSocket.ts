@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { socketAuth } from '@/lib/socket-auth';
 
 // Types
 export interface Question {
@@ -112,6 +113,7 @@ export function useGameSocket(): GameSocketHook {
    */
   useEffect(() => {
     const socket = io(SOCKET_URL, {
+      auth: socketAuth, // jeton Supabase exigé par le serveur de jeu
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

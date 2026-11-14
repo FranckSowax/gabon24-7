@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { socketAuth } from '@/lib/socket-auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -78,6 +79,7 @@ export function useGameSocket(options: UseGameSocketOptions = {}) {
 
     console.log('🔌 Connexion Socket.IO:', API_URL);
     const newSocket: Socket = io(API_URL, {
+      auth: socketAuth, // jeton Supabase exigé par le serveur de jeu
       withCredentials: true,
       transports: ['websocket', 'polling'],
       autoConnect: true
