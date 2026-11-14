@@ -33,6 +33,7 @@ import ScrollToTop from '@/components/ui/ScrollToTop'
 import WorldCupLive from '@/components/widgets/WorldCupLive'
 import HeroSlider from '@/components/hero/HeroSlider'
 import HeroVideos from '@/components/hero/HeroVideos'
+import RecapVideoModule from '@/components/news/RecapVideoModule'
 import { supabase } from '@/lib/supabase'
 // Force rebuild for media_name support - v4.9 (Fixed generate-project-proposals function)
 
@@ -1265,6 +1266,10 @@ export default function HomePage() {
               {/* Section vidéos d'accueil (21:9, autoplay en boucle) */}
               <HeroVideos />
 
+              {/* Récap vidéo de l'actualité — mobile et tablette uniquement (sur
+                  ordinateur, le module est en tête de la barre latérale droite). */}
+              <RecapVideoModule variant="compact" />
+
               {/* Zone Widgets compacts (dropdowns) — météo / sondage / trafic.
                   Repliés par défaut → les articles sont visibles juste après la vidéo. */}
               <div ref={widgetsAreaRef} className="w-full mb-4">
@@ -1847,6 +1852,8 @@ export default function HomePage() {
 
         {/* Timestamp: 2025-10-28 - Widget Football Scores en dessous du Journal TV */}
         <aside className="hidden lg:block fixed right-0 top-16 w-80 h-screen bg-white border-l border-gray-200 p-6 space-y-6 overflow-y-auto">
+          {/* Récap vidéo de l'actualité — en tête de la barre latérale */}
+          <RecapVideoModule variant="sidebar" />
           <LazyMount><YouTubeWidget /></LazyMount>
           {/* 🎵 Résumé audio — sous le Journal TV */}
           <LazyMount><AudioSummaryWidget /></LazyMount>
