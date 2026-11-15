@@ -16,7 +16,7 @@ import AuthModal from '@/components/auth/AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 import { addToFavorites, removeFromFavorites, getFavorites, type Favorite } from '@/lib/favorites'
 import PromotionalSlider from '@/components/widgets/PromotionalSlider'
-import WidgetDropdown from '@/components/widgets/WidgetDropdown'
+import WidgetCarousel, { type CarouselModule } from '@/components/widgets/WidgetCarousel'
 import CampaignBanner from '@/components/campaigns/CampaignBanner'
 import FeedBannerAd from '@/components/campaigns/FeedBannerAd'
 import VideoModal from '@/components/campaigns/VideoModal'
@@ -66,6 +66,21 @@ interface ArchiveFiltersType {
   customEndDate: string
   searchKeyword: string
 }
+
+// Modules de la galerie défilante, tous à la même taille (voir WidgetCarousel).
+const WEATHER_MODULE: CarouselModule = { key: 'meteo', title: 'Météo', icon: '🌤️', render: () => <WeatherWidget /> }
+const POLL_MODULE: CarouselModule = { key: 'sondage', title: 'Sondage', icon: '📊', render: () => <MultiQuestionPollWidget /> }
+const TRAFFIC_MODULE: CarouselModule = { key: 'trafic', title: 'Trafic', icon: '🚗', render: () => <RoutesMapWidget /> }
+const TV_MODULE: CarouselModule = {
+  key: 'journal-tv',
+  title: 'Journal TV',
+  icon: '📺',
+  render: () => <YouTubeWidget className="flex-1 min-h-0 flex flex-col bg-white" />,
+}
+const SCORES_MODULE: CarouselModule = { key: 'scores', title: 'Scores', icon: '⚽', render: () => <LiveScores className="h-full" /> }
+
+const DESKTOP_MODULES = [WEATHER_MODULE, POLL_MODULE, TRAFFIC_MODULE]
+const MOBILE_MODULES = [WEATHER_MODULE, POLL_MODULE, TRAFFIC_MODULE, TV_MODULE, SCORES_MODULE]
 
 // Filtres de rubrique de l'accueil. `value` correspond aux catégories des
 // articles (comparaison sans accents ni majuscules ; « Sport » couvre « Sports »).
@@ -1283,36 +1298,11 @@ export default function HomePage() {
                   ordinateur, le module est en tête de la barre latérale droite). */}
               <RecapVideoModule variant="compact" />
 
-              {/* Zone Widgets compacts (dropdowns) — météo / sondage / trafic.
-                  Repliés par défaut → les articles sont visibles juste après la vidéo. */}
+              {/* Modules pratiques — ordinateur : galerie défilante en haut du fil
+                  (journal TV et scores restent dans la barre latérale droite).
+                  Téléphone : la galerie est insérée en 4ᵉ position du fil, plus bas. */}
               <div ref={widgetsAreaRef} className="w-full mb-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  <WidgetDropdown title="Météo" icon="🌤️">
-                    <LazyMount className="w-full"><WeatherWidget /></LazyMount>
-                  </WidgetDropdown>
-                  <WidgetDropdown title="Sondage" icon="📊">
-                    <LazyMount className="w-full"><MultiQuestionPollWidget /></LazyMount>
-                  </WidgetDropdown>
-                  <WidgetDropdown title="Trafic" icon="🚗">
-                    <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
-                  </WidgetDropdown>
-
-                  {/* Mobile uniquement : YouTube + scores en direct (sur desktop ils sont en barre latérale droite) */}
-                  <div className="lg:hidden">
-                    <WidgetDropdown title="Journal TV" icon="📺">
-                      <LazyMount className="w-full">
-                        <div className="w-full h-[500px] flex flex-col">
-                          <YouTubeWidget className="flex-1 flex flex-col" />
-                        </div>
-                      </LazyMount>
-                    </WidgetDropdown>
-                  </div>
-                  <div className="lg:hidden">
-                    <WidgetDropdown title="Scores en direct" icon="⚽">
-                      <LazyMount className="w-full"><LiveScores /></LazyMount>
-                    </WidgetDropdown>
-                  </div>
-                </div>
+                <WidgetCarousel modules={DESKTOP_MODULES} className="hidden lg:block" />
 
                 {/* Bannière de campagne validée */}
                 <LazyMount className="w-full mt-4"><CampaignBanner /></LazyMount>
@@ -1468,6 +1458,11 @@ export default function HomePage() {
                                 />
                                 {/* Insérer bannière feed après articles 6, 13 et 20 */}
                                 {/* Comme les 2 premiers sont en featured, on ajuste: index 4, 11, 18 */}
+                                {/* Téléphone et tablette : galerie des modules en 4ᵉ position du fil
+                                    (2 articles à la une + 1 article, puis la galerie). */}
+                                {index === 0 && (
+                                  <WidgetCarousel modules={MOBILE_MODULES} className="lg:hidden mt-4" />
+                                )}
                                 {/* Galerie Tendances : juste avant la première bannière, dans la vue
                                     « Tous » sans recherche (les vues filtrées restent centrées sur leur rubrique). */}
                                 {index === 4 && (selectedCategory || 'all') === 'all' && !searchQuery.trim() && (

@@ -34,9 +34,9 @@ export default function TrendingGallery({ articles, onArticleClick, minItems = 3
 
   return (
     <section aria-labelledby="trending-gallery-title" className="my-2">
-      <div className="flex items-end justify-between mb-3">
+      <div className="flex !flex-nowrap items-end justify-between mb-3">
         <div>
-          <h2 id="trending-gallery-title" className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <h2 id="trending-gallery-title" className="flex !flex-nowrap items-center gap-2 text-lg font-bold text-gray-900">
             <Flame className="w-5 h-5 text-orange-500" aria-hidden="true" />
             Tendances
           </h2>
@@ -45,7 +45,8 @@ export default function TrendingGallery({ articles, onArticleClick, minItems = 3
         <span className="hidden sm:block text-[11px] text-gray-400" aria-hidden="true">Faites glisser →</span>
       </div>
 
-      <ol className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 scrollbar-hide">
+      {/* `!flex-nowrap` : globals.css fait passer toutes les rangées `.flex` à la ligne sous 768 px. */}
+      <ol className="flex !flex-nowrap gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 scrollbar-hide">
         {items.map((article, index) => {
           const image = article.image_url || article.imageUrl || null
           const views = Number(article.view_count ?? article.viewCount ?? 0)
@@ -69,7 +70,7 @@ export default function TrendingGallery({ articles, onArticleClick, minItems = 3
                     />
                   ) : null}
                   <span
-                    className="absolute top-2 left-2 w-7 h-7 rounded-full bg-gray-900/85 text-white text-sm font-bold flex items-center justify-center"
+                    className="absolute top-2 left-2 w-7 h-7 rounded-full bg-gray-900/85 text-white text-sm font-bold flex !flex-nowrap items-center justify-center"
                     aria-label={`Numéro ${index + 1}`}
                   >
                     {index + 1}
