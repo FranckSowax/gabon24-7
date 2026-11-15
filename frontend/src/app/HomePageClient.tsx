@@ -29,6 +29,7 @@ import MultiQuestionPollWidget from '@/components/widgets/MultiQuestionPollWidge
 import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import LiveScores from '@/components/widgets/LiveScores'
+import TrendingGallery from '@/components/news/TrendingGallery'
 import HeroSlider from '@/components/hero/HeroSlider'
 import HeroVideos from '@/components/hero/HeroVideos'
 import RecapVideoModule from '@/components/news/RecapVideoModule'
@@ -65,6 +66,20 @@ interface ArchiveFiltersType {
   customEndDate: string
   searchKeyword: string
 }
+
+// Filtres de rubrique de l'accueil. `value` correspond aux catégories des
+// articles (comparaison sans accents ni majuscules ; « Sport » couvre « Sports »).
+const HOME_CATEGORY_FILTERS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'Politique', label: 'Politique' },
+  { value: 'Économie', label: 'Économie' },
+  { value: 'Éducation', label: 'Éducation' },
+  { value: 'Culture', label: 'Culture' },
+  { value: 'Sport', label: 'Sport' },
+] as const
+
+const normalizeCategory = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 export default function HomePage() {
   const router = useRouter()
@@ -408,8 +423,8 @@ export default function HomePage() {
       const matchesSource = selectedSource === '' || selectedSource === 'all' || article.media_name === selectedSource || article.source === selectedSource
 
       const matchesCategory = selectedCategory === '' || selectedCategory === 'all' || (() => {
-        const articleCategory = (article.category || '').toLowerCase()
-        const selectedCat = selectedCategory.toLowerCase()
+        const articleCategory = normalizeCategory(article.category || '')
+        const selectedCat = normalizeCategory(selectedCategory)
         return articleCategory === selectedCat || articleCategory.includes(selectedCat)
       })()
 
@@ -1310,83 +1325,45 @@ export default function HomePage() {
                   <div className="flex flex-col gap-3">
                     
                     {/* Ligne 1: Onglets + Contrôles */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-2">
                       
-                      {/* Onglets avec scroll horizontal sur mobile */}
-                      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+                      {/* Filtres par rubrique, défilement horizontal si la place manque */}
+                      <div className="min-w-0 overflow-x-auto scrollbar-hide -mx-1 px-1">
                         <div className="flex items-center gap-1 sm:gap-2 min-w-max">
-                          {/* Onglet Aujourd'hui */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'pour-vous')}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'pour-vous'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">📰</span>
-                            <span>Aujourd'hui</span>
-                          </button>
-                          
-                          {/* Onglet Tendances */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'tendances')}
-                            onMouseEnter={() => {
-                              try {
-                                if (typeof window !== 'undefined') {
-                                  const cached = localStorage.getItem('trending_cache_week')
-                                  if (!cached) fetchTrendingArticles('week').catch(() => {})
-                                }
-                              } catch {}
-                            }}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'tendances'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">🔥</span>
-                            <span>Tendances</span>
-                          </button>
-                          
-                          {/* Onglet Favoris */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'favoris')}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'favoris'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">❤️</span>
-                            <span>Favoris</span>
-                          </button>
-                          
-                          {/* Onglet Cette semaine */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'semaine-actuelle')}
-                            onMouseEnter={() => {
-                              try {
-                                if (typeof window !== 'undefined') {
-                                  const cached = localStorage.getItem('week_articles_cache')
-                                  if (!cached) fetchSemaineActuelleArticles().catch(() => {})
-                                }
-                              } catch {}
-                            }}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'semaine-actuelle'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">📅</span>
-                            <span className="hidden xs:inline">Cette </span>semaine
-                          </button>
+                          {/* Filtres par rubrique (remplacent les onglets Tendances, Favoris et Semaine) */}
+                          <div role="tablist" aria-label="Filtrer les articles par rubrique" className="flex items-center gap-5 sm:gap-7">
+                            {HOME_CATEGORY_FILTERS.map((filter) => {
+                              const active = (selectedCategory || 'all') === filter.value
+                              return (
+                                <button
+                                  key={filter.value}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={active}
+                                  onClick={() => {
+                                    setSelectedCategory(filter.value)
+                                    if (activeTab !== 'pour-vous') setActiveTab('pour-vous')
+                                  }}
+                                  className={`relative py-2 text-sm sm:text-base font-semibold whitespace-nowrap transition-colors focus:outline-none focus-visible:text-gray-900 ${
+                                    active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'
+                                  }`}
+                                >
+                                  {filter.label}
+                                  <span
+                                    aria-hidden="true"
+                                    className={`absolute left-0 right-0 -bottom-0.5 h-[3px] rounded-full bg-emerald-800 transition-opacity ${
+                                      active ? 'opacity-100' : 'opacity-0'
+                                    }`}
+                                  />
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
                       </div>
                       
                       {/* Contrôles Auto-refresh et Actualiser */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center justify-end gap-2 flex-shrink-0">
                         {/* Toggle Auto-refresh compact */}
                         <button
                           onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
@@ -1491,6 +1468,16 @@ export default function HomePage() {
                                 />
                                 {/* Insérer bannière feed après articles 6, 13 et 20 */}
                                 {/* Comme les 2 premiers sont en featured, on ajuste: index 4, 11, 18 */}
+                                {/* Galerie Tendances : juste avant la première bannière, dans la vue
+                                    « Tous » sans recherche (les vues filtrées restent centrées sur leur rubrique). */}
+                                {index === 4 && (selectedCategory || 'all') === 'all' && !searchQuery.trim() && (
+                                  <div className="mt-4">
+                                    <TrendingGallery
+                                      articles={trendingArticles}
+                                      onArticleClick={(trending) => handleArticleClick(trending as Article)}
+                                    />
+                                  </div>
+                                )}
                                 {(index === 4 || index === 11 || index === 18) && (
                                   <FeedBannerAd position={index + 3} />
                                 )}
