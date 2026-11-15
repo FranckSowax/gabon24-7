@@ -30,7 +30,7 @@ import WeatherWidget from '@/components/widgets/WeatherWidget'
 import MultiQuestionPollWidget from '@/components/widgets/MultiQuestionPollWidget'
 import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
-import WorldCupLive from '@/components/widgets/WorldCupLive'
+import LiveScores from '@/components/widgets/LiveScores'
 import HeroSlider from '@/components/hero/HeroSlider'
 import HeroVideos from '@/components/hero/HeroVideos'
 import RecapVideoModule from '@/components/news/RecapVideoModule'
@@ -1284,7 +1284,7 @@ export default function HomePage() {
                     <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
                   </WidgetDropdown>
 
-                  {/* Mobile uniquement : YouTube + Coupe du monde (sur desktop ils sont en barre latérale droite) */}
+                  {/* Mobile uniquement : YouTube + scores en direct (sur desktop ils sont en barre latérale droite) */}
                   <div className="lg:hidden">
                     <WidgetDropdown title="Journal TV" icon="📺">
                       <LazyMount className="w-full">
@@ -1295,8 +1295,8 @@ export default function HomePage() {
                     </WidgetDropdown>
                   </div>
                   <div className="lg:hidden">
-                    <WidgetDropdown title="Coupe du monde" icon="⚽">
-                      <LazyMount className="w-full"><WorldCupLive className="h-[500px]" /></LazyMount>
+                    <WidgetDropdown title="Scores en direct" icon="⚽">
+                      <LazyMount className="w-full"><LiveScores /></LazyMount>
                     </WidgetDropdown>
                   </div>
                 </div>
@@ -1857,7 +1857,7 @@ export default function HomePage() {
           <LazyMount><YouTubeWidget /></LazyMount>
           {/* 🎵 Résumé audio — sous le Journal TV */}
           <LazyMount><AudioSummaryWidget /></LazyMount>
-          <LazyMount><WorldCupLive /></LazyMount>
+          <LazyMount><LiveScores /></LazyMount>
           <LazyMount><UpcomingEvents /></LazyMount>
         </aside>
       </div>
