@@ -16,7 +16,7 @@ import AuthModal from '@/components/auth/AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 import { addToFavorites, removeFromFavorites, getFavorites, type Favorite } from '@/lib/favorites'
 import PromotionalSlider from '@/components/widgets/PromotionalSlider'
-import WidgetDropdown from '@/components/widgets/WidgetDropdown'
+import WidgetCarousel, { type CarouselModule } from '@/components/widgets/WidgetCarousel'
 import CampaignBanner from '@/components/campaigns/CampaignBanner'
 import FeedBannerAd from '@/components/campaigns/FeedBannerAd'
 import VideoModal from '@/components/campaigns/VideoModal'
@@ -29,6 +29,7 @@ import MultiQuestionPollWidget from '@/components/widgets/MultiQuestionPollWidge
 import RoutesMapWidget from '@/components/widgets/RoutesMapWidget'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import LiveScores from '@/components/widgets/LiveScores'
+import TrendingGallery from '@/components/news/TrendingGallery'
 import HeroSlider from '@/components/hero/HeroSlider'
 import HeroVideos from '@/components/hero/HeroVideos'
 import RecapVideoModule from '@/components/news/RecapVideoModule'
@@ -65,6 +66,35 @@ interface ArchiveFiltersType {
   customEndDate: string
   searchKeyword: string
 }
+
+// Modules de la galerie défilante, tous à la même taille (voir WidgetCarousel).
+const WEATHER_MODULE: CarouselModule = { key: 'meteo', title: 'Météo', icon: '🌤️', render: () => <WeatherWidget /> }
+const POLL_MODULE: CarouselModule = { key: 'sondage', title: 'Sondage', icon: '📊', render: () => <MultiQuestionPollWidget /> }
+const TRAFFIC_MODULE: CarouselModule = { key: 'trafic', title: 'Trafic', icon: '🚗', render: () => <RoutesMapWidget /> }
+const TV_MODULE: CarouselModule = {
+  key: 'journal-tv',
+  title: 'Journal TV',
+  icon: '📺',
+  render: () => <YouTubeWidget className="flex-1 min-h-0 flex flex-col bg-white" />,
+}
+const SCORES_MODULE: CarouselModule = { key: 'scores', title: 'Scores', icon: '⚽', render: () => <LiveScores className="h-full" /> }
+
+const DESKTOP_MODULES = [WEATHER_MODULE, POLL_MODULE, TRAFFIC_MODULE]
+const MOBILE_MODULES = [WEATHER_MODULE, POLL_MODULE, TRAFFIC_MODULE, TV_MODULE, SCORES_MODULE]
+
+// Filtres de rubrique de l'accueil. `value` correspond aux catégories des
+// articles (comparaison sans accents ni majuscules ; « Sport » couvre « Sports »).
+const HOME_CATEGORY_FILTERS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'Politique', label: 'Politique' },
+  { value: 'Économie', label: 'Économie' },
+  { value: 'Éducation', label: 'Éducation' },
+  { value: 'Culture', label: 'Culture' },
+  { value: 'Sport', label: 'Sport' },
+] as const
+
+const normalizeCategory = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 export default function HomePage() {
   const router = useRouter()
@@ -408,8 +438,8 @@ export default function HomePage() {
       const matchesSource = selectedSource === '' || selectedSource === 'all' || article.media_name === selectedSource || article.source === selectedSource
 
       const matchesCategory = selectedCategory === '' || selectedCategory === 'all' || (() => {
-        const articleCategory = (article.category || '').toLowerCase()
-        const selectedCat = selectedCategory.toLowerCase()
+        const articleCategory = normalizeCategory(article.category || '')
+        const selectedCat = normalizeCategory(selectedCategory)
         return articleCategory === selectedCat || articleCategory.includes(selectedCat)
       })()
 
@@ -1268,36 +1298,11 @@ export default function HomePage() {
                   ordinateur, le module est en tête de la barre latérale droite). */}
               <RecapVideoModule variant="compact" />
 
-              {/* Zone Widgets compacts (dropdowns) — météo / sondage / trafic.
-                  Repliés par défaut → les articles sont visibles juste après la vidéo. */}
+              {/* Modules pratiques — ordinateur : galerie défilante en haut du fil
+                  (journal TV et scores restent dans la barre latérale droite).
+                  Téléphone : la galerie est insérée en 4ᵉ position du fil, plus bas. */}
               <div ref={widgetsAreaRef} className="w-full mb-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  <WidgetDropdown title="Météo" icon="🌤️">
-                    <LazyMount className="w-full"><WeatherWidget /></LazyMount>
-                  </WidgetDropdown>
-                  <WidgetDropdown title="Sondage" icon="📊">
-                    <LazyMount className="w-full"><MultiQuestionPollWidget /></LazyMount>
-                  </WidgetDropdown>
-                  <WidgetDropdown title="Trafic" icon="🚗">
-                    <LazyMount className="w-full"><RoutesMapWidget /></LazyMount>
-                  </WidgetDropdown>
-
-                  {/* Mobile uniquement : YouTube + scores en direct (sur desktop ils sont en barre latérale droite) */}
-                  <div className="lg:hidden">
-                    <WidgetDropdown title="Journal TV" icon="📺">
-                      <LazyMount className="w-full">
-                        <div className="w-full h-[500px] flex flex-col">
-                          <YouTubeWidget className="flex-1 flex flex-col" />
-                        </div>
-                      </LazyMount>
-                    </WidgetDropdown>
-                  </div>
-                  <div className="lg:hidden">
-                    <WidgetDropdown title="Scores en direct" icon="⚽">
-                      <LazyMount className="w-full"><LiveScores /></LazyMount>
-                    </WidgetDropdown>
-                  </div>
-                </div>
+                <WidgetCarousel modules={DESKTOP_MODULES} className="hidden lg:block" />
 
                 {/* Bannière de campagne validée */}
                 <LazyMount className="w-full mt-4"><CampaignBanner /></LazyMount>
@@ -1310,83 +1315,45 @@ export default function HomePage() {
                   <div className="flex flex-col gap-3">
                     
                     {/* Ligne 1: Onglets + Contrôles */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-2">
                       
-                      {/* Onglets avec scroll horizontal sur mobile */}
-                      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+                      {/* Filtres par rubrique, défilement horizontal si la place manque */}
+                      <div className="min-w-0 overflow-x-auto scrollbar-hide -mx-1 px-1">
                         <div className="flex items-center gap-1 sm:gap-2 min-w-max">
-                          {/* Onglet Aujourd'hui */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'pour-vous')}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'pour-vous'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">📰</span>
-                            <span>Aujourd'hui</span>
-                          </button>
-                          
-                          {/* Onglet Tendances */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'tendances')}
-                            onMouseEnter={() => {
-                              try {
-                                if (typeof window !== 'undefined') {
-                                  const cached = localStorage.getItem('trending_cache_week')
-                                  if (!cached) fetchTrendingArticles('week').catch(() => {})
-                                }
-                              } catch {}
-                            }}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'tendances'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">🔥</span>
-                            <span>Tendances</span>
-                          </button>
-                          
-                          {/* Onglet Favoris */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'favoris')}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'favoris'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">❤️</span>
-                            <span>Favoris</span>
-                          </button>
-                          
-                          {/* Onglet Cette semaine */}
-                          <button
-                            onClick={(e) => handleTabClick(e, 'semaine-actuelle')}
-                            onMouseEnter={() => {
-                              try {
-                                if (typeof window !== 'undefined') {
-                                  const cached = localStorage.getItem('week_articles_cache')
-                                  if (!cached) fetchSemaineActuelleArticles().catch(() => {})
-                                }
-                              } catch {}
-                            }}
-                            className={`relative flex items-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 rounded-xl ${
-                              activeTab === 'semaine-actuelle'
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30'
-                                : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 bg-gray-50'
-                            }`}
-                          >
-                            <span className="text-sm sm:text-base">📅</span>
-                            <span className="hidden xs:inline">Cette </span>semaine
-                          </button>
+                          {/* Filtres par rubrique (remplacent les onglets Tendances, Favoris et Semaine) */}
+                          <div role="tablist" aria-label="Filtrer les articles par rubrique" className="flex items-center gap-5 sm:gap-7">
+                            {HOME_CATEGORY_FILTERS.map((filter) => {
+                              const active = (selectedCategory || 'all') === filter.value
+                              return (
+                                <button
+                                  key={filter.value}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={active}
+                                  onClick={() => {
+                                    setSelectedCategory(filter.value)
+                                    if (activeTab !== 'pour-vous') setActiveTab('pour-vous')
+                                  }}
+                                  className={`relative py-2 text-sm sm:text-base font-semibold whitespace-nowrap transition-colors focus:outline-none focus-visible:text-gray-900 ${
+                                    active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'
+                                  }`}
+                                >
+                                  {filter.label}
+                                  <span
+                                    aria-hidden="true"
+                                    className={`absolute left-0 right-0 -bottom-0.5 h-[3px] rounded-full bg-emerald-800 transition-opacity ${
+                                      active ? 'opacity-100' : 'opacity-0'
+                                    }`}
+                                  />
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
                       </div>
                       
                       {/* Contrôles Auto-refresh et Actualiser */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center justify-end gap-2 flex-shrink-0">
                         {/* Toggle Auto-refresh compact */}
                         <button
                           onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
@@ -1491,6 +1458,21 @@ export default function HomePage() {
                                 />
                                 {/* Insérer bannière feed après articles 6, 13 et 20 */}
                                 {/* Comme les 2 premiers sont en featured, on ajuste: index 4, 11, 18 */}
+                                {/* Téléphone et tablette : galerie des modules en 4ᵉ position du fil
+                                    (2 articles à la une + 1 article, puis la galerie). */}
+                                {index === 0 && (
+                                  <WidgetCarousel modules={MOBILE_MODULES} className="lg:hidden mt-4" />
+                                )}
+                                {/* Galerie Tendances : juste avant la première bannière, dans la vue
+                                    « Tous » sans recherche (les vues filtrées restent centrées sur leur rubrique). */}
+                                {index === 4 && (selectedCategory || 'all') === 'all' && !searchQuery.trim() && (
+                                  <div className="mt-4">
+                                    <TrendingGallery
+                                      articles={trendingArticles}
+                                      onArticleClick={(trending) => handleArticleClick(trending as Article)}
+                                    />
+                                  </div>
+                                )}
                                 {(index === 4 || index === 11 || index === 18) && (
                                   <FeedBannerAd position={index + 3} />
                                 )}
