@@ -51,7 +51,7 @@ export default function PolitiqueDeConfidentialite() {
             <p className="text-gray-700 leading-relaxed">Vos donn&eacute;es sont utilis&eacute;es pour :</p>
             <ul className="list-disc pl-6 text-gray-700 space-y-1">
               <li>Cr&eacute;er et g&eacute;rer votre compte utilisateur</li>
-              <li>Personnaliser votre exp&eacute;rience (recommandations, r&eacute;sum&eacute;s audio IA)</li>
+              <li>Personnaliser votre exp&eacute;rience (recommandations)</li>
               <li>Envoyer des notifications WhatsApp sur les actualit&eacute;s gabonaises</li>
               <li>G&eacute;rer les abonnements et paiements</li>
               <li>Am&eacute;liorer nos services gr&acirc;ce &agrave; l&apos;analyse d&apos;usage</li>

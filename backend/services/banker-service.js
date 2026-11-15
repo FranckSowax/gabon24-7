@@ -7,10 +7,7 @@ const mistral = require('./mistral-service');
 
 let openai = null;
 try {
-  if (process.env.OPENAI_API_KEY) {
-    const OpenAI = require('openai');
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
+  openai = require('./ai-provider').createAiClient();
 } catch { /* openai optionnel */ }
 
 const BANKER_SYSTEM = `Tu es M. Ndong, chargé d'affaires senior à la BCEG (financement des entrepreneurs au Gabon).

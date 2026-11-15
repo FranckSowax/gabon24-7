@@ -15,7 +15,7 @@ on:
 
 jobs:
   sync-content:
-    name: Synchronisation Journal TV + Résumés Audio
+    name: Synchronisation Journal TV
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -48,81 +48,6 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: 🇫🇷 Génération Résumé Français
-        id: audio_fr
-        run: |
-          echo "🔄 Génération résumé audio FR..."
-          
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
-            -H "Content-Type: application/json" \
-            -H "X-Cron-Secret: ${CRON_SECRET}" \
-            -d '{"language":"fr"}' \
-            --max-time 180)
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
-            echo "✅ Résumé FR généré"
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ Erreur génération FR (HTTP $http_code)"
-            echo "$body"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: 🇬🇧 Génération Résumé Anglais
-        id: audio_en
-        run: |
-          echo "🔄 Génération résumé audio EN..."
-          
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
-            -H "Content-Type: application/json" \
-            -H "X-Cron-Secret: ${CRON_SECRET}" \
-            -d '{"language":"en"}' \
-            --max-time 180)
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
-            echo "✅ Résumé EN généré"
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ Erreur génération EN (HTTP $http_code)"
-            echo "$body"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: 🇨🇳 Génération Résumé Chinois
-        id: audio_zh
-        run: |
-          echo "🔄 Génération résumé audio ZH..."
-          
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://gabon24-7-production.up.railway.app/api/audio/generate-test-summary" \
-            -H "Content-Type: application/json" \
-            -H "X-Cron-Secret: ${CRON_SECRET}" \
-            -d '{"language":"zh"}' \
-            --max-time 180)
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
-            echo "✅ Résumé ZH généré"
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ Erreur génération ZH (HTTP $http_code)"
-            echo "$body"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
       - name: 📊 Résumé de la Synchronisation
         run: |
           echo "═══════════════════════════════════════════════════════════"
@@ -143,33 +68,6 @@ jobs:
             failed_count=$((failed_count + 1))
           fi
           
-          # Résumé FR
-          if [ "${{ steps.audio_fr.outputs.success }}" == "true" ]; then
-            echo "✅ Résumé FR: Généré"
-            success_count=$((success_count + 1))
-          else
-            echo "❌ Résumé FR: Échec"
-            failed_count=$((failed_count + 1))
-          fi
-          
-          # Résumé EN
-          if [ "${{ steps.audio_en.outputs.success }}" == "true" ]; then
-            echo "✅ Résumé EN: Généré"
-            success_count=$((success_count + 1))
-          else
-            echo "❌ Résumé EN: Échec"
-            failed_count=$((failed_count + 1))
-          fi
-          
-          # Résumé ZH
-          if [ "${{ steps.audio_zh.outputs.success }}" == "true" ]; then
-            echo "✅ Résumé ZH: Généré"
-            success_count=$((success_count + 1))
-          else
-            echo "❌ Résumé ZH: Échec"
-            failed_count=$((failed_count + 1))
-          fi
-          
           echo ""
           echo "═══════════════════════════════════════════════════════════"
           echo "   ✅ Réussis: $success_count"
@@ -180,7 +78,6 @@ jobs:
           # Afficher URL de vérification
           echo "🔗 Vérifier sur:"
           echo "   📺 Journal TV: https://gabon24-7.netlify.app/"
-          echo "   🔊 Résumés: https://gabon24-7.netlify.app/audio/daily"
           echo ""
           
           # Échouer si aucune tâche n'a réussi

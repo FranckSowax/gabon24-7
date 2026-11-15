@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const OpenAI = require('openai');
+const { createAiClient } = require('../services/ai-provider');
 const supabaseService = require('../supabase-config');
 const aiConfigService = require('../services/ai-config-service');
 const geminiService = require('../services/gemini-service');
@@ -67,13 +67,9 @@ const itemAttachmentSchema = z.object({
 });
 
 // Instanciation conditionnelle de OpenAI GPT-4.1-mini
-let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-} else {
-  console.warn('⚠️ OPENAI_API_KEY non configurée - Routes action-plans désactivées');
+const openai = createAiClient();
+if (!openai) {
+  console.warn('⚠️ Aucune clé IA configurée - Routes action-plans désactivées');
 }
 
 /**
@@ -86,7 +82,7 @@ router.post('/generate', validateBody(generatePlanSchema), async (req, res) => {
     if (!openai) {
       return res.status(503).json({
         success: false,
-        error: 'Service IA non disponible - OPENAI_API_KEY non configurée'
+        error: 'Service IA non disponible'
       });
     }
 

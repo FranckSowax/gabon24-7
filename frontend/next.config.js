@@ -38,6 +38,16 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
+
+  // Le résumé audio a été retiré : ses anciennes adresses renvoient à l'accueil
+  // (redirection temporaire, pour ne pas laisser de liens morts).
+  async redirects() {
+    return [
+      { source: '/audio', destination: '/', permanent: false },
+      { source: '/audio/:path*', destination: '/', permanent: false },
+      { source: '/settings', destination: '/mon-profil', permanent: false },
+    ];
+  },
 };
 
 // Wrapping conditionnel Sentry : si @sentry/nextjs est installé ET SENTRY_DSN défini,

@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const crypto = require('crypto');
-const OpenAI = require('openai');
+const { createAiClient } = require('../services/ai-provider');
 const supabaseService = require('../supabase-config');
 const { requireAdmin, requireAuth, optionalAuth } = require('../middleware/auth');
 
@@ -18,8 +18,7 @@ const bankerService = require('../services/banker-service');
 const reviewService = require('../services/review-service');
 
 // Assistant IA des formations (gratuit, gpt-4.1-mini)
-let openai = null;
-if (process.env.OPENAI_API_KEY) openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = createAiClient();
 
 const LEVEL_TITLES = { 1: 'Fondamentaux', 2: 'Développement', 3: 'Croissance' };
 

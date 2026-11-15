@@ -24,10 +24,6 @@ export const API_ROUTES = {
   enhanceOpportunity: '/api/opportunities/enhance',
   generateBusinessIdeas: '/api/opportunities/business-ideas',
   
-  // Audio
-  audioSummary: '/api/audio/generate-summary',
-  audioSettings: '/api/audio/settings',
-  
   // Alertes
   processAlerts: '/api/alerts/process',
   getMatches: (userId: string) => `/api/alerts/matches/${userId}`,

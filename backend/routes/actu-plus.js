@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const { chatCompletion, isAiConfigured } = require('../services/ai-provider');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { trackAIUsage } = require('../utils/track-ai-usage');
@@ -439,32 +440,25 @@ router.post('/', validateBody(actuPlusSchema), async (req, res) => {
     }
 
     // Appel OpenAI
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ success: false, error: 'OPENAI_API_KEY manquant' });
+    if (!isAiConfigured()) {
+      return res.status(500).json({ success: false, error: 'Service IA non configuré' });
     }
 
     const prompt = buildPrompt(serviceType, articlesText, context, tone, options);
 
-    const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+    let data;
+    try {
+      data = await chatCompletion({
         messages: [
           { role: 'system', content: 'Tu es un assistant IA expert en journalisme et synthèse.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.4,
         max_tokens: 800
-      })
-    });
-
-    const data = await openaiResp.json();
-    if (!openaiResp.ok) {
-      return res.status(500).json({ success: false, error: data?.error?.message || 'OpenAI error' });
+      });
+    } catch (aiError) {
+      console.error('❌ actu-plus : appel IA en échec :', aiError.message);
+      return res.status(500).json({ success: false, error: 'Service IA momentanément indisponible' });
     }
 
     const text = data.choices?.[0]?.message?.content || '';

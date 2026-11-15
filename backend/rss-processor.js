@@ -1144,7 +1144,7 @@ class RSSProcessor {
   async generateAISummary(title, content) {
     try {
       // Vérifier si OpenAI est configuré
-      if (!process.env.OPENAI_API_KEY) {
+      if (!require('./services/ai-provider').isAiConfigured()) {
         return this.generateSimpleSummary(title, content);
       }
 

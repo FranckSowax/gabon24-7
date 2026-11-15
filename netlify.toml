@@ -67,14 +67,6 @@
 [functions."scheduled-poll-publisher"]
   schedule = "0 19 * * *"
 
-# Audio 3x/jour - 6h, 12h, 18h UTC (7h, 13h, 19h Gabon)
-[functions."scheduled-audio-daily"]
-  schedule = "0 6,12,18 * * *"
-
-# Nettoyage audio - Toutes les heures
-[functions."scheduled-audio-cleanup"]
-  schedule = "0 * * * *"
-
 # Lifecycle abonnements - 7h UTC (8h Gabon) chaque jour
 [functions."scheduled-subscription-lifecycle"]
   schedule = "0 7 * * *"

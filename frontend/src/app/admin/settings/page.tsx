@@ -480,7 +480,8 @@ export default function SettingsPage() {
               <div className="p-6 space-y-4">
                 <p className="text-sm text-gray-500 mb-2">Les statuts sont vérifiés côté serveur (Railway). Consultez les variables d'environnement dans le dashboard Railway.</p>
                 {[
-                  { name: 'OPENAI_API_KEY', label: 'OpenAI' },
+                  { name: 'OPENROUTER_API_KEY', label: 'OpenRouter (IA texte)' },
+                  { name: 'OPENAI_API_KEY', label: 'OpenAI (images)' },
                   { name: 'SUPABASE_URL', label: 'Supabase' },
                   { name: 'WHAPI_TOKEN', label: 'WhatsApp (Whapi)' },
                   { name: 'EBILLING_API_KEY', label: 'E-Billing' },

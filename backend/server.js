@@ -338,7 +338,6 @@ const { requireProjectScope } = require('./middleware/project-access');
   '/api/events/sync',
   '/api/weather/update',
   '/api/alerts/process',
-  '/api/polls/generate-from-audio',
 ].forEach((path) => app.use(path, guard(requireCronOrAdmin)));
 
 // 3. Outils d'administration qui n'étaient protégés que côté interface.
@@ -4161,9 +4160,6 @@ app.use('/api/image-proxy', imageProxyRoutes);
 const imageExtractionRoutes = require('./routes/image-extraction');
 app.use('/api/image-extraction', imageExtractionRoutes);
 
-// Routes Audio (TTS résumés)
-const audioRoutes = require('./routes/audio');
-app.use('/api/audio', audioRoutes);
 
 // Section vidéos d'accueil (21:9, autoplay en boucle)
 const heroVideosRoutes = require('./routes/hero-videos');
@@ -4972,10 +4968,15 @@ try {
 }
 
 // Vérification de la configuration critique
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('⚠️  OPENAI_API_KEY manquante ! Les fonctionnalités IA seront limitées.');
-} else {
-  console.log('✅ OPENAI_API_KEY détectée (GPT-4.1-mini).');
+{
+  const aiProvider = require('./services/ai-provider').getAiProvider();
+  if (!aiProvider) {
+    console.warn('⚠️  Aucune clé IA (OPENROUTER_API_KEY) ! Les fonctionnalités IA seront limitées.');
+  } else if (aiProvider.name === 'openrouter') {
+    console.log(`✅ IA texte : OpenRouter (${aiProvider.model}).`);
+  } else {
+    console.warn(`⚠️  IA texte : OPENROUTER_API_KEY absente, repli sur OpenAI (${aiProvider.model}).`);
+  }
 }
 
 if (!process.env.RAPIDAPI_KEY && !process.env.RAPIDAPI_FOOTBALL_KEY) {
@@ -5021,10 +5022,6 @@ server.listen(PORT, () => {
   // const rssProcessor = new RSSProcessor();
   // rssProcessor.startAutomaticProcessing();
   // rssService.startAutoSync(15);
-  
-  // Démarrer le planificateur de résumés audio automatiques
-  const { startScheduler } = require('./services/audio-scheduler');
-  startScheduler();
 });
 
 // NOTE: Les endpoints d'upload sont dans routes/uploads.js (déjà enregistré)

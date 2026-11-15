@@ -147,14 +147,10 @@ function generateFallbackAnalysis(article = { title: '', summary: '', source: ''
 let _openaiClient = null;
 function getOpenAIClient() {
   if (!_openaiClient) {
-    const OpenAI = require('openai');
-    if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY manquant');
-    _openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      // Timeout généreux pour les analyses JSON longues + retries SDK sur erreurs réseau/5xx
-      timeout: 60000,
-      maxRetries: 3
-    });
+    const { createAiClient } = require('../services/ai-provider');
+    // Timeout généreux pour les analyses JSON longues + retries SDK sur erreurs réseau/5xx
+    _openaiClient = createAiClient({ timeout: 60000, maxRetries: 3 });
+    if (!_openaiClient) throw new Error('Service IA non configuré');
   }
   return _openaiClient;
 }

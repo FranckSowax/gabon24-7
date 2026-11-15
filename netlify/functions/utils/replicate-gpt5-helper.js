@@ -10,6 +10,7 @@
  * - Output: $1.60 / 1M tokens
  */
 
+const { fetchChatCompletion, isAiConfigured } = require('./ai-provider');
 const fetch = require('node-fetch');
 
 /**
@@ -24,30 +25,22 @@ async function callOpenAI(prompt, options = {}) {
     returnJSON = true
   } = options;
 
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-
-  if (!openaiApiKey) {
-    throw new Error('OPENAI_API_KEY manquant');
+  if (!isAiConfigured()) {
+    throw new Error('Aucune clé IA configurée');
   }
 
   console.log(`🤖 Appel OpenAI ${model}...`);
   const startTime = Date.now();
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: maxTokens,
-      temperature: temperature
-    })
+  // Fournisseur et modèle réels : voir ai-provider.js (OpenRouter, GLM 5.3 Flash).
+  const response = await fetchChatCompletion({
+    model: model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_tokens: maxTokens,
+    temperature: temperature
   });
 
   if (!response.ok) {
@@ -197,9 +190,9 @@ async function callGPT5NanoWithFallback(prompt, options = {}) {
   } = options;
 
   // 1. Primary: OpenAI GPT-4.1-mini
-  if (process.env.OPENAI_API_KEY) {
+  if (isAiConfigured()) {
     try {
-      console.log('🤖 Utilisation de OpenAI GPT-4.1-mini (modèle principal)');
+      console.log('🤖 Utilisation du modèle IA principal');
       return await callOpenAI(prompt, { ...restOptions, model: openaiModel });
     } catch (error) {
       console.error('⚠️ OpenAI échoué:', error.message);
@@ -216,7 +209,7 @@ async function callGPT5NanoWithFallback(prompt, options = {}) {
     }
   }
 
-  throw new Error('Aucun service IA disponible (OPENAI_API_KEY et GEMINI_API_KEY manquants)');
+  throw new Error('Aucun service IA disponible (OPENROUTER_API_KEY et GEMINI_API_KEY manquants)');
 }
 
 /**

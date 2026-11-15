@@ -55,7 +55,7 @@ const PLANS = [
       'Formation & Quiz sur mesure'
     ],
     limitations: [
-      'Pas d\'accès section Outils (Audio, Veille...)'
+      'Pas d\'accès section Outils (Veille, Actu+...)'
     ],
     cta: 'Commencer l\'essai (3000 FCFA)',
     highlight: true,
@@ -75,7 +75,7 @@ const PLANS = [
     features: [
       'Tout du plan Premium',
       '1 000 crédits / mois (Best Value)',
-      'Déblocage complet Outils (Audio, Veille, Actu+)',
+      'Déblocage complet Outils (Veille, Actu+)',
       'Accès Publicités & Sondages',
       'Réception WhatsApp des veilles et Alerte',
       'Analyse d\'Opportunités de marché',

@@ -44,6 +44,7 @@ const DEFAULT_CONFIG = {
 
 // Mapping des modèles vers les providers
 const MODEL_PROVIDERS = {
+  'z-ai/glm-5.3-flash': 'openrouter',
   'gpt-4.1-mini': 'openai',
   'gpt-4.1': 'openai',
   'gpt-4o': 'openai',

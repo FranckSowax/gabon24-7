@@ -4,7 +4,6 @@
  * 
  * Synchronise TOUT le contenu:
  * 1. Extraction journaux TV depuis RSS
- * 2. Génération résumés audio quotidiens (FR, EN, ZH)
  * 
  * Usage: node scripts/sync-all-content.js
  */
@@ -26,7 +25,7 @@ async function main() {
   // ============================================================
   // 1. EXTRACTION JOURNAUX TV
   // ============================================================
-  console.log('📺 ÉTAPE 1/2: EXTRACTION JOURNAUX TV');
+  console.log('📺 EXTRACTION JOURNAUX TV');
   console.log('─'.repeat(80));
   
   try {
@@ -49,48 +48,6 @@ async function main() {
   console.log('');
 
   // ============================================================
-  // 2. GÉNÉRATION RÉSUMÉS AUDIO (FR, EN, ZH)
-  // ============================================================
-  console.log('🔊 ÉTAPE 2/2: GÉNÉRATION RÉSUMÉS AUDIO');
-  console.log('─'.repeat(80));
-  
-  const languages = ['fr', 'en', 'zh'];
-  
-  for (const lang of languages) {
-    try {
-      console.log(`\n🌍 Génération résumé ${lang.toUpperCase()}...`);
-      
-      const response = await axios.post(
-        `${API_URL}/api/audio/generate-test-summary`,
-        { language: lang },
-        {
-          timeout: 180000, // 3 minutes max
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-      
-      if (response.data.success) {
-        console.log(`✅ Résumé ${lang.toUpperCase()} généré`);
-        console.log(`   📝 Texte: ${response.data.summary.text_summary?.substring(0, 80)}...`);
-        if (response.data.summary.audio_url) {
-          console.log(`   🎵 Audio: ${response.data.summary.audio_url.substring(0, 80)}...`);
-        }
-        totalSuccess++;
-      } else {
-        console.log(`⚠️  ${lang.toUpperCase()}: ${response.data.message}`);
-        totalFailed++;
-      }
-      
-      // Pause 2s entre chaque génération
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-    } catch (error) {
-      console.error(`❌ Erreur résumé ${lang.toUpperCase()}:`, error.message);
-      totalFailed++;
-    }
-  }
-
-  // ============================================================
   // RÉSUMÉ FINAL
   // ============================================================
   console.log('\n' + '═'.repeat(80));
@@ -106,7 +63,6 @@ async function main() {
     console.log('');
     console.log('🔗 Vérifier sur:');
     console.log('   📺 Journal TV: https://gabon-insight.netlify.app/');
-    console.log('   🔊 Résumés audio: https://gabon-insight.netlify.app/audio/daily');
     console.log('');
   } else {
     console.log('⚠️  Aucune synchronisation n\'a réussi');

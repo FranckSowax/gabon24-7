@@ -1,18 +1,16 @@
-const OpenAI = require('openai');
+const { createAiClient, getAiModel, isAiConfigured } = require('./services/ai-provider');
 
 class OpenAIService {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || 'not-configured',
-    });
-
-    this.model = 'gpt-4.1-mini';
-    this.isConfigured = !!process.env.OPENAI_API_KEY;
+    // Fournisseur et modèle : voir services/ai-provider.js (OpenRouter, GLM 5.3 Flash).
+    this.isConfigured = isAiConfigured();
+    this.openai = createAiClient();
+    this.model = getAiModel();
 
     if (!this.isConfigured) {
-      console.warn('⚠️ OPENAI_API_KEY non configurée. Service IA texte désactivé.');
+      console.warn('⚠️ Aucune clé IA configurée. Service IA texte désactivé.');
     } else {
-      console.log('✅ OpenAI gpt-4.1-mini initialisé (modèle principal)');
+      console.log(`✅ IA texte initialisée (${this.model})`);
     }
   }
 

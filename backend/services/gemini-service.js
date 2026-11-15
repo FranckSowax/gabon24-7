@@ -12,16 +12,17 @@
  */
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const OpenAI = require("openai");
+const { createAiClient, getAiModel, getAiProvider } = require('./ai-provider');
 require('dotenv').config();
 
 class GeminiService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
-    this.openaiApiKey = process.env.OPENAI_API_KEY;
-
-    // Modèle principal: OpenAI GPT-4.1-mini
-    this.openaiModel = 'gpt-4.1-mini';
+    // Modèle principal : OpenRouter, GLM 5.3 Flash (voir services/ai-provider.js).
+    // Le nom « openai » désigne ici le client au format OpenAI, pas le fournisseur.
+    const aiProvider = getAiProvider();
+    this.aiProviderName = aiProvider ? aiProvider.name : null;
+    this.openaiModel = getAiModel();
 
     // Modèles Gemini (fallback)
     this.models = {
@@ -32,11 +33,11 @@ class GeminiService {
     this.primaryModelId = this.models.text;
 
     // Initialisation OpenAI (Primary)
-    if (this.openaiApiKey) {
-      this.openai = new OpenAI({ apiKey: this.openaiApiKey });
-      console.log(`✅ OpenAI ${this.openaiModel} initialisé (modèle principal)`);
+    this.openai = createAiClient();
+    if (this.openai) {
+      console.log(`✅ IA principale initialisée (${this.aiProviderName}, ${this.openaiModel})`);
     } else {
-      console.warn('⚠️ OPENAI_API_KEY non configuré - Service IA principal désactivé');
+      console.warn('⚠️ Aucune clé IA configurée - Service IA principal désactivé');
     }
 
     // Initialisation Google Gemini (Fallback)
@@ -106,7 +107,9 @@ class GeminiService {
 
     // Modèle demandé → choix du provider (Gemini si "gemini*", sinon OpenAI).
     // Sans modèle explicite : comportement historique (OpenAI puis Gemini).
-    const wantGemini = model ? String(model).startsWith('gemini') : false;
+    // Avec OpenRouter, tout passe par le modèle configuré : un modèle « gemini* »
+    // demandé par un appelant ne sert plus que de repli.
+    const wantGemini = this.aiProviderName !== 'openrouter' && model ? String(model).startsWith('gemini') : false;
     const geminiModelId = wantGemini ? model : this.primaryModelId;
 
     const tryOpenAI = () => this.executeWithRetry(() =>

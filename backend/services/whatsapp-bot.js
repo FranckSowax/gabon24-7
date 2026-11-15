@@ -12,10 +12,7 @@ const reviewService = require('./review-service');
 
 let openai = null;
 try {
-  if (process.env.OPENAI_API_KEY) {
-    const OpenAI = require('openai');
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
+  openai = require('./ai-provider').createAiClient();
 } catch { /* openai optionnel */ }
 
 const FRONT = (process.env.FRONTEND_URL || 'https://gaboninsight.com').replace(/\/$/, '');

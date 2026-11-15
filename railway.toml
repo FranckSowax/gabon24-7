@@ -23,20 +23,5 @@
   command = "node scripts/extract-youtube-journals.js"
   timezone = "Africa/Libreville"
 
-[[crons]]
-  name = "morning-summaries"
-  schedule = "0 7 * * *"
-  command = "node scripts/generate-morning-summaries.js"
-  timezone = "Africa/Libreville"
 
-[[crons]]
-  name = "afternoon-summaries"
-  schedule = "0 13 * * *"
-  command = "node scripts/generate-afternoon-summaries.js"
-  timezone = "Africa/Libreville"
 
-[[crons]]
-  name = "evening-summaries"
-  schedule = "0 20 * * *"
-  command = "node scripts/generate-evening-summaries.js"
-  timezone = "Africa/Libreville"
