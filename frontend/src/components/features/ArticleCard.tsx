@@ -487,7 +487,10 @@ export function ArticleCard({
               </button>
             </div>
           </div>
-          <OpportunityButton articleId={article.id} variant="row" className="mt-3" />
+          {/* Même pastille que dans le fil, en bas à droite de la carte. */}
+          <div className="mt-3 flex justify-end">
+            <OpportunityButton articleId={article.id} />
+          </div>
         </div>
       </div>
     )
