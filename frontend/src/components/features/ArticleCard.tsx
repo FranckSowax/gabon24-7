@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import SourcePlaceholder from '@/components/features/SourcePlaceholder'
 import { Image as PhotoIcon } from 'lucide-react'
+import { OpportunityButton } from './OpportunityButton'
 import { TLDRButton } from './TLDRButton'
 import { useAuth } from '@/contexts/AuthContext'
 import { useModal } from '@/contexts/ModalContext'
@@ -345,7 +346,7 @@ export function ArticleCard({
 
   if (variant === 'featured') {
     return (
-      <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer border ${
+      <div className={`group relative rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer border ${
         article.isMinisterial ? 'bg-green-50 border-green-200' : 
         isGovernmentSource ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
       }`}>
@@ -486,13 +487,14 @@ export function ArticleCard({
               </button>
             </div>
           </div>
+          <OpportunityButton articleId={article.id} variant="row" className="mt-3" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`p-3 sm:p-4 lg:p-6 rounded-lg shadow hover:shadow-md transition-shadow border ${
+    <div className={`group p-3 sm:p-4 lg:p-6 rounded-lg shadow hover:shadow-md transition-shadow border ${
       article.isMinisterial ? 'bg-green-50 border-green-200' : 
       isGovernmentSource ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
     }`}>
@@ -580,8 +582,8 @@ export function ArticleCard({
           
           <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2">{cleanSummary(article.summary)}</p>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center flex-wrap gap-1 sm:gap-2 text-xs sm:text-sm text-gray-500">
+          <div className="flex items-center justify-between flex-wrap gap-x-3 gap-y-2">
+            <div className="flex items-center flex-wrap gap-1 sm:gap-2 text-xs sm:text-sm text-gray-500 min-w-0">
               <span className="whitespace-nowrap">{formatPublishedDate(article)}</span>
               <span className="text-gray-400">•</span>
               <div className="flex items-center space-x-1">
@@ -600,6 +602,7 @@ export function ArticleCard({
                 </>
               )}
             </div>
+            <OpportunityButton articleId={article.id} />
           </div>
         </div>
         
