@@ -301,8 +301,19 @@ export default function BusinessAnalyzerPage() {
 
     // Si les articles sont chargés, chercher dedans
     if (articles.length > 0) {
-      const found = articles.find(a => a.id === aid)
-      if (found) {
+      const foundIndex = articles.findIndex(a => String(a.id) === aid)
+      if (foundIndex !== -1) {
+        const found = articles[foundIndex]
+        // L'article demandé (bouton du fil, lien WhatsApp) passe en tête de
+        // liste : l'utilisateur le voit tout de suite, sans le chercher.
+        // Une fois en tête, l'effet se relance sans plus rien déplacer.
+        if (foundIndex > 0) {
+          setArticles(prev => {
+            const index = prev.findIndex(a => String(a.id) === aid)
+            if (index <= 0) return prev
+            return [prev[index], ...prev.slice(0, index), ...prev.slice(index + 1)]
+          })
+        }
         setSelectedArticle(found)
         return
       }
