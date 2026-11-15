@@ -44,7 +44,6 @@ const DEFAULT_GRADIENTS = [
 const BUSINESS_FEATURES = [
   { slug: 'mes-projets', name: 'Mes Projets', path: '/business/mes-projets', icon: '📁' },
   { slug: 'actu-plus', name: 'Actu++', path: '/actu-plus', icon: '📰' },
-  { slug: 'audio-summaries', name: 'Résumés Audio', path: '/audio/daily', icon: '🎧' },
   { slug: 'ai-opportunities', name: 'Opportunités IA', path: '/business/live-opportunities', icon: '🤖' },
   { slug: 'veille-alertes', name: 'Veille & Alertes', path: '/veille', icon: '🔔' },
   { slug: 'marketing-ads', name: 'Publicité', path: '/marketing/publicite', icon: '📢' },

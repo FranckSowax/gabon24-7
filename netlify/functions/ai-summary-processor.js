@@ -3,7 +3,9 @@ const { createClient } = require('@supabase/supabase-js');
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const openaiApiKey = process.env.OPENAI_API_KEY;
+const { fetchChatCompletion, isAiConfigured } = require('./utils/ai-provider');
+// Fournisseur et modèle : voir utils/ai-provider.js (OpenRouter, GLM 5.3 Flash).
+const openaiApiKey = isAiConfigured();
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variables d\'environnement manquantes');
@@ -24,21 +26,13 @@ async function generateAISummary(title, content, retryCount = 0) {
   if (!openaiApiKey || !content) return null;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+    const response = await fetchChatCompletion({
         messages: [{
           role: 'user',
           content: `Résume cet article en français en 2-3 phrases maximum, en restant factuel et informatif:\n\nTitre: ${title}\n\nContenu: ${content.substring(0, 1000)}`
         }],
         max_tokens: 150,
         temperature: 0.3
-      })
     });
 
     if (response.status === 429) {
@@ -255,7 +249,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'OPENAI_API_KEY non configuré, résumés IA désactivés',
+          message: 'Aucune clé IA configurée, résumés IA désactivés',
           processed: 0
         })
       };

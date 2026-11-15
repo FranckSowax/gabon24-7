@@ -46,7 +46,6 @@ const AUTHENTICATED_GET_PREFIXES = [
   '/api/ai/admin',
   '/api/alerts',
   '/api/article-views',
-  '/api/audio',
   '/api/campaigns',
   '/api/collaboration',
   '/api/credits',

@@ -223,21 +223,6 @@ function SuccesContent() {
                   </div>
                 </div>
               </button>
-
-              <button
-                onClick={() => router.push('/audio')}
-                className="p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all text-left group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                    <span className="text-xl group-hover:scale-110 transition-transform">🎧</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Résumés Audio</h3>
-                    <p className="text-sm text-gray-500">Écouter l'actu</p>
-                  </div>
-                </div>
-              </button>
             </div>
           </div>
         </main>

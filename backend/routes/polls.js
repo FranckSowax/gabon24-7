@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const { chatCompletion } = require('../services/ai-provider');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { supabase } = supabaseService;
@@ -203,41 +204,6 @@ router.post('/vote', async (req, res) => {
   }
 });
 
-// POST /api/polls/generate-from-audio - Générer sondages depuis résumés audio
-router.post('/generate-from-audio', async (req, res) => {
-  try {
-    console.log('📊 Génération de sondages depuis résumés audio...');
-    
-    const { generatePollsFromLatestAudioSummary, deactivateOldAutoPpolls } = require('../services/poll-generator-from-audio');
-    
-    // Désactiver les vieux sondages automatiques
-    await deactivateOldAutoPpolls();
-    
-    // Générer les nouveaux sondages
-    const result = await generatePollsFromLatestAudioSummary();
-    
-    if (result.success) {
-      console.log(`✅ ${result.created} sondages générés avec succès`);
-      res.json({
-        success: true,
-        message: `${result.created} sondages générés depuis le résumé audio`,
-        ...result
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        error: result.error || 'Erreur génération sondages'
-      });
-    }
-  } catch (error) {
-    console.error('❌ Erreur génération sondages:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // GET /api/polls/global-stats - Statistiques globales des sondages (admin)
 router.get('/global-stats', async (req, res) => {
   try {
@@ -329,30 +295,15 @@ Retourne UNIQUEMENT un objet JSON:
   "rationale": "Brève explication de la stratégie"
 }`;
 
-    // Appel OpenAI GPT-4.1-mini
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
-        messages: [
-          { role: 'system', content: 'Tu es un expert en sondages d\'opinion au Gabon. Réponds uniquement en JSON valide.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
+    // Appel IA (fournisseur et modèle : services/ai-provider.js)
+    const result = await chatCompletion({
+      messages: [
+        { role: 'system', content: 'Tu es un expert en sondages d\'opinion au Gabon. Réponds uniquement en JSON valide.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`OpenAI API error: ${errorData.error?.message || response.status}`);
-    }
-
-    const result = await response.json();
     const output = result.choices[0]?.message?.content || '';
     console.log('📄 Sortie IA:', output.substring(0, 200));
 

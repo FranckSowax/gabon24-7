@@ -1443,7 +1443,7 @@ router.post('/mentor-chat', requireAuth, validateBody(mentorChatSchema), async (
       return res.status(400).json({ success: false, error: 'message requis' });
     }
 
-    if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+    if (!require('../services/ai-provider').isAiConfigured() && !process.env.GEMINI_API_KEY) {
       return res.status(503).json({ success: false, error: 'Service IA non configuré' });
     }
 

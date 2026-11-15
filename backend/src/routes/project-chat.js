@@ -1,5 +1,5 @@
 const express = require('express');
-const OpenAI = require('openai');
+const { createAiClient, getAiModel } = require('../../services/ai-provider');
 const supabaseService = require('../../supabase-config');
 const aiConfigService = require('../../services/ai-config-service');
 const { checkUserCredits, deductCredits } = require('../../middleware/ai-validation');
@@ -34,14 +34,10 @@ async function conversationBelongsToProject(res, conversationId, projectId) {
 }
 
 // Initialiser OpenAI GPT-4.1-mini
-let openai = null;
-const OPENAI_MODEL = 'gpt-4.1-mini';
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-} else {
-  console.warn('⚠️ OPENAI_API_KEY non configurée - Routes project-chat désactivées');
+const openai = createAiClient();
+const OPENAI_MODEL = getAiModel();
+if (!openai) {
+  console.warn('⚠️ Aucune clé IA configurée - Routes project-chat désactivées');
 }
 
 // Envoyer un message et obtenir réponse

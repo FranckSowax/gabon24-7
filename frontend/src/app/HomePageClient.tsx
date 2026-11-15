@@ -21,8 +21,6 @@ import CampaignBanner from '@/components/campaigns/CampaignBanner'
 import FeedBannerAd from '@/components/campaigns/FeedBannerAd'
 import VideoModal from '@/components/campaigns/VideoModal'
 import EventsSlider from '@/components/widgets/EventsSlider'
-import AudioPlayerBanner from '@/components/audio/AudioPlayerBanner'
-import AudioSummaryWidget from '@/components/audio/AudioSummaryWidget'
 import Sidebar from '@/components/layout/Sidebar'
 import axios from '@/lib/axios'
 import Header from '@/components/layout/Header'
@@ -1855,8 +1853,6 @@ export default function HomePage() {
           {/* Récap vidéo de l'actualité — en tête de la barre latérale */}
           <RecapVideoModule variant="sidebar" />
           <LazyMount><YouTubeWidget /></LazyMount>
-          {/* 🎵 Résumé audio — sous le Journal TV */}
-          <LazyMount><AudioSummaryWidget /></LazyMount>
           <LazyMount><LiveScores /></LazyMount>
           <LazyMount><UpcomingEvents /></LazyMount>
         </aside>

@@ -76,7 +76,7 @@ const SUBSCRIPTION_PLANS = [
     name: 'Professionnel',
     price: 12000,
     credits: 1000,
-    features: ['1000 crédits/mois', 'Tout Premium', 'Veille & Audio', 'Support prioritaire'],
+    features: ['1000 crédits/mois', 'Tout Premium', 'Veille', 'Support prioritaire'],
     icon: Crown,
     gradient: 'from-orange-500 to-red-600'
   }
