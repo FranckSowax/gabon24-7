@@ -24,12 +24,18 @@ interface WidgetCarouselProps {
   modules: CarouselModule[]
   title?: string
   className?: string
+  /**
+   * `scroll` (défaut) : galerie glissable, flèches et raccourcis.
+   * `fit` : tous les modules côte à côte sur la largeur disponible, sans
+   * défilement (utilisé sur ordinateur, où la largeur du fil suffit pour trois).
+   */
+  layout?: 'scroll' | 'fit'
 }
 
 // Même hauteur pour tous : celle des modules météo, sondage et trafic.
 const SLIDE_HEIGHT = 'h-[500px]'
 
-export default function WidgetCarousel({ modules, title = 'En ce moment', className = '' }: WidgetCarouselProps) {
+export default function WidgetCarousel({ modules, title = 'En ce moment', className = '', layout = 'scroll' }: WidgetCarouselProps) {
   const trackRef = useRef<HTMLDivElement | null>(null)
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(modules.length > 1)
@@ -65,6 +71,31 @@ export default function WidgetCarousel({ modules, title = 'En ce moment', classN
   const step = (direction: 1 | -1) => scrollToIndex(Math.min(modules.length - 1, Math.max(0, active + direction)))
 
   if (modules.length === 0) return null
+
+  if (layout === 'fit') {
+    return (
+      <section aria-label={title} className={className}>
+        <h2 className="text-base font-bold text-gray-900 mb-3">{title}</h2>
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${modules.length}, minmax(0, 1fr))` }}
+        >
+          {modules.map((module) => (
+            <div
+              key={module.key}
+              role="group"
+              aria-label={module.title}
+              className={`min-w-0 ${SLIDE_HEIGHT} overflow-hidden rounded-3xl`}
+            >
+              <LazyMount className="w-full h-full">
+                <div className="w-full h-full flex !flex-nowrap flex-col">{module.render()}</div>
+              </LazyMount>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section aria-label={title} aria-roledescription="carrousel" className={className}>

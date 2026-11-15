@@ -1298,12 +1298,9 @@ export default function HomePage() {
                   ordinateur, le module est en tête de la barre latérale droite). */}
               <RecapVideoModule variant="compact" />
 
-              {/* Modules pratiques — ordinateur : galerie défilante en haut du fil
-                  (journal TV et scores restent dans la barre latérale droite).
-                  Téléphone : la galerie est insérée en 4ᵉ position du fil, plus bas. */}
+              {/* Modules pratiques (météo, sondage, trafic…) : insérés dans le fil,
+                  après le 3ᵉ article sur téléphone et après le 5ᵉ sur ordinateur. */}
               <div ref={widgetsAreaRef} className="w-full mb-4">
-                <WidgetCarousel modules={DESKTOP_MODULES} className="hidden lg:block" />
-
                 {/* Bannière de campagne validée */}
                 <LazyMount className="w-full mt-4"><CampaignBanner /></LazyMount>
               </div>
@@ -1462,6 +1459,12 @@ export default function HomePage() {
                                     (2 articles à la une + 1 article, puis la galerie). */}
                                 {index === 0 && (
                                   <WidgetCarousel modules={MOBILE_MODULES} className="lg:hidden mt-4" />
+                                )}
+                                {/* Ordinateur : météo, sondage et trafic côte à côte sur la largeur
+                                    du fil, après le 5ᵉ article (2 à la une + 3 en liste).
+                                    Journal TV et scores restent dans la barre latérale droite. */}
+                                {index === 2 && (
+                                  <WidgetCarousel modules={DESKTOP_MODULES} layout="fit" className="hidden lg:block mt-4" />
                                 )}
                                 {/* Galerie Tendances : juste avant la première bannière, dans la vue
                                     « Tous » sans recherche (les vues filtrées restent centrées sur leur rubrique). */}
