@@ -208,3 +208,15 @@ button:active, .btn:active, [role="button"]:active {
   from { width: 0%; }
   to { width: 100%; }
 }
+
+
+/* Barre latérale gauche rétractable (components/layout/Sidebar.tsx).
+   WHY: les pages lui réservent la place avec `lg:ml-64` ; la barre publie sa
+   largeur réelle dans --sidebar-width (16rem, ou 4.5rem en mode réduit) et
+   cette marge la suit, sans modifier chaque page. */
+@media (min-width: 1024px) {
+  html .lg\:ml-64 {
+    margin-left: var(--sidebar-width, 16rem);
+    transition: margin-left 0.3s ease-in-out;
+  }
+}
