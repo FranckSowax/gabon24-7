@@ -7,7 +7,8 @@ const express = require('express');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const { supabase } = supabaseService;
-const { fetchEvents } = require('../fetch-events');
+// Synchronisation : même module que la tâche quotidienne (date et lieu lus sur eventime.ga).
+const { extractEventsFromRSS } = require('../events-rss-extractor');
 
 // GET /api/events - Récupérer les événements à venir avec images
 router.get('/', async (req, res) => {
@@ -104,11 +105,10 @@ router.post('/sync', async (req, res) => {
   try {
     console.log('🔄 Synchronisation des événements...');
     
-    const result = await fetchEvents();
-    
-    res.json({
-      success: true,
-      message: 'Événements synchronisés',
+    const result = await extractEventsFromRSS();
+
+    res.status(result.success ? 200 : 502).json({
+      message: result.success ? 'Événements synchronisés' : 'Synchronisation des événements impossible',
       ...result
     });
   } catch (error) {
