@@ -30,6 +30,7 @@ export default function UpcomingEvents() {
   const getTimeUntil = (dateString: string): string => {
     try {
       const eventDate = new Date(dateString)
+      if (!dateString || Number.isNaN(eventDate.getTime())) return ''
       const now = new Date()
       const diff = eventDate.getTime() - now.getTime()
 
@@ -67,19 +68,25 @@ export default function UpcomingEvents() {
       const response = await axios.get(`${API_URL}/api/events`)
 
       if (response.data.success && response.data.events) {
-        const adaptedEvents = response.data.events.map((event: any) => ({
+        const adaptedEvents = response.data.events.map((event: any) => {
+          // WHY: la date de l'événement est dans `event_date` ; l'ancien code lisait
+          // `published_at`, absent de la table, d'où les « Invalid Date ».
+          const eventDate = event.event_date || event.published_at || ''
+          return {
           id: event.id,
           title: event.title,
           description: event.description?.replace(/<[^>]*>/g, '') || '',
-          eventDate: event.published_at,
-          location: event.location || 'Libreville, Gabon',
+          eventDate,
+          // Pas de lieu inventé : la ligne est masquée quand il est inconnu.
+          location: event.location || '',
           url: event.url,
           imageUrl: event.image_url || extractImageFromDescription(event.description),
           category: event.category || 'Événement',
           organizer: event.organizer || 'Eventime.ga',
-          formattedDate: formatEventDate(event.published_at),
-          timeUntil: getTimeUntil(event.published_at)
-        }))
+          formattedDate: formatEventDate(eventDate),
+          timeUntil: getTimeUntil(eventDate)
+          }
+        })
         setEvents(adaptedEvents)
         if (typeof window !== 'undefined') {
           localStorage.setItem('events_cache', JSON.stringify(adaptedEvents))
@@ -126,18 +133,13 @@ export default function UpcomingEvents() {
   }
 
   const formatEventDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('fr-FR', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    } catch {
-      return 'Date à confirmer'
-    }
+    const date = new Date(dateString)
+    if (!dateString || Number.isNaN(date.getTime())) return 'Date à confirmer'
+    const timeZone = 'Africa/Libreville'
+    const time = date.toLocaleTimeString('fr-FR', { timeZone, hour: '2-digit', minute: '2-digit' })
+    const day = date.toLocaleDateString('fr-FR', { timeZone, weekday: 'short', day: 'numeric', month: 'short' })
+    // Minuit : heure inconnue (date trouvée sans heure), on n'affiche que le jour.
+    return time === '00:00' ? day : `${day} · ${time.replace(':', 'h')}`
   }
 
   const openEvent = (event: Event) => {

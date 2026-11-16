@@ -1,220 +1,84 @@
 /**
- * 🎉 EXTRACTEUR D'ÉVÉNEMENTS DEPUIS FLUX RSS
- * 
- * Extrait les événements depuis le flux RSS Eventime.ga
- * et les synchronise dans Supabase
+ * 🎉 SYNCHRONISATION DES ÉVÉNEMENTS À VENIR
+ *
+ * Lit le flux Eventime (services/eventime-events.js : date et lieu repris de la
+ * page de chaque événement) et l'enregistre dans la table `events`.
+ * Appelée par la tâche quotidienne de 6 h et par POST /api/events/sync.
  */
 
-const axios = require('axios');
-const xml2js = require('xml2js');
 const supabaseService = require('./supabase-config');
+const { loadEvents } = require('./services/eventime-events');
 
-const RSS_URL = 'https://rss.app/feeds/S4lUk8j474PjWeYr.xml';
+const COMPARED_FIELDS = ['title', 'description', 'image_url', 'location'];
 
-async function extractEventsFromRSS() {
-  console.log('\n🎉 EXTRACTION DES ÉVÉNEMENTS DEPUIS RSS');
-  console.log('='.repeat(80));
-  
+function _sameDate(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return new Date(a).getTime() === new Date(b).getTime();
+}
+
+function _hasChanged(existing, data) {
+  return !_sameDate(existing.event_date, data.event_date)
+    || COMPARED_FIELDS.some((field) => (existing[field] || '') !== (data[field] || ''));
+}
+
+/**
+ * Synchronise les événements du flux avec la base.
+ * Un événement déjà connu (même adresse) est mis à jour dès que sa date, son
+ * lieu, son titre, son image ou sa description changent : les lignes
+ * enregistrées avec une mauvaise date sont ainsi corrigées.
+ *
+ * @param {{supabase?: object, load?: Function}} [deps] dépendances (tests)
+ */
+async function extractEventsFromRSS({ supabase = supabaseService.supabase, load = loadEvents } = {}) {
   try {
-    // 1. Récupérer le flux RSS
-    console.log(`\n🔄 Récupération du flux: ${RSS_URL}`);
-    const response = await axios.get(RSS_URL, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Gabon247Bot/1.0)'
-      }
-    });
-    
-    // 2. Parser le XML
-    const parser = new xml2js.Parser({
-      explicitArray: true,
-      mergeAttrs: true
-    });
-    const result = await parser.parseStringPromise(response.data);
-    
-    if (!result.rss || !result.rss.channel || !result.rss.channel[0].item) {
-      console.error('❌ Structure RSS invalide');
-      return { success: false, message: 'Structure RSS invalide' };
-    }
-    
-    const items = result.rss.channel[0].item;
-    console.log(`✅ ${items.length} événements trouvés dans le flux RSS`);
-    
-    // 3. Analyser chaque événement
-    console.log('\n📊 ANALYSE DES ÉVÉNEMENTS:\n');
-    
-    const events = [];
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      const event = {
-        title: item.title ? item.title[0] : '',
-        description: item.description ? item.description[0] : '',
-        link: item.link ? item.link[0] : '',
-        pubDate: item.pubDate ? item.pubDate[0] : new Date().toISOString(),
-        image: null,
-        location: null
-      };
-      
-      // Extraire l'image depuis media:thumbnail, media:content ou enclosure
-      if (item['media:thumbnail']) {
-        const thumb = item['media:thumbnail'][0];
-        event.image = typeof thumb === 'string' ? thumb : (thumb.url || thumb.$ || null);
-      } else if (item['media:content']) {
-        const content = item['media:content'][0];
-        event.image = typeof content === 'string' ? content : (content.url || content.$ || null);
-      } else if (item.enclosure) {
-        const enc = item.enclosure[0];
-        event.image = typeof enc === 'string' ? enc : (enc.url || enc.$ || null);
-      }
-      
-      // Si c'est toujours un objet, essayer d'extraire l'URL
-      if (event.image && typeof event.image === 'object') {
-        event.image = event.image.url || event.image.href || null;
-      }
-      
-      // Extraire l'image depuis la description si pas trouvée
-      if (!event.image && event.description) {
-        const imgMatch = event.description.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-        if (imgMatch) {
-          event.image = imgMatch[1];
-        }
-      }
-      
-      // Extraire le lieu depuis la description ou le contenu
-      if (event.description) {
-        // Chercher des patterns comme "Lieu :", "Location:", "📍"
-        const locationMatch = event.description.match(/(?:Lieu\s*:\s*|Location\s*:\s*|📍\s*)([^<\n]+)/i);
-        if (locationMatch) {
-          event.location = locationMatch[1].trim();
-        }
-      }
-      
-      events.push(event);
-      
-      const pubDate = new Date(event.pubDate);
-      console.log(`${i + 1}. ${pubDate.toLocaleDateString('fr-FR', { 
-        day: '2-digit', 
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })} | Image: ${event.image ? '✅ OUI' : '❌ NON'}`);
-      console.log(`   📰 ${event.title}`);
-      if (event.location) {
-        console.log(`   📍 ${event.location}`);
-      }
-      if (event.image && typeof event.image === 'string') {
-        console.log(`   🖼️  ${event.image.substring(0, 60)}...`);
-      }
-      console.log('');
-    }
-    
-    // 4. Synchroniser avec Supabase
-    console.log('='.repeat(80));
-    console.log('\n💾 SYNCHRONISATION AVEC SUPABASE:\n');
-    
+    const { feedUrl, events } = await load();
+    console.log(`🎉 ${events.length} événements lus depuis ${feedUrl}`);
+
     let inserted = 0;
     let updated = 0;
+    let unchanged = 0;
     let errors = 0;
-    
+    const withoutDate = events.filter((event) => !event.event_date).length;
+
     for (const event of events) {
+      const { dateSource, ...fields } = event;
+      const data = { ...fields, is_active: true };
       try {
-        // Vérifier si l'événement existe déjà
-        const { data: existing, error: searchError } = await supabaseService.supabase
+        const { data: existing, error: searchError } = await supabase
           .from('events')
-          .select('id, title, image_url')
-          .eq('url', event.link)
+          .select('id, title, description, image_url, event_date, location')
+          .eq('url', event.url)
           .limit(1);
-        
-        if (searchError) {
-          console.error(`❌ Erreur recherche: ${searchError.message}`);
-          errors++;
-          continue;
-        }
-        
-        const eventData = {
-          title: event.title,
-          description: event.description,
-          url: event.link,
-          image_url: event.image,
-          location: event.location || '',
-          event_date: event.pubDate,
-          category: 'Événement',
-          organizer: 'Eventime.ga',
-          is_active: true,
-          updated_at: new Date().toISOString()
-        };
-        
+        if (searchError) throw searchError;
+
         if (existing && existing.length > 0) {
-          // Mettre à jour si l'image a changé ou si les données sont différentes
-          const existingEvent = existing[0];
-          if (existingEvent.image_url !== event.image || existingEvent.title !== event.title) {
-            const { error: updateError } = await supabaseService.supabase
-              .from('events')
-              .update(eventData)
-              .eq('id', existingEvent.id);
-            
-            if (updateError) {
-              console.log(`❌ Erreur mise à jour: ${event.title.substring(0, 40)}...`);
-              errors++;
-            } else {
-              console.log(`🔄 Mis à jour: ${event.title.substring(0, 50)}...`);
-              updated++;
-            }
-          } else {
-            console.log(`⏭️  Identique: ${event.title.substring(0, 50)}...`);
+          if (!_hasChanged(existing[0], data)) {
+            unchanged += 1;
+            continue;
           }
-        } else {
-          // Insérer nouvel événement
-          const { error: insertError } = await supabaseService.supabase
+          const { error } = await supabase
             .from('events')
-            .insert(eventData);
-          
-          if (insertError) {
-            console.log(`❌ Erreur insertion: ${event.title.substring(0, 40)}...`);
-            console.log(`   ${insertError.message}`);
-            errors++;
-          } else {
-            console.log(`✅ Ajouté: ${event.title.substring(0, 50)}...`);
-            inserted++;
-          }
+            .update({ ...data, updated_at: new Date().toISOString() })
+            .eq('id', existing[0].id);
+          if (error) throw error;
+          updated += 1;
+        } else {
+          const { error } = await supabase.from('events').insert(data);
+          if (error) throw error;
+          inserted += 1;
         }
-        
-        // Pause pour éviter de surcharger
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-      } catch (err) {
-        console.error(`❌ Erreur: ${err.message}`);
-        errors++;
+      } catch (error) {
+        errors += 1;
+        console.error(`❌ Événement « ${String(event.title).slice(0, 50)} » : ${error.message}`);
       }
     }
-    
-    console.log('\n' + '='.repeat(80));
-    console.log('\n📊 RÉSULTAT DE LA SYNCHRONISATION:\n');
-    console.log(`   ✅ Événements ajoutés: ${inserted}`);
-    console.log(`   🔄 Événements mis à jour: ${updated}`);
-    console.log(`   ❌ Erreurs: ${errors}`);
-    console.log(`   📊 Total traité: ${events.length}`);
-    
-    return {
-      success: true,
-      inserted,
-      updated,
-      errors,
-      total: events.length
-    };
-    
+
+    console.log(`✅ Événements : ${inserted} ajoutés, ${updated} mis à jour, ${unchanged} inchangés, ${errors} erreurs, ${withoutDate} sans date`);
+    return { success: errors < events.length || events.length === 0, inserted, updated, unchanged, errors, withoutDate, total: events.length };
   } catch (error) {
-    console.error('\n❌ ERREUR:', error.message);
-    if (error.response) {
-      console.error('   Status:', error.response.status);
-      console.error('   Data:', error.response.data?.substring(0, 200));
-    }
-    return {
-      success: false,
-      message: error.message
-    };
+    console.error('❌ Synchronisation des événements impossible :', error.message);
+    return { success: false, message: error.message, inserted: 0, updated: 0 };
   }
 }
 
