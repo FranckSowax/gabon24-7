@@ -4,7 +4,7 @@ import React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useModal } from '@/contexts/ModalContext'
 import { useRouter, usePathname } from 'next/navigation'
-import { Lock } from 'lucide-react'
+import { Lock, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import FlipProfileCard from '@/components/flip-ad/FlipProfileCard'
 import { useFlipAd } from '@/components/flip-ad/FlipAdContext'
 
@@ -13,6 +13,11 @@ interface SidebarProps {
   onMobileClose?: () => void
   searchWidget?: React.ReactNode
 }
+
+const COLLAPSE_STORAGE_KEY = 'gi_sidebar_collapsed'
+const AUTO_COLLAPSE_BELOW_PX = 1280
+const FULL_WIDTH = '16rem'
+const RAIL_WIDTH = '4.5rem'
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWidget }: SidebarProps) {
   const { user, subscriptionPlan, signOut, loading } = useAuth()
@@ -31,6 +36,34 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
   const [isSigningOut, setIsSigningOut] = React.useState(false)
   const [touchStart, setTouchStart] = React.useState<number | null>(null)
   const sidebarRef = React.useRef<HTMLElement>(null)
+
+  // Mode réduit (ordinateur uniquement) : une colonne d'icônes. Réduit par
+  // défaut sous 1280 px, puis le choix de l'utilisateur est mémorisé.
+  const [collapsed, setCollapsed] = React.useState(false)
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COLLAPSE_STORAGE_KEY)
+      setCollapsed(saved === null ? window.innerWidth < AUTO_COLLAPSE_BELOW_PX : saved === '1')
+    } catch {
+      setCollapsed(window.innerWidth < AUTO_COLLAPSE_BELOW_PX)
+    }
+  }, [])
+  // WHY: la trentaine de pages qui affichent cette barre lui réservent la place
+  // avec `lg:ml-64`. On publie la largeur réelle dans une variable CSS, que
+  // globals.css applique à cette marge : toutes les pages suivent sans modification.
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', collapsed ? RAIL_WIDTH : FULL_WIDTH)
+  }, [collapsed])
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      const next = !value
+      try { localStorage.setItem(COLLAPSE_STORAGE_KEY, next ? '1' : '0') } catch {}
+      return next
+    })
+  }
+  // Classes appliquées en mode réduit, sur ordinateur seulement (le menu mobile reste complet).
+  const hideOnRail = collapsed ? 'lg:hidden' : ''
+  const railLink = collapsed ? 'lg:justify-center lg:space-x-0 lg:px-0' : ''
 
   React.useEffect(() => {
     setIsClient(true);
@@ -185,7 +218,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
         onTouchEnd={handleTouchEnd}
         className={`
           fixed left-0
-          w-64 bg-white border-r border-gray-200
+          w-64 ${collapsed ? 'lg:w-[4.5rem]' : 'lg:w-64'} bg-white border-r border-gray-200
           transition-all duration-300 ease-in-out lg:translate-x-0 lg:block
           overflow-y-auto
           top-0 h-screen lg:top-16 lg:h-[calc(100vh-4rem)]
@@ -215,10 +248,37 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
           </button>
         </div>
 
-        <div className="p-4 sm:p-6">
-          
+        <div className={`p-4 sm:p-6 ${collapsed ? 'lg:px-2 lg:py-3' : ''}`}>
+
+          {/* Bouton réduire / agrandir (ordinateur) */}
+          <div className={`hidden lg:flex mb-3 ${collapsed ? 'justify-center' : 'justify-end -mt-2'}`}>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
+              title={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
+              className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              {collapsed ? <ChevronsRight className="w-5 h-5" aria-hidden="true" /> : <ChevronsLeft className="w-5 h-5" aria-hidden="true" />}
+            </button>
+          </div>
+
+          {/* Mode réduit : pastille de profil à la place de la carte */}
+          {collapsed && (
+            <button
+              type="button"
+              onClick={() => (user ? handleViewProfile() : (window.location.href = '/auth/signin/'))}
+              title={user ? `${displayName} · ${planName}` : 'Se connecter'}
+              aria-label={user ? 'Voir mon profil' : 'Se connecter'}
+              className="hidden lg:flex mx-auto mb-4 w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 text-white font-bold items-center justify-center shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+            >
+              {(displayName || '?').charAt(0).toUpperCase()}
+            </button>
+          )}
+
           {/* Widget Profil Moderne avec Authentification */}
-          <div className="mb-6">
+          <div className={`mb-6 ${hideOnRail}`}>
             <FlipProfileCard>
             <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-4 shadow-lg">
               {/* Infos utilisateur */}
@@ -315,18 +375,19 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               <a
                 key={item.href}
                 href={item.href}
+                title={item.label}
                 {...('external' in item && item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 onClick={() => {
                   if (onMobileClose) onMobileClose();
                 }}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm sm:text-base ${railLink} ${
                   item.active
                     ? 'bg-orange-50 text-orange-600 border-l-4 border-orange-500'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 <span className="text-base sm:text-lg">{item.icon}</span>
-                <span className="flex-1">{item.label}</span>
+                <span className={`flex-1 ${hideOnRail}`}>{item.label}</span>
                 {'badge' in item && item.badge && (
                   <span className="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full animate-pulse">
                     {item.badge}
@@ -336,113 +397,121 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
             ))}
           </nav>
 
-          <hr className="my-4 sm:my-6" />
+          <hr className={`my-4 sm:my-6 ${collapsed ? 'lg:my-3' : ''}`} />
 
           {/* Search Widget */}
           {searchWidget && (
-            <div className="mb-4 sm:mb-6">
+            <div className={`mb-4 sm:mb-6 ${hideOnRail}`}>
               {searchWidget}
             </div>
           )}
 
           {/* Business */}
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <h3 className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ${hideOnRail}`}>
               Business
             </h3>
             <div className="space-y-2">
               <a
                 href="/business/live-opportunities"
+                title="BCEG Project"
                 onClick={(e) => handleBusinessClick(e, '/business/live-opportunities')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-semibold bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-semibold bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors ${railLink}`}
               >
                 <span>🏦</span>
-                <span>BCEG Project</span>
+                <span className={hideOnRail}>BCEG Project</span>
               </a>
               <a
                 href="/business/creer-projet"
+                title="Créer un Projet"
                 onClick={(e) => handleBusinessClick(e, '/business/creer-projet')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ${railLink}`}
               >
                 <span>🚀</span>
-                <span>Créer un Projet</span>
+                <span className={hideOnRail}>Créer un Projet</span>
               </a>
               <a
                 href="/business/mes-projets"
+                title="Mes Projets"
                 onClick={(e) => handleBusinessClick(e, '/business/mes-projets')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ${railLink}`}
               >
                 <span>📁</span>
-                <span>Mes Projets</span>
+                <span className={hideOnRail}>Mes Projets</span>
               </a>
             </div>
           </div>
 
-          <hr className="my-4 sm:my-6" />
+          <hr className={`my-4 sm:my-6 ${collapsed ? 'lg:my-3' : ''}`} />
 
           {/* Outils */}
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <h3 className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ${hideOnRail}`}>
               Outils
             </h3>
             <div className="space-y-2">
               <a
                 href="/veille-alertes"
+                title="Veille & Alertes"
                 onClick={(e) => { e.preventDefault(); window.location.href = '/veille-alertes'; }}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors group"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent rounded-lg hover:bg-gray-100 transition-colors group ${railLink}`}
               >
                 <span>🔔</span>
-                <span className="flex-1">Veille & Alertes</span>
+                <span className={`flex-1 ${hideOnRail}`}>Veille & Alertes</span>
               </a>
               <a
                 href="/archives-generales"
+                title="Archives"
                 onClick={(e) => handleToolClick(e, '/archives-generales')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group ${railLink}`}
               >
                 <span>🗄️</span>
-                <span className="flex-1">Archives</span>
-                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+                <span className={`flex-1 ${hideOnRail}`}>Archives</span>
+                {!isPro && <Lock className={`w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 ${hideOnRail}`} />}
               </a>
               <a
                 href="/historique"
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+                title="Historique"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group ${railLink}`}
               >
                 <span>🕒</span>
-                <span className="flex-1">Historique</span>
+                <span className={`flex-1 ${hideOnRail}`}>Historique</span>
               </a>
             </div>
           </div>
 
-          <hr className="my-4 sm:my-6" />
+          <hr className={`my-4 sm:my-6 ${collapsed ? 'lg:my-3' : ''}`} />
 
           {/* Marketing */}
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <h3 className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ${hideOnRail}`}>
               Marketing
             </h3>
             <div className="space-y-2">
               <a
                 href="/marketing/publicite"
+                title="Publicité"
                 onClick={(e) => handleToolClick(e, '/marketing/publicite')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group ${railLink}`}
               >
                 <span>📢</span>
-                <span className="flex-1">Publicité</span>
-                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+                <span className={`flex-1 ${hideOnRail}`}>Publicité</span>
+                {!isPro && <Lock className={`w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 ${hideOnRail}`} />}
               </a>
               <a
                 href="/sondages"
+                title="Sondages"
                 onClick={(e) => handleToolClick(e, '/sondages')}
-                className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group"
+                className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors group ${railLink}`}
               >
                 <span>📊</span>
-                <span className="flex-1">Sondages</span>
-                {!isPro && <Lock className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />}
+                <span className={`flex-1 ${hideOnRail}`}>Sondages</span>
+                {!isPro && <Lock className={`w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 ${hideOnRail}`} />}
               </a>
             </div>
           </div>
 
-          <hr className="my-4 sm:my-6" />
+          <hr className={`my-4 sm:my-6 ${collapsed ? 'lg:my-3' : ''}`} />
 
           {/* Paramètres */}
           <div className="space-y-1 sm:space-y-2">
@@ -450,19 +519,20 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose, searchWid
               <a
                 key={item.href}
                 href={item.href}
+                title={item.label}
                 onClick={() => {
                   if (onMobileClose) onMobileClose();
                 }}
-                className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base"
+                className={`flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base ${railLink}`}
               >
                 <span className="text-base sm:text-lg">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className={hideOnRail}>{item.label}</span>
               </a>
             ))}
           </div>
 
           {/* Liens légaux */}
-          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-1 px-3">
+          <div className={`mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-1 px-3 ${hideOnRail}`}>
             <a href="/politique-de-confidentialite" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Confidentialité</a>
             <a href="/suppression-des-donnees" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Suppression des données</a>
           </div>
