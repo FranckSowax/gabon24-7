@@ -826,7 +826,7 @@ app.get('/api/articles/home', async (req, res) => {
     
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('is_published', true)
       .gte('published_at', cutoffTime.toISOString())
       .order('published_at', { ascending: false })
@@ -934,7 +934,7 @@ app.get('/api/articles/week', async (req, res) => {
     
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('is_published', true)
       .gte('published_at', startWeek.toISOString())
       .lte('published_at', endRecent.toISOString())
@@ -1025,7 +1025,7 @@ app.get("/api/articles/trending", async (req, res) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('is_published', true)
       .gte('published_at', start.toISOString())
       .order("view_count", { ascending: false, nullsLast: true })
@@ -1261,7 +1261,7 @@ app.get('/api/articles', async (req, res) => {
 
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('is_published', true)
       .order('published_at', { ascending: false })
       .limit(safeLimit);
@@ -1315,7 +1315,7 @@ app.get('/api/articles/:id', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('id', id)
       .single();
 
@@ -1333,7 +1333,8 @@ app.get('/api/articles/:id', async (req, res, next) => {
       category: data.category,
       source: data.source || 'Source inconnue',
       url: data.url,
-      published_at: data.published_at
+      published_at: data.published_at,
+      tldr_points: data.tldr_points || null
     };
 
     res.json({ success: true, article });
@@ -1748,6 +1749,7 @@ app.get('/api/articles/all', async (req, res) => {
         summary,
         summary_ai,
         url,
+        image_url,
         image_urls,
         author,
         published_at,
@@ -1755,7 +1757,8 @@ app.get('/api/articles/all', async (req, res) => {
         read_time_minutes,
         view_count,
         is_published,
-        sentiment,
+        sentiment_score,
+        tldr_points,
         category
       `, { count: 'exact' })
       .eq('is_published', true);
@@ -1832,8 +1835,10 @@ app.get('/api/articles/all', async (req, res) => {
     // Transformer les données
     const transformedArticles = articles.map(article => ({
       ...article,
-      imageUrl: article.image_url || null,
-      image_url: article.image_url || null,
+      // WHY: la colonne s'appelle sentiment_score ; l'ancien nom est gardé pour les appelants.
+      sentiment: article.sentiment_score ?? null,
+      imageUrl: article.image_url || article.image_urls?.[0] || null,
+      image_url: article.image_url || article.image_urls?.[0] || null,
       source: getMediaNameFromUrl(article.url, article.source),
       viewCount: article.view_count ? `${article.view_count} vues` : '0 vues',
       publishedAt: new Date(article.published_at).toLocaleDateString('fr-FR', {
@@ -1890,7 +1895,7 @@ app.get('/api/homepage/articles', async (req, res) => {
     // Récupérer les articles des dernières 36h avec jointure RSS feeds
     const { data: articles, error } = await supabaseService.supabase
       .from('articles')
-      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count')
+      .select('id, title, summary, category, published_at, image_url, source, url, is_premium, view_count, tldr_points')
       .eq('is_published', true)
       .gte('published_at', thirtySixHoursAgo.toISOString())
       .lte('published_at', now.toISOString())
@@ -1947,6 +1952,7 @@ app.get('/api/homepage/articles', async (req, res) => {
         created_at: article.created_at,
         url: article.url,
         trending: article.is_trending || false,
+        tldr_points: article.tldr_points || null,
         isGovernment: mediaName.includes('Ministère') || mediaName.includes('Présidence') || mediaName.includes('Gouvernement')
       };
     });
