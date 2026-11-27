@@ -48,6 +48,25 @@ class ArticleAIEnrichment {
       }
       
       // 🤖 ÉTAPE 2: Enrichissement IA requis (confiance locale insuffisante)
+      return await this.enrichWithAI(title, content, summary);
+
+    } catch (error) {
+      console.error(`❌ Erreur enrichissement IA:`, error.message);
+      
+      // Fallback vers analyse basique
+      return this.getFallbackEnrichment(title, content, summary);
+    }
+  }
+
+  /**
+   * Enrichissement par l'IA uniquement (sans cache local ni repli).
+   * WHY: la file de rattrapage (services/article-enrichment-queue.js) a besoin
+   * du résumé et des TL;DR, que le cache local ne produit pas, et doit savoir
+   * quand l'IA échoue pour réessayer plus tard. Cette méthode lève donc l'erreur.
+   *
+   * @returns {Promise<{ai_summary, ai_category, ai_sentiment, ai_importance, ai_is_breaking, ai_keywords, tldr_points}>}
+   */
+  async enrichWithAI(title, content = '', summary = '') {
       console.log(`🤖 Enrichissement IA OBJECTIF: "${title.substring(0, 60)}..."`);
       
       // Utiliser plus de contenu pour une analyse factuelle complète
@@ -130,13 +149,6 @@ Réponds UNIQUEMENT avec le JSON, aucun texte supplémentaire:`;
       });
 
       return result;
-
-    } catch (error) {
-      console.error(`❌ Erreur enrichissement IA:`, error.message);
-      
-      // Fallback vers analyse basique
-      return this.getFallbackEnrichment(title, content, summary);
-    }
   }
 
   /**

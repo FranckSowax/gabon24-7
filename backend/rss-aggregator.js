@@ -246,7 +246,10 @@ class RSSAggregator {
       sentiment_score: aiEnrichment.ai_sentiment,
       importance: aiEnrichment.ai_importance ? Math.max(1, Math.round(aiEnrichment.ai_importance * 10)) : null,
       is_breaking: aiEnrichment.ai_is_breaking,
-      keywords: aiEnrichment.ai_keywords || []
+      keywords: aiEnrichment.ai_keywords || [],
+      // WHY: l'enrichissement IA produit les 3 points du TL;DR ; ils n'étaient
+      // pas recopiés et le bouton « Résumé » des cartes restait vide.
+      tldr_points: Array.isArray(aiEnrichment.tldr_points) ? aiEnrichment.tldr_points : null
     };
 
     // 💾 SAUVEGARDE
@@ -672,6 +675,7 @@ class RSSAggregator {
           importance: article.importance,
           is_breaking: article.is_breaking,
           keywords: article.keywords,
+          tldr_points: article.tldr_points,
           enrichment_status: 'completed', // Nouveau champ
           enriched_at: new Date().toISOString() // Nouveau champ
         }])
