@@ -13,6 +13,7 @@ const fs = require('fs');
 const supabaseService = require('./supabase-config');
 const { formatTimeAgo, formatFullDate, getTimeRangeTimestamps } = require('./time-utils');
 const cron = require('node-cron');
+const { isBotUserAgent } = require('./utils/bot-detect');
 const redisCache = require('./services/redis-cache.service');
 const { errorHandler, notFoundHandler } = require('./middleware/error-handler');
 
@@ -1991,6 +1992,10 @@ app.get('/api/homepage/articles', async (req, res) => {
 app.post('/api/articles/:id/view', async (req, res) => {
   try {
     const { id } = req.params;
+    // Les robots (moteurs de recherche, aperçus de liens) ne comptent pas comme des lecteurs.
+    if (isBotUserAgent(req.headers['user-agent'])) {
+      return res.json({ success: true, counted: false, message: 'Visite de robot non comptée' });
+    }
     console.log(`👁️ Incrémentation des vues pour l'article: ${id}`);
 
     // D'abord récupérer l'article pour obtenir le view_count actuel
@@ -2062,6 +2067,9 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
 app.post('/api/articles/view', async (req, res) => {
   try {
     const { articleId } = req.body;
+    if (isBotUserAgent(req.headers['user-agent'])) {
+      return res.json({ success: true, counted: false, message: 'Visite de robot non comptée' });
+    }
     
     if (!articleId) {
       return res.status(400).json({
@@ -4468,6 +4476,26 @@ cron.schedule('0 */6 * * *', async () => {
     console.error('❌ Cron: erreur enrichissement:', e.message);
   }
 }, { timezone: 'Africa/Libreville' });
+
+// 🤖 CRON: FILE D'ENRICHISSEMENT DES ARTICLES EN ATTENTE (toutes les 10 minutes)
+// Les articles importés flux par flux arrivent en `pending` sans résumé IA, ni
+// TL;DR, ni rubrique précise : la file les traite par lots, du plus récent au
+// plus ancien (30 derniers jours). Désactivable avec ENRICHMENT_QUEUE_ENABLED=false.
+if (process.env.ENRICHMENT_QUEUE_ENABLED !== 'false' && process.env.NODE_ENV !== 'test') {
+  console.log('⏰ Planification file d\'enrichissement des articles (toutes les 10 minutes)...');
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      const { enrichPendingArticles, DEFAULT_BATCH_SIZE } = require('./services/article-enrichment-queue');
+      const batchSize = Number.parseInt(process.env.ENRICHMENT_BATCH_SIZE, 10) || DEFAULT_BATCH_SIZE;
+      const result = await enrichPendingArticles({ limit: batchSize });
+      if (!result.skipped && result.picked > 0) {
+        console.log(`🤖 File d'enrichissement : ${result.completed} enrichis, ${result.retried} à reprendre, ${result.failed} en échec (sur ${result.picked})`);
+      }
+    } catch (error) {
+      console.error('❌ File d\'enrichissement :', error.message);
+    }
+  }, { timezone: 'Africa/Libreville' });
+}
 
 // 🧹 CRON: NETTOYAGE CACHE ENRICHISSEMENT (toutes les 12 heures)
 console.log('⏰ Planification nettoyage cache enrichissement (toutes les 12 heures)...');

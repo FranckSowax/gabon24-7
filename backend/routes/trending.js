@@ -7,6 +7,7 @@
  */
 
 const express = require('express');
+const { isBotUserAgent } = require('../utils/bot-detect');
 const router = express.Router();
 const supabaseService = require('../supabase-config');
 const crypto = require('crypto');
@@ -214,6 +215,9 @@ router.get('/:period/:metric', async (req, res) => {
 router.post('/articles/:id/view', async (req, res) => {
   try {
     const { id: articleId } = req.params;
+    if (isBotUserAgent(req.headers['user-agent'])) {
+      return res.json({ success: true, recorded: false, articleId });
+    }
     const { userId, sessionId } = req.body;
 
     // Hash de l'IP pour l'anonymisation
